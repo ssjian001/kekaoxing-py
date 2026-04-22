@@ -1,0 +1,32 @@
+# Dependencies
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+*.egg
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+*.db
+*.db-wal
+*.db-shm
+snapshots/
+
+# Test
+.pytest_cache/
+htmlcov/
+.coverage
