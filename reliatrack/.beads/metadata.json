@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "reliatrack",
+  "project_id": "ba758e68-dc27-4b7c-9e1c-65a7682e88b0"
+}
