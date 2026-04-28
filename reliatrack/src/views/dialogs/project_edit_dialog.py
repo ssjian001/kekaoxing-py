@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from PySide6.QtWidgets import (
     QWidget,
     QMessageBox,
@@ -22,12 +20,11 @@ class ProjectEditDialog(_BaseDialog):
         若为 None 则为新建模式，否则为编辑模式并预填数据。
     """
 
-    _STATUS_OPTIONS = ["进行中", "暂停", "已完成", "已归档"]
+    _STATUS_OPTIONS = ["进行中", "暂停", "已关闭"]
     _STATUS_MAP = {
         "进行中": "active",
         "暂停": "paused",
-        "已完成": "completed",
-        "已归档": "archived",
+        "已关闭": "closed",
     }
     _STATUS_REVERSE = {v: k for k, v in _STATUS_MAP.items()}
 

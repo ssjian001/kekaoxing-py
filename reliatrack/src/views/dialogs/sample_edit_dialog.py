@@ -112,10 +112,19 @@ class SampleEditDialog(_BaseDialog):
 
     def accept(self) -> None:
         """覆盖 accept 以校验必填字段。"""
-        data = self.get_data()
-        if not data["sn"]:
+        sn = self._sn_edit.text().strip()
+        if not sn:
             QMessageBox.warning(self, "校验失败", "SN 为必填项，请输入。")
             self._sn_edit.setFocus()
             return
+
+        pid_str = self._project_id_edit.text().strip()
+        if pid_str:
+            try:
+                int(pid_str)
+            except ValueError:
+                QMessageBox.warning(self, "校验失败", "项目ID 必须是数字。")
+                self._project_id_edit.setFocus()
+                return
 
         super().accept()

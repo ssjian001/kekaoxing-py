@@ -174,23 +174,6 @@ class _SamplePoolTab(QWidget):
         self._table.set_samples(filtered)
         self._update_empty_state()
 
-    @staticmethod
-    def _btn_style(color: str) -> str:
-        return f"""
-            QPushButton {{
-                background-color: {color};
-                color: {CRUST};
-                border: none;
-                border-radius: 6px;
-                padding: 6px 12px;
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{
-                background-color: {SURFACE1};
-            }}
-        """
-
     def _update_empty_state(self) -> None:
         """根据表格行数显示/隐藏空状态提示。"""
         if self._table.rowCount() == 0:
@@ -458,31 +441,10 @@ class _SampleUsageTab(QWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 操作类型列着色
                 if col_idx == 2:
-                    item.setForeground(
-                        _color_fg(color)
-                        if hasattr(_color_fg, "__call__")
-                        else Qt.GlobalColor.white
-                    )
+                    item.setForeground(_color_fg(color))
                 self._table.setItem(row_idx, col_idx, item)
 
         self._update_empty_state()
-
-    @staticmethod
-    def _btn_style(color: str) -> str:
-        return f"""
-            QPushButton {{
-                background-color: {color};
-                color: {CRUST};
-                border: none;
-                border-radius: 6px;
-                padding: 6px 12px;
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{
-                background-color: {SURFACE1};
-            }}
-        """
 
     def _update_empty_state(self) -> None:
         """根据表格行数显示/隐藏空状态提示。"""

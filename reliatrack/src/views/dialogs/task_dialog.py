@@ -191,7 +191,6 @@ class TaskEditDialog(_BaseDialog):
 
     def _browse_log_file(self) -> None:
         """打开文件对话框选择日志文件。"""
-        from PySide6.QtWidgets import QLineEdit
         path, _ = QFileDialog.getOpenFileName(
             self,
             "选择测试日志文件",

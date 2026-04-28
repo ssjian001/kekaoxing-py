@@ -343,10 +343,12 @@ class MainWindow(QMainWindow):
                 all_plans = ctrl.test_plan_service.list_all_plans()
             # 保存当前选中索引
             current_plan_id = self._test_plan_view.get_selected_plan_id()
+            self._test_plan_view._plan_combo.blockSignals(True)
             self._test_plan_view.set_plans(
                 [p.name for p in all_plans],
                 [p.id for p in all_plans],
             )
+            restore_idx = 0
             if all_plans:
                 # 尝试恢复之前选中的计划
                 target_id = current_plan_id if current_plan_id else all_plans[0].id
@@ -354,6 +356,9 @@ class MainWindow(QMainWindow):
                 new_ids = [p.id for p in all_plans]
                 restore_idx = new_ids.index(target_id) if target_id in new_ids else 0
                 self._test_plan_view._plan_combo.setCurrentIndex(restore_idx)
+            self._test_plan_view._plan_combo.blockSignals(False)
+            # 手动加载选中计划的任务
+            if all_plans:
                 plan_id = all_plans[restore_idx].id
                 tasks = ctrl.test_plan_service.get_tasks(plan_id)
                 max_day = max((t.start_day + t.duration for t in tasks), default=30)
@@ -504,12 +509,12 @@ class MainWindow(QMainWindow):
         ctrl = self._ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        all_plans = ctrl.test_plan_service.list_all_plans()
-        if 0 <= index < len(all_plans):
-            plan = all_plans[index]
-            tasks = ctrl.test_plan_service.get_tasks(plan.id)
-            max_day = max((t.start_day + t.duration for t in tasks), default=30)
-            self._test_plan_view.refresh(tasks, max_day)
+        plan_id = self._test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            return
+        tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        max_day = max((t.start_day + t.duration for t in tasks), default=30)
+        self._test_plan_view.refresh(tasks, max_day)
 
     def _on_task_add(self) -> None:
         """新建测试任务。"""
@@ -759,8 +764,8 @@ class MainWindow(QMainWindow):
             return
         dlg = SampleEditDialog(sample=sample, parent=self)
         if dlg.exec():
-            data = dlg.get_data()
             try:
+                data = dlg.get_data()
                 ctrl.sample_service.update(sample.id, **data)
                 self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
                 self._ctrl.notify_data_changed()
@@ -781,8 +786,8 @@ class MainWindow(QMainWindow):
             return
         dlg = SampleEditDialog(sample=sample, parent=self)
         if dlg.exec():
-            data = dlg.get_data()
             try:
+                data = dlg.get_data()
                 ctrl.sample_service.update(sample.id, **data)
                 self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
                 self._ctrl.notify_data_changed()
