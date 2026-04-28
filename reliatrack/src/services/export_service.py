@@ -189,7 +189,7 @@ class ExportService:
             cell.border = thin_border
 
         for row_idx, issue in enumerate(issues, 5):
-            fa_count = len(fa_map.get(issue.id, [])) if fa_map else 0
+            fa_count = len(fa_map.get(issue.id, [])) if fa_map and issue.id is not None else 0
             values = [
                 issue.id,
                 issue.title,

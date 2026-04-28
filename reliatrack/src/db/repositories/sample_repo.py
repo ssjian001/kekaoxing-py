@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, cast
 
 import apsw
 
@@ -38,7 +38,7 @@ class SampleRepository(BaseRepository):
             "SELECT * FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
             (sample_id,),
         ).fetchall()
-        return [SampleTransaction(**dict(zip(col_names, r))) for r in rows]
+        return [SampleTransaction(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
 
     def update_status(self, id: int, status: str) -> None:
         """更新样品状态。"""

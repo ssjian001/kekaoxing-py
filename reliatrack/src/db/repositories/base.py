@@ -48,7 +48,7 @@ class BaseRepository:
         if self._columns_cache is not None:
             return self._columns_cache
         rows = self._conn.execute(f"PRAGMA table_info([{self._table}])").fetchall()
-        self._columns_cache = [r[1] for r in rows]
+        self._columns_cache = [str(r[1]) for r in rows]
         return self._columns_cache
 
     def _rows_to_models(self, rows: list[tuple]) -> list[Any]:

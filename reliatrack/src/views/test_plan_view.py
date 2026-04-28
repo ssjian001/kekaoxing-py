@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Callable, Optional
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -51,8 +53,8 @@ class _TaskTable(QTableWidget):
         self._tasks: list[TestTask] = []
         self._equipment_list: list[Equipment] = []
         self._technician_list: list[Technician] = []
-        self._on_edit_callback = None  # callable(TestTask) | None
-        self._on_delete_callback = None  # callable(TestTask) | None
+        self._on_edit_callback: Callable[[TestTask], None] | None = None
+        self._on_delete_callback: Callable[[TestTask], None] | None = None
         self.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
@@ -75,8 +77,8 @@ class _TaskTable(QTableWidget):
 
     def set_callbacks(
         self,
-        on_edit: "callable | None" = None,
-        on_delete: "callable | None" = None,
+        on_edit: Callable[[TestTask], None] | None = None,
+        on_delete: Callable[[TestTask], None] | None = None,
     ) -> None:
         """设置编辑/删除回调。"""
         self._on_edit_callback = on_edit
@@ -127,7 +129,7 @@ class _TaskTable(QTableWidget):
                 # 状态颜色
                 if col == 6:
                     colors = {"completed": GREEN, "in_progress": BLUE, "pending": SUBTEXT0}
-                    item.setForeground(QColor(colors.get(val, TEXT)))
+                    item.setForeground(QColor(colors.get(str(val), TEXT)))
                 self.setItem(row, col, item)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
@@ -388,9 +390,9 @@ class TestPlanView(QWidget):
 
     def setup_task_callbacks(
         self,
-        on_add: "callable | None" = None,
-        on_edit: "callable | None" = None,
-        on_delete: "callable | None" = None,
+        on_add: Callable[[], None] | None = None,
+        on_edit: Callable[[TestTask], None] | None = None,
+        on_delete: Callable[[TestTask], None] | None = None,
     ) -> None:
         """设置任务增删改回调。
 

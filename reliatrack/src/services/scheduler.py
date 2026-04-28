@@ -108,7 +108,8 @@ def build_dependency_map(tasks: list[TestTask]) -> dict[int, list[int]]:
     """Map task.id → list of dependency task IDs (integers)."""
     dep_map: dict[int, list[int]] = {}
     for task in tasks:
-        dep_map[task.id] = _parse_dependencies(task)
+        if task.id is not None:
+            dep_map[task.id] = _parse_dependencies(task)
     return dep_map
 
 
@@ -358,13 +359,13 @@ def run_auto_schedule(
     # ── Dependency structures ───────────────────────────────────
     dep_map = build_dependency_map(valid_tasks)
     topo = topological_order(valid_tasks, dep_map)
-    id_to_task: dict[int, TestTask] = {t.id: t for t in valid_tasks}
+    id_to_task: dict[int, TestTask] = {t.id: t for t in valid_tasks if t.id is not None}
 
     # ── Identify locked tasks ───────────────────────────────────
     locked_ids: set[int] = set()
     if config.lock_existing:
         for t in valid_tasks:
-            if t.start_day > 0 and t.status != "completed":
+            if t.start_day > 0 and t.status != "completed" and t.id is not None:
                 locked_ids.add(t.id)
 
     # ── Record original schedule length ─────────────────────────

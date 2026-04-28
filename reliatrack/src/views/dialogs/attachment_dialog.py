@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -95,8 +96,10 @@ class AttachmentDialog(_BaseDialog):
         # 清空默认表单布局
         while self._form.count():
             item = self._form.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is not None:
+                w = item.widget()
+                if w is not None:
+                    w.deleteLater()
 
         # 提示标签
         hint = QLabel(f"Issue #{self._issue_id} 的附件")

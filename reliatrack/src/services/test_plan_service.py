@@ -36,6 +36,7 @@ class TestPlanService:
         try:
             # 先删任务及其子表（test_results/issues），再删计划
             for task in self._task_repo.get_by_plan(plan_id):
+                assert task.id is not None
                 self._task_repo.delete_test_results(task.id)
                 self._task_repo.delete_issues_by_task(task.id)
                 self._task_repo.delete(task.id)

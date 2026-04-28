@@ -86,9 +86,9 @@ class _IssueTable(QTableWidget):
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 if col == 2:  # severity
-                    item.setForeground(QColor(severity_colors.get(val, TEXT)))
+                    item.setForeground(QColor(severity_colors.get(str(val), TEXT)))
                 elif col == 3:  # status
-                    item.setForeground(QColor(status_colors.get(val, TEXT)))
+                    item.setForeground(QColor(status_colors.get(str(val), TEXT)))
                 self.setItem(row, col, item)
 
     def get_selected_issue_id(self) -> Optional[int]:
@@ -178,8 +178,10 @@ class _FAPanel(QScrollArea):
         # 清空
         while self._layout.count():
             child = self._layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+            if child is not None:
+                w = child.widget()
+                if w is not None:
+                    w.deleteLater()
 
         if not records:
             label = QLabel("选择一个 Issue 查看 FA 分析记录")
@@ -382,6 +384,7 @@ class IssueView(QWidget):
             QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
+            assert issue.id is not None
             self._on_issue_deleted(issue.id)
 
     # ── FA 步骤 ──────────────────────────────────────────────

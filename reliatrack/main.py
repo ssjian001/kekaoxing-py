@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QComboBox,
 )
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QKeySequence
 
 from src.styles.theme import get_stylesheet, TEXT, SURFACE0, SURFACE1, MANTLE
 from src.controllers import AppController
@@ -68,11 +68,11 @@ class MainWindow(QMainWindow):
         self._setup_status_bar()
 
         # Issue 追踪钩子
-        self._issue_view._on_issue_saved = self._handle_issue_saved
-        self._issue_view._on_issue_deleted = self._handle_issue_deleted
-        self._issue_view._on_issue_selected = self._handle_issue_selected
-        self._issue_view._on_fa_record_added = self._handle_fa_record_added
-        self._issue_view._current_fa_records = lambda: self._current_fa_records
+        self._issue_view._on_issue_saved = self._handle_issue_saved  # type: ignore[method-assign]
+        self._issue_view._on_issue_deleted = self._handle_issue_deleted  # type: ignore[method-assign]
+        self._issue_view._on_issue_selected = self._handle_issue_selected  # type: ignore[method-assign]
+        self._issue_view._on_fa_record_added = self._handle_fa_record_added  # type: ignore[method-assign]
+        self._issue_view._current_fa_records = lambda: self._current_fa_records  # type: ignore[method-assign]
 
         # 初始数据加载
         self._refresh_all()
@@ -212,7 +212,7 @@ class MainWindow(QMainWindow):
 
         self._act_redo = QAction("↪ 重做", self)
         self._act_redo.setEnabled(False)
-        self._act_redo.setShortcuts(["Ctrl+Y", "Ctrl+Shift+Z"])
+        self._act_redo.setShortcuts([QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")])
         self._act_redo.triggered.connect(self._on_redo)
         toolbar.addAction(self._act_redo)
 
@@ -297,6 +297,7 @@ class MainWindow(QMainWindow):
 
             # 按项目筛选任务：通过关联的计划筛选
             if filter_project_id:
+                assert ctrl.test_plan_service is not None
                 filtered_plans = ctrl.test_plan_service.get_plans_by_project(
                     filter_project_id
                 )
@@ -365,7 +366,7 @@ class MainWindow(QMainWindow):
             self._test_plan_view._plan_combo.blockSignals(True)
             self._test_plan_view.set_plans(
                 [p.name for p in all_plans],
-                [p.id for p in all_plans],
+                [p.id for p in all_plans],  # type: ignore[misc]
             )
             restore_idx = 0
             if all_plans:
@@ -379,6 +380,7 @@ class MainWindow(QMainWindow):
             # 手动加载选中计划的任务
             if all_plans:
                 plan_id = all_plans[restore_idx].id
+                assert plan_id is not None
                 tasks = ctrl.test_plan_service.get_tasks(plan_id)
                 max_day = max((t.start_day + t.duration for t in tasks), default=30)
                 self._test_plan_view.refresh(tasks, max_day)
@@ -608,11 +610,14 @@ class MainWindow(QMainWindow):
         ctrl = self._ctrl
         if not ctrl or not ctrl.sample_service:
             return
+        assert ctrl is not None
+        assert ctrl.sample_service is not None
+        sample_svc = ctrl.sample_service
         project_list = ctrl.project_service.list_all() if ctrl.project_service else []
         default_project_id = self._project_filter_combo.currentData()
         dlg = SampleCheckInDialog(
             parent=self,
-            sn_exists_cb=lambda sn: ctrl.sample_service.get_by_sn(sn) is not None,
+            sn_exists_cb=lambda sn: sample_svc.get_by_sn(sn) is not None,
             project_list=project_list,
             default_project_id=default_project_id,
         )
@@ -653,6 +658,7 @@ class MainWindow(QMainWindow):
         if dlg.exec():
             data = dlg.get_data()
             try:
+                assert sample.id is not None
                 ctrl.sample_service.add_transaction(
                     sample_id=sample.id,
                     txn_type="check_out",
@@ -678,6 +684,8 @@ class MainWindow(QMainWindow):
             """执行批量导入，返回 (成功数, 跳过数)。"""
             success = 0
             skip = 0
+            assert ctrl is not None
+            assert ctrl.sample_service is not None
             for data in sample_list:
                 sn = data.get("sn", "").strip()
                 if not sn:
@@ -730,7 +738,7 @@ class MainWindow(QMainWindow):
             import base64
             b64 = base64.b64encode(png_bytes).decode("ascii")
             try:
-                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr]
+                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr, arg-type]
                 self.statusBar().showMessage(
                     f"✅ 样品 {sn} 的二维码已保存到数据库", 5000
                 )
@@ -763,7 +771,7 @@ class MainWindow(QMainWindow):
             import base64
             b64 = base64.b64encode(png_bytes).decode("ascii")
             try:
-                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr]
+                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr, arg-type]
                 self.statusBar().showMessage(
                     f"✅ 样品 {sn} 的二维码已保存到数据库", 5000
                 )
@@ -787,10 +795,15 @@ class MainWindow(QMainWindow):
         sample = ctrl.sample_service.get(sample_id)
         if sample is None:
             return
-        dlg = SampleEditDialog(sample=sample, parent=self)
+        dlg = SampleEditDialog(
+            sample=sample,
+            project_list=ctrl.project_service.list_all() if ctrl.project_service else [],
+            parent=self,
+        )
         if dlg.exec():
             try:
                 data = dlg.get_data()
+                assert sample.id is not None
                 ctrl.sample_service.update(sample.id, **data)
                 self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
                 self._ctrl.notify_data_changed()
@@ -809,10 +822,15 @@ class MainWindow(QMainWindow):
         sample = ctrl.sample_service.get(sample_id)
         if sample is None:
             return
-        dlg = SampleEditDialog(sample=sample, parent=self)
+        dlg = SampleEditDialog(
+            sample=sample,
+            project_list=ctrl.project_service.list_all() if ctrl.project_service else [],
+            parent=self,
+        )
         if dlg.exec():
             try:
                 data = dlg.get_data()
+                assert sample.id is not None
                 ctrl.sample_service.update(sample.id, **data)
                 self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
                 self._ctrl.notify_data_changed()
@@ -876,6 +894,7 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
+            assert proj.id is not None
             ctrl.project_service.delete(proj.id)
             self.statusBar().showMessage(f"✅ 项目「{proj.name}」已删除", 5000)
             self._ctrl.notify_data_changed()
@@ -914,6 +933,7 @@ class MainWindow(QMainWindow):
         if dlg.exec():
             data = dlg.get_data()
             try:
+                assert eq.id is not None
                 ctrl.equipment_service.update(eq.id, **data)
                 self.statusBar().showMessage(f"✅ 设备「{data['name']}」已更新", 5000)
                 self._ctrl.notify_data_changed()
@@ -938,6 +958,7 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
+            assert eq.id is not None
             ctrl.equipment_service.delete(eq.id)
             self.statusBar().showMessage(f"✅ 设备「{eq.name}」已删除", 5000)
             self._ctrl.notify_data_changed()
@@ -976,6 +997,7 @@ class MainWindow(QMainWindow):
         if dlg.exec():
             data = dlg.get_data()
             try:
+                assert entry.id is not None
                 ctrl.knowledge_service.update(entry.id, **data)
                 self.statusBar().showMessage(f"✅ 知识条目「{data['failure_mode']}」已更新", 5000)
                 self._ctrl.notify_data_changed()
@@ -1000,6 +1022,7 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
+            assert entry.id is not None
             ctrl.knowledge_service.delete(entry.id)
             self.statusBar().showMessage(f"✅ 知识条目「{entry.failure_mode}」已删除", 5000)
             self._ctrl.notify_data_changed()
@@ -1086,6 +1109,10 @@ class MainWindow(QMainWindow):
         ctrl = self._ctrl
         if not ctrl:
             return
+        assert ctrl is not None
+        assert ctrl.test_plan_service is not None
+        assert ctrl.issue_service is not None
+        assert ctrl.sample_service is not None
         dlg = ExportDialog(parent=self)
         if not dlg.exec():
             return

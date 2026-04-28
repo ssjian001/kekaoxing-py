@@ -294,14 +294,14 @@ class BatchImportDialog(_BaseDialog):
         # 构建 field → col_idx
         field_to_col: dict[str, int] = {}
         for field_name, col_header in mapping.items():
-            idx = header_to_idx.get(col_header.strip())
-            if idx is None:
+            col_idx: int | None = header_to_idx.get(col_header.strip())
+            if col_idx is None:
                 QMessageBox.warning(
                     self, "映射错误",
                     f"列「{col_header}」在 Excel 中未找到",
                 )
                 return
-            field_to_col[field_name] = idx
+            field_to_col[field_name] = col_idx
 
         # 解析数据
         sample_list: list[dict] = []

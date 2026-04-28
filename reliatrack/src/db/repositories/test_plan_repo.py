@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import apsw
 
+from typing import Any, cast
+
 from src.models.test_plan import TestPlan, TestTask
 from src.db.repositories.base import BaseRepository
 
@@ -27,7 +29,7 @@ class TestPlanRepository(BaseRepository):
             "SELECT * FROM [test_tasks] WHERE plan_id = ? ORDER BY sort_order, id",
             (plan_id,),
         ).fetchall()
-        return [TestTask(**dict(zip(col_names, r))) for r in rows]
+        return [TestTask(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
 
     def get_task_count(self, plan_id: int) -> int:
         row = self._conn.execute(

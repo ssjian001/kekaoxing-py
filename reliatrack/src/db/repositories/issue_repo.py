@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import apsw
 
+from typing import Any, cast
+
 from src.models.issue import Issue, FARecord, IssueAttachment
 from src.db.repositories.base import BaseRepository
 
@@ -42,7 +44,7 @@ class IssueRepository(BaseRepository):
             "SELECT * FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
             (issue_id,),
         ).fetchall()
-        return [FARecord(**dict(zip(col_names, r))) for r in rows]
+        return [FARecord(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
 
     def add_fa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 FA 分析步骤。"""
@@ -68,7 +70,7 @@ class IssueRepository(BaseRepository):
             "SELECT * FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
-        return [IssueAttachment(**dict(zip(col_names, r))) for r in rows]
+        return [IssueAttachment(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
 
     def add_attachment(self, issue_id: int, **kwargs: object) -> int:
         """添加 Issue 附件。"""

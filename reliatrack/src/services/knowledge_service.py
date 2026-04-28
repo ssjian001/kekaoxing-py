@@ -22,7 +22,7 @@ class KnowledgeService:
 
     def update(self, entry_id: int, **kwargs: object) -> None:
         """按 ID 更新。"""
-        self._repo.update(entry_id, dict(kwargs))
+        self._repo.update(entry_id, **kwargs)
 
     def delete(self, entry_id: int) -> None:
         """按 ID 删除。"""

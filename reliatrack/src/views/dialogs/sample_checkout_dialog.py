@@ -22,7 +22,7 @@ class SampleCheckoutDialog(_BaseDialog):
     def __init__(
         self,
         sample: Sample,
-        technicians: list = None,
+        technicians: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__("📤 样品出库", parent, width=460)

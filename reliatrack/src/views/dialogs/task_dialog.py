@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from PySide6.QtWidgets import QLineEdit
 
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -159,7 +162,7 @@ class TaskEditDialog(_BaseDialog):
         lbl.setMinimumWidth(50)
         return lbl
 
-    def _make_group_input(self, default: str, placeholder: str) -> QWidget:
+    def _make_group_input(self, default: str, placeholder: str) -> "QLineEdit":
         """创建分组框内的输入框。"""
         from PySide6.QtWidgets import QLineEdit
         edit = QLineEdit(default)

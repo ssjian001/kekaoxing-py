@@ -18,6 +18,8 @@ class SampleEditDialog(_BaseDialog):
     ----------
     sample:
         必须提供已有的 Sample 对象以编辑。
+    project_list:
+        项目列表（用于关联项目下拉框）。
     """
 
     _STATUS_OPTIONS = ["在库", "测试中", "已归还", "已报废"]
@@ -32,6 +34,7 @@ class SampleEditDialog(_BaseDialog):
     def __init__(
         self,
         sample: Sample,
+        project_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(
@@ -40,6 +43,7 @@ class SampleEditDialog(_BaseDialog):
             width=440,
         )
         self._sample = sample
+        self._project_list = project_list or []
 
         # ── 基本信息 ──
         self._sn_edit = self._add_text_field(
@@ -60,10 +64,19 @@ class SampleEditDialog(_BaseDialog):
             placeholder="如：DIP-14",
         )
 
-        self._project_id_edit = self._add_text_field(
-            "项目ID",
-            default=str(sample.project_id) if sample.project_id else "",
-            placeholder="关联项目编号",
+        # ── 关联项目下拉框 ──
+        project_names = ["（无）"]
+        project_names += [f"{p.name}" for p in self._project_list]
+        project_default = "（无）"
+        if sample.project_id:
+            for p in self._project_list:
+                if p.id == sample.project_id:
+                    project_default = p.name
+                    break
+        self._project_combo = self._add_combo_field(
+            "关联项目",
+            items=project_names,
+            default=project_default,
         )
 
         self._add_separator()
@@ -97,12 +110,19 @@ class SampleEditDialog(_BaseDialog):
     def get_data(self) -> dict:
         """返回表单数据字典。"""
         status_label = self._status_combo.currentText()
-        project_id_str = self._project_id_edit.text().strip()
+        # 从下拉框解析 project_id
+        project_id: int | None = None
+        proj_text = self._project_combo.currentText()
+        if proj_text != "（无）":
+            for p in self._project_list:
+                if p.name == proj_text:
+                    project_id = p.id
+                    break
         return {
             "sn": self._sn_edit.text().strip(),
             "batch_no": self._batch_no_edit.text().strip(),
             "spec": self._spec_edit.text().strip(),
-            "project_id": int(project_id_str) if project_id_str else None,
+            "project_id": project_id,
             "status": self._STATUS_MAP.get(status_label, "in_stock"),
             "location": self._location_edit.text().strip(),
             "notes": self._notes_edit.toPlainText().strip(),
@@ -117,14 +137,5 @@ class SampleEditDialog(_BaseDialog):
             QMessageBox.warning(self, "校验失败", "SN 为必填项，请输入。")
             self._sn_edit.setFocus()
             return
-
-        pid_str = self._project_id_edit.text().strip()
-        if pid_str:
-            try:
-                int(pid_str)
-            except ValueError:
-                QMessageBox.warning(self, "校验失败", "项目ID 必须是数字。")
-                self._project_id_edit.setFocus()
-                return
 
         super().accept()

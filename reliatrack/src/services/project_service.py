@@ -46,16 +46,20 @@ class ProjectService:
         try:
             # 1. 删除关联 issue 的 fa_records + attachments + issues
             for issue in self._issue_repo.get_by_project(project_id):
+                assert issue.id is not None
                 self._issue_repo.delete_fa_records(issue.id)
                 self._issue_repo.delete_attachments(issue.id)
                 self._issue_repo.delete(issue.id)
             # 2. 删除关联 sample 的 transactions + samples
             for sample in self._sample_repo.get_by_project(project_id):
+                assert sample.id is not None
                 self._sample_repo.delete_transactions(sample.id)
                 self._sample_repo.delete(sample.id)
             # 3. 删除关联 plan 的 tasks(test_results/issues) + plans
             for plan in self._plan_repo.get_by_project(project_id):
+                assert plan.id is not None
                 for task in self._task_repo.get_by_plan(plan.id):
+                    assert task.id is not None
                     self._task_repo.delete_test_results(task.id)
                     self._task_repo.delete_issues_by_task(task.id)
                     self._task_repo.delete(task.id)
