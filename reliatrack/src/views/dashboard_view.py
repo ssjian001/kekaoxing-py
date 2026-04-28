@@ -253,6 +253,15 @@ class DashboardView(QWidget):
         title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
         layout.addWidget(title)
 
+        # 项目筛选指示器
+        self._filter_label = QLabel("📋 全部项目")
+        self._filter_label.setStyleSheet(
+            f"color: {SUBTEXT0}; font-size: 13px; "
+            f"background-color: {SURFACE1}; border-radius: 6px; "
+            f"padding: 4px 12px;"
+        )
+        layout.addWidget(self._filter_label)
+
         # KPI 卡片网格
         grid = QGridLayout()
         grid.setSpacing(16)
@@ -263,6 +272,7 @@ class DashboardView(QWidget):
         self._card_pending = _KPICard("待开始", "0", SUBTEXT1)
         self._card_issues = _KPICard("Issue 数", "0", PEACH)
         self._card_equipment = _KPICard("设备数", "0", MAUVE)
+        self._card_samples = _KPICard("样品数", "0", TEAL)
 
         grid.addWidget(self._card_tasks, 0, 0)
         grid.addWidget(self._card_completed, 0, 1)
@@ -270,6 +280,7 @@ class DashboardView(QWidget):
         grid.addWidget(self._card_pending, 1, 0)
         grid.addWidget(self._card_issues, 1, 1)
         grid.addWidget(self._card_equipment, 1, 2)
+        grid.addWidget(self._card_samples, 2, 0)
 
         layout.addLayout(grid)
 
@@ -296,6 +307,8 @@ class DashboardView(QWidget):
         task_pending: int = 0,
         issue_count: int = 0,
         equipment_count: int = 0,
+        sample_count: int = 0,
+        project_name: str | None = None,
         task_status_data: dict[str, int] | None = None,
         sample_status_data: dict[str, int] | None = None,
         issue_severity_data: dict[str, int] | None = None,
@@ -305,10 +318,29 @@ class DashboardView(QWidget):
         Args:
             task_total / task_completed / task_in_progress / task_pending / issue_count / equipment_count:
                 KPI 卡片数值。
+            sample_count: 样品总数。
+            project_name: 当前筛选的项目名称（None 表示全部项目）。
             task_status_data:    {"pending": n, "in_progress": n, "completed": n, "skipped": n}
             sample_status_data:  {"in_stock": n, "checked_out": n, "in_test": n, ...}
             issue_severity_data: {"critical": n, "major": n, "minor": n, "cosmetic": n}
         """
+        # 项目筛选指示器
+        if project_name:
+            self._filter_label.setText(f"📁 {project_name}")
+            self._filter_label.setStyleSheet(
+                f"color: {BLUE}; font-size: 13px; font-weight: bold; "
+                f"background-color: {SURFACE1}; border-radius: 6px; "
+                f"border: 1px solid {BLUE}; "
+                f"padding: 4px 12px;"
+            )
+        else:
+            self._filter_label.setText("📋 全部项目")
+            self._filter_label.setStyleSheet(
+                f"color: {SUBTEXT0}; font-size: 13px; "
+                f"background-color: {SURFACE1}; border-radius: 6px; "
+                f"padding: 4px 12px;"
+            )
+
         # KPI 卡片
         for card, val in [
             (self._card_tasks, task_total),
@@ -317,6 +349,7 @@ class DashboardView(QWidget):
             (self._card_pending, task_pending),
             (self._card_issues, issue_count),
             (self._card_equipment, equipment_count),
+            (self._card_samples, sample_count),
         ]:
             labels = card.findChildren(QLabel)
             if len(labels) >= 2:

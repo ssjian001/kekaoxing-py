@@ -36,6 +36,7 @@ class PlanEditDialog(_BaseDialog):
         self,
         plan: TestPlan | None = None,
         project_list: list | None = None,
+        default_project_id: int | None = None,
         parent: QWidget | None = None,
     ) -> None:
         is_edit = plan is not None
@@ -63,9 +64,16 @@ class PlanEditDialog(_BaseDialog):
         project_names = ["（无）"]
         project_names += [f"{p.id} — {p.name}" for p in self._project_list]
         project_default = "（无）"
+        # 编辑模式：匹配已有 project_id
         if plan and plan.project_id:
             for p in self._project_list:
                 if p.id == plan.project_id:
+                    project_default = f"{p.id} — {p.name}"
+                    break
+        # 新建模式：匹配默认 project_id
+        elif default_project_id is not None and not is_edit:
+            for p in self._project_list:
+                if p.id == default_project_id:
                     project_default = f"{p.id} — {p.name}"
                     break
         self._project_combo = self._add_combo_field(

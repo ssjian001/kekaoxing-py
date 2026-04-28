@@ -17,11 +17,17 @@ class IssueEditDialog(_BaseDialog):
     ----------
     issue:
         若为 None 则为新建模式，否则为编辑模式并预填数据。
+    project_list:
+        项目列表（用于关联项目下拉框）。
+    default_project_id:
+        默认选中的项目 ID（通常为当前筛选的项目）。
     """
 
     def __init__(
         self,
         issue: Issue | None = None,
+        project_list: list | None = None,
+        default_project_id: int | None = None,
         parent: QWidget | None = None,
     ) -> None:
         is_edit = issue is not None
@@ -31,6 +37,7 @@ class IssueEditDialog(_BaseDialog):
             width=520,
         )
         self._issue = issue
+        self._project_list = project_list or []
 
         # ── 基本信息 ──
         self._title_edit = self._add_text_field(
@@ -66,6 +73,29 @@ class IssueEditDialog(_BaseDialog):
             items=["open", "analyzing", "verified", "closed"],
             default=issue.status if issue else "open",
         )
+
+        # ── 关联项目 ──
+        project_names = ["（无）"]
+        project_names += [f"{p.name}" for p in self._project_list]
+        project_default = "（无）"
+        # 编辑模式：匹配已有 project_id
+        if issue and issue.project_id:
+            for p in self._project_list:
+                if p.id == issue.project_id:
+                    project_default = p.name
+                    break
+        # 新建模式：匹配默认 project_id
+        elif default_project_id is not None and not is_edit:
+            for p in self._project_list:
+                if p.id == default_project_id:
+                    project_default = p.name
+                    break
+        self._project_combo = self._add_combo_field(
+            "关联项目",
+            items=project_names,
+            default=project_default,
+        )
+
         self._add_separator()
 
         # ── 根因 & 解决方案 ──
@@ -80,6 +110,14 @@ class IssueEditDialog(_BaseDialog):
 
     def get_data(self) -> dict:
         """返回表单数据字典。"""
+        # 从下拉框解析 project_id
+        project_id: int | None = None
+        proj_text = self._project_combo.currentText()
+        if proj_text != "（无）":
+            for p in self._project_list:
+                if p.name == proj_text:
+                    project_id = p.id
+                    break
         return {
             "title": self._title_edit.text().strip(),
             "failure_mode": self._failure_mode_edit.text().strip(),
@@ -88,6 +126,7 @@ class IssueEditDialog(_BaseDialog):
             "severity": self._severity_combo.currentText(),
             "priority": self._priority_spin.value(),
             "status": self._status_combo.currentText(),
+            "project_id": project_id,
             "root_cause": self._root_cause_edit.toPlainText().strip(),
             "resolution": self._resolution_edit.toPlainText().strip(),
         }

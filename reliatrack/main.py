@@ -264,10 +264,33 @@ class MainWindow(QMainWindow):
             # 重新读取筛选值（可能在 blockSignals 期间被恢复）
             filter_project_id = self._project_filter_combo.currentData()
 
+        # 注入项目列表和默认项目到 IssueView（供弹窗使用）
+        self._issue_view._project_list = all_projects if ctrl.project_service else []
+        self._issue_view._default_project_id = filter_project_id
+
+        # 当前筛选项目名称
+        current_project_name: str | None = None
+        if filter_project_id and ctrl.project_service:
+            for p in all_projects:
+                if p.id == filter_project_id:
+                    current_project_name = p.name
+                    break
+
         # Dashboard KPI + 图表
         task_status_data: dict[str, int] = {}
         sample_status_data: dict[str, int] = {}
         issue_severity_data: dict[str, int] = {}
+        sample_count = 0
+
+        # 样品（提前加载以供 Dashboard 使用）
+        if ctrl.sample_service:
+            if filter_project_id:
+                all_samples = ctrl.sample_service.get_by_project(filter_project_id)
+            else:
+                all_samples = ctrl.sample_service.list_all()
+            sample_count = len(all_samples)
+            sample_counter = Counter(s.status for s in all_samples)
+            sample_status_data = dict(sample_counter)
 
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             all_tasks = ctrl.test_tasks.list_all()
@@ -305,20 +328,16 @@ class MainWindow(QMainWindow):
                 task_total=total, task_completed=completed,
                 task_in_progress=in_progress, task_pending=pending,
                 issue_count=issues, equipment_count=equipment,
+                sample_count=sample_count,
+                project_name=current_project_name,
                 task_status_data=task_status_data,
+                sample_status_data=sample_status_data,
                 issue_severity_data=issue_severity_data,
             )
 
-        # 样品状态分布
+        # 样品视图
         if ctrl.sample_service:
-            # 按项目筛选样品
-            if filter_project_id:
-                all_samples = ctrl.sample_service.get_by_project(filter_project_id)
-            else:
-                all_samples = ctrl.sample_service.list_all()
-            sample_counter = Counter(s.status for s in all_samples)
-            sample_status_data = dict(sample_counter)
-            # 更新图表（KPI 已在上块刷新，这里只补图表）
+            # 更新样品状态图表
             self._dashboard._chart_sample_status.set_data(
                 {({"in_stock": "在库", "checked_out": "已借出", "in_test": "测试中",
                    "suspended": "暂停", "scrapped": "已报废", "returned": "已归还"}).get(k, k): v
@@ -454,9 +473,11 @@ class MainWindow(QMainWindow):
         if not ctrl or not ctrl.test_plan_service or not ctrl.project_service:
             return
         project_list = ctrl.project_service.list_all()
+        default_project_id = self._project_filter_combo.currentData()
         dlg = PlanEditDialog(
             plan=None,
             project_list=project_list,
+            default_project_id=default_project_id,
             parent=self,
         )
         if dlg.exec():
@@ -587,9 +608,13 @@ class MainWindow(QMainWindow):
         ctrl = self._ctrl
         if not ctrl or not ctrl.sample_service:
             return
+        project_list = ctrl.project_service.list_all() if ctrl.project_service else []
+        default_project_id = self._project_filter_combo.currentData()
         dlg = SampleCheckInDialog(
             parent=self,
             sn_exists_cb=lambda sn: ctrl.sample_service.get_by_sn(sn) is not None,
+            project_list=project_list,
+            default_project_id=default_project_id,
         )
         if dlg.exec():
             data = dlg.get_data()

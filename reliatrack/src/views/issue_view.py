@@ -232,10 +232,12 @@ class _FAPanel(QScrollArea):
 
 
 class IssueView(QWidget):
-    """Issue 追踪视图 — 左侧列表 + 右侧 FA 面板。"""
+    """Issue 追踪视图 — 左侧 Issue 列表 + 右侧 FA 面板。"""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self._project_list: list = []  # 项目列表，由 main.py 注入
+        self._default_project_id: int | None = None  # 默认项目，由 main.py 注入
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -349,13 +351,22 @@ class IssueView(QWidget):
 
     def _open_create_dialog(self) -> None:
         """打开新建 Issue 弹窗。"""
-        dlg = IssueEditDialog(issue=None, parent=self)
+        dlg = IssueEditDialog(
+            issue=None,
+            project_list=self._project_list,
+            default_project_id=self._default_project_id,
+            parent=self,
+        )
         if dlg.exec():
             self._on_issue_saved(dlg.get_data())
 
     def _open_edit_dialog(self, issue: Issue) -> None:
         """打开编辑 Issue 弹窗。"""
-        dlg = IssueEditDialog(issue=issue, parent=self)
+        dlg = IssueEditDialog(
+            issue=issue,
+            project_list=self._project_list,
+            parent=self,
+        )
         if dlg.exec():
             data = dlg.get_data()
             data["id"] = issue.id
