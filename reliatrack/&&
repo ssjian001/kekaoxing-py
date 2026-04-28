@@ -1,1 +1,0 @@
-main.py:406 引用不存在的 ctrl.technician_service，已修正为 ctrl.technicians
