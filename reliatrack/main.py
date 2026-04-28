@@ -41,11 +41,11 @@ from src.views.dialogs.task_dialog import TaskEditDialog
 from src.views.dialogs.plan_edit_dialog import PlanEditDialog
 from src.views.dialogs.export_dialog import ExportDialog
 from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
-# technician management
-from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
-from src.views.technician_view import TechnicianView
+from src.views.dialogs.project_edit_dialog import ProjectEditDialog
+from src.views.dialogs.sample_edit_dialog import SampleEditDialog
 # attachment management
 from src.views.dialogs.attachment_dialog import AttachmentDialog
+from src.views.project_view import ProjectView
 # knowledge management
 from src.views.knowledge_view import KnowledgeView
 from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
@@ -86,11 +86,18 @@ class MainWindow(QMainWindow):
 
         self._tab_widget = QTabWidget()
 
-        # Tab 0: 仪表盘
+        # Tab 0: 项目管理
+        self._project_view = ProjectView()
+        self._tab_widget.addTab(self._project_view, "📁 项目管理")
+        self._project_view.btn_add.clicked.connect(self._on_project_add)
+        self._project_view.btn_edit.clicked.connect(self._on_project_edit)
+        self._project_view.btn_delete.clicked.connect(self._on_project_delete)
+
+        # Tab 1: 仪表盘
         self._dashboard = DashboardView()
         self._tab_widget.addTab(self._dashboard, "📊 仪表盘")
 
-        # Tab 1: 样品管理
+        # Tab 2: 样品管理
         self._sample_view = SampleView()
         self._tab_widget.addTab(self._sample_view, "📦 样品管理")
 
@@ -99,11 +106,16 @@ class MainWindow(QMainWindow):
         self._sample_view.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
         self._sample_view.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         self._sample_view.pool_tab.btn_generate_qr.clicked.connect(self._on_sample_generate_qr)
+        self._sample_view.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
+
+        # 台账 Tab 按钮
+        self._sample_view.ledger_tab.btn_generate_qr.clicked.connect(self._on_ledger_generate_qr)
+        self._sample_view.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
 
         # 出入库记录 Tab 搜索回调
         self._sample_view.usage_tab.set_refresh_callback(self._refresh_sample_usage)
 
-        # Tab 2: 测试计划
+        # Tab 3: 测试计划
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "📋 测试计划")
         self._test_plan_view.btn_schedule.clicked.connect(self._on_auto_schedule)
@@ -120,7 +132,7 @@ class MainWindow(QMainWindow):
             on_delete=self._on_task_delete,
         )
 
-        # Tab 3: Issue 追踪
+        # Tab 4: Issue 追踪
         self._issue_view = IssueView()
         self._tab_widget.addTab(self._issue_view, "🐛 Issue 追踪")
 
@@ -130,19 +142,12 @@ class MainWindow(QMainWindow):
         # Issue 追踪 — FA 记录缓存
         self._current_fa_records: list = []
 
-        # Tab 4: 设备管理
+        # Tab 5: 设备管理
         self._equipment_view = EquipmentView()
         self._tab_widget.addTab(self._equipment_view, "🔧 设备管理")
         self._equipment_view.btn_add.clicked.connect(self._on_equipment_add)
         self._equipment_view.btn_edit.clicked.connect(self._on_equipment_edit)
         self._equipment_view.btn_delete.clicked.connect(self._on_equipment_delete)
-
-        # technician management: Tab 5: 技术员管理
-        self._technician_view = TechnicianView()
-        self._tab_widget.addTab(self._technician_view, "👷 技术员管理")
-        self._technician_view.btn_add.clicked.connect(self._on_technician_add)
-        self._technician_view.btn_edit.clicked.connect(self._on_technician_edit)
-        self._technician_view.btn_delete.clicked.connect(self._on_technician_delete)
 
         # knowledge management: Tab 6: 知识库
         self._knowledge_view = KnowledgeView()
@@ -197,6 +202,11 @@ class MainWindow(QMainWindow):
         ctrl = self._ctrl
         if ctrl is None:
             return
+
+        # 项目管理
+        if ctrl.project_service:
+            all_projects = ctrl.project_service.list_all()
+            self._project_view.refresh(all_projects)
 
         # Dashboard KPI + 图表
         task_status_data: dict[str, int] = {}
@@ -278,11 +288,6 @@ class MainWindow(QMainWindow):
         if ctrl.equipment_service:
             all_equipment = ctrl.equipment_service.list_all()
             self._equipment_view.refresh(all_equipment)
-
-        # technician management: 技术员管理
-        if ctrl.technicians:
-            all_technicians = ctrl.technicians.list_all()
-            self._technician_view.refresh(all_technicians)
 
         # knowledge management: 知识库
         if ctrl.knowledge_service:
@@ -431,7 +436,7 @@ class MainWindow(QMainWindow):
         dlg = TaskEditDialog(
             task=None,
             equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
-            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
+            technician_list=[],
             all_tasks=current_tasks,
             parent=self,
         )
@@ -453,7 +458,7 @@ class MainWindow(QMainWindow):
         dlg = TaskEditDialog(
             task=task,
             equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
-            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
+            technician_list=[],
             all_tasks=current_tasks,
             parent=self,
         )
@@ -524,7 +529,7 @@ class MainWindow(QMainWindow):
             return
         dlg = SampleCheckoutDialog(
             sample=sample,
-            technicians=ctrl.technicians.list_all() if ctrl.technicians else [],
+            technicians=[],
             parent=self,
         )
         if dlg.exec():
@@ -587,19 +592,19 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("✅ 样品批量导入完成", 5000)
 
     def _on_sample_generate_qr(self) -> None:
-        """为选中样品生成二维码。"""
+        """为选中样品生成二维码（样品池 Tab）。"""
         ctrl = self._ctrl
         if not ctrl or not ctrl.sample_service:
             return
         sample_id = self._sample_view.pool_tab.table.get_selected_sample_id()
         if sample_id is None:
-            self.statusBar().showMessage("⚠️ 请先选中一个样品", 5000)
+            QMessageBox.warning(self, "提示", "请先选中一个样品。")
             return
         sample = ctrl.sample_service.get(sample_id)
         if sample is None:
             return
         if not sample.sn:
-            self.statusBar().showMessage("⚠️ 样品 SN 为空，无法生成二维码", 5000)
+            QMessageBox.warning(self, "提示", "样品 SN 为空，无法生成二维码。")
             return
 
         def _save_qr_to_db(sn: str, png_bytes: bytes) -> None:
@@ -618,6 +623,148 @@ class MainWindow(QMainWindow):
         self._sample_view.pool_tab.show_qr_dialog(
             sample.sn, parent=self, on_save_to_db=_save_qr_to_db,
         )
+
+    def _on_ledger_generate_qr(self) -> None:
+        """为选中样品生成二维码（样品台账 Tab）。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        sample_id = self._sample_view.ledger_tab.table.get_selected_sample_id()
+        if sample_id is None:
+            QMessageBox.warning(self, "提示", "请先选中一个样品。")
+            return
+        sample = ctrl.sample_service.get(sample_id)
+        if sample is None:
+            return
+        if not sample.sn:
+            QMessageBox.warning(self, "提示", "样品 SN 为空，无法生成二维码。")
+            return
+
+        def _save_qr_to_db(sn: str, png_bytes: bytes) -> None:
+            """将 base64 编码的 QR 码保存到样品的 qr_code 字段。"""
+            import base64
+            b64 = base64.b64encode(png_bytes).decode("ascii")
+            try:
+                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr]
+                self.statusBar().showMessage(
+                    f"✅ 样品 {sn} 的二维码已保存到数据库", 5000
+                )
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "保存失败", f"保存到数据库失败: {e}")
+
+        self._sample_view.pool_tab.show_qr_dialog(
+            sample.sn, parent=self, on_save_to_db=_save_qr_to_db,
+        )
+
+    def _on_sample_edit(self) -> None:
+        """编辑选中样品（样品池 Tab）。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        sample_id = self._sample_view.pool_tab.table.get_selected_sample_id()
+        if sample_id is None:
+            QMessageBox.warning(self, "提示", "请先选中一个样品。")
+            return
+        sample = ctrl.sample_service.get(sample_id)
+        if sample is None:
+            return
+        dlg = SampleEditDialog(sample=sample, parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                ctrl.sample_service.update(sample.id, **data)
+                self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
+
+    def _on_ledger_edit(self) -> None:
+        """编辑选中样品（样品台账 Tab）。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        sample_id = self._sample_view.ledger_tab.table.get_selected_sample_id()
+        if sample_id is None:
+            QMessageBox.warning(self, "提示", "请先选中一个样品。")
+            return
+        sample = ctrl.sample_service.get(sample_id)
+        if sample is None:
+            return
+        dlg = SampleEditDialog(sample=sample, parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                ctrl.sample_service.update(sample.id, **data)
+                self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
+
+    # ── 项目管理回调 ──
+
+    def _on_project_add(self) -> None:
+        """新建项目。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.project_service:
+            return
+        dlg = ProjectEditDialog(parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                ctrl.project_service.create(**data)
+                self.statusBar().showMessage(f"✅ 项目「{data['name']}」已创建", 5000)
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
+
+    def _on_project_edit(self) -> None:
+        """编辑选中的项目。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.project_service:
+            return
+        proj = self._project_view.get_selected_project()
+        if proj is None:
+            self.statusBar().showMessage("⚠️ 请先选中一个项目", 5000)
+            return
+        dlg = ProjectEditDialog(project=proj, parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            proj_id = data.pop("id", None)
+            if proj_id is None:
+                return
+            try:
+                ctrl.project_service.update(proj_id, **data)
+                self.statusBar().showMessage(f"✅ 项目「{data['name']}」已更新", 5000)
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
+
+    def _on_project_delete(self) -> None:
+        """删除选中的项目。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.project_service:
+            return
+        proj = self._project_view.get_selected_project()
+        if proj is None:
+            self.statusBar().showMessage("⚠️ 请先选中一个项目", 5000)
+            return
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除项目「{proj.name}」吗？\n关联的测试计划、任务、样品、Issue 等数据将一并删除。\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            ctrl.project_service.delete(proj.id)
+            self.statusBar().showMessage(f"✅ 项目「{proj.name}」已删除", 5000)
+            self._ctrl.notify_data_changed()
+        except ValueError as e:
+            QMessageBox.warning(self, "删除失败", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "删除失败", f"删除失败: {e}")
 
     # ── 设备管理回调 ──
 
@@ -675,68 +822,6 @@ class MainWindow(QMainWindow):
         try:
             ctrl.equipment_service.delete(eq.id)
             self.statusBar().showMessage(f"✅ 设备「{eq.name}」已删除", 5000)
-            self._ctrl.notify_data_changed()
-        except ValueError as e:
-            QMessageBox.warning(self, "删除失败", str(e))
-        except Exception as e:
-            QMessageBox.critical(self, "删除失败", f"删除失败: {e}")
-
-    # ── 技术员管理回调 (technician management) ──
-
-    def _on_technician_add(self) -> None:
-        """新建技术员。"""
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.technicians:
-            return
-        dlg = TechnicianEditDialog(parent=self)
-        if dlg.exec():
-            data = dlg.get_data()
-            try:
-                ctrl.technicians.insert(**data)
-                self.statusBar().showMessage(f"✅ 技术员「{data['name']}」已创建", 5000)
-                self._ctrl.notify_data_changed()
-            except Exception as e:
-                QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
-
-    def _on_technician_edit(self) -> None:
-        """编辑选中的技术员。"""
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.technicians:
-            return
-        tech = self._technician_view.get_selected_technician()
-        if tech is None:
-            self.statusBar().showMessage("⚠️ 请先选中一个技术员", 5000)
-            return
-        dlg = TechnicianEditDialog(technician=tech, parent=self)
-        if dlg.exec():
-            data = dlg.get_data()
-            try:
-                ctrl.technicians.update(tech.id, **data)
-                self.statusBar().showMessage(f"✅ 技术员「{data['name']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
-            except Exception as e:
-                QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
-
-    def _on_technician_delete(self) -> None:
-        """删除选中的技术员。"""
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.technicians:
-            return
-        tech = self._technician_view.get_selected_technician()
-        if tech is None:
-            self.statusBar().showMessage("⚠️ 请先选中一个技术员", 5000)
-            return
-        reply = QMessageBox.question(
-            self, "确认删除",
-            f"确定要删除技术员「{tech.name}」({tech.department}) 吗？\n此操作不可撤销。",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-        try:
-            ctrl.technicians.delete(tech.id)
-            self.statusBar().showMessage(f"✅ 技术员「{tech.name}」已删除", 5000)
             self._ctrl.notify_data_changed()
         except ValueError as e:
             QMessageBox.warning(self, "删除失败", str(e))

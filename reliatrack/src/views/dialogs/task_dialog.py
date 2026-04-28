@@ -28,8 +28,6 @@ class TaskEditDialog(_BaseDialog):
         若为 None 则为新建模式，否则为编辑模式并预填数据。
     equipment_list:
         可选设备列表（用于设备下拉框）。
-    technician_list:
-        可选技术员列表（用于技术员下拉框）。
     all_tasks:
         当前计划下所有任务（用于依赖选择提示）。
     """
@@ -40,7 +38,7 @@ class TaskEditDialog(_BaseDialog):
         self,
         task: TestTask | None = None,
         equipment_list: list[Equipment] | None = None,
-        technician_list: list[Technician] | None = None,
+        technician_list: list | None = None,  # kept for backward compat, unused
         all_tasks: list[TestTask] | None = None,
         parent: QWidget | None = None,
     ) -> None:

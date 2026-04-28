@@ -21,7 +21,6 @@ from src.db.schema import init_schema
 from src.db.repositories import (
     ProjectRepository,
     EquipmentRepository,
-    TechnicianRepository,
     SampleRepository,
     TestPlanRepository,
     TestTaskRepository,
@@ -54,7 +53,6 @@ class AppController:
         # Repositories
         self.projects: ProjectRepository | None = None
         self.equipment: EquipmentRepository | None = None
-        self.technicians: TechnicianRepository | None = None
         self.samples: SampleRepository | None = None
         self.test_plans: TestPlanRepository | None = None
         self.test_tasks: TestTaskRepository | None = None
@@ -89,7 +87,6 @@ class AppController:
         # Repositories
         self.projects = ProjectRepository(self._conn)
         self.equipment = EquipmentRepository(self._conn)
-        self.technicians = TechnicianRepository(self._conn)
         self.samples = SampleRepository(self._conn)
         self.test_plans = TestPlanRepository(self._conn)
         self.test_tasks = TestTaskRepository(self._conn)

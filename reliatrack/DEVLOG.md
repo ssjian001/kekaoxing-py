@@ -127,5 +127,62 @@
 - [x] UndoManager 实际接入业务操作
 - [x] Dashboard 增强 — 图表可视化
 - [x] 样品占用 Tab 替换占位符
-- [ ] 二维码生成（PRD 标注可选，DB 有 `qr_code` 字段）
+- [x] 二维码生成（PRD 标注可选，DB 有 `qr_code` 字段）
 - [ ] Word 导出（当前只有 Excel + PDF）
+
+## 2026-04-28 (晚) — 用户实测反馈修复
+
+> 用户实际测试后提出 4 项改进需求，全部完成。
+
+### 1. 二维码生成修复
+- **问题**: QR 按钮仅在"样品池" Tab，"样品台账"无 QR 按钮；未选样品时状态栏提示被忽略
+- **修复**:
+  - `_SampleLedgerTab` 新增完整工具栏 + "🔲 生成二维码"按钮
+  - `main.py` 新增 `_on_ledger_generate_qr` 回调
+  - 未选样品/无 SN 时改用 `QMessageBox.warning()` 弹窗提醒（替代易被忽略的状态栏消息）
+- **新文件**: 无
+
+### 2. 样品信息可编辑
+- **新增**: `src/views/dialogs/sample_edit_dialog.py` — `SampleEditDialog`
+  - 字段: SN, 批次号, 规格, 项目ID, 状态(下拉), 位置, 备注
+  - 支持新建/编辑模式，编辑模式预填数据
+- **修改**:
+  - `_SamplePoolTab` + `_SampleLedgerTab` 各新增 "✏️ 编辑" 按钮
+  - `main.py` 新增 `_on_sample_edit` + `_on_ledger_edit` 回调
+
+### 3. 移除技术员管理
+- **删除**: UI 层 Tab（main.py 中移除 `TechnicianView` 创建及信号连接）
+- **清理**:
+  - `main.py`: 3 处 `ctrl.technicians` 引用 → `[]`（TaskEditDialog/SampleCheckoutDialog）
+  - `task_dialog.py`: 补充 `self._technician_list = technician_list or []`（之前漏赋值）
+  - `test_e2e_full.py`: Tab 数 7→6, 移除"技术员管理" Tab 名和 `_technician_view` 检查
+  - `test_boundary.py`: 移除 TechnicianEditDialog 测试, 移除 `t1` 引用, `operator_id=t1` → 删除参数
+- **保留**: DB schema 中 `technicians` 表（向后兼容）、Repository/Service/Model 文件
+
+### 4. 项目管理功能
+- **新增**:
+  - `src/views/project_view.py` — `ProjectView`（搜索+新建+编辑+删除，状态着色，空状态）
+  - `src/views/dialogs/project_edit_dialog.py` — `ProjectEditDialog`（名称/产品/客户/描述/状态）
+- **修改**:
+  - `main.py`: 项目 Tab 作为第一个 Tab（index 0），新增 3 个 CRUD 回调
+  - `src/views/dialogs/__init__.py`: 添加 ProjectEditDialog 导入
+- **Note**: 其他功能（样品/计划/Issue）关联 `project_id` 的筛选机制尚未实现，后续迭代添加
+
+### 测试结果
+| 测试 | 结果 |
+|---|---|
+| E2E | 58/58 PASS |
+| Boundary | 42/42 PASS |
+
+### 修改文件汇总 (本轮)
+| 操作 | 文件 |
+|---|---|
+| 新建 | `src/views/dialogs/sample_edit_dialog.py` |
+| 新建 | `src/views/dialogs/project_edit_dialog.py` |
+| 新建 | `src/views/project_view.py` |
+| 修改 | `src/views/sample_view.py` (台账工具栏 + 编辑按钮) |
+| 修改 | `src/views/dialogs/__init__.py` |
+| 修改 | `src/views/dialogs/task_dialog.py` (_technician_list 赋值) |
+| 修改 | `main.py` (QR/编辑/项目管理/移除技术员) |
+| 修改 | `tests/test_e2e_full.py` (Tab 数/名) |
+| 修改 | `tests/test_boundary.py` (移除技术员/新增项目) |

@@ -497,7 +497,7 @@ def test_10_main_window(tr: TestResult):
         tr.record("PASS", "MainWindow Tab 数量", f"{tab_count} 个 Tab")
 
         # 验证各 Tab 名称
-        expected_tabs = ["仪表盘", "样品管理", "测试计划", "Issue 追踪", "设备管理", "技术员管理", "知识库"]
+        expected_tabs = ["项目管理", "仪表盘", "样品管理", "测试计划", "Issue 追踪", "设备管理", "知识库"]
         for i, expected in enumerate(expected_tabs):
             tab_text = window._tab_widget.tabText(i)
             if expected in tab_text:
@@ -507,12 +507,12 @@ def test_10_main_window(tr: TestResult):
 
         # 验证关键 View 存在
         views = [
+            ("_project_view", None),
             ("_dashboard", DashboardView),
             ("_sample_view", None),
             ("_test_plan_view", None),
             ("_issue_view", None),
             ("_equipment_view", None),
-            ("_technician_view", None),
             ("_knowledge_view", None),
         ]
         for attr, cls in views:

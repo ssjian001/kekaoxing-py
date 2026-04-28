@@ -30,7 +30,6 @@ print("═══ Dialog 构造测试 ═══")
 # 准备基础数据
 p1 = ctrl.project_service.create(name='项目A')
 e1 = ctrl.equipment_service.create(name='温箱-01', type='温度箱')
-t1 = ctrl.technicians.insert(name='张三', department='测试部')
 s1 = ctrl.sample_service.create(sn='SMP-D01', batch_no='B001', spec='TypeC')
 tp1 = ctrl.test_plan_service.create_plan(p1, '计划V1')
 tk1 = ctrl.test_plan_service.create_task(tp1, name='高温老化', start_day=1, duration=5)
@@ -63,17 +62,12 @@ check("EquipmentEditDialog 新建模式构造", True)
 dlg4 = EquipmentEditDialog(equipment=ctrl.equipment.list_all()[0], parent=w)
 check("EquipmentEditDialog 编辑模式构造", True)
 
-print("── TechnicianEditDialog ──")
-from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
-dlg5 = TechnicianEditDialog(parent=w)
-check("TechnicianEditDialog 新建模式构造", True)
-
 print("── TaskEditDialog ──")
 from src.views.dialogs.task_dialog import TaskEditDialog
 dlg6 = TaskEditDialog(
     task=None,
     equipment_list=ctrl.equipment.list_all(),
-    technician_list=ctrl.technicians.list_all(),
+    technician_list=[],
     all_tasks=[],
     parent=w,
 )
@@ -105,6 +99,24 @@ check("KnowledgeEditDialog 新建模式构造", True)
 ke = ctrl.knowledge_service.list_all()[0]
 dlg11 = KnowledgeEditDialog(entry=ke, parent=w)
 check("KnowledgeEditDialog 编辑模式构造", True)
+
+print("── ProjectEditDialog ──")
+from src.views.dialogs.project_edit_dialog import ProjectEditDialog
+dlg13 = ProjectEditDialog(parent=w)
+check("ProjectEditDialog 新建模式构造", True)
+data13 = dlg13.get_data()
+check("ProjectEditDialog get_data 含 name", 'name' in data13)
+check("ProjectEditDialog get_data 含 status", 'status' in data13)
+check("ProjectEditDialog get_data 含 product", 'product' in data13)
+check("ProjectEditDialog get_data 含 customer", 'customer' in data13)
+check("ProjectEditDialog get_data 无 id（新建模式）", 'id' not in data13)
+# 编辑模式
+proj = ctrl.project_service.list_all()[0]
+dlg14 = ProjectEditDialog(project=proj, parent=w)
+check("ProjectEditDialog 编辑模式构造", True)
+data14 = dlg14.get_data()
+check("ProjectEditDialog 编辑模式含 id", 'id' in data14 and data14['id'] == proj.id)
+check("ProjectEditDialog 编辑模式预填名称", data14['name'] == proj.name)
 
 print("── ExportDialog ──")
 from src.views.dialogs.export_dialog import ExportDialog
@@ -150,10 +162,10 @@ check("UndoManager 空 redo 返回 None", result is None)
 print("── 样品出入库完整流程 ──")
 s2 = ctrl.sample_service.create(sn='SMP-D02', batch_no='B002', spec='TypeD')
 check("样品初始状态 in_stock", ctrl.sample_service.get_by_sn('SMP-D02').status == 'in_stock')
-ctrl.sample_service.add_transaction(s2, 'check_out', operator_id=t1, purpose='测试', related_task_id=tk1)
+ctrl.sample_service.add_transaction(s2, 'check_out', purpose='测试', related_task_id=tk1)
 ctrl.sample_service.update_status(s2, 'checked_out')
 check("出库后状态 checked_out", ctrl.sample_service.get_by_sn('SMP-D02').status == 'checked_out')
-ctrl.sample_service.add_transaction(s2, 'check_in', operator_id=t1, purpose='归还')
+ctrl.sample_service.add_transaction(s2, 'check_in', purpose='归还')
 ctrl.sample_service.update_status(s2, 'in_stock')
 check("入库后状态 in_stock", ctrl.sample_service.get_by_sn('SMP-D02').status == 'in_stock')
 txns = ctrl.sample_service.get_transactions(s2)

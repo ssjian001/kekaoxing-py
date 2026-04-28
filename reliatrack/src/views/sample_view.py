@@ -133,6 +133,11 @@ class _SamplePoolTab(QWidget):
         self._btn_out.setMinimumWidth(70)
         toolbar.addWidget(self._btn_out)
 
+        self._btn_edit = QPushButton("✏️ 编辑")
+        self._btn_edit.setProperty("class", "action")
+        self._btn_edit.setMinimumWidth(70)
+        toolbar.addWidget(self._btn_edit)
+
         self._btn_generate_qr = QPushButton("🔲 生成二维码")
         self._btn_generate_qr.setProperty("class", "action")
         self._btn_generate_qr.setMinimumWidth(70)
@@ -220,6 +225,11 @@ class _SamplePoolTab(QWidget):
     def btn_out(self) -> QPushButton:
         """出库按钮。"""
         return self._btn_out
+
+    @property
+    def btn_edit(self) -> QPushButton:
+        """编辑按钮。"""
+        return self._btn_edit
 
     @property
     def btn_generate_qr(self) -> QPushButton:
@@ -636,11 +646,44 @@ class _SampleLedgerTab(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
+
+        # 工具栏
+        toolbar = QHBoxLayout()
+        toolbar.addStretch()
+
+        self._btn_edit = QPushButton("✏️ 编辑")
+        self._btn_edit.setProperty("class", "action")
+        self._btn_edit.setMinimumWidth(70)
+        toolbar.addWidget(self._btn_edit)
+
+        self._btn_generate_qr = QPushButton("🔲 生成二维码")
+        self._btn_generate_qr.setProperty("class", "action")
+        self._btn_generate_qr.setMinimumWidth(70)
+        toolbar.addWidget(self._btn_generate_qr)
+
+        layout.addLayout(toolbar)
+
         self._table = _SampleTable(self.COLUMNS)
         layout.addWidget(self._table)
 
     def refresh(self, samples: list[Sample]) -> None:
         self._table.set_samples(samples)
+
+    # 暴露按钮和表格引用
+    @property
+    def btn_generate_qr(self) -> QPushButton:
+        """生成二维码按钮。"""
+        return self._btn_generate_qr
+
+    @property
+    def btn_edit(self) -> QPushButton:
+        """编辑按钮。"""
+        return self._btn_edit
+
+    @property
+    def table(self) -> _SampleTable:
+        """样品台账表格。"""
+        return self._table
 
 
 class SampleView(QWidget):
