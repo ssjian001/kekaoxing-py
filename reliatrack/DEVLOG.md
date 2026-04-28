@@ -128,7 +128,7 @@
 - [x] Dashboard 增强 — 图表可视化
 - [x] 样品占用 Tab 替换占位符
 - [x] 二维码生成（PRD 标注可选，DB 有 `qr_code` 字段）
-- [ ] Word 导出（当前只有 Excel + PDF）
+- [x] Word 导出（当前只有 Excel + PDF）
 
 ## 2026-04-28 (晚) — 用户实测反馈修复
 
@@ -186,3 +186,20 @@
 | 修改 | `main.py` (QR/编辑/项目管理/移除技术员) |
 | 修改 | `tests/test_e2e_full.py` (Tab 数/名) |
 | 修改 | `tests/test_boundary.py` (移除技术员/新增项目) |
+
+## 2026-04-29 — 全局项目筛选器
+
+> 在 Tab 栏上方添加项目选择器，切换项目后所有关联数据自动筛选。
+
+### 实现方案
+- `main.py` `_setup_central_widget()`: Tab widget 上方插入 QComboBox 筛选栏
+- `_refresh_all()`: 根据 `currentData()` 决定使用 `list_all()` 还是 `get_by_project(id)`
+- 筛选范围: Dashboard KPI/图表、样品池/台账、测试计划、Issue 追踪
+- 设备/知识库无 project_id，不参与筛选
+- 筛选器选项随项目增删自动更新（`blockSignals` 防递归）
+
+### 测试结果
+| 测试 | 结果 |
+|---|---|
+| E2E | 58/58 PASS |
+| Boundary | 42/42 PASS |

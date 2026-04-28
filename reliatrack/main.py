@@ -20,14 +20,16 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
     QStatusBar,
     QToolBar,
     QMessageBox,
+    QComboBox,
 )
 from PySide6.QtGui import QAction
 
-from src.styles.theme import get_stylesheet
+from src.styles.theme import get_stylesheet, TEXT, SURFACE0, SURFACE1, MANTLE
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -159,6 +161,42 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._tab_widget)
         self.setCentralWidget(central)
 
+        # 全局项目筛选器 — 在 tab_widget 之前插入
+        filter_bar = QHBoxLayout()
+        filter_label = QLabel("📁 项目筛选:")
+        filter_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
+        self._project_filter_combo = QComboBox()
+        self._project_filter_combo.setMinimumWidth(200)
+        self._project_filter_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {SURFACE0};
+                color: {TEXT};
+                border: 1px solid {SURFACE1};
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 13px;
+                min-height: 28px;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 24px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {SURFACE0};
+                color: {TEXT};
+                selection-background-color: {SURFACE1};
+            }}
+        """)
+        self._project_filter_combo.addItem("📋 全部项目", None)  # data=None means all
+        filter_bar.addWidget(filter_label)
+        filter_bar.addWidget(self._project_filter_combo)
+        filter_bar.addStretch()
+        filter_layout = QWidget()
+        filter_layout.setLayout(filter_bar)
+        filter_layout.setStyleSheet(f"background-color: {MANTLE}; padding: 4px 24px;")
+        layout.insertWidget(0, filter_layout)
+        self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
+
     def _setup_toolbar(self) -> None:
         """创建工具栏。"""
         toolbar = QToolBar("主工具栏")
@@ -203,10 +241,28 @@ class MainWindow(QMainWindow):
         if ctrl is None:
             return
 
-        # 项目管理
+        # 获取当前筛选的项目 ID（None = 全部）
+        filter_project_id = self._project_filter_combo.currentData()
+
+        # 项目管理 — 始终显示全部项目 + 更新筛选器下拉列表
         if ctrl.project_service:
             all_projects = ctrl.project_service.list_all()
             self._project_view.refresh(all_projects)
+            # 更新筛选 combo 选项（不触发信号）
+            self._project_filter_combo.blockSignals(True)
+            current_filter = self._project_filter_combo.currentData()
+            self._project_filter_combo.clear()
+            self._project_filter_combo.addItem("📋 全部项目", None)
+            for p in all_projects:
+                self._project_filter_combo.addItem(f"📁 {p.name}", p.id)
+            # 恢复之前选中的筛选项
+            for i in range(self._project_filter_combo.count()):
+                if self._project_filter_combo.itemData(i) == current_filter:
+                    self._project_filter_combo.setCurrentIndex(i)
+                    break
+            self._project_filter_combo.blockSignals(False)
+            # 重新读取筛选值（可能在 blockSignals 期间被恢复）
+            filter_project_id = self._project_filter_combo.currentData()
 
         # Dashboard KPI + 图表
         task_status_data: dict[str, int] = {}
@@ -215,6 +271,15 @@ class MainWindow(QMainWindow):
 
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             all_tasks = ctrl.test_tasks.list_all()
+
+            # 按项目筛选任务：通过关联的计划筛选
+            if filter_project_id:
+                filtered_plans = ctrl.test_plan_service.get_plans_by_project(
+                    filter_project_id
+                )
+                plan_ids = {p.id for p in filtered_plans}
+                all_tasks = [t for t in all_tasks if t.plan_id in plan_ids]
+
             total = len(all_tasks)
             completed = sum(1 for t in all_tasks if t.status == "completed")
             in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
@@ -224,7 +289,11 @@ class MainWindow(QMainWindow):
             task_counter = Counter(t.status for t in all_tasks)
             task_status_data = dict(task_counter)
 
-            issues_list = ctrl.issues.list_all()
+            # 按项目筛选 issues
+            if filter_project_id:
+                issues_list = ctrl.issues.get_by_project(filter_project_id)
+            else:
+                issues_list = ctrl.issues.list_all()
             issues = len(issues_list)
             equipment = len(ctrl.equipment.list_all())
 
@@ -242,7 +311,11 @@ class MainWindow(QMainWindow):
 
         # 样品状态分布
         if ctrl.sample_service:
-            all_samples = ctrl.sample_service.list_all()
+            # 按项目筛选样品
+            if filter_project_id:
+                all_samples = ctrl.sample_service.get_by_project(filter_project_id)
+            else:
+                all_samples = ctrl.sample_service.list_all()
             sample_counter = Counter(s.status for s in all_samples)
             sample_status_data = dict(sample_counter)
             # 更新图表（KPI 已在上块刷新，这里只补图表）
@@ -253,14 +326,21 @@ class MainWindow(QMainWindow):
             )
 
             self._sample_view.refresh_ledger(all_samples)
-            in_stock = ctrl.sample_service.get_by_status("in_stock")
+            # 样品池只显示在库样品（也按项目筛选）
+            in_stock = [s for s in all_samples if s.status == "in_stock"]
             self._sample_view.refresh_pool(in_stock)
             # 出入库记录
             self._refresh_sample_usage()
 
         # 测试计划
         if ctrl.test_plan_service and ctrl.test_tasks:
-            all_plans = ctrl.test_plan_service.list_all_plans()
+            # 按项目筛选计划
+            if filter_project_id:
+                all_plans = ctrl.test_plan_service.get_plans_by_project(
+                    filter_project_id
+                )
+            else:
+                all_plans = ctrl.test_plan_service.list_all_plans()
             # 保存当前选中索引
             current_plan_id = self._test_plan_view.get_selected_plan_id()
             self._test_plan_view.set_plans(
@@ -281,15 +361,19 @@ class MainWindow(QMainWindow):
 
         # Issue 追踪
         if ctrl.issue_service:
-            all_issues = ctrl.issue_service.list_all()
+            # 按项目筛选 issues
+            if filter_project_id:
+                all_issues = ctrl.issue_service.get_by_project(filter_project_id)
+            else:
+                all_issues = ctrl.issue_service.list_all()
             self._issue_view.refresh(all_issues)
 
-        # 设备管理
+        # 设备管理 — 无 project_id，不筛选
         if ctrl.equipment_service:
             all_equipment = ctrl.equipment_service.list_all()
             self._equipment_view.refresh(all_equipment)
 
-        # knowledge management: 知识库
+        # knowledge management: 知识库 — 无 project_id，不筛选
         if ctrl.knowledge_service:
             all_knowledge = ctrl.knowledge_service.list_all()
             self._knowledge_view.refresh(all_knowledge)
@@ -304,6 +388,10 @@ class MainWindow(QMainWindow):
                 self._act_redo.setText(f"↪ {ctrl.undo_manager.redo_description()}")
 
     # ── 槽函数 ──
+
+    def _on_project_filter_changed(self, index: int) -> None:
+        """项目筛选变化时刷新所有视图。"""
+        self._refresh_all()
 
     def _on_undo(self) -> None:
         um = self._ctrl.undo_manager
