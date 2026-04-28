@@ -55,3 +55,13 @@ class FARecordDialog(_BaseDialog):
             "method": self._method_combo.currentText(),
             "findings": self._findings_edit.toPlainText().strip(),
         }
+
+    def accept(self) -> None:
+        """覆盖 accept 以增加校验逻辑。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        if not self._title_edit.text().strip():
+            QMessageBox.warning(self, "校验失败", "步骤标题为必填项。")
+            self._title_edit.setFocus()
+            return
+        super().accept()

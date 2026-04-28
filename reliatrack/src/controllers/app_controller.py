@@ -27,6 +27,7 @@ from src.db.repositories import (
     TestTaskRepository,
     IssueRepository,
     SettingsRepository,
+    KnowledgeRepository,
 )
 from src.services import (
     ProjectService,
@@ -36,6 +37,7 @@ from src.services import (
     IssueService,
     SettingsService,
     SchedulerService,
+    KnowledgeService,
 )
 from src.services.undo_manager import UndoManager
 
@@ -58,6 +60,7 @@ class AppController:
         self.test_tasks: TestTaskRepository | None = None
         self.issues: IssueRepository | None = None
         self.settings: SettingsRepository | None = None
+        self.knowledge: KnowledgeRepository | None = None
 
         # Services
         self.project_service: ProjectService | None = None
@@ -67,6 +70,7 @@ class AppController:
         self.issue_service: IssueService | None = None
         self.settings_service: SettingsService | None = None
         self.scheduler_service: SchedulerService | None = None
+        self.knowledge_service: KnowledgeService | None = None
 
         # Undo/Redo
         self.undo_manager = UndoManager(max_history=50)
@@ -91,6 +95,7 @@ class AppController:
         self.test_tasks = TestTaskRepository(self._conn)
         self.issues = IssueRepository(self._conn)
         self.settings = SettingsRepository(self._conn)
+        self.knowledge = KnowledgeRepository(self._conn)
 
         # Services
         self.project_service = ProjectService(
@@ -104,6 +109,7 @@ class AppController:
         self.scheduler_service = SchedulerService(
             self.test_tasks, self.equipment, self.test_plans,
         )
+        self.knowledge_service = KnowledgeService(self.knowledge)
 
         logger.info("All services initialized")
 

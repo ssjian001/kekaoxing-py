@@ -6,9 +6,12 @@ import json
 from typing import Optional
 
 from PySide6.QtWidgets import (
-    QComboBox,
-    QWidget,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
     QMessageBox,
+    QPushButton,
+    QWidget,
 )
 
 from src.models.test_plan import TestTask
@@ -45,7 +48,7 @@ class TaskEditDialog(_BaseDialog):
         super().__init__(
             "✏️ 编辑测试任务" if is_edit else "➕ 新建测试任务",
             parent,
-            width=520,
+            width=560,
         )
         self._task = task
         self._equipment_list = equipment_list or []
@@ -108,10 +111,97 @@ class TaskEditDialog(_BaseDialog):
             default=task.environment if task else "",
             placeholder='如：{"temp":"85C","humidity":"85%RH"}',
         )
+
+        # ── 环境参数分组框 ──
+        self._add_env_group(task)
+
+        # ── 测试日志 ──
+        self._add_log_file_field(task)
+
+        # ── 备注 ──
         self._notes_edit = self._add_text_area(
             "备注",
             default=task.notes if task else "",
         )
+
+    # ── 环境参数分组框 ─────────────────────────────────────────
+
+    def _add_env_group(self, task: TestTask | None) -> None:
+        """添加「🌡️ 环境参数」分组框（温度 + 湿度）。"""
+        group = QGroupBox("🌡️ 环境参数")
+        form = QHBoxLayout(group)
+        form.setContentsMargins(12, 20, 12, 12)
+        form.setSpacing(16)
+
+        # 温度
+        temp_label = self._make_group_label("温度")
+        self._temp_edit = self._make_group_input(
+            task.temperature if task else "",
+            "例: -40°C ~ 85°C",
+        )
+
+        # 湿度
+        hum_label = self._make_group_label("湿度")
+        self._humidity_edit = self._make_group_input(
+            task.humidity if task else "",
+            "例: 85%RH",
+        )
+
+        form.addWidget(temp_label)
+        form.addWidget(self._temp_edit, stretch=1)
+        form.addWidget(hum_label)
+        form.addWidget(self._humidity_edit, stretch=1)
+
+        self._form.addRow(group)
+
+    def _make_group_label(self, text: str) -> QWidget:
+        """创建分组框内的标签。"""
+        from PySide6.QtWidgets import QLabel
+        lbl = QLabel(text)
+        lbl.setMinimumWidth(50)
+        return lbl
+
+    def _make_group_input(self, default: str, placeholder: str) -> QWidget:
+        """创建分组框内的输入框。"""
+        from PySide6.QtWidgets import QLineEdit
+        edit = QLineEdit(default)
+        edit.setPlaceholderText(placeholder)
+        return edit
+
+    # ── 测试日志文件选择 ─────────────────────────────────────
+
+    def _add_log_file_field(self, task: TestTask | None) -> None:
+        """添加日志文件路径输入 + 浏览按钮。"""
+        from PySide6.QtWidgets import QLineEdit
+
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        self._log_file_edit = QLineEdit(task.log_file if task else "")
+        self._log_file_edit.setPlaceholderText("选择设备原始日志文件路径…")
+
+        browse_btn = QPushButton("📁 浏览")
+        browse_btn.setFixedWidth(80)
+        browse_btn.clicked.connect(self._browse_log_file)
+
+        layout.addWidget(self._log_file_edit, stretch=1)
+        layout.addWidget(browse_btn)
+
+        self._form.addRow("测试日志", container)
+
+    def _browse_log_file(self) -> None:
+        """打开文件对话框选择日志文件。"""
+        from PySide6.QtWidgets import QLineEdit
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择测试日志文件",
+            "",
+            "日志文件 (*.log *.csv *.txt);;所有文件 (*)",
+        )
+        if path:
+            self._log_file_edit.setText(path)
 
     # ── 辅助方法 ───────────────────────────────────────────────
 
@@ -192,6 +282,9 @@ class TaskEditDialog(_BaseDialog):
             "technician_id": technician_id,
             "dependencies": json.dumps(dep_ids, ensure_ascii=False),
             "environment": self._env_edit.text().strip(),
+            "temperature": self._temp_edit.text().strip(),
+            "humidity": self._humidity_edit.text().strip(),
+            "log_file": self._log_file_edit.text().strip(),
             "notes": self._notes_edit.toPlainText().strip(),
         }
 

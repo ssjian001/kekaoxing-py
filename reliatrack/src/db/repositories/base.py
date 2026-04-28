@@ -28,13 +28,28 @@ class BaseRepository:
         self._conn = conn
         self._table = table
         self._model_class = model_class
+        self._columns_cache: list[str] | None = None
+
+    # ── 事务支持 ──
+
+    def begin_transaction(self) -> None:
+        self._conn.execute("BEGIN")
+
+    def commit(self) -> None:
+        self._conn.execute("COMMIT")
+
+    def rollback(self) -> None:
+        self._conn.execute("ROLLBACK")
 
     # ── 列名查询（避免位置索引）──
 
     def _columns(self) -> list[str]:
-        """获取表的所有列名。"""
+        """获取表的所有列名（带缓存）。"""
+        if self._columns_cache is not None:
+            return self._columns_cache
         rows = self._conn.execute(f"PRAGMA table_info([{self._table}])").fetchall()
-        return [r[1] for r in rows]
+        self._columns_cache = [r[1] for r in rows]
+        return self._columns_cache
 
     def _rows_to_models(self, rows: list[tuple]) -> list[Any]:
         """将查询结果转为 dataclass 列表。"""
@@ -105,9 +120,10 @@ class BaseRepository:
         if columns is None:
             columns = self._columns()
         clauses = [f"CAST([{c}] AS TEXT) LIKE ?" for c in columns]
-        pattern = f"%{keyword}%"
+        escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         params = [pattern] * len(clauses)
-        sql = f"SELECT * FROM [{self._table}] WHERE {' OR '.join(clauses)}"
+        sql = f"SELECT * FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\'"
         rows = self._conn.execute(sql, params).fetchall()
         return self._rows_to_models(rows)
 

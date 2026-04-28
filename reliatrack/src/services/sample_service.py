@@ -34,9 +34,15 @@ class SampleService:
         self._repo.update_status(sample_id, status)
 
     def delete(self, sample_id: int) -> None:
-        # 先删出入库记录（子表），再删样品（父表）
-        self._repo.delete_transactions(sample_id)
-        self._repo.delete(sample_id)
+        self._repo.begin_transaction()
+        try:
+            # 先删出入库记录（子表），再删样品（父表）
+            self._repo.delete_transactions(sample_id)
+            self._repo.delete(sample_id)
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
 
     def list_all(self) -> list[Sample]:
         return self._repo.list_all()
@@ -46,8 +52,22 @@ class SampleService:
 
     def add_transaction(self, sample_id: int, txn_type: str, **kwargs: object) -> int:
         """添加出入库记录。"""
-        return self._repo.insert(sample_id=sample_id, type=txn_type, **kwargs)
+        return self._repo.add_transaction(sample_id, txn_type, **kwargs)
 
     def delete_transactions(self, sample_id: int) -> None:
         """删除样品的所有出入库记录（级联删除子表）。"""
         return self._repo.delete_transactions(sample_id)
+
+    def list_transactions(
+        self, filter_sn: str = "", filter_type: str = ""
+    ) -> list[dict]:
+        """查询所有出入库记录（含 JOIN 信息）。
+
+        Args:
+            filter_sn: 可选 SN 模糊搜索。
+            filter_type: 可选操作类型精确过滤。
+
+        Returns:
+            字典列表，每个字典包含 sample_sn, batch_no, operator_name 等字段。
+        """
+        return self._repo.list_transactions(filter_sn, filter_type)

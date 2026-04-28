@@ -36,10 +36,16 @@ class IssueService:
         self._repo.update_status(issue_id, status)
 
     def delete(self, issue_id: int) -> None:
-        # 先删 FA 记录和附件（子表），再删 Issue（父表）
-        self._repo.delete_fa_records(issue_id)
-        self._repo.delete_attachments(issue_id)
-        self._repo.delete(issue_id)
+        self._repo.begin_transaction()
+        try:
+            # 先删 FA 记录和附件（子表），再删 Issue（父表）
+            self._repo.delete_fa_records(issue_id)
+            self._repo.delete_attachments(issue_id)
+            self._repo.delete(issue_id)
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
 
     def list_all(self) -> list[Issue]:
         return self._repo.list_all()
@@ -59,3 +65,7 @@ class IssueService:
 
     def get_attachments(self, issue_id: int) -> list[IssueAttachment]:
         return self._repo.get_attachments(issue_id)
+
+    def delete_attachment(self, attachment_id: int) -> None:  # attachment management
+        """删除单条附件。"""
+        self._repo.delete_attachment(attachment_id)

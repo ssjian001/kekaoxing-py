@@ -120,9 +120,13 @@ def topological_order(
 
     Ties broken by priority (lower number first), then duration (shorter first).
     """
+    tasks = [t for t in tasks if t.id is not None]
     id_to_task: dict[int, TestTask] = {t.id: t for t in tasks if t.id is not None}
 
-    in_deg: dict[int, int] = {t.id: len(dep_map.get(t.id, [])) for t in tasks if t.id is not None}
+    in_deg: dict[int, int] = {
+        t.id: len([d for d in dep_map.get(t.id, []) if d in id_to_task])
+        for t in tasks if t.id is not None
+    }
     rev: dict[int, list[int]] = {t.id: [] for t in tasks if t.id is not None}
     for tid, deps in dep_map.items():
         for dep_id in deps:

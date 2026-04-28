@@ -43,6 +43,7 @@ class Sample:
     status: str = SampleStatus.IN_STOCK.value
     location: str = ""
     qr_code: str = ""         # 本地二维码路径（可选）
+    notes: str = ""            # 备注
     created_at: str = ""
     updated_at: str = ""
 

@@ -32,10 +32,33 @@ class TestPlanService:
         self._plan_repo.update(plan_id, **kwargs)
 
     def delete_plan(self, plan_id: int) -> None:
-        # 先删任务及其子表（test_results/issues），再删计划
-        for task in self._task_repo.get_by_plan(plan_id):
-            self.delete_task(task.id)
-        self._plan_repo.delete(plan_id)
+        self._plan_repo.begin_transaction()
+        try:
+            # 先删任务及其子表（test_results/issues），再删计划
+            for task in self._task_repo.get_by_plan(plan_id):
+                self._task_repo.delete_test_results(task.id)
+                self._task_repo.delete_issues_by_task(task.id)
+                self._task_repo.delete(task.id)
+            # 清理直接引用 plan_id 但无 task_id 的孤立 issue
+            orphan_rows = self._plan_repo._conn.execute(
+                "SELECT id FROM [issues] WHERE plan_id = ? AND task_id IS NULL",
+                (plan_id,),
+            ).fetchall()
+            for (issue_id,) in orphan_rows:
+                self._plan_repo._conn.execute(
+                    "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
+                )
+                self._plan_repo._conn.execute(
+                    "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
+                )
+                self._plan_repo._conn.execute(
+                    "DELETE FROM [issues] WHERE id = ?", (issue_id,)
+                )
+            self._plan_repo.delete(plan_id)
+            self._plan_repo.commit()
+        except Exception:
+            self._plan_repo.rollback()
+            raise
 
     def list_all_plans(self) -> list[TestPlan]:
         return self._plan_repo.list_all()
@@ -62,10 +85,16 @@ class TestPlanService:
         self._task_repo.update(task_id, progress=progress, status=status)
 
     def delete_task(self, task_id: int) -> None:
-        # 先删子表: test_results → issues(含 fa_records/attachments) → task
-        self._task_repo.delete_test_results(task_id)
-        self._task_repo.delete_issues_by_task(task_id)
-        self._task_repo.delete(task_id)
+        self._task_repo.begin_transaction()
+        try:
+            # 先删子表: test_results → issues(含 fa_records/attachments) → task
+            self._task_repo.delete_test_results(task_id)
+            self._task_repo.delete_issues_by_task(task_id)
+            self._task_repo.delete(task_id)
+            self._task_repo.commit()
+        except Exception:
+            self._task_repo.rollback()
+            raise
 
     def bulk_update_start_day(self, updates: list[tuple[int, int]]) -> None:
         self._task_repo.bulk_update_start_day(updates)

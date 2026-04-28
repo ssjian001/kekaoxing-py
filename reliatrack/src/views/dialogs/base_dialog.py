@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
-
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -17,6 +15,7 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QWidget,
 )
+from PySide6.QtCore import Qt
 
 from src.styles.theme import (
     CRUST,
@@ -49,7 +48,7 @@ _DIALOG_STYLE = f"""
     }}
     QLabel {{
         color: {TEXT};
-        font-size: 13px;
+        font-size: 14px;
     }}
     QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit, QTextEdit, QComboBox {{
         background-color: {SURFACE0};
@@ -57,8 +56,8 @@ _DIALOG_STYLE = f"""
         border: 1px solid {SURFACE1};
         border-radius: 6px;
         padding: 6px 10px;
-        font-size: 13px;
-        min-height: 24px;
+        font-size: 14px;
+        min-height: 28px;
     }}
     QLineEdit:focus, QComboBox:focus {{
         border-color: {BLUE};
@@ -68,12 +67,12 @@ _DIALOG_STYLE = f"""
         color: {CRUST};
         border: none;
         border-radius: 6px;
-        padding: 6px 20px;
+        padding: 8px 20px;
         font-weight: bold;
-        font-size: 13px;
+        font-size: 14px;
     }}
     QPushButton:hover {{
-        opacity: 0.85;
+        background-color: {SURFACE1};
     }}
     QComboBox QAbstractItemView {{
         background-color: {SURFACE0};
@@ -86,7 +85,7 @@ _DIALOG_STYLE = f"""
         border-radius: 8px;
         margin-top: 12px;
         padding-top: 16px;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: bold;
     }}
     QGroupBox::title {{
@@ -123,9 +122,7 @@ class _BaseDialog(QDialog):
         # 表单布局
         self._form = QFormLayout()
         self._form.setSpacing(10)
-        self._form.setLabelAlignment(
-            __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.AlignmentFlag.AlignRight
-        )
+        self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         self._root.addLayout(self._form)
 
         # 按钮栏
@@ -160,10 +157,13 @@ class _BaseDialog(QDialog):
         items: list[str],
         default: str = "",
         editable: bool = False,
+        placeholder: str = "",
     ) -> QComboBox:
         """添加一行下拉框并返回控件。"""
         combo = QComboBox()
         combo.setEditable(editable)
+        if placeholder:
+            combo.setPlaceholderText(placeholder)
         combo.addItems(items)
         if default:
             idx = combo.findText(default)

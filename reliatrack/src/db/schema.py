@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import apsw
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 5
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -48,8 +48,11 @@ _DDL_TABLES: list[str] = [
     """CREATE TABLE IF NOT EXISTS technicians (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         name        TEXT    NOT NULL,
+        employee_id TEXT    NOT NULL DEFAULT '',
         role        TEXT    NOT NULL DEFAULT '',
         department  TEXT    NOT NULL DEFAULT '',
+        phone       TEXT    NOT NULL DEFAULT '',
+        email       TEXT    NOT NULL DEFAULT '',
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
@@ -63,6 +66,7 @@ _DDL_TABLES: list[str] = [
         status      TEXT    NOT NULL DEFAULT 'in_stock',
         location    TEXT    NOT NULL DEFAULT '',
         qr_code     TEXT    NOT NULL DEFAULT '',
+        notes       TEXT    NOT NULL DEFAULT '',
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -70,7 +74,7 @@ _DDL_TABLES: list[str] = [
     # ── 样品出入库记录 ──
     """CREATE TABLE IF NOT EXISTS sample_transactions (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        sample_id       INTEGER NOT NULL REFERENCES samples(id),
+        sample_id       INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
         type            TEXT    NOT NULL,
         operator_id     INTEGER REFERENCES technicians(id),
         purpose         TEXT    NOT NULL DEFAULT '',
@@ -113,6 +117,8 @@ _DDL_TABLES: list[str] = [
         log_file        TEXT    NOT NULL DEFAULT '',
         dependencies    TEXT    NOT NULL DEFAULT '[]',
         notes           TEXT    NOT NULL DEFAULT '',
+        temperature     TEXT    NOT NULL DEFAULT '',
+        humidity        TEXT    NOT NULL DEFAULT '',
         sort_order      INTEGER NOT NULL DEFAULT 0,
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -121,7 +127,7 @@ _DDL_TABLES: list[str] = [
     # ── 测试结果 ──
     """CREATE TABLE IF NOT EXISTS test_results (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id         INTEGER NOT NULL REFERENCES test_tasks(id),
+        task_id         INTEGER NOT NULL REFERENCES test_tasks(id) ON DELETE CASCADE,
         sample_id       INTEGER DEFAULT NULL REFERENCES samples(id),
         result          TEXT    NOT NULL DEFAULT 'pending',
         test_date       TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
@@ -156,7 +162,7 @@ _DDL_TABLES: list[str] = [
     # ── FA 分析记录 ──
     """CREATE TABLE IF NOT EXISTS fa_records (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        issue_id        INTEGER NOT NULL REFERENCES issues(id),
+        issue_id        INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
         step_no         INTEGER NOT NULL DEFAULT 1,
         step_title      TEXT    NOT NULL DEFAULT '',
         description     TEXT    NOT NULL DEFAULT '',
@@ -170,7 +176,7 @@ _DDL_TABLES: list[str] = [
     # ── Issue 附件 ──
     """CREATE TABLE IF NOT EXISTS issue_attachments (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        issue_id    INTEGER NOT NULL REFERENCES issues(id),
+        issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
         file_path   TEXT    NOT NULL,
         file_type   TEXT    NOT NULL DEFAULT 'image',
         description TEXT    NOT NULL DEFAULT '',
@@ -179,21 +185,25 @@ _DDL_TABLES: list[str] = [
 
     # ── 知识库（Phase 2 预建）──
     """CREATE TABLE IF NOT EXISTS knowledge_entries (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        failure_mode    TEXT    NOT NULL,
-        keywords        TEXT    NOT NULL DEFAULT '[]',
-        summary         TEXT    NOT NULL DEFAULT '',
-        root_cause      TEXT    NOT NULL DEFAULT '',
-        resolution      TEXT    NOT NULL DEFAULT '',
-        related_issues  TEXT    NOT NULL DEFAULT '[]',
-        created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        category          TEXT    NOT NULL DEFAULT '',
+        failure_mode      TEXT    NOT NULL DEFAULT '',
+        cause_analysis    TEXT    NOT NULL DEFAULT '',
+        improvement       TEXT    NOT NULL DEFAULT '',
+        reference_standard TEXT   NOT NULL DEFAULT '',
+        keywords          TEXT    NOT NULL DEFAULT '[]',
+        summary           TEXT    NOT NULL DEFAULT '',
+        root_cause        TEXT    NOT NULL DEFAULT '',
+        resolution        TEXT    NOT NULL DEFAULT '',
+        related_issues    TEXT    NOT NULL DEFAULT '[]',
+        created_at        TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
     # ── 系统设置 ──
     """CREATE TABLE IF NOT EXISTS settings (
         key         TEXT    UNIQUE PRIMARY KEY,
         value       TEXT    NOT NULL,
-        updated_at  TEXT    DEFAULT (datetime('now','localtime'))
+        updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 ]
 
@@ -260,6 +270,66 @@ def _migrate_v1(conn: apsw.Connection) -> None:
     )
 
 
+def _migrate_v2(conn: apsw.Connection) -> None:
+    """v2: 设备表新增校准日期字段（如果 CREATE TABLE 已包含则跳过）。"""
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(equipment)").fetchall()
+    }
+    for col in ("calibration_date", "next_calibration_date"):
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE equipment ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (2)"
+    )
+
+
+def _migrate_v3(conn: apsw.Connection) -> None:
+    """v3: 技术员表新增工号、联系方式、邮箱字段（如果 CREATE TABLE 已包含则跳过）。"""
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(technicians)").fetchall()
+    }
+    for col, default in [("employee_id", ""), ("phone", ""), ("email", "")]:
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE technicians ADD COLUMN {col} TEXT NOT NULL DEFAULT '{default}'"
+            )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (3)"
+    )
+
+
+def _migrate_v4(conn: apsw.Connection) -> None:
+    """v4: test_tasks 表新增 temperature, humidity 环境参数字段。"""
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(test_tasks)").fetchall()
+    }
+    for col in ("temperature", "humidity"):
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE test_tasks ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (4)"
+    )
+
+
+def _migrate_v5(conn: apsw.Connection) -> None:
+    """v5: knowledge_entries 表新增 category, cause_analysis, improvement, reference_standard 字段。"""
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(knowledge_entries)").fetchall()
+    }
+    for col in ("category", "cause_analysis", "improvement", "reference_standard"):
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE knowledge_entries ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (5)"
+    )
+
+
 def _get_current_version(conn: apsw.Connection) -> int:
     """读取当前 schema 版本号。数据库为空时返回 0。"""
     try:
@@ -298,10 +368,18 @@ def init_schema(conn: apsw.Connection) -> int:
     if current < 1:
         _migrate_v1(conn)
 
-    # 将来在此处添加：
-    # if current < 2:
-    #     _migrate_v2(conn)
-    # if current < 3:
-    #     _migrate_v3(conn)
+    # ── 增量迁移（按版本递增顺序执行）──
+    if current < 2:
+        _migrate_v2(conn)
+
+    if current < 3:
+        _migrate_v3(conn)
+
+    # ── v4: 环境参数字段 ──
+    if current < 4:
+        _migrate_v4(conn)
+
+    if current < 5:
+        _migrate_v5(conn)
 
     return _get_current_version(conn)

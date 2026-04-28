@@ -42,24 +42,29 @@ class ProjectService:
         self._repo.update(project_id, **kwargs)
 
     def delete(self, project_id: int) -> None:
-        # 先删最深层子表，逐级向上
-        # 1. 删除关联 issue 的 fa_records + attachments + issues
-        for issue in self._issue_repo.get_by_project(project_id):
-            self._issue_repo.delete_fa_records(issue.id)
-            self._issue_repo.delete_attachments(issue.id)
-            self._issue_repo.delete(issue.id)
-        # 2. 删除关联 sample 的 transactions + samples
-        for sample in self._sample_repo.get_by_project(project_id):
-            self._sample_repo.delete_transactions(sample.id)
-            self._sample_repo.delete(sample.id)
-        # 3. 删除关联 plan 的 tasks(test_results/issues) + plans
-        for plan in self._plan_repo.get_by_project(project_id):
-            for task in self._task_repo.get_by_plan(plan.id):
-                self._task_repo.delete_test_results(task.id)
-                self._task_repo.delete_issues_by_task(task.id)
-                self._task_repo.delete(task.id)
-            self._plan_repo.delete(plan.id)
-        self._repo.delete(project_id)
+        self._repo.begin_transaction()
+        try:
+            # 1. 删除关联 issue 的 fa_records + attachments + issues
+            for issue in self._issue_repo.get_by_project(project_id):
+                self._issue_repo.delete_fa_records(issue.id)
+                self._issue_repo.delete_attachments(issue.id)
+                self._issue_repo.delete(issue.id)
+            # 2. 删除关联 sample 的 transactions + samples
+            for sample in self._sample_repo.get_by_project(project_id):
+                self._sample_repo.delete_transactions(sample.id)
+                self._sample_repo.delete(sample.id)
+            # 3. 删除关联 plan 的 tasks(test_results/issues) + plans
+            for plan in self._plan_repo.get_by_project(project_id):
+                for task in self._task_repo.get_by_plan(plan.id):
+                    self._task_repo.delete_test_results(task.id)
+                    self._task_repo.delete_issues_by_task(task.id)
+                    self._task_repo.delete(task.id)
+                self._plan_repo.delete(plan.id)
+            self._repo.delete(project_id)
+            self._repo.commit()
+        except Exception:
+            self._repo.rollback()
+            raise
 
     def list_all(self) -> list[Project]:
         return self._repo.list_all()

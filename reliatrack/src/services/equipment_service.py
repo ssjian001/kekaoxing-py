@@ -28,6 +28,14 @@ class EquipmentService:
         self._repo.update(equipment_id, **kwargs)
 
     def delete(self, equipment_id: int) -> None:
+        # 检查是否被 test_tasks 引用
+        rows = self._repo._conn.execute(
+            "SELECT id FROM [test_tasks] WHERE equipment_id = ?", (equipment_id,)
+        ).fetchall()
+        if rows:
+            raise ValueError(
+                f"设备 #{equipment_id} 仍被 {len(rows)} 个任务引用，请先解除分配"
+            )
         self._repo.delete(equipment_id)
 
     def list_all(self) -> list[Equipment]:

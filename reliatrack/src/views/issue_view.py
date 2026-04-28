@@ -23,16 +23,17 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, PINK,
+    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, PINK, OVERLAY0,
 )
 from src.models.issue import Issue, FARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
+from src.styles.constants import TABLE_QSS
 
 
 class _IssueTable(QTableWidget):
@@ -54,19 +55,11 @@ class _IssueTable(QTableWidget):
         self._issues: list[Issue] = []
         self._context_menu: QMenu | None = None
 
-        self.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {BASE}; color: {TEXT};
-                gridline-color: {SURFACE1}; border: 1px solid {SURFACE1};
-                border-radius: 8px; font-size: 13px;
-            }}
-            QTableWidget::item {{ padding: 6px; }}
-            QTableWidget::item:alternate {{ background-color: {MANTLE}; }}
-            QHeaderView::section {{
-                background-color: {SURFACE0}; color: {SUBTEXT0};
-                padding: 8px; border: none; font-weight: bold; font-size: 12px;
-            }}
-        """)
+        self.setStyleSheet(TABLE_QSS.format(
+            bg=BASE, text=TEXT, gridline=SURFACE1,
+            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+        ))
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)
@@ -79,7 +72,7 @@ class _IssueTable(QTableWidget):
         self._issues = issues
         self.setRowCount(len(issues))
         severity_colors = {"critical": RED, "major": PEACH, "minor": YELLOW, "cosmetic": SUBTEXT0}
-        status_colors = {"open": RED, "analyzing": YELLOW, "verified": BLUE, "closed": GREEN}
+        status_colors = {"open": RED, "analyzing": BLUE, "verified": YELLOW, "closed": GREEN}
         for row, issue in enumerate(issues):
             for col, val in enumerate([
                 issue.id,
@@ -138,24 +131,30 @@ class _IssueTable(QTableWidget):
         """双击行触发编辑。"""
         issue = self.get_selected_issue()
         if issue:
-            self.parent_issue_view()._open_edit_dialog(issue)
+            view = self.parent_issue_view()
+            if view:
+                view._open_edit_dialog(issue)
 
     def _on_edit_action(self) -> None:
         issue = self.get_selected_issue()
         if issue:
-            self.parent_issue_view()._open_edit_dialog(issue)
+            view = self.parent_issue_view()
+            if view:
+                view._open_edit_dialog(issue)
 
     def _on_delete_action(self) -> None:
         issue = self.get_selected_issue()
         if issue:
-            self.parent_issue_view()._delete_issue(issue)
+            view = self.parent_issue_view()
+            if view:
+                view._delete_issue(issue)
 
-    def parent_issue_view(self) -> "IssueView":
+    def parent_issue_view(self) -> "IssueView | None":
         """向上查找到 IssueView 实例。"""
         p = self.parent()
         while p is not None and not isinstance(p, IssueView):
             p = p.parent()
-        return p  # type: ignore[return-value]
+        return p
 
 
 class _FAPanel(QScrollArea):
@@ -184,7 +183,7 @@ class _FAPanel(QScrollArea):
 
         if not records:
             label = QLabel("选择一个 Issue 查看 FA 分析记录")
-            label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 14px; padding: 20px;")
+            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 15px; padding: 20px;")
             self._layout.addWidget(label)
             return
 
@@ -206,7 +205,7 @@ class _FAPanel(QScrollArea):
             header.addWidget(step_label)
 
             method_label = QLabel(rec.method or "")
-            method_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 12px;")
+            method_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px;")
             header.addWidget(method_label)
             header.addStretch()
             card_layout.addLayout(header)
@@ -219,14 +218,14 @@ class _FAPanel(QScrollArea):
             # 描述
             desc = QLabel(rec.description or "")
             desc.setWordWrap(True)
-            desc.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px;")
+            desc.setStyleSheet(f"color: {TEXT}; font-size: 14px;")
             card_layout.addWidget(desc)
 
             # 发现
             if rec.findings:
                 findings = QLabel(f"🔍 发现: {rec.findings}")
                 findings.setWordWrap(True)
-                findings.setStyleSheet(f"color: {PEACH}; font-size: 13px;")
+                findings.setStyleSheet(f"color: {PEACH}; font-size: 14px;")
                 card_layout.addWidget(findings)
 
             self._layout.addWidget(card)
@@ -244,14 +243,14 @@ class IssueView(QWidget):
         layout.setContentsMargins(24, 16, 24, 16)
 
         title = QLabel("🐛 Issue 追踪")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 22px; font-weight: bold;")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
         layout.addWidget(title)
 
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("🔍 搜索 Issue...")
-        self._search_input.setFixedWidth(260)
+        self._search_input.setFixedWidth(280)
         self._search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {SURFACE0}; color: {TEXT};
@@ -261,28 +260,23 @@ class IssueView(QWidget):
         toolbar.addWidget(self._search_input)
 
         self._btn_add = QPushButton("➕ 新建 Issue")
-        self._btn_add.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {RED}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 6px 16px; font-weight: bold;
-            }}
-        """)
+        self._btn_add.setProperty("class", "action")
         toolbar.addWidget(self._btn_add)
 
         self._btn_add_fa = QPushButton("➕ 新建 FA 步骤")
-        self._btn_add_fa.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {BLUE}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 6px 16px; font-weight: bold;
-            }}
-        """)
+        self._btn_add_fa.setProperty("class", "action")
         toolbar.addWidget(self._btn_add_fa)
+
+        # attachment management: 附件按钮
+        self._btn_attachments = QPushButton("📎 附件")
+        self._btn_attachments.setProperty("class", "action")
+        toolbar.addWidget(self._btn_attachments)
 
         toolbar.addStretch()
 
         # 统计标签
         self._stats_label = QLabel("0 个 Issue")
-        self._stats_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 13px;")
+        self._stats_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 14px;")
         toolbar.addWidget(self._stats_label)
 
         layout.addLayout(toolbar)
@@ -300,6 +294,15 @@ class IssueView(QWidget):
         splitter.setStretchFactor(1, 2)
         splitter.setStyleSheet("QSplitter::handle { background-color: #45475a; width: 2px; }")
 
+        # 空状态提示
+        self._empty_label = QLabel("暂无 Issue 数据")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self._issue_table)
+        self._empty_label.hide()
+        self._issue_table.installEventFilter(self)
+
         layout.addWidget(splitter)
 
         # ── 信号连接 ──
@@ -315,6 +318,7 @@ class IssueView(QWidget):
         open_count = sum(1 for i in issues if i.status == "open")
         analyzing = sum(1 for i in issues if i.status == "analyzing")
         self._stats_label.setText(f"{len(issues)} 个 Issue（{open_count} 待处理，{analyzing} 分析中）")
+        self._update_empty_state()
 
     def refresh_fa(self, records: list[FARecord]) -> None:
         self._fa_panel.set_fa_records(records)
@@ -332,6 +336,11 @@ class IssueView(QWidget):
     @property
     def btn_add_fa(self) -> QPushButton:
         return self._btn_add_fa
+
+    @property
+    def btn_attachments(self) -> QPushButton:  # attachment management
+        """📎 附件管理按钮。"""
+        return self._btn_attachments
 
     def get_selected_issue_id(self) -> Optional[int]:
         return self._issue_table.get_selected_issue_id()
@@ -409,3 +418,19 @@ class IssueView(QWidget):
     def _on_fa_record_added(self, data: dict) -> None:
         """钩子：FA 记录添加后回调。由外部连接。"""
         pass
+
+    # ── 空状态 ──────────────────────────────────────────────
+
+    def _update_empty_state(self) -> None:
+        """根据表格行数显示/隐藏空状态提示。"""
+        if self._issue_table.rowCount() == 0:
+            self._empty_label.setGeometry(self._issue_table.viewport().rect())
+            self._empty_label.show()
+        else:
+            self._empty_label.hide()
+
+    def eventFilter(self, obj, event) -> bool:
+        """监听表格缩放以更新空状态标签位置。"""
+        if obj is self._issue_table and event.type() == QEvent.Type.Resize:
+            self._empty_label.setGeometry(self._issue_table.viewport().rect())
+        return super().eventFilter(obj, event)

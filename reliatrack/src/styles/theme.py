@@ -151,6 +151,20 @@ QPushButton[class="danger"]:hover {{
     background-color: #a6374d;
 }}
 
+/* ── 操作按钮 ── */
+QPushButton[class="action"] {{
+    background-color: {BG_INPUT};
+    color: {ACCENT};
+    border: 1px solid {ACCENT};
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+    font-size: 13px;
+}}
+QPushButton[class="action"]:hover {{
+    background-color: {BG_HOVER};
+}}
+
 /* ── 列表 ── */
 QListWidget {{
     background-color: {BG_DARK};
@@ -180,10 +194,11 @@ QTableWidget, QTableView {{
 }}
 QHeaderView::section {{
     background-color: {BG_INPUT};
-    color: {FG_PRIMARY};
+    color: {TEXT};
     border: 1px solid {BORDER};
-    padding: 4px 8px;
+    padding: 6px 10px;
     font-weight: bold;
+    font-size: 13px;
 }}
 
 /* ── Tab ── */
@@ -193,12 +208,13 @@ QTabWidget::pane {{
 }}
 QTabBar::tab {{
     background-color: {BG_INPUT};
-    color: {FG_SECONDARY};
+    color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     border-bottom: none;
-    padding: 6px 16px;
+    padding: 8px 20px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
+    font-size: 14px;
 }}
 QTabBar::tab:selected {{
     background-color: {BG_HOVER};
@@ -295,16 +311,17 @@ QRadioButton {{
 /* ── 状态栏 ── */
 QStatusBar {{
     background-color: {BG_INPUT};
-    color: {FG_MUTED};
+    color: {FG_SECONDARY};
     border-top: 1px solid {BORDER};
+    font-size: 13px;
 }}
 
 /* ── 工具栏 ── */
 QToolBar {{
     background-color: {BG_CARD};
     border-bottom: 1px solid {BORDER};
-    spacing: 6px;
-    padding: 2px;
+    spacing: 8px;
+    padding: 4px 12px;
 }}
 
 /* ── 分割器 ── */

@@ -44,6 +44,60 @@ class SampleRepository(BaseRepository):
         """更新样品状态。"""
         self.update(id, status=status)
 
+    def add_transaction(self, sample_id: int, txn_type: str, **kwargs: object) -> int:
+        """添加出入库记录到 sample_transactions 表。"""
+        data = {"sample_id": sample_id, "type": txn_type, **kwargs}
+        cols = list(data.keys())
+        vals = list(data.values())
+        placeholders = ", ".join(["?"] * len(cols))
+        col_str = ", ".join([f"[{c}]" for c in cols])
+        sql = f"INSERT INTO [sample_transactions] ({col_str}) VALUES ({placeholders})"
+        self._conn.execute(sql, vals)
+        row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
+        return row[0] if row else 0
+
+    def list_transactions(
+        self, filter_sn: str = "", filter_type: str = ""
+    ) -> list[dict]:
+        """查询所有出入库记录，JOIN 样品和操作人信息。
+
+        Args:
+            filter_sn: 可选 SN 模糊搜索。
+            filter_type: 可选操作类型精确过滤 (check_out/check_in/return/transfer)。
+
+        Returns:
+            包含完整关联信息的字典列表。
+        """
+        sql = """
+            SELECT st.*, s.sn as sample_sn, s.batch_no,
+                   t.name as operator_name
+            FROM sample_transactions st
+            LEFT JOIN samples s ON st.sample_id = s.id
+            LEFT JOIN technicians t ON st.operator_id = t.id
+        """
+        params: list[object] = []
+        conditions: list[str] = []
+
+        if filter_sn.strip():
+            conditions.append("s.sn LIKE ?")
+            params.append(f"%{filter_sn.strip()}%")
+        if filter_type.strip():
+            conditions.append("st.type = ?")
+            params.append(filter_type.strip())
+
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
+        sql += " ORDER BY st.created_at DESC"
+
+        rows = self._conn.execute(sql, params).fetchall()
+        # apsw: empty result sets auto-complete, getdescription fails; hardcode cols
+        cols = [
+            "id", "sample_id", "type", "operator_id", "purpose",
+            "related_task_id", "expected_return", "created_at",
+            "sample_sn", "batch_no", "operator_name",
+        ]
+        return [dict(zip(cols, row)) for row in rows]
+
     def delete_transactions(self, sample_id: int) -> None:
         """删除样品的所有出入库记录（级联删除子表）。"""
         self._conn.execute(

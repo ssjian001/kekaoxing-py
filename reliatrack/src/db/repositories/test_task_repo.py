@@ -25,9 +25,9 @@ class TestTaskRepository(BaseRepository):
     def delete_issues_by_task(self, task_id: int) -> None:
         """删除关联到任务的 Issue 及其子表（fa_records, issue_attachments）。
 
-        注意：schema 中 fa_records / issue_attachments 的外键没有
-        ON DELETE CASCADE，必须手动级联删除子表，否则在
-        PRAGMA foreign_keys=ON 下会触发 ConstraintError。
+        注意：schema 中 fa_records / issue_attachments 的外键已添加
+        ON DELETE CASCADE，手动级联删除为兼容性保留（旧数据库可能
+        未执行 migration）。
         """
         # 先查出关联的 issue id，逐个级联删除子表
         rows = self._conn.execute(
@@ -78,8 +78,14 @@ class TestTaskRepository(BaseRepository):
 
     def bulk_update_start_day(self, updates: list[tuple[int, int]]) -> None:
         """批量更新任务开始天数 [(task_id, start_day), ...]。"""
-        for task_id, start_day in updates:
-            self._conn.execute(
-                "UPDATE [test_tasks] SET start_day = ? WHERE id = ?",
-                (start_day, task_id),
-            )
+        self.begin_transaction()
+        try:
+            for task_id, start_day in updates:
+                self._conn.execute(
+                    "UPDATE [test_tasks] SET start_day = ? WHERE id = ?",
+                    (start_day, task_id),
+                )
+            self.commit()
+        except Exception:
+            self.rollback()
+            raise

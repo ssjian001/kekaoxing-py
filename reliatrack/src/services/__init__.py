@@ -8,6 +8,7 @@ from src.services.issue_service import IssueService
 from src.services.settings_service import SettingsService
 from src.services.scheduler_service import SchedulerService
 from src.services.export_service import ExportService
+from src.services.knowledge_service import KnowledgeService
 
 __all__ = [
     "ProjectService",
@@ -18,4 +19,5 @@ __all__ = [
     "SettingsService",
     "SchedulerService",
     "ExportService",
+    "KnowledgeService",
 ]

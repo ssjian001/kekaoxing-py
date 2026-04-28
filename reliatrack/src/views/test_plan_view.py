@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
-
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -16,7 +13,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
     QComboBox,
-    QSpinBox,
     QAbstractItemView,
     QScrollArea,
     QFrame,
@@ -29,8 +25,9 @@ from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL, PINK,
+    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
+from src.styles.constants import TABLE_QSS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
@@ -56,26 +53,11 @@ class _TaskTable(QTableWidget):
         self._technician_list: list[Technician] = []
         self._on_edit_callback = None  # callable(TestTask) | None
         self._on_delete_callback = None  # callable(TestTask) | None
-        self.setStyleSheet(f"""
-            QTableWidget {{
-                background-color: {BASE};
-                color: {TEXT};
-                gridline-color: {SURFACE1};
-                border: 1px solid {SURFACE1};
-                border-radius: 8px;
-                font-size: 13px;
-            }}
-            QTableWidget::item {{ padding: 6px; }}
-            QTableWidget::item:alternate {{ background-color: {MANTLE}; }}
-            QHeaderView::section {{
-                background-color: {SURFACE0};
-                color: {SUBTEXT0};
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 12px;
-            }}
-        """)
+        self.setStyleSheet(TABLE_QSS.format(
+            bg=BASE, text=TEXT, gridline=SURFACE1,
+            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+        ))
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -144,7 +126,7 @@ class _TaskTable(QTableWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 状态颜色
                 if col == 6:
-                    colors = {"completed": GREEN, "in_progress": YELLOW, "pending": SUBTEXT0}
+                    colors = {"completed": GREEN, "in_progress": BLUE, "pending": SUBTEXT0}
                     item.setForeground(QColor(colors.get(val, TEXT)))
                 self.setItem(row, col, item)
 
@@ -159,10 +141,11 @@ class _GanttWidget(QWidget):
 
     # 类别 → 颜色
     CATEGORY_COLORS = {
-        "env": BLUE,
-        "mech": GREEN,
-        "surf": PEACH,
-        "pack": MAUVE,
+        "环境试验": BLUE,
+        "机械试验": GREEN,
+        "表面处理": PEACH,
+        "包装": MAUVE,
+        "其他": LAVENDER,
         "": LAVENDER,
     }
 
@@ -204,8 +187,8 @@ class _GanttWidget(QWidget):
 
         # ── 表头（天数标尺）──
         p.fillRect(0, 0, w, self._header_height, QColor(SURFACE0))
-        p.setPen(QColor(SUBTEXT0))
-        p.setFont(QFont("sans-serif", 10))
+        p.setPen(QColor(SUBTEXT1))
+        p.setFont(QFont("sans-serif", 11))
         step = max(1, self._total_days // 15)
         for d in range(0, self._total_days + 1, step):
             x = label_w + d * day_w
@@ -216,7 +199,7 @@ class _GanttWidget(QWidget):
             p.setPen(QColor(SUBTEXT0))
 
         # ── 任务条 ──
-        p.setFont(QFont("sans-serif", 11))
+        p.setFont(QFont("sans-serif", 12))
         for i, task in enumerate(self._tasks):
             y = self._header_height + i * self._row_height
 
@@ -277,7 +260,7 @@ class TestPlanView(QWidget):
         layout.setContentsMargins(24, 16, 24, 16)
 
         title = QLabel("📋 测试计划")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 22px; font-weight: bold;")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
         layout.addWidget(title)
 
         # 工具栏
@@ -301,42 +284,30 @@ class TestPlanView(QWidget):
         """)
         toolbar.addWidget(self._plan_combo)
 
+        self._btn_edit_plan = QPushButton("✏️ 编辑计划")
+        self._btn_edit_plan.setProperty("class", "action")
+        toolbar.addWidget(self._btn_edit_plan)
+
+        self._btn_add_plan = QPushButton("➕ 新建计划")
+        self._btn_add_plan.setProperty("class", "action")
+        toolbar.addWidget(self._btn_add_plan)
+
         self._btn_schedule = QPushButton("🚀 自动排程")
-        self._btn_schedule.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {BLUE}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 6px 16px; font-weight: bold;
-            }}
-        """)
+        self._btn_schedule.setProperty("class", "action")
         toolbar.addWidget(self._btn_schedule)
 
         toolbar.addSpacing(8)
 
         self._btn_add_task = QPushButton("➕ 添加任务")
-        self._btn_add_task.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {GREEN}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 6px 16px; font-weight: bold;
-            }}
-        """)
+        self._btn_add_task.setProperty("class", "action")
         toolbar.addWidget(self._btn_add_task)
 
         self._btn_edit_task = QPushButton("✏️ 编辑任务")
-        self._btn_edit_task.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {YELLOW}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 6px 16px; font-weight: bold;
-            }}
-        """)
+        self._btn_edit_task.setProperty("class", "action")
         toolbar.addWidget(self._btn_edit_task)
 
         self._btn_delete_task = QPushButton("🗑️ 删除任务")
-        self._btn_delete_task.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {RED}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 6px 16px; font-weight: bold;
-            }}
-        """)
+        self._btn_delete_task.setProperty("class", "action")
         toolbar.addWidget(self._btn_delete_task)
 
         toolbar.addStretch()
@@ -370,9 +341,11 @@ class TestPlanView(QWidget):
 
     def set_plans(self, plan_names: list[str], plan_ids: list[int] | None = None) -> None:
         """设置计划下拉选项。"""
+        self._plan_combo.blockSignals(True)
         self._plan_combo.clear()
         self._plan_combo.addItems(plan_names)
         self._plan_ids = plan_ids or list(range(len(plan_names)))
+        self._plan_combo.blockSignals(False)
 
     def get_selected_plan_id(self) -> int | None:
         """获取当前选中计划的 ID。"""
@@ -388,6 +361,14 @@ class TestPlanView(QWidget):
     @property
     def task_table(self) -> _TaskTable:
         return self._task_table
+
+    @property
+    def btn_add_plan(self) -> QPushButton:
+        return self._btn_add_plan
+
+    @property
+    def btn_edit_plan(self) -> QPushButton:
+        return self._btn_edit_plan
 
     @property
     def btn_schedule(self) -> QPushButton:

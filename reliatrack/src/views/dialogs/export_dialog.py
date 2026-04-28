@@ -9,7 +9,7 @@ from src.views.dialogs.base_dialog import _BaseDialog
 class ExportDialog(_BaseDialog):
     """导出选项对话框。
 
-    选择导出内容（测试任务/Issue/样品/综合报告）和格式（Excel/PDF）。
+    选择导出内容（测试任务/Issue/样品/综合报告）和格式（Excel/PDF/Word）。
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -17,11 +17,11 @@ class ExportDialog(_BaseDialog):
 
         self._content_combo = self._add_combo_field(
             "导出内容",
-            items=["测试任务 (当前计划)", "Issue 列表", "样品台账", "综合测试报告 (PDF)"],
+            items=["测试任务 (当前计划)", "Issue 列表", "样品台账", "综合测试报告"],
         )
         self._format_combo = self._add_combo_field(
             "格式",
-            items=["Excel (.xlsx)", "PDF (.pdf)"],
+            items=["Excel (.xlsx)", "PDF (.pdf)", "Word (.docx)"],
         )
 
     def get_data(self) -> dict:

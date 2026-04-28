@@ -9,6 +9,7 @@ from src.db.repositories.test_plan_repo import TestPlanRepository
 from src.db.repositories.test_task_repo import TestTaskRepository
 from src.db.repositories.issue_repo import IssueRepository
 from src.db.repositories.settings_repo import SettingsRepository
+from src.db.repositories.knowledge_repo import KnowledgeRepository
 
 __all__ = [
     "BaseRepository",
@@ -20,4 +21,5 @@ __all__ = [
     "TestTaskRepository",
     "IssueRepository",
     "SettingsRepository",
+    "KnowledgeRepository",
 ]

@@ -93,3 +93,9 @@ class IssueRepository(BaseRepository):
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
         )
+
+    def delete_attachment(self, attachment_id: int) -> None:  # attachment management
+        """删除单条附件。"""
+        self._conn.execute(
+            "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
+        )

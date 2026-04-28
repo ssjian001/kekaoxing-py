@@ -74,6 +74,8 @@ class TestTask:
     log_file: str = ""        # 设备原始 Log 文件路径
     dependencies: str = "[]"  # JSON: [task_id, ...]
     notes: str = ""
+    temperature: str = ""     # 例: "-40°C ~ 85°C"
+    humidity: str = ""        # 例: "85%RH"
     sort_order: int = 0
     created_at: str = ""
     updated_at: str = ""

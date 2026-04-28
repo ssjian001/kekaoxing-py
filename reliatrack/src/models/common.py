@@ -27,8 +27,11 @@ class Technician:
     """技术员 / 测试人员。"""
     id: Optional[int] = None
     name: str = ""
-    role: str = ""        # DQE / QE / 测试员 / ...
-    department: str = ""
+    employee_id: str = ""   # 工号
+    role: str = ""           # 职位: DQE / QE / 测试员 / ...
+    department: str = ""     # 部门: 测试部/研发部/质量部/其他
+    phone: str = ""          # 联系方式
+    email: str = ""          # 邮箱
     created_at: str = ""
 
 
@@ -41,6 +44,8 @@ class Equipment:
     model: str = ""
     location: str = ""
     status: str = EquipmentStatus.AVAILABLE.value
+    calibration_date: str = ""
+    next_calibration_date: str = ""
     created_at: str = ""
 
 
