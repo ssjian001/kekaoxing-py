@@ -112,6 +112,7 @@ class _BaseDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setMinimumWidth(width)
+        self.setSizeGripEnabled(True)
         self.setStyleSheet(_DIALOG_STYLE)
 
         # 主布局
@@ -211,7 +212,7 @@ class _BaseDialog(QDialog):
     ) -> QTextEdit:
         """添加 QTextEdit 多行文本字段并返回控件。"""
         edit = QTextEdit(default)
-        edit.setFixedHeight(72)
+        edit.setMinimumHeight(72)
         self._form.addRow(label, edit)
         return edit
 
