@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb-xinerama0 libxcb-cursor0 \
+            fonts-noto-cjk-extra
+          pip install --upgrade pip pyinstaller
+
+      - name: Install app dependencies
+        run: pip install pyside6 apsw fpdf2 openpyxl python-docx qrcode[pil]
+
+      - name: Build with PyInstaller
+        run: |
+          cd reliatrack
+          pyinstaller --noconfirm --onedir \
+            --name ReliaTrack \
+            --windowed \
+            --add-data "src:src" \
+            --hidden-import apsw \
+            --hidden-import fpdf2 \
+            --hidden-import openpyxl \
+            --hidden-import docx \
+            --hidden-import qrcode \
+            main.py
+
+      - name: Create tarball
+        run: |
+          cd reliatrack/dist
+          tar czf ReliaTrack-Linux-x86_64.tar.gz ReliaTrack/
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: reliatrack/dist/ReliaTrack-Linux-x86_64.tar.gz
+          generate_release_notes: true

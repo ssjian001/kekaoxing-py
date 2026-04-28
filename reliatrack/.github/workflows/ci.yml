@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb-xinerama0 libxcb-cursor0 \
+            fonts-noto-cjk-extra \
+            xvfb
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install pyside6 apsw fpdf2 openpyxl python-docx qrcode[pil]
+
+      - name: Compile check
+        run: |
+          . .venv/bin/activate
+          cd reliatrack
+          python -m py_compile main.py
+          find src -name "*.py" -exec python -m py_compile {} \;
+          echo "✅ All files compile successfully"
+
+      - name: Run E2E tests
+        run: |
+          . .venv/bin/activate
+          cd reliatrack
+          QT_QPA_PLATFORM=offscreen python tests/test_e2e_full.py
+
+      - name: Run boundary tests
+        run: |
+          . .venv/bin/activate
+          cd reliatrack
+          QT_QPA_PLATFORM=offscreen python tests/test_boundary.py
+
+      - name: Run performance baseline
+        run: |
+          . .venv/bin/activate
+          cd reliatrack
+          QT_QPA_PLATFORM=offscreen python tests/test_performance.py
