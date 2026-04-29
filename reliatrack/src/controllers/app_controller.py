@@ -25,6 +25,7 @@ from src.db.repositories import (
     SampleRepository,
     TestPlanRepository,
     TestTaskRepository,
+    TestResultRepository,
     IssueRepository,
     SettingsRepository,
     KnowledgeRepository,
@@ -58,6 +59,7 @@ class AppController:
         self.samples: SampleRepository | None = None
         self.test_plans: TestPlanRepository | None = None
         self.test_tasks: TestTaskRepository | None = None
+        self.test_results: TestResultRepository | None = None
         self.issues: IssueRepository | None = None
         self.settings: SettingsRepository | None = None
         self.knowledge: KnowledgeRepository | None = None
@@ -93,6 +95,7 @@ class AppController:
         self.samples = SampleRepository(self._conn)
         self.test_plans = TestPlanRepository(self._conn)
         self.test_tasks = TestTaskRepository(self._conn)
+        self.test_results = TestResultRepository(self._conn)
         self.issues = IssueRepository(self._conn)
         self.settings = SettingsRepository(self._conn)
         self.knowledge = KnowledgeRepository(self._conn)
@@ -103,7 +106,7 @@ class AppController:
         )
         self.equipment_service = EquipmentService(self.equipment)
         self.sample_service = SampleService(self.samples)
-        self.test_plan_service = TestPlanService(self.test_plans, self.test_tasks)
+        self.test_plan_service = TestPlanService(self.test_plans, self.test_tasks, self.test_results)
         self.issue_service = IssueService(self.issues)
         self.settings_service = SettingsService(self.settings)
         self.scheduler_service = SchedulerService(

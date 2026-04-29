@@ -423,6 +423,11 @@ class TestPlanView(QWidget):
         self._btn_import_tasks.setFixedHeight(28)
         toolbar.addWidget(self._btn_import_tasks)
 
+        self._btn_record_result = QPushButton("录入结果")
+        self._btn_record_result.setProperty("class", "primary")
+        self._btn_record_result.setFixedHeight(28)
+        toolbar.addWidget(self._btn_record_result)
+
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
@@ -492,6 +497,10 @@ class TestPlanView(QWidget):
     @property
     def btn_import_tasks(self) -> QPushButton:
         return self._btn_import_tasks
+
+    @property
+    def btn_record_result(self) -> QPushButton:
+        return self._btn_record_result
 
     def setup_task_callbacks(
         self,

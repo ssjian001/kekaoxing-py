@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.db.repositories import TestPlanRepository, TestTaskRepository
-from src.models.test_plan import TestPlan, TestTask
+from src.db.repositories import TestPlanRepository, TestTaskRepository, TestResultRepository
+from src.models.test_plan import TestPlan, TestTask, TestResult
 
 
 class TestPlanService:
@@ -13,9 +13,11 @@ class TestPlanService:
         self,
         plan_repo: TestPlanRepository,
         task_repo: TestTaskRepository,
+        result_repo: TestResultRepository,
     ) -> None:
         self._plan_repo = plan_repo
         self._task_repo = task_repo
+        self._result_repo = result_repo
 
     # ── 计划 ──
 
@@ -89,3 +91,32 @@ class TestPlanService:
 
     def task_count(self, plan_id: int) -> int:
         return self._plan_repo.get_task_count(plan_id)
+
+    # ── 测试结果 ──
+
+    def get_task_results(self, task_id: int) -> list[TestResult]:
+        """获取任务的所有测试结果。"""
+        return self._result_repo.get_by_task(task_id)
+
+    def save_result(
+        self,
+        task_id: int,
+        sample_id: int,
+        result: str,
+        test_date: str = "",
+        notes: str = "",
+        tester_id: int | None = None,
+    ) -> int:
+        """保存/更新测试结果，返回 id。"""
+        return self._result_repo.upsert(
+            task_id=task_id,
+            sample_id=sample_id,
+            result=result,
+            test_date=test_date,
+            notes=notes,
+            tester_id=tester_id,
+        )
+
+    def delete_result(self, result_id: int) -> None:
+        """删除测试结果。"""
+        self._result_repo.delete(result_id)

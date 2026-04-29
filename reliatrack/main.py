@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 import os
+import json
 from collections import Counter
 from typing import Any
 
@@ -27,6 +28,8 @@ from PySide6.QtWidgets import (
     QToolBar,
     QMessageBox,
     QComboBox,
+    QDialog,
+    QPushButton,
 )
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QKeySequence
@@ -48,6 +51,7 @@ from src.views.dialogs.export_dialog import ExportDialog
 from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
 from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
 from src.views.dialogs.project_edit_dialog import ProjectEditDialog
+from src.views.dialogs.test_result_dialog import TestResultDialog
 from src.views.dialogs.sample_edit_dialog import SampleEditDialog
 # attachment management
 from src.views.dialogs.attachment_dialog import AttachmentDialog
@@ -140,6 +144,9 @@ class MainWindow(QMainWindow):
         )
         self._test_plan_view.btn_import_tasks.clicked.connect(
             self._on_task_batch_import
+        )
+        self._test_plan_view.btn_record_result.clicked.connect(
+            self._on_record_result
         )
 
         # 测试任务增删改
@@ -884,6 +891,81 @@ class MainWindow(QMainWindow):
             data = dlg.get_data()
             ctrl.test_plan_service.update_task(task.id, **data)
             self.statusBar().showMessage(f"✅ 任务「{data['name']}」已更新", 5000)
+            self._ctrl.notify_data_changed("task")
+
+    def _on_record_result(self) -> None:
+        """录入测试结果 — 选中任务后打开结果录入弹窗。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        task = self._test_plan_view._task_table.get_task_at_row(
+            self._test_plan_view._task_table.currentRow()
+        )
+        if not task or task.id is None:
+            QMessageBox.information(self, "提示", "请先选中一个测试任务。")
+            return
+
+        # 解析任务关联的样品 ID
+        sample_ids: list[int] = []
+        try:
+            sample_ids = json.loads(task.sample_ids)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        # 获取样品列表
+        samples: list = []
+        if sample_ids and ctrl.sample_service:
+            for sid in sample_ids:
+                s = ctrl.sample_service.get_by_id(sid)
+                if s:
+                    samples.append(s)
+
+        # 获取已有结果
+        existing_results = ctrl.test_plan_service.get_task_results(task.id)
+
+        # 用 QDialog 包装 TestResultDialog
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"录入结果 — {task.name}")
+        dlg.setMinimumSize(560, 400)
+        dlg.setSizeGripEnabled(True)
+        layout = QVBoxLayout(dlg)
+        result_widget = TestResultDialog(
+            task=task,
+            samples=samples,
+            existing_results=existing_results,
+            parent=dlg,
+        )
+        layout.addWidget(result_widget)
+
+        # 添加确定/取消按钮
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_cancel = QPushButton("取消")
+        btn_cancel.setProperty("class", "action")
+        btn_cancel.clicked.connect(dlg.reject)
+        btn_layout.addWidget(btn_cancel)
+        btn_ok = QPushButton("保存")
+        btn_ok.setProperty("class", "primary")
+        btn_ok.clicked.connect(dlg.accept)
+        btn_layout.addWidget(btn_ok)
+        layout.addLayout(btn_layout)
+
+        if dlg.exec():
+            all_data = result_widget.get_all_data()
+            saved = 0
+            for item in all_data:
+                if item["sample_id"] is not None:
+                    ctrl.test_plan_service.save_result(
+                        task_id=task.id,
+                        sample_id=item["sample_id"],
+                        result=item["result"],
+                        test_date=item["test_date"],
+                        notes=item.get("notes", ""),
+                    )
+                    saved += 1
+            self.statusBar().showMessage(
+                f"✅ 已保存 {saved} 条测试结果（任务: {task.name}）", 5000
+            )
             self._ctrl.notify_data_changed("task")
 
     def _on_task_delete(self, task) -> None:

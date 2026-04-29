@@ -14,6 +14,7 @@ from src.db.repositories import (
     IssueRepository,
     TestPlanRepository,
     TestTaskRepository,
+    TestResultRepository,
 )
 from src.services.project_service import ProjectService
 from src.services.sample_service import SampleService
@@ -65,6 +66,7 @@ def issue_svc(db_conn):
 def plan_svc(db_conn):
     return TestPlanService(
         TestPlanRepository(db_conn), TestTaskRepository(db_conn),
+        TestResultRepository(db_conn),
     )
 
 

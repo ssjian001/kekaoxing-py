@@ -29,6 +29,7 @@ from src.db.schema import init_schema
 from src.db.repositories import (
     ProjectRepository, EquipmentRepository, TechnicianRepository,
     SampleRepository, TestPlanRepository, TestTaskRepository,
+    TestResultRepository,
     IssueRepository, KnowledgeRepository,
 )
 from src.services import (
@@ -139,7 +140,7 @@ def test_2_test_plan_and_tasks(tr: TestResult, conn, pid, eid, tid, plan_repo, t
     """2. 创建测试计划 + 任务"""
     print("\n── 测试 2: 测试计划 + 任务 ──")
 
-    tp_svc = TestPlanService(plan_repo, task_repo)
+    tp_svc = TestPlanService(plan_repo, task_repo, TestResultRepository(conn))
 
     plan_id = tp_svc.create_plan(project_id=pid, name="可靠性测试计划V1", test_standard="GB/T 1234")
     assert plan_id > 0
