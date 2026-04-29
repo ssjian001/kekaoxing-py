@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
     QLineEdit,
+    QMenu,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
@@ -19,15 +20,11 @@ from PySide6.QtGui import QColor
 
 from src.models.project import Project
 from src.styles.theme import (
-    SURFACE0,
     SURFACE1,
     TEXT,
-    GREEN,
-    YELLOW,
-    BLUE,
     OVERLAY0,
 )
-from src.styles.constants import VIEW_MARGINS
+from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS
 
 
 class ProjectView(QWidget):
@@ -52,14 +49,8 @@ class ProjectView(QWidget):
         "closed": "已关闭",
     }
 
-    # 状态文字 → 颜色
-    _STATUS_COLORS: dict[str, str] = {
-        "进行中": GREEN,
-        "暂停": YELLOW,
-        "已完成": BLUE,
-        "已归档": OVERLAY0,
-        "已关闭": OVERLAY0,
-    }
+    # 状态 → 颜色（英文 key，与 constants.py PROJECT_STATUS_COLORS 一致）
+    _STATUS_COLORS: dict[str, str] = PROJECT_STATUS_COLORS
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -131,6 +122,15 @@ class ProjectView(QWidget):
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)
 
+        # 右键菜单
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
+        self._context_menu = QMenu(self._table)
+        self._ctx_act_edit = self._context_menu.addAction("编辑项目")
+        self._ctx_act_delete = self._context_menu.addAction("删除项目")
+        self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
+        self._ctx_act_delete.triggered.connect(self._on_ctx_delete)
+
         # 空状态提示
         self._empty_label = QLabel("暂无项目数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -164,7 +164,8 @@ class ProjectView(QWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 状态列着色
                 if attr == "status":
-                    color = self._STATUS_COLORS.get(str(value) if value else "", TEXT)
+                    raw_status = str(getattr(proj, attr, ""))
+                    color = self._STATUS_COLORS.get(raw_status, TEXT)
                     item.setForeground(QColor(color))
                 self._table.setItem(row, col, item)
         header.blockSignals(False)
@@ -210,6 +211,24 @@ class ProjectView(QWidget):
     def _on_double_click(self, row: int, _col: int) -> None:
         """双击行触发编辑。"""
         self.btn_edit.click()
+
+    # ── 右键菜单 ──────────────────────────────────────────────
+
+    def _show_context_menu(self, pos) -> None:
+        """在表格行上显示右键菜单。"""
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        self._context_menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _on_ctx_edit(self) -> None:
+        """右键编辑 → 触发工具栏编辑按钮。"""
+        self.btn_edit.click()
+
+    def _on_ctx_delete(self) -> None:
+        """右键删除 → 触发工具栏删除按钮。"""
+        self.btn_delete.click()
 
     # ── 空状态 ────────────────────────────────────────────────
 

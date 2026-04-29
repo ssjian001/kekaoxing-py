@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QLabel,
     QComboBox,
+    QMenu,
     QAbstractItemView,
     QMessageBox,
 )
@@ -21,9 +22,9 @@ from PySide6.QtCore import QEvent, Qt
 
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
-    TEXT, GREEN, YELLOW, BLUE, OVERLAY0,
+    TEXT, OVERLAY0,
 )
-from src.styles.constants import TABLE_QSS
+from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS
 from src.models.sample import Sample
 
 
@@ -100,16 +101,6 @@ class _SamplePoolTab(QWidget):
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("🔍 搜索 SN / 批次号...")
         self._search_input.setMinimumWidth(160)
-        self._search_input.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                border: 1px solid {SURFACE1};
-                border-radius: 6px;
-                padding: 6px 12px;
-                font-size: 13px;
-            }}
-        """)
         self._search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_input)
         toolbar.addStretch()
@@ -139,6 +130,13 @@ class _SamplePoolTab(QWidget):
         self._table = _SampleTable(self.COLUMNS)
         layout.addWidget(self._table)
 
+        # 右键菜单
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
+        self._context_menu = QMenu(self._table)
+        self._ctx_act_edit = self._context_menu.addAction("编辑样品")
+        self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
+
         # 空状态提示
         self._empty_label = QLabel("暂无样品数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -150,6 +148,18 @@ class _SamplePoolTab(QWidget):
 
         # 全量数据缓存（用于搜索过滤）
         self._all_samples: list[Sample] = []
+
+    def _show_context_menu(self, pos) -> None:
+        """在表格行上显示右键菜单。"""
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        self._context_menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _on_ctx_edit(self) -> None:
+        """右键编辑 → 触发工具栏编辑按钮。"""
+        self._btn_edit.click()
 
     def _on_search(self, text: str) -> None:
         """根据搜索关键词过滤样品列表。"""
@@ -227,13 +237,8 @@ class _SampleUsageTab(QWidget):
         "transfer": "转出",
     }
 
-    # 操作类型颜色映射
-    _TYPE_COLORS: dict[str, str] = {
-        "check_in": GREEN,
-        "check_out": BLUE,
-        "return": GREEN,
-        "transfer": YELLOW,
-    }
+    # 操作类型颜色映射（来自 constants.py）
+    _TYPE_COLORS: dict[str, str] = SAMPLE_TYPE_COLORS
 
     COLUMNS = [
         "样品SN", "批次号", "操作类型", "操作人",
@@ -250,16 +255,6 @@ class _SampleUsageTab(QWidget):
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("🔍 搜索 SN...")
         self._search_input.setMinimumWidth(160)
-        self._search_input.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                border: 1px solid {SURFACE1};
-                border-radius: 6px;
-                padding: 6px 12px;
-                font-size: 13px;
-            }}
-        """)
         self._search_input.textChanged.connect(self._apply_filter)
         toolbar.addWidget(self._search_input)
 
@@ -449,6 +444,25 @@ class _SampleLedgerTab(QWidget):
         self._table = _SampleTable(self.COLUMNS)
         layout.addWidget(self._table)
 
+        # 右键菜单
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._table.customContextMenuRequested.connect(self._show_context_menu)
+        self._context_menu = QMenu(self._table)
+        self._ctx_act_edit = self._context_menu.addAction("编辑样品")
+        self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
+
+    def _show_context_menu(self, pos) -> None:
+        """在表格行上显示右键菜单。"""
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        self._context_menu.exec(self._table.viewport().mapToGlobal(pos))
+
+    def _on_ctx_edit(self) -> None:
+        """右键编辑 → 触发工具栏编辑按钮。"""
+        self._btn_edit.click()
+
     def refresh(self, samples: list[Sample]) -> None:
         self._table.set_samples(samples)
 
@@ -475,27 +489,6 @@ class SampleView(QWidget):
         layout.setContentsMargins(16, 10, 16, 10)
 
         self._tabs = QTabWidget()
-        self._tabs.setStyleSheet(f"""
-            QTabWidget::pane {{
-                border: 1px solid {SURFACE1};
-                border-radius: 8px;
-                background-color: {BASE};
-            }}
-            QTabBar::tab {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                padding: 8px 20px;
-                border: none;
-                margin-right: 2px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                font-size: 12px;
-            }}
-            QTabBar::tab:selected {{
-                background-color: {SURFACE1};
-                color: {TEXT};
-            }}
-        """)
 
         self._pool_tab = _SamplePoolTab()
         self._ledger_tab = _SampleLedgerTab()

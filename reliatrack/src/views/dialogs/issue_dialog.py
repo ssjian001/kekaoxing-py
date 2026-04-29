@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
 )
 
 from src.models.issue import Issue
 from src.views.dialogs.base_dialog import _BaseDialog
+
+# 严重度选项：中文标签 → 英文存储值（按严重度降序）
+_SEVERITY_OPTIONS: list[tuple[str, str]] = [
+    ("严重", "critical"),
+    ("主要", "major"),
+    ("次要", "minor"),
+    ("外观", "cosmetic"),
+]
 
 
 class IssueEditDialog(_BaseDialog):
@@ -60,9 +69,17 @@ class IssueEditDialog(_BaseDialog):
         # ── 属性 ──
         self._severity_combo = self._add_combo_field(
             "严重度",
-            items=["critical", "major", "minor", "cosmetic"],
-            default=issue.severity if issue else "major",
+            items=[label for label, _ in _SEVERITY_OPTIONS],
+            default="",
         )
+        for i, (_, value) in enumerate(_SEVERITY_OPTIONS):
+            self._severity_combo.setItemData(i, value, Qt.ItemDataRole.UserRole)
+        # 根据英文值设置默认选中项
+        default_severity = issue.severity if issue else "major"
+        for i, (_, value) in enumerate(_SEVERITY_OPTIONS):
+            if value == default_severity:
+                self._severity_combo.setCurrentIndex(i)
+                break
         self._priority_spin = self._add_spin_field(
             "优先级 (1-5)",
             default=issue.priority if issue else 3,
@@ -123,7 +140,7 @@ class IssueEditDialog(_BaseDialog):
             "failure_mode": self._failure_mode_edit.text().strip(),
             "failure_stage": self._failure_stage_edit.text().strip(),
             "description": self._description_edit.toPlainText().strip(),
-            "severity": self._severity_combo.currentText(),
+            "severity": self._severity_combo.currentData(Qt.ItemDataRole.UserRole) or self._severity_combo.currentText(),
             "priority": self._priority_spin.value(),
             "status": self._status_combo.currentText(),
             "project_id": project_id,

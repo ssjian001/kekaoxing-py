@@ -1,4 +1,4 @@
-"""通用弹窗基类 — Catppuccin Mocha 暗色主题。"""
+"""通用弹窗基类 — 继承全局 Catppuccin Latte 主题。"""
 
 from __future__ import annotations
 from PySide6.QtWidgets import (
@@ -17,120 +17,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from src.styles.theme import (
-    CRUST,
-    MANTLE,
-    BASE,
-    SURFACE0,
-    SURFACE1,
-    SURFACE2,
-    TEXT,
-    SUBTEXT0,
-    SUBTEXT1,
-    GREEN,
-    YELLOW,
-    RED,
-    BLUE,
-    PEACH,
-    LAVENDER,
-    MAUVE,
-    PINK,
-)
-
-# ═══════════════════════════════════════════════════════════════════
-#  Dialog QSS
-# ═══════════════════════════════════════════════════════════════════
-
-_DIALOG_STYLE = f"""
-    QDialog {{
-        background-color: {MANTLE};
-        color: {TEXT};
-    }}
-    QLabel {{
-        color: {TEXT};
-        font-size: 12px;
-    }}
-    QLineEdit, QComboBox {{
-        background-color: {SURFACE0};
-        color: {TEXT};
-        border: 1px solid {SURFACE1};
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 12px;
-        min-height: 24px;
-    }}
-    QLineEdit:focus, QComboBox:focus {{
-        border-color: {BLUE};
-    }}
-    QSpinBox, QDoubleSpinBox {{
-        background-color: {SURFACE0};
-        color: {TEXT};
-        border: 1px solid {SURFACE1};
-        border-radius: 4px;
-        padding: 2px 4px;
-        font-size: 12px;
-        min-height: 24px;
-    }}
-    QSpinBox::up-button, QSpinBox::down-button,
-    QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
-        background-color: {SURFACE1};
-        border: none;
-        width: 20px;
-        min-width: 20px;
-    }}
-    QSpinBox::up-button:hover, QSpinBox::down-button:hover,
-    QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
-        background-color: {SURFACE2};
-    }}
-    QDateEdit, QTextEdit {{
-        background-color: {SURFACE0};
-        color: {TEXT};
-        border: 1px solid {SURFACE1};
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 12px;
-        min-height: 24px;
-    }}
-    QPushButton {{
-        background-color: {BLUE};
-        color: {CRUST};
-        border: none;
-        border-radius: 6px;
-        padding: 6px 16px;
-        font-weight: bold;
-        font-size: 12px;
-    }}
-    QPushButton:hover {{
-        background-color: {SURFACE1};
-    }}
-    QComboBox QAbstractItemView {{
-        background-color: {SURFACE0};
-        color: {TEXT};
-        selection-background-color: {SURFACE1};
-    }}
-    QGroupBox {{
-        color: {TEXT};
-        border: 1px solid {SURFACE1};
-        border-radius: 8px;
-        margin-top: 10px;
-        padding-top: 14px;
-        font-size: 13px;
-        font-weight: bold;
-    }}
-    QGroupBox::title {{
-        subcontrol-origin: margin;
-        left: 12px;
-        padding: 0 6px;
-    }}
-"""
-
-
-# ═══════════════════════════════════════════════════════════════════
-#  Base Dialog
-# ═══════════════════════════════════════════════════════════════════
 
 class _BaseDialog(QDialog):
-    """通用弹窗基类 — 提供暗色主题、QFormLayout 和 OK/Cancel 按钮。"""
+    """通用弹窗基类 — 继承全局主题样式，提供 QFormLayout 和 OK/Cancel 按钮。
+
+    弹窗自动继承 main.py 中 setStyleSheet() 设置的全局 QSS，
+    无需在此单独设置样式表。按钮使用 setProperty(\"class\", ...) 复用主题样式。
+    """
 
     def __init__(
         self,
@@ -142,7 +35,7 @@ class _BaseDialog(QDialog):
         self.setWindowTitle(title)
         self.setMinimumWidth(width)
         self.setSizeGripEnabled(True)
-        self.setStyleSheet(_DIALOG_STYLE)
+        # 不再设置独立的 styleSheet — 继承全局主题
 
         # 主布局
         self._root = QVBoxLayout(self)
@@ -160,10 +53,12 @@ class _BaseDialog(QDialog):
         btn_layout.addStretch()
 
         self._btn_cancel = QPushButton("取消")
+        self._btn_cancel.setProperty("class", "action")
         self._btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self._btn_cancel)
 
         self._btn_ok = QPushButton("确定")
+        self._btn_ok.setProperty("class", "primary")
         self._btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(self._btn_ok)
 
@@ -237,7 +132,7 @@ class _BaseDialog(QDialog):
         """在表单中添加水平分隔。"""
         line = QLabel()
         line.setFixedHeight(1)
-        line.setStyleSheet(f"background-color: {SURFACE1}; border: none;")
+        line.setObjectName("_separator")
         self._form.addRow(line)
 
     def _add_text_area(

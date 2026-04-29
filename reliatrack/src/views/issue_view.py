@@ -33,7 +33,7 @@ from src.styles.theme import (
 from src.models.issue import Issue, FARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS
 
 
 class _IssueTable(QTableWidget):
@@ -73,8 +73,6 @@ class _IssueTable(QTableWidget):
         self.setRowCount(len(issues))
         severity_labels = {"critical": "严重", "major": "主要", "minor": "次要", "cosmetic": "外观"}
         status_labels = {"open": "待处理", "analyzing": "分析中", "verified": "已验证", "closed": "已关闭"}
-        severity_colors = {"严重": RED, "主要": PEACH, "次要": YELLOW, "外观": SUBTEXT0}
-        status_colors = {"待处理": RED, "分析中": BLUE, "已验证": YELLOW, "已关闭": GREEN}
         for row, issue in enumerate(issues):
             for col, val in enumerate([
                 issue.id,
@@ -88,9 +86,9 @@ class _IssueTable(QTableWidget):
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 if col == 2:  # severity
-                    item.setForeground(QColor(severity_colors.get(str(val), TEXT)))
+                    item.setForeground(QColor(ISSUE_SEVERITY_COLORS.get(issue.severity, TEXT)))
                 elif col == 3:  # status
-                    item.setForeground(QColor(status_colors.get(str(val), TEXT)))
+                    item.setForeground(QColor(ISSUE_STATUS_COLORS.get(issue.status, TEXT)))
                 self.setItem(row, col, item)
 
     def get_selected_issue_id(self) -> Optional[int]:
@@ -111,14 +109,6 @@ class _IssueTable(QTableWidget):
     def _show_context_menu(self, pos) -> None:
         if self._context_menu is None:
             self._context_menu = QMenu(self)
-            self._context_menu.setStyleSheet(f"""
-                QMenu {{
-                    background-color: {SURFACE0}; color: {TEXT};
-                    border: 1px solid {SURFACE1}; padding: 4px;
-                }}
-                QMenu::item {{ padding: 6px 24px; }}
-                QMenu::item:selected {{ background-color: {SURFACE1}; }}
-            """)
             self._act_edit = self._context_menu.addAction("编辑 Issue")
             self._act_delete = self._context_menu.addAction("删除 Issue")
             self._act_edit.triggered.connect(self._on_edit_action)
@@ -253,12 +243,6 @@ class IssueView(QWidget):
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("搜索 Issue 标题 / 根因…")
         self._search_input.setMinimumWidth(160)
-        self._search_input.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {SURFACE0}; color: {TEXT};
-                border: 1px solid {SURFACE1}; border-radius: 6px; padding: 6px 12px;
-            }}
-        """)
         toolbar.addWidget(self._search_input)
 
         self._btn_add = QPushButton("新建 Issue")

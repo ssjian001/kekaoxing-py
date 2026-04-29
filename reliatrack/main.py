@@ -109,6 +109,7 @@ class MainWindow(QMainWindow):
         # Tab 1: 仪表盘
         self._dashboard = DashboardView()
         self._tab_widget.addTab(self._dashboard, "📊 仪表盘")
+        self._dashboard.card_clicked.connect(self._tab_widget.setCurrentIndex)
 
         # Tab 2: 样品管理
         self._sample_view = SampleView()
@@ -222,6 +223,16 @@ class MainWindow(QMainWindow):
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
+        # 全局快捷键 — 使用 QShortcut（不绑到 Action，无菜单栏冲突）
+        from PySide6.QtGui import QShortcut, QKeySequence
+
+        self._shortcut_new = QShortcut(QKeySequence("Ctrl+N"), self)
+        self._shortcut_new.activated.connect(self._on_shortcut_new)
+        self._shortcut_delete = QShortcut(QKeySequence("Delete"), self)
+        self._shortcut_delete.activated.connect(self._on_shortcut_delete)
+        self._shortcut_edit = QShortcut(QKeySequence("F2"), self)
+        self._shortcut_edit.activated.connect(self._on_shortcut_edit)
+
         # 撤销 / 重做
         self._act_undo = QAction("↩ 撤销", self)
         self._act_undo.setEnabled(False)
@@ -253,6 +264,53 @@ class MainWindow(QMainWindow):
         status_bar.showMessage("ReliaTrack v2.0.0 — 就绪")
 
     # ── 数据刷新 ──
+
+    def _on_shortcut_new(self) -> None:
+        """Ctrl+N: 根据当前 Tab 新建。"""
+        idx = self._tab_widget.currentIndex()
+        if idx == 0:
+            self._on_project_add()
+        elif idx == 2:
+            self._on_sample_checkin()
+        elif idx == 3:
+            self._test_plan_view._btn_add_task.click()
+        elif idx == 4:
+            self._issue_view._btn_add.click()
+        elif idx == 5:
+            self._equipment_view.btn_add.click()
+        elif idx == 6:
+            self._technician_view.btn_add.click()
+        elif idx == 7:
+            self._knowledge_view.btn_add.click()
+        # idx == 1 (Dashboard) — 无新建操作
+
+    def _on_shortcut_delete(self) -> None:
+        """Delete: 删除当前 Tab 的选中项。"""
+        idx = self._tab_widget.currentIndex()
+        if idx == 0:
+            self._on_project_delete()
+        elif idx == 3:
+            self._test_plan_view._btn_delete_task.click()
+        elif idx == 5:
+            self._on_equipment_delete()
+        elif idx == 6:
+            self._on_technician_delete()
+        elif idx == 7:
+            self._on_knowledge_delete()
+
+    def _on_shortcut_edit(self) -> None:
+        """F2: 编辑当前 Tab 的选中项。"""
+        idx = self._tab_widget.currentIndex()
+        if idx == 0:
+            self._on_project_edit()
+        elif idx == 3:
+            self._test_plan_view._btn_edit_task.click()
+        elif idx == 5:
+            self._on_equipment_edit()
+        elif idx == 6:
+            self._on_technician_edit()
+        elif idx == 7:
+            self._on_knowledge_edit()
 
     def _get_filter_project_id(self):
         """获取当前筛选的项目 ID（None = 全部）。"""

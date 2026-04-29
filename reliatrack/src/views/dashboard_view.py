@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QScrollArea,
 )
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import Qt, QRectF, Signal
 from PySide6.QtGui import (
     QPainter,
     QColor,
@@ -27,45 +27,27 @@ from src.styles.theme import (
     TEAL, LAVENDER, PINK, SKY,
 )
 
-from src.styles.constants import VIEW_MARGINS
+from src.styles.constants import VIEW_MARGINS, CHART_COLORS
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-#  Catppuccin 配色盘（用于条形图）
-# ═══════════════════════════════════════════════════════════════════
-
-_BAR_COLORS = [
-    "#89b4fa",  # Blue
-    "#a6e3a1",  # Green
-    "#f9e2af",  # Yellow
-    "#f38ba8",  # Red
-    "#cba6f7",  # Mauve
-    "#fab387",  # Peach
-    "#94e2d5",  # Teal
-    "#b4befe",  # Lavender
-    "#89dceb",  # Sky
-    "#f5c2e7",  # Pink
-]
+#  图表配色（来自 constants.py）
+# ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
 #  KPI 卡片
 # ═══════════════════════════════════════════════════════════════════
 
 class _KPICard(QFrame):
-    """单个 KPI 卡片。"""
+    """单个 KPI 卡片，点击可跳转到对应 Tab。"""
 
-    def __init__(self, title: str, value: str, color: str = BLUE, parent: QWidget | None = None):
+    def __init__(self, title: str, value: str, color: str = BLUE, tab_index: int = -1, parent: QWidget | None = None):
         super().__init__(parent)
+        self._tab_index = tab_index
         self.setObjectName("kpi-card")
         self.setFixedHeight(72)
-        self.setStyleSheet(f"""
-            #kpi-card {{
-                background-color: {SURFACE0};
-                border-radius: 12px;
-                border: 1px solid {SURFACE1};
-            }}
-        """)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
 
@@ -76,6 +58,17 @@ class _KPICard(QFrame):
         value_label = QLabel(value)
         value_label.setStyleSheet(f"color: {color}; font-size: 24px; font-weight: bold; border: none;")
         layout.addWidget(value_label)
+
+    def mousePressEvent(self, event):  # noqa: N802
+        """点击卡片发送跳转信号。"""
+        # 向上查找 DashboardView 并发出 card_clicked 信号
+        parent = self.parent()
+        while parent is not None:
+            if hasattr(parent, "card_clicked"):
+                parent.card_clicked.emit(self._tab_index)
+                break
+            parent = parent.parent()
+        super().mousePressEvent(event)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -173,7 +166,7 @@ class _BarChartWidget(QWidget):
         bar_font.setPointSize(11)
         painter.setFont(bar_font)
 
-        colors = _BAR_COLORS
+        colors = CHART_COLORS
         y = self._v_margin + self._title_height + self._v_margin
 
         for i, (label, value) in enumerate(self._data.items()):
@@ -238,7 +231,9 @@ class _BarChartWidget(QWidget):
 # ═══════════════════════════════════════════════════════════════════
 
 class DashboardView(QWidget):
-    """仪表盘 — KPI 总览页。"""
+    """仪表盘 — KPI 总览页，KPI 卡片点击可跳转到对应 Tab。"""
+
+    card_clicked = Signal(int)  # tab_index, 点击 KPI 卡片时发出
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -257,17 +252,17 @@ class DashboardView(QWidget):
         )
         layout.addWidget(self._filter_label)
 
-        # KPI 卡片网格
+        # KPI 卡片网格 — tab_index 映射: 1=Dashboard, 2=样品, 3=测试计划, 4=Issue, 5=未知, 6=设备
         grid = QGridLayout()
         grid.setSpacing(8)
 
-        self._card_tasks = _KPICard("测试任务", "0", BLUE)
-        self._card_completed = _KPICard("已完成", "0", GREEN)
-        self._card_in_progress = _KPICard("进行中", "0", YELLOW)
-        self._card_pending = _KPICard("待开始", "0", SUBTEXT1)
-        self._card_issues = _KPICard("Issue 数", "0", PEACH)
-        self._card_equipment = _KPICard("设备数", "0", MAUVE)
-        self._card_samples = _KPICard("样品数", "0", TEAL)
+        self._card_tasks = _KPICard("测试任务", "0", BLUE, tab_index=3)
+        self._card_completed = _KPICard("已完成", "0", GREEN, tab_index=3)
+        self._card_in_progress = _KPICard("进行中", "0", YELLOW, tab_index=3)
+        self._card_pending = _KPICard("待开始", "0", SUBTEXT1, tab_index=3)
+        self._card_issues = _KPICard("Issue 数", "0", PEACH, tab_index=4)
+        self._card_equipment = _KPICard("设备数", "0", MAUVE, tab_index=6)
+        self._card_samples = _KPICard("样品数", "0", TEAL, tab_index=2)
 
         grid.addWidget(self._card_tasks, 0, 0)
         grid.addWidget(self._card_completed, 0, 1)

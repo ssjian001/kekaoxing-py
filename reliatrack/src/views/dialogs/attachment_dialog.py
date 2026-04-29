@@ -21,23 +21,15 @@ from PySide6.QtWidgets import (
 )
 
 from src.styles.theme import (
-    CRUST,
-    MANTLE,
     BASE,
     SURFACE0,
     SURFACE1,
     SURFACE2,
+    MANTLE,
     TEXT,
     SUBTEXT0,
     SUBTEXT1,
     BLUE,
-    GREEN,
-    YELLOW,
-    RED,
-    PEACH,
-    MAUVE,
-    LAVENDER,
-    PINK,
 )
 
 from src.views.dialogs.base_dialog import _BaseDialog
@@ -134,27 +126,12 @@ class AttachmentDialog(_BaseDialog):
         btn_layout.setSpacing(10)
 
         self._btn_add = QPushButton("添加附件")
-        self._btn_add.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {GREEN}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 8px 16px; font-weight: bold; font-size: 13px;
-            }}
-            QPushButton:hover {{ background-color: {SURFACE1}; }}
-        """)
+        self._btn_add.setProperty("class", "primary")
         self._btn_add.clicked.connect(self._on_add_attachments)
         btn_layout.addWidget(self._btn_add)
 
         self._btn_delete = QPushButton("删除")
-        self._btn_delete.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {RED}; color: {CRUST}; border: none;
-                border-radius: 6px; padding: 8px 16px; font-weight: bold; font-size: 13px;
-            }}
-            QPushButton:hover {{ background-color: {SURFACE1}; }}
-            QPushButton:disabled {{
-                background-color: {SURFACE0}; color: {SUBTEXT0};
-            }}
-        """)
+        self._btn_delete.setProperty("class", "danger")
         self._btn_delete.setEnabled(False)
         self._btn_delete.clicked.connect(self._on_delete_attachment)
         btn_layout.addWidget(self._btn_delete)
@@ -162,13 +139,7 @@ class AttachmentDialog(_BaseDialog):
         btn_layout.addStretch()
 
         self._btn_close = QPushButton("关闭")
-        self._btn_close.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {SURFACE1}; color: {TEXT}; border: none;
-                border-radius: 6px; padding: 8px 20px; font-weight: bold; font-size: 13px;
-            }}
-            QPushButton:hover {{ background-color: {SURFACE2}; }}
-        """)
+        self._btn_close.setProperty("class", "action")
         self._btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(self._btn_close)
 

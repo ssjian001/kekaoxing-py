@@ -27,7 +27,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
@@ -43,15 +43,8 @@ class _TaskTable(QTableWidget):
         "completed": "已完成",
         "skipped": "已跳过",
     }
-    _STATUS_COLORS: dict[str, str] = {
-        "completed": GREEN,
-        "in_progress": BLUE,
-        "pending": SUBTEXT0,
-        "skipped": SURFACE2,
-    }
-    _PRIORITY_COLORS: dict[str, str] = {
-        "1": RED, "2": PEACH, "3": YELLOW, "4": SUBTEXT0, "5": SURFACE2,
-    }
+    _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
+    _PRIORITY_COLORS: dict[int, str] = PRIORITY_COLORS
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -110,14 +103,6 @@ class _TaskTable(QTableWidget):
         if not task:
             return
         menu = QMenu(self)
-        menu.setStyleSheet(f"""
-            QMenu {{
-                background-color: {MANTLE}; color: {TEXT};
-                border: 1px solid {SURFACE1}; padding: 4px;
-            }}
-            QMenu::item {{ padding: 6px 24px; }}
-            QMenu::item:selected {{ background-color: {SURFACE1}; }}
-        """)
         act_edit = QAction("编辑", self)
         act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
         act_delete = QAction("删除", self)
@@ -151,7 +136,7 @@ class _TaskTable(QTableWidget):
                     item.setForeground(QColor(self._STATUS_COLORS.get(task.status, TEXT)))
                 # 优先级颜色 (col 6)
                 elif col == 6:
-                    item.setForeground(QColor(self._PRIORITY_COLORS.get(str(task.priority), TEXT)))
+                    item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, TEXT)))
                 self.setItem(row, col, item)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
@@ -291,22 +276,6 @@ class TestPlanView(QWidget):
         toolbar.addWidget(QLabel("计划:"))
         self._plan_combo = QComboBox()
         self._plan_combo.setFixedWidth(180)
-        self._plan_combo.setStyleSheet(f"""
-            QComboBox {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                border: 1px solid {SURFACE1};
-                border-radius: 6px;
-                padding: 4px 10px;
-                font-size: 12px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                selection-background-color: {SURFACE1};
-                font-size: 12px;
-            }}
-        """)
         toolbar.addWidget(self._plan_combo)
 
         self._btn_add_plan = QPushButton("新建计划")

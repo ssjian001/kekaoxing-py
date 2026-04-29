@@ -24,25 +24,25 @@ from PySide6.QtCore import Qt
 
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.styles.theme import (
-    CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1, GREEN, YELLOW, RED, BLUE, PEACH, LAVENDER,
+    MANTLE, BASE, SURFACE0, SURFACE1,
+    TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
 )
 from src.styles.constants import TABLE_QSS
 
 
 class BatchImportDialog(_BaseDialog):
-    """样品批量导入 Excel 对话框。
+    """通用 Excel 批量导入对话框。
 
     流程：
     1. 选择 Excel 文件
     2. 预览前 20 行数据
-    3. 配置列映射（Excel 列 → Sample 字段）
+    3. 配置列映射（Excel 列 → 字段）
     4. 确认导入
     5. 显示导入结果统计
     """
 
-    # Sample 可映射字段：显示名 → 字段名
-    _FIELD_MAP = [
+    # 默认字段映射（样品），可通过构造函数 field_map 参数覆盖
+    _DEFAULT_FIELD_MAP = [
         ("SN（必填）", "sn"),
         ("批次号", "batch_no"),
         ("规格", "spec"),
@@ -50,17 +50,36 @@ class BatchImportDialog(_BaseDialog):
         ("备注", "notes"),
     ]
 
+    # 默认自动匹配关键词
+    _DEFAULT_GUESS_KEYWORDS: dict[str, list[str]] = {
+        "sn": ["sn", "序列号", "序列", "serial", "serial number", "编号"],
+        "batch_no": ["batch", "批次", "批次号", "batch_no", "batch no"],
+        "spec": ["spec", "规格", "规格型号", "型号", "model"],
+        "location": ["location", "位置", "存放", "存放位置", "库位"],
+        "notes": ["notes", "备注", "说明", "描述", "remark"],
+    }
+
     def __init__(
         self,
         parent: QWidget | None = None,
         on_import: Callable[[list[dict]], tuple[int, int]] | None = None,
+        title: str = "📥 批量导入样品",
+        field_map: list[tuple[str, str]] | None = None,
+        required_fields: list[str] | None = None,
+        guess_keywords: dict[str, list[str]] | None = None,
+        result_msg_labels: tuple[str, str] = ("成功导入", "重复跳过"),
     ) -> None:
-        super().__init__("📥 批量导入样品", parent=parent, width=800)
+        super().__init__(title, parent=parent, width=800)
         self._on_import = on_import
         self._wb_path: Path | None = None
         self._headers: list[str] = []
         self._rows: list[list[str]] = []
         self._imported = False
+
+        self._field_map = field_map or self._DEFAULT_FIELD_MAP
+        self._required_fields = required_fields or []
+        self._guess_keywords = guess_keywords or self._DEFAULT_GUESS_KEYWORDS
+        self._result_msg_labels = result_msg_labels
 
         # 隐藏默认 OK/Cancel 按钮栏
         self._btn_ok.setVisible(False)
@@ -78,11 +97,7 @@ class BatchImportDialog(_BaseDialog):
         file_bar.addWidget(self._lbl_file, 1)
 
         self._btn_browse = QPushButton("选择 Excel 文件")
-        self._btn_browse.setStyleSheet(
-            f"QPushButton {{ background-color: {BLUE}; color: {CRUST}; "
-            f"border: none; border-radius: 6px; padding: 8px 16px; "
-            f"font-weight: bold; font-size: 13px; }}"
-        )
+        self._btn_browse.setProperty("class", "action")
         self._btn_browse.clicked.connect(self._on_browse)
         file_bar.addWidget(self._btn_browse)
         self._root.addLayout(file_bar)
@@ -98,9 +113,9 @@ class BatchImportDialog(_BaseDialog):
         mapping_layout.addWidget(lbl_map)
 
         self._combos: dict[str, QComboBox] = {}
-        for display_name, field_name in self._FIELD_MAP:
+        for display_name, field_name in self._field_map:
             row = QHBoxLayout()
-            required = " *" if field_name == "sn" else ""
+            required = " *" if field_name in self._required_fields else ""
             lbl = QLabel(f"{display_name}{required}:")
             lbl.setFixedWidth(140)
             lbl.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
@@ -111,11 +126,6 @@ class BatchImportDialog(_BaseDialog):
             combo = QComboBox()
             combo.setMinimumWidth(200)
             combo.addItem("— 不导入 —", None)
-            combo.setStyleSheet(
-                f"QComboBox {{ background-color: {SURFACE0}; color: {TEXT}; "
-                f"border: 1px solid {SURFACE1}; border-radius: 6px; "
-                f"padding: 6px 10px; font-size: 13px; min-height: 28px; }}"
-            )
             row.addWidget(combo, 1)
             self._combos[field_name] = combo
             mapping_layout.addLayout(row)
@@ -155,22 +165,13 @@ class BatchImportDialog(_BaseDialog):
         btn_bar.addStretch()
 
         self._btn_import = QPushButton("📥 开始导入")
-        self._btn_import.setStyleSheet(
-            f"QPushButton {{ background-color: {GREEN}; color: {CRUST}; "
-            f"border: none; border-radius: 6px; padding: 8px 24px; "
-            f"font-weight: bold; font-size: 12px; }}"
-            f"QPushButton:disabled {{ background-color: {SURFACE0}; color: {SUBTEXT0}; }}"
-        )
+        self._btn_import.setProperty("class", "primary")
         self._btn_import.setEnabled(False)
         self._btn_import.clicked.connect(self._on_import_clicked)
         btn_bar.addWidget(self._btn_import)
 
         self._btn_close = QPushButton("关闭")
-        self._btn_close.setStyleSheet(
-            f"QPushButton {{ background-color: {SURFACE1}; color: {TEXT}; "
-            f"border: none; border-radius: 6px; padding: 8px 24px; "
-            f"font-weight: bold; font-size: 12px; }}"
-        )
+        self._btn_close.setProperty("class", "action")
         self._btn_close.clicked.connect(self._on_close)
         btn_bar.addWidget(self._btn_close)
 
@@ -255,14 +256,7 @@ class BatchImportDialog(_BaseDialog):
 
     def _guess_column(self, field_name: str) -> int:
         """根据字段名猜测对应的 Excel 列索引，返回 -1 表示未找到。"""
-        keywords = {
-            "sn": ["sn", "序列号", "序列", "serial", "serial number", "编号"],
-            "batch_no": ["batch", "批次", "批次号", "batch_no", "batch no"],
-            "spec": ["spec", "规格", "规格型号", "型号", "model"],
-            "location": ["location", "位置", "存放", "存放位置", "库位"],
-            "notes": ["notes", "备注", "说明", "描述", "remark"],
-        }
-        guesses = keywords.get(field_name, [])
+        guesses = self._guess_keywords.get(field_name, [])
         for idx, header in enumerate(self._headers):
             h_lower = header.strip().lower()
             for kw in guesses:
@@ -282,10 +276,14 @@ class BatchImportDialog(_BaseDialog):
             if col_header is not None:
                 mapping[field_name] = col_header
 
-        # SN 必须映射
-        if "sn" not in mapping:
-            QMessageBox.warning(self, "缺少映射", "请为「SN（必填）」选择对应的 Excel 列")
-            return
+        # 必填字段必须映射
+        for req_field in self._required_fields:
+            if req_field not in mapping:
+                QMessageBox.warning(
+                    self, "缺少映射",
+                    f"请为必填字段「{req_field}」选择对应的 Excel 列",
+                )
+                return
 
         # 构建 header → index 映射
         header_to_idx: dict[str, int] = {}
@@ -305,25 +303,32 @@ class BatchImportDialog(_BaseDialog):
             field_to_col[field_name] = col_idx
 
         # 解析数据
-        sample_list: list[dict] = []
+        field_names = [fn for _, fn in self._field_map]
+        parsed_list: list[dict] = []
         for row in self._rows:
             data: dict = {}
-            # SN 为空则跳过
-            sn_idx = field_to_col["sn"]
-            sn_val = (row[sn_idx] or "").strip()
-            if not sn_val:
+            # 必填字段为空则跳过
+            skip_row = False
+            for req_field in self._required_fields:
+                if req_field in field_to_col:
+                    val = (row[field_to_col[req_field]] or "").strip()
+                    if not val:
+                        skip_row = True
+                        break
+                    data[req_field] = val
+            if skip_row:
                 continue
 
-            data["sn"] = sn_val
-            for fname in ("batch_no", "spec", "location", "notes"):
-                if fname in field_to_col:
+            # 可选字段
+            for fname in field_names:
+                if fname in field_to_col and fname not in self._required_fields:
                     col_idx = field_to_col[fname]
                     data[fname] = (row[col_idx] or "").strip() if col_idx < len(row) else ""
 
-            sample_list.append(data)
+            parsed_list.append(data)
 
-        if not sample_list:
-            QMessageBox.information(self, "无数据", "没有可导入的样品数据（SN 为空）")
+        if not parsed_list:
+            QMessageBox.information(self, "无数据", "没有可导入的数据（必填字段为空）")
             return
 
         # 禁用按钮，显示进度
@@ -333,7 +338,7 @@ class BatchImportDialog(_BaseDialog):
         # 调用导入回调
         if self._on_import:
             try:
-                success_count, skip_count = self._on_import(sample_list)
+                success_count, skip_count = self._on_import(parsed_list)
             except Exception as e:
                 QMessageBox.critical(self, "导入失败", f"导入过程中出错：\n{e}")
                 self._btn_import.setEnabled(True)
@@ -341,7 +346,7 @@ class BatchImportDialog(_BaseDialog):
                 return
         else:
             # 没有回调，仅显示解析结果
-            success_count = len(sample_list)
+            success_count = len(parsed_list)
             skip_count = 0
 
         self._imported = True
@@ -352,9 +357,9 @@ class BatchImportDialog(_BaseDialog):
         self._lbl_result.setVisible(True)
         self._lbl_result.setText(
             f"📊 导入完成！\n"
-            f"  ✅ 成功导入：{success_count} 条\n"
-            f"  ⏭️ 跳过（重复 SN）：{skip_count} 条\n"
-            f"  📋 总计解析：{len(sample_list)} 条"
+            f"  ✅ {self._result_msg_labels[0]}：{success_count} 条\n"
+            f"  ⏭️ {self._result_msg_labels[1]}：{skip_count} 条\n"
+            f"  📋 总计解析：{len(parsed_list)} 条"
         )
         if skip_count > 0:
             self._lbl_result.setStyleSheet(
