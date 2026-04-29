@@ -78,7 +78,6 @@ class MainWindow(QMainWindow):
         self._issue_view.issue_deleted.connect(self._handle_issue_deleted)
         self._issue_view.issue_selected.connect(self._handle_issue_selected)
         self._issue_view.fa_record_added.connect(self._handle_fa_record_added)
-        self._issue_view.set_fa_records_callback(lambda: self._current_fa_records)
 
         # Debounce 刷新定时器
         self._refresh_timer = QTimer(self)

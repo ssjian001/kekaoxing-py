@@ -155,6 +155,7 @@ class _FAPanel(QScrollArea):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWidgetResizable(True)
+        self._records: list[FARecord] = []
         self._container = QWidget()
         self._layout = QVBoxLayout(self._container)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -167,6 +168,7 @@ class _FAPanel(QScrollArea):
         """)
 
     def set_fa_records(self, records: list[FARecord]) -> None:
+        self._records = records
         # 清空
         while self._layout.count():
             child = self._layout.takeAt(0)
@@ -389,18 +391,9 @@ class IssueView(QWidget):
         issue_id = self.get_selected_issue_id()
         self.issue_selected.emit(issue_id)
 
-    # ── 回调属性（供外部设置）──
-
-    def set_fa_records_callback(self, callback: object) -> None:  # type: ignore[type-arg]
-        """设置获取当前 FA 记录列表的回调。"""
-        self._fa_records_callback = callback
-
     def _current_fa_records(self) -> list[FARecord]:
         """返回当前 FA 面板中显示的记录列表。"""
-        cb = getattr(self, "_fa_records_callback", None)
-        if callable(cb):
-            return cb()  # type: ignore[no-any-return]
-        return []
+        return self._fa_panel._records
 
     # ── 空状态 ──────────────────────────────────────────────
 
