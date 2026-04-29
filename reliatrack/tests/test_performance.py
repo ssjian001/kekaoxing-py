@@ -214,14 +214,6 @@ def test_exports():
 
 bench("全部导出测试", test_exports)
 
-# ---- 9. QR 码生成 ----
-print("\n═══ 9. QR 码批量生成 ═══")
-from src.services.qr_service import generate_qr
-def bulk_qr(n):
-    for i in range(n):
-        generate_qr(f'SMP-{i+1:04d}')
-bench("生成 100 个 QR 码", bulk_qr, 100)
-
 # ---- 汇总 ----
 print("\n" + "=" * 60)
 total = sum(t for _, t in results)

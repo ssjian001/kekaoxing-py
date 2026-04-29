@@ -15,17 +15,13 @@ from PySide6.QtWidgets import (
     QLabel,
     QComboBox,
     QAbstractItemView,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
     QMessageBox,
 )
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QPixmap
 
 from src.styles.theme import (
-    CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1, GREEN, YELLOW, RED, BLUE, PEACH, LAVENDER, OVERLAY0,
+    MANTLE, BASE, SURFACE0, SURFACE1,
+    TEXT, GREEN, YELLOW, BLUE, OVERLAY0,
 )
 from src.styles.constants import TABLE_QSS
 from src.models.sample import Sample
@@ -138,11 +134,6 @@ class _SamplePoolTab(QWidget):
         self._btn_edit.setMinimumWidth(70)
         toolbar.addWidget(self._btn_edit)
 
-        self._btn_generate_qr = QPushButton("生成二维码")
-        self._btn_generate_qr.setProperty("class", "action")
-        self._btn_generate_qr.setMinimumWidth(70)
-        toolbar.addWidget(self._btn_generate_qr)
-
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS)
@@ -213,46 +204,6 @@ class _SamplePoolTab(QWidget):
     def btn_edit(self) -> QPushButton:
         """编辑按钮。"""
         return self._btn_edit
-
-    @property
-    def btn_generate_qr(self) -> QPushButton:
-        """生成二维码按钮。"""
-        return self._btn_generate_qr
-
-    def show_qr_dialog(
-        self,
-        sn: str,
-        parent: QWidget | None = None,
-        on_save_to_db: object | None = None,
-    ) -> None:
-        """弹出二维码预览对话框。
-
-        Args:
-            sn: 样品序列号，用于生成二维码内容。
-            parent: 父窗口。
-            on_save_to_db: 保存到数据库的回调 (sn, png_bytes) -> None。
-        """
-        from src.services.qr_service import generate_qr
-
-        try:
-            png_bytes = generate_qr(sn)
-        except Exception as e:
-            QMessageBox.critical(parent, "生成失败", f"生成二维码失败: {e}")
-            return
-
-        pixmap = QPixmap()
-        if not pixmap.loadFromData(png_bytes):
-            QMessageBox.critical(parent, "生成失败", "无法解析二维码图片")
-            return
-
-        # 缩放到合适显示尺寸
-        scaled = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio,
-                               Qt.TransformationMode.SmoothTransformation)
-
-        dlg = _QRCodeDialog(sn, scaled, png_bytes, parent=parent)
-        if on_save_to_db is not None:
-            dlg._db_callback = on_save_to_db  # type: ignore[attr-defined]
-        dlg.exec()
 
     @property
     def search_input(self) -> QLineEdit:
@@ -467,131 +418,6 @@ def _color_fg(hex_color: str):
     return QBrush(QColor(hex_color))
 
 
-class _QRCodeDialog(QDialog):
-    """二维码预览对话框 — 展示 QR 码并提供保存到文件 / 数据库选项。"""
-
-    def __init__(
-        self,
-        sn: str,
-        pixmap: QPixmap,
-        png_bytes: bytes,
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._sn = sn
-        self._png_bytes = png_bytes
-        self.setWindowTitle(f"二维码 — {sn}")
-        self.setMinimumSize(380, 440)
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {MANTLE};
-                color: {TEXT};
-            }}
-            QLabel {{
-                color: {TEXT};
-            }}
-            QPushButton {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{
-                background-color: {SURFACE1};
-            }}
-        """)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(8)
-
-        # 标题
-        title = QLabel(f"样品二维码：{sn}")
-        title.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {TEXT};")
-        layout.addWidget(title)
-
-        # 图片
-        img_label = QLabel()
-        img_label.setPixmap(pixmap)
-        img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(img_label)
-
-        layout.addStretch()
-
-        # 按钮栏
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-
-        btn_save_file = QPushButton("保存到文件")
-        btn_save_file.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {BLUE};
-                color: {CRUST};
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{
-                background-color: {SURFACE1};
-            }}
-        """)
-        btn_save_file.clicked.connect(self._save_to_file)
-        btn_layout.addWidget(btn_save_file)
-
-        btn_save_db = QPushButton("保存到数据库")
-        btn_save_db.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {BLUE};
-                color: {CRUST};
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{
-                background-color: {SURFACE1};
-            }}
-        """)
-        btn_save_db.clicked.connect(self._save_to_db)
-        btn_layout.addWidget(btn_save_db)
-
-        btn_close = QPushButton("关闭")
-        btn_close.clicked.connect(self.accept)
-        btn_layout.addWidget(btn_close)
-
-        layout.addLayout(btn_layout)
-
-    def _save_to_file(self) -> None:
-        """保存二维码 PNG 到本地文件。"""
-        default_name = f"QR_{self._sn}.png"
-        path, _ = QFileDialog.getSaveFileName(
-            self, "保存二维码", default_name,
-            "PNG 图片 (*.png);;所有文件 (*)",
-        )
-        if not path:
-            return
-        try:
-            with open(path, "wb") as f:
-                f.write(self._png_bytes)
-            QMessageBox.information(self, "保存成功", f"二维码已保存到:\n{path}")
-        except Exception as e:
-            QMessageBox.critical(self, "保存失败", f"保存文件失败: {e}")
-
-    def _save_to_db(self) -> None:
-        """保存 base64 编码的二维码到数据库（通过回调）。
-
-        由 main.py 中连接的回调处理实际存储逻辑。
-        """
-        if hasattr(self, "_db_callback") and callable(self._db_callback):
-            self._db_callback(self._sn, self._png_bytes)
-
-
 class _SampleLedgerTab(QWidget):
     """样品台账 Tab — 所有样品记录。"""
 
@@ -618,11 +444,6 @@ class _SampleLedgerTab(QWidget):
         self._btn_edit.setMinimumWidth(70)
         toolbar.addWidget(self._btn_edit)
 
-        self._btn_generate_qr = QPushButton("生成二维码")
-        self._btn_generate_qr.setProperty("class", "action")
-        self._btn_generate_qr.setMinimumWidth(70)
-        toolbar.addWidget(self._btn_generate_qr)
-
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS)
@@ -630,12 +451,6 @@ class _SampleLedgerTab(QWidget):
 
     def refresh(self, samples: list[Sample]) -> None:
         self._table.set_samples(samples)
-
-    # 暴露按钮和表格引用
-    @property
-    def btn_generate_qr(self) -> QPushButton:
-        """生成二维码按钮。"""
-        return self._btn_generate_qr
 
     @property
     def btn_edit(self) -> QPushButton:

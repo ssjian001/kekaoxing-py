@@ -109,11 +109,9 @@ class MainWindow(QMainWindow):
         self._sample_view.pool_tab.btn_add.clicked.connect(self._on_sample_checkin)
         self._sample_view.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
         self._sample_view.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
-        self._sample_view.pool_tab.btn_generate_qr.clicked.connect(self._on_sample_generate_qr)
         self._sample_view.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
 
         # 台账 Tab 按钮
-        self._sample_view.ledger_tab.btn_generate_qr.clicked.connect(self._on_ledger_generate_qr)
         self._sample_view.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
 
         # 出入库记录 Tab 搜索回调
@@ -730,72 +728,6 @@ class MainWindow(QMainWindow):
         if dlg.was_imported():
             self._ctrl.notify_data_changed()
             self.statusBar().showMessage("✅ 样品批量导入完成", 5000)
-
-    def _on_sample_generate_qr(self) -> None:
-        """为选中样品生成二维码（样品池 Tab）。"""
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.sample_service:
-            return
-        sample_id = self._sample_view.pool_tab.table.get_selected_sample_id()
-        if sample_id is None:
-            QMessageBox.warning(self, "提示", "请先选中一个样品。")
-            return
-        sample = ctrl.sample_service.get(sample_id)
-        if sample is None:
-            return
-        if not sample.sn:
-            QMessageBox.warning(self, "提示", "样品 SN 为空，无法生成二维码。")
-            return
-
-        def _save_qr_to_db(sn: str, png_bytes: bytes) -> None:
-            """将 base64 编码的 QR 码保存到样品的 qr_code 字段。"""
-            import base64
-            b64 = base64.b64encode(png_bytes).decode("ascii")
-            try:
-                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr, arg-type]
-                self.statusBar().showMessage(
-                    f"✅ 样品 {sn} 的二维码已保存到数据库", 5000
-                )
-                self._ctrl.notify_data_changed()
-            except Exception as e:
-                QMessageBox.critical(self, "保存失败", f"保存到数据库失败: {e}")
-
-        self._sample_view.pool_tab.show_qr_dialog(
-            sample.sn, parent=self, on_save_to_db=_save_qr_to_db,
-        )
-
-    def _on_ledger_generate_qr(self) -> None:
-        """为选中样品生成二维码（样品台账 Tab）。"""
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.sample_service:
-            return
-        sample_id = self._sample_view.ledger_tab.table.get_selected_sample_id()
-        if sample_id is None:
-            QMessageBox.warning(self, "提示", "请先选中一个样品。")
-            return
-        sample = ctrl.sample_service.get(sample_id)
-        if sample is None:
-            return
-        if not sample.sn:
-            QMessageBox.warning(self, "提示", "样品 SN 为空，无法生成二维码。")
-            return
-
-        def _save_qr_to_db(sn: str, png_bytes: bytes) -> None:
-            """将 base64 编码的 QR 码保存到样品的 qr_code 字段。"""
-            import base64
-            b64 = base64.b64encode(png_bytes).decode("ascii")
-            try:
-                ctrl.sample_service.update(sample.id, qr_code=b64)  # type: ignore[union-attr, arg-type]
-                self.statusBar().showMessage(
-                    f"✅ 样品 {sn} 的二维码已保存到数据库", 5000
-                )
-                self._ctrl.notify_data_changed()
-            except Exception as e:
-                QMessageBox.critical(self, "保存失败", f"保存到数据库失败: {e}")
-
-        self._sample_view.pool_tab.show_qr_dialog(
-            sample.sn, parent=self, on_save_to_db=_save_qr_to_db,
-        )
 
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""

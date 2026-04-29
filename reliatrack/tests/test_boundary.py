@@ -5,7 +5,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from PySide6.QtWidgets import QApplication
 from src.controllers import AppController
 from src.services.export_service import ExportService
-from src.services.qr_service import generate_qr, generate_qr_base64
 from src.services.undo_manager import (
     AddEntityCommand, DeleteEntityCommand, UpdateFieldCommand,
 )
@@ -145,11 +144,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     svc.export_to_word(ctrl.test_plan_service.get_plan(tp1), ctrl.test_plan_service.get_tasks(tp1), ctrl.issue_service.list_all(), ctrl.sample_service.list_all(), docx_path)
     check(f"Word 导出文件存在 ({os.path.getsize(docx_path)} bytes)", os.path.exists(docx_path))
 
-print("── QR 码生成 ──")
-qr_bytes = generate_qr("SMP-D01")
-check(f"QR PNG bytes > 0 ({len(qr_bytes)} bytes)", len(qr_bytes) > 0)
-qr_b64 = generate_qr_base64("SMP-D01")
-check(f"QR base64 len > 0 ({len(qr_b64)} chars)", len(qr_b64) > 0)
+print("── 边界测试完成 ──")
 
 print("── UndoManager 边界 ──")
 ctrl.undo_manager.clear()

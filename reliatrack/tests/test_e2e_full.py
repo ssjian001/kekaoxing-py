@@ -8,9 +8,8 @@
 5. 测试样品出入库
 6. 测试任务排程
 7. 测试导出（Excel + PDF + Word）
-8. 测试 QR 码生成
-9. 测试 UndoManager
-10. 启动 MainWindow，验证 7 个 Tab 加载
+8. 测试 UndoManager
+9. 启动 MainWindow，验证 7 个 Tab 加载
 """
 
 from __future__ import annotations
@@ -37,7 +36,6 @@ from src.services import (
     TestPlanService, IssueService, KnowledgeService, SchedulerService,
 )
 from src.services.export_service import ExportService
-from src.services.qr_service import generate_qr, generate_qr_base64
 from src.services.undo_manager import (
     UndoManager, MoveTaskCommand, UpdateProgressCommand, AddEntityCommand, DeleteEntityCommand,
 )
@@ -371,31 +369,7 @@ def test_7_export(tr: TestResult, conn, plan_id, task_repo, issue_repo, sam_repo
             tr.record("FAIL", "Word 导出-综合报告", str(e))
 
 
-def test_8_qr_code(tr: TestResult):
-    """8. 测试 QR 码生成"""
-    print("\n── 测试 8: QR 码生成 ──")
-
-    try:
-        png_bytes = generate_qr("SN-001")
-        assert len(png_bytes) > 0
-        # PNG 文件头
-        assert png_bytes[:4] == b'\x89PNG'
-        tr.record("PASS", "QR generate_qr", f"PNG {len(png_bytes)} bytes")
-    except Exception as e:
-        tr.record("FAIL", "QR generate_qr", str(e))
-
-    try:
-        b64_str = generate_qr_base64("SN-002")
-        assert len(b64_str) > 0
-        import base64
-        decoded = base64.b64decode(b64_str)
-        assert decoded[:4] == b'\x89PNG'
-        tr.record("PASS", "QR generate_qr_base64", f"base64 len={len(b64_str)}")
-    except Exception as e:
-        tr.record("FAIL", "QR generate_qr_base64", str(e))
-
-
-def test_9_undo_manager(tr: TestResult, conn, task_repo):
+def test_8_undo_manager(tr: TestResult, conn, task_repo):
     """9. 测试 UndoManager"""
     print("\n── 测试 9: UndoManager ──")
 
@@ -468,7 +442,7 @@ def test_9_undo_manager(tr: TestResult, conn, task_repo):
     tr.record("PASS", "UndoManager clear", "清空成功")
 
 
-def test_10_main_window(tr: TestResult):
+def test_9_main_window(tr: TestResult):
     """10. 启动 MainWindow，验证 7 个 Tab 加载"""
     print("\n── 测试 10: MainWindow + 7 Tab ──")
 
@@ -546,13 +520,12 @@ def main():
         test_5_sample_transactions(tr, conn, sid, tid, sam_repo)
         test_6_scheduler(tr, conn, plan_id, task_repo, eq_repo, plan_repo)
         test_7_export(tr, conn, plan_id, task_repo, issue_repo, sam_repo)
-        test_8_qr_code(tr)
-        test_9_undo_manager(tr, conn, task_repo)
+        test_8_undo_manager(tr, conn, task_repo)
     finally:
         cleanup_db()
 
     # Test 10: MainWindow (独立内存数据库)
-    test_10_main_window(tr)
+    test_9_main_window(tr)
 
     return tr.summary()
 
