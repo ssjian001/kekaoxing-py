@@ -346,6 +346,11 @@ class TestPlanView(QWidget):
         self._btn_delete_task.setFixedHeight(28)
         toolbar.addWidget(self._btn_delete_task)
 
+        self._btn_import_tasks = QPushButton("导入任务")
+        self._btn_import_tasks.setProperty("class", "action")
+        self._btn_import_tasks.setFixedHeight(28)
+        toolbar.addWidget(self._btn_import_tasks)
+
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
@@ -410,6 +415,10 @@ class TestPlanView(QWidget):
     @property
     def btn_delete_task(self) -> QPushButton:
         return self._btn_delete_task
+
+    @property
+    def btn_import_tasks(self) -> QPushButton:
+        return self._btn_import_tasks
 
     def setup_task_callbacks(
         self,

@@ -135,6 +135,9 @@ class MainWindow(QMainWindow):
         self._test_plan_view._plan_combo.currentIndexChanged.connect(
             self._on_plan_changed
         )
+        self._test_plan_view.btn_import_tasks.clicked.connect(
+            self._on_task_batch_import
+        )
 
         # 测试任务增删改
         self._test_plan_view.setup_task_callbacks(
@@ -573,6 +576,79 @@ class MainWindow(QMainWindow):
         # 刷新视图
         self._ctrl.notify_data_changed("task")
 
+    def _on_task_batch_import(self) -> None:
+        """测试任务批量导入。"""
+        ctrl = self._ctrl
+        if ctrl is None or ctrl.test_plan_service is None:
+            return
+
+        plan_id = self._test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self.statusBar().showMessage("请先创建并选择测试计划", 5000)
+            return
+
+        svc = ctrl.test_plan_service
+
+        def _do_import(task_list: list[dict]) -> tuple[int, int]:
+            """执行批量导入，返回 (成功数, 跳过数)。"""
+            success = 0
+            skip = 0
+            for data in task_list:
+                name = data.get("name", "").strip()
+                if not name:
+                    continue
+                try:
+                    svc.create_task(
+                        plan_id=plan_id,
+                        name=name,
+                        category=data.get("category") or "",
+                        test_standard=data.get("test_standard") or "",
+                        duration=int(data.get("duration") or 1),
+                        priority=int(data.get("priority") or 3),
+                        temperature=data.get("temperature") or "",
+                        humidity=data.get("humidity") or "",
+                        notes=data.get("notes") or "",
+                    )
+                    success += 1
+                except Exception:
+                    skip += 1
+            return success, skip
+
+        task_field_map = [
+            ("任务名称（必填）", "name"),
+            ("测试类别", "category"),
+            ("测试标准", "test_standard"),
+            ("工期(天)", "duration"),
+            ("优先级(1-3)", "priority"),
+            ("温度范围", "temperature"),
+            ("湿度范围", "humidity"),
+            ("备注", "notes"),
+        ]
+        task_guess_keywords = {
+            "name": ["name", "名称", "任务", "任务名", "测试项", "测试名称", "test"],
+            "category": ["category", "类别", "分类", "测试类别", "类型", "type"],
+            "test_standard": ["standard", "标准", "测试标准", "条款", "spec"],
+            "duration": ["duration", "工期", "天数", "周期", "day"],
+            "priority": ["priority", "优先级", "优先", "pri"],
+            "temperature": ["temp", "温度", "temperature"],
+            "humidity": ["humidity", "湿度", "rh"],
+            "notes": ["notes", "备注", "说明", "remark"],
+        }
+
+        dlg = BatchImportDialog(
+            parent=self,
+            on_import=_do_import,
+            title="导入测试任务",
+            field_map=task_field_map,
+            required_fields=["name"],
+            guess_keywords=task_guess_keywords,
+            result_msg_labels=("成功导入", "导入失败"),
+        )
+        dlg.exec()
+        if dlg.was_imported():
+            self._ctrl.notify_data_changed("task")
+            self.statusBar().showMessage("测试任务导入完成", 5000)
+
     def _on_plan_add(self) -> None:
         """新建测试计划。"""
         ctrl = self._ctrl
@@ -815,6 +891,7 @@ class MainWindow(QMainWindow):
         dlg = BatchImportDialog(
             parent=self,
             on_import=_do_import,
+            required_fields=["sn"],
         )
         dlg.exec()
         if dlg.was_imported():
