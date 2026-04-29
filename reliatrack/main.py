@@ -164,7 +164,7 @@ class MainWindow(QMainWindow):
         # 全局项目筛选器 — 在 tab_widget 之前插入
         filter_bar = QHBoxLayout()
         filter_label = QLabel("📁 项目筛选:")
-        filter_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
+        filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._project_filter_combo = QComboBox()
         self._project_filter_combo.setMinimumWidth(200)
         self._project_filter_combo.setStyleSheet(f"""
@@ -173,9 +173,9 @@ class MainWindow(QMainWindow):
                 color: {TEXT};
                 border: 1px solid {SURFACE1};
                 border-radius: 6px;
-                padding: 5px 10px;
-                font-size: 13px;
-                min-height: 28px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-height: 26px;
             }}
             QComboBox::drop-down {{
                 border: none;
@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
         filter_bar.addStretch()
         filter_layout = QWidget()
         filter_layout.setLayout(filter_bar)
-        filter_layout.setStyleSheet(f"background-color: {MANTLE}; padding: 4px 24px;")
+        filter_layout.setStyleSheet(f"background-color: {MANTLE}; padding: 3px 16px;")
         layout.insertWidget(0, filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
 

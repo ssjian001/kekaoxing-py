@@ -58,7 +58,7 @@ class _IssueTable(QTableWidget):
         self.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
+            font_size=12,
         ))
 
         # 信号

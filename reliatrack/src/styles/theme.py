@@ -205,16 +205,17 @@ QHeaderView::section {{
 QTabWidget::pane {{
     border: 1px solid {BORDER};
     background-color: {BG_DARK};
+    padding-top: 4px;
 }}
 QTabBar::tab {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     border-bottom: none;
-    padding: 8px 20px;
+    padding: 6px 14px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
 }}
 QTabBar::tab:selected {{
     background-color: {BG_HOVER};
@@ -320,8 +321,8 @@ QStatusBar {{
 QToolBar {{
     background-color: {BG_CARD};
     border-bottom: 1px solid {BORDER};
-    spacing: 8px;
-    padding: 4px 12px;
+    spacing: 6px;
+    padding: 3px 8px;
 }}
 
 /* ── 分割器 ── */

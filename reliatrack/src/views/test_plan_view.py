@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
@@ -16,7 +15,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QComboBox,
     QAbstractItemView,
-    QScrollArea,
     QFrame,
     QMenu,
     QMessageBox,
@@ -355,26 +353,15 @@ class TestPlanView(QWidget):
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
-        # 分割器：左表格 + 右甘特图
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-
+        # 任务表格（上）
         self._task_table = _TaskTable()
-        splitter.addWidget(self._task_table)
+        self._task_table.setMaximumHeight(260)
+        layout.addWidget(self._task_table, stretch=3)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
+        # 甘特图（下）
         self._gantt = _GanttWidget()
-        scroll.setWidget(self._gantt)
-        splitter.addWidget(scroll)
-
-        splitter.setStretchFactor(0, 2)
-        splitter.setStretchFactor(1, 3)
-        splitter.setStyleSheet(f"""
-            QSplitter::handle {{ background-color: {SURFACE1}; width: 2px; }}
-            QScrollArea {{ border: 1px solid {SURFACE1}; border-radius: 8px; }}
-        """)
-
-        layout.addWidget(splitter)
+        self._gantt.setStyleSheet(f"background-color: {BASE}; border: 1px solid {SURFACE1}; border-radius: 6px;")
+        layout.addWidget(self._gantt, stretch=2)
 
     def refresh(self, tasks: list[TestTask], total_days: int = 30) -> None:
         self._task_table.set_tasks(tasks)

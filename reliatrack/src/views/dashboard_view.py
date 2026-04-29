@@ -56,7 +56,7 @@ class _KPICard(QFrame):
     def __init__(self, title: str, value: str, color: str = BLUE, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("kpi-card")
-        self.setFixedHeight(100)
+        self.setFixedHeight(72)
         self.setStyleSheet(f"""
             #kpi-card {{
                 background-color: {SURFACE0};
@@ -65,17 +65,15 @@ class _KPICard(QFrame):
             }}
         """)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 12, 20, 12)
+        layout.setContentsMargins(12, 8, 12, 8)
 
         title_label = QLabel(title)
         title_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; border: none;")
         layout.addWidget(title_label)
 
         value_label = QLabel(value)
-        value_label.setStyleSheet(f"color: {color}; font-size: 32px; font-weight: bold; border: none;")
+        value_label.setStyleSheet(f"color: {color}; font-size: 24px; font-weight: bold; border: none;")
         layout.addWidget(value_label)
-
-        layout.addStretch()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -101,12 +99,12 @@ class _BarChartWidget(QWidget):
         self._title = title
         self._data: dict[str, int] = data or {}
         # 布局常量
-        self._h_margin = 24
-        self._v_margin = 16
-        self._title_height = 32
-        self._bar_height = 24
-        self._bar_gap = 12
-        self._label_width = 90
+        self._h_margin = 16
+        self._v_margin = 10
+        self._title_height = 24
+        self._bar_height = 20
+        self._bar_gap = 8
+        self._label_width = 80
         self._value_width = 50
         self.setMinimumHeight(160)
 
@@ -146,7 +144,7 @@ class _BarChartWidget(QWidget):
 
         # 标题
         title_font = QFont()
-        title_font.setPointSize(13)
+        title_font.setPointSize(11)
         title_font.setBold(True)
         painter.setFont(title_font)
         painter.setPen(QColor(TEXT))
@@ -264,7 +262,7 @@ class DashboardView(QWidget):
 
         # KPI 卡片网格
         grid = QGridLayout()
-        grid.setSpacing(16)
+        grid.setSpacing(8)
 
         self._card_tasks = _KPICard("测试任务", "0", BLUE)
         self._card_completed = _KPICard("已完成", "0", GREEN)
@@ -286,7 +284,7 @@ class DashboardView(QWidget):
 
         # ── 图表区域 ──
         chart_grid = QGridLayout()
-        chart_grid.setSpacing(16)
+        chart_grid.setSpacing(8)
 
         self._chart_task_status = _BarChartWidget("任务状态分布")
         self._chart_sample_status = _BarChartWidget("样品状态分布")

@@ -14,11 +14,11 @@ DAY_WIDTH: int = 40
 HEADER_HEIGHT: int = 36
 PADDING_SMALL: int = 4
 PADDING_MEDIUM: int = 8
-PADDING_LARGE: int = 16
+PADDING_LARGE: int = 12
 VIEW_MARGINS: tuple[int, int, int, int] = (16, 10, 16, 10)
 SPACING_SMALL: int = 4
 SPACING_MEDIUM: int = 8
-SPACING_LARGE: int = 16
+SPACING_LARGE: int = 12
 
 # ═══════════════════════════════════════════════════════════════════
 #  字体
