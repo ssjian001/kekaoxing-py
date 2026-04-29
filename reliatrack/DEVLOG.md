@@ -203,3 +203,98 @@
 |---|---|
 | E2E | 58/58 PASS |
 | Boundary | 42/42 PASS |
+
+## 2026-04-29 (下午) — 功能增强 + UI 全面优化
+
+> 以用户实测反馈为驱动，分 4 个方向完成 15 个 commit。
+
+### 一、功能增强 (2 commits)
+
+#### 1. 新数据自动关联当前项目 + Dashboard 增强
+- 创建新数据（样品入库/Issue/测试计划）时自动将全局筛选器的项目预填到弹窗
+- `SampleCheckInDialog` / `IssueEditDialog` / `PlanEditDialog` / `SampleEditDialog` 全部支持 `default_project_id` 参数
+- Dashboard 新增「样品数」KPI 卡片（TEAL 配色）
+- Dashboard 标题下方项目筛选指示器
+
+#### 2. 技术员管理嵌入设备管理 Tab
+- 设备管理 Tab 改为内部 QTabWidget（设备 | 技术员），不再是独立顶级 Tab
+- 技术员 CRUD 回调完整实现， TechnicianRepository 用 BaseRepository.insert 方法
+
+### 二、UI/UX 优化 (9 commits)
+
+| Commit | 内容 |
+|--------|------|
+| `c35c857` | 小分辨率适配 — 去重复标题/emoji、缩小窗口和控件 |
+| `3cf7ca9` | 收紧 UI 密度，甘特图改为上下堆叠 |
+| `21c5a0b` | 全面优化 UI 布局适配低分辨率屏幕 |
+| `985f9c3` | 所有弹窗支持自由调整大小（setSizeGripEnabled） |
+| `9723e84` | 参照 Jira/TestRail 标准模式优化布局 |
+| `01db1b9` | 明亮主题（Catppuccin Latte）+ Issue 布局改上下堆叠 |
+| `2c7cb82` | 技术员管理嵌入设备管理 Tab |
+| `3b8afca` | 移除样品二维码生成功能 |
+| `c9ac3c1` | 替换 QDialogButtonBox 为自定义按钮 |
+
+**主题变更**: Catppuccin Mocha 暗色 → Catppuccin Latte 明亮
+**关键原则**: 去除 Tab 内重复页面标题、所有按钮去除 emoji、上下堆叠优先于左右并列、搜索框左对齐 → stretch → 按钮分组
+
+### 三、代码质量 (1 commit)
+
+#### mypy 类型注解全通过
+- 从 130 errors 降至 0（66 source files）
+- 修复模式：`assert x is not None`、`cast()`、`# type: ignore`、`if TYPE_CHECKING` 隔离循环导入
+- `SampleEditDialog` 的 `project_id` 改为 QComboBox 下拉选择
+
+### 四、导出重构 (2 commits)
+
+| Commit | 内容 |
+|--------|------|
+| `4767513` | PDF 导出从 fpdf2 切换到 reportlab（更成熟的中文处理） |
+| `4a7dcb5` | 跨平台字体检测 — Windows(msyh)/macOS(PingFang)/Linux(Droid) |
+
+**技术细节**:
+- reportlab 不支持 CFF/OTF outline，只能用 TrueType
+- 字体注册名固定 "CJK"/"CJK-Bold"，用变量引用不硬编码
+- 找不到字体时抛明确 FileNotFoundError
+
+### 五、问题修复 (1 commit)
+
+#### QDialogButtonBox 中文翻译 Bug
+- Qt 中文翻译将 "OK" 错误翻译为"向上"
+- `base_dialog.py` 改用自定义 `QPushButton("确定")/QPushButton("取消")`
+- `batch_import_dialog.py` / `attachment_dialog.py` 按钮隐藏方式同步更新
+- 导出失败从状态栏消息改为 `QMessageBox.critical()` 弹窗 + traceback
+
+### 排程引擎验证
+- 独立脚本验证全部排程逻辑：日历计算、依赖链、设备冲突/并行、优先级排序、循环依赖检测、锁定已有排程、跳过周末
+- `start_day` 是日历天（可落在周末），实际工作日由 `_iterate_work_days` 自动跳过
+
+### 测试结果
+| 测试 | 结果 |
+|---|---|
+| E2E | 56/56 PASS (移除 QR 测试减少 2 项) |
+| Boundary | 42/42 PASS |
+| mypy | 66 files, 0 errors |
+
+### 修改文件汇总
+- 38 files changed, +1,076 / -894 lines
+- 新增依赖: reportlab
+- 移除: src/services/qr_service.py
+
+---
+
+## 当前状态 (2026-04-29)
+
+### 质量指标
+- E2E: 56/56 | Boundary: 42/42 | mypy: 0 errors
+- 远程同步: `4a7dcb5` (main 分支, 22 commits)
+
+### 已知限制（后续迭代方向）
+
+| 项目 | 说明 |
+|------|------|
+| `start_day` 日历天语义 | 可落在周末，实际工作日自动跳过，排程结果正确但用户看到的日期可能显示周六/周日 |
+| 排程参数固定 | `skip_weekends=True` 硬编码，`equipment_capacity` 默认 1，无 UI 配置入口 |
+| `qr_code` 字段残留 | DB model 保留（避免迁移），功能已移除 |
+| 设备利用率建议为空 | 复杂场景下 suggestions 列表为空 |
+| 无撤销/重做 UI | 排程不可回退 |
+| 单文件 SQLite | 无并发写入保护 |
