@@ -1212,7 +1212,9 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"✅ 已导出: {path}", 10000)
 
         except Exception as e:
-            self.statusBar().showMessage(f"❌ 导出失败: {e}", 10000)
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "导出失败", f"导出时发生错误:\n{e}")
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """处理窗口关闭事件 — 清理资源。"""

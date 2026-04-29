@@ -63,7 +63,8 @@ class BatchImportDialog(_BaseDialog):
         self._imported = False
 
         # 隐藏默认 OK/Cancel 按钮栏
-        self._btn_box.setVisible(False)
+        self._btn_ok.setVisible(False)
+        self._btn_cancel.setVisible(False)
 
         self._build_ui()
 

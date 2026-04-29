@@ -83,7 +83,8 @@ class AttachmentDialog(_BaseDialog):
         self._attachments: list[IssueAttachment] = []
 
         # 隐藏默认的 OK/Cancel 按钮栏（附件管理弹窗不需要）
-        self._btn_box.setVisible(False)
+        self._btn_ok.setVisible(False)
+        self._btn_cancel.setVisible(False)
 
         # 在表单区域上方添加附件管理 UI
         self._setup_attachment_ui()

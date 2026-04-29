@@ -1,10 +1,9 @@
 """通用弹窗基类 — Catppuccin Mocha 暗色主题。"""
 
 from __future__ import annotations
-
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
+    QHBoxLayout,
     QFormLayout,
     QVBoxLayout,
     QLabel,
@@ -13,6 +12,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QSpinBox,
     QTextEdit,
+    QPushButton,
     QWidget,
 )
 from PySide6.QtCore import Qt
@@ -50,7 +50,7 @@ _DIALOG_STYLE = f"""
         color: {TEXT};
         font-size: 12px;
     }}
-    QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit, QTextEdit, QComboBox {{
+    QLineEdit, QComboBox {{
         background-color: {SURFACE0};
         color: {TEXT};
         border: 1px solid {SURFACE1};
@@ -61,6 +61,35 @@ _DIALOG_STYLE = f"""
     }}
     QLineEdit:focus, QComboBox:focus {{
         border-color: {BLUE};
+    }}
+    QSpinBox, QDoubleSpinBox {{
+        background-color: {SURFACE0};
+        color: {TEXT};
+        border: 1px solid {SURFACE1};
+        border-radius: 4px;
+        padding: 2px 4px;
+        font-size: 12px;
+        min-height: 24px;
+    }}
+    QSpinBox::up-button, QSpinBox::down-button,
+    QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+        background-color: {SURFACE1};
+        border: none;
+        width: 20px;
+        min-width: 20px;
+    }}
+    QSpinBox::up-button:hover, QSpinBox::down-button:hover,
+    QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
+        background-color: {SURFACE2};
+    }}
+    QDateEdit, QTextEdit {{
+        background-color: {SURFACE0};
+        color: {TEXT};
+        border: 1px solid {SURFACE1};
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12px;
+        min-height: 24px;
     }}
     QPushButton {{
         background-color: {BLUE};
@@ -126,13 +155,19 @@ class _BaseDialog(QDialog):
         self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         self._root.addLayout(self._form)
 
-        # 按钮栏
-        self._btn_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
-        )
-        self._btn_box.accepted.connect(self.accept)
-        self._btn_box.rejected.connect(self.reject)
-        self._root.addWidget(self._btn_box)
+        # 按钮栏 — 使用自定义按钮避免 QDialogButtonBox 中文翻译 bug
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        self._btn_cancel = QPushButton("取消")
+        self._btn_cancel.clicked.connect(self.reject)
+        btn_layout.addWidget(self._btn_cancel)
+
+        self._btn_ok = QPushButton("确定")
+        self._btn_ok.clicked.connect(self.accept)
+        btn_layout.addWidget(self._btn_ok)
+
+        self._root.addLayout(btn_layout)
 
     # ── 辅助方法 ──────────────────────────────────────────────────
 
