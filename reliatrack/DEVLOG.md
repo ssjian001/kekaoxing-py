@@ -298,3 +298,45 @@
 | 设备利用率建议为空 | 复杂场景下 suggestions 列表为空 |
 | 无撤销/重做 UI | 排程不可回退 |
 | 单文件 SQLite | 无并发写入保护 |
+
+---
+
+## 2026-04-29 (晚) — 代码审查 & 优化修复
+
+> 全量代码审查，分数据层 + UI 层两个子代理并行审查。
+
+### 审查发现
+
+#### 数据层 🔴 阻塞项 (3)
+| # | 问题 | 文件 | 说明 |
+|---|------|------|------|
+| D1 | `list_transactions` 列名遗漏 | `sample_repo.py:94-98` | `cols` 硬编码 11 项，`SELECT st.*` 返回 13 列，遗漏 `expected_return`, `actual_return`, `notes` |
+| D2 | `init_schema` 无事务包裹 | `schema.py:349-385` | 迁移中途 crash 导致半迁移状态 |
+| D3 | Service 直接访问 `_conn` | `equipment_service.py:32`, `test_plan_service.py:44-55` | 绕过 Repository 抽象 |
+
+#### 数据层 🟡 建议项 (7)
+- `sample_repo.py:83` LIKE 搜索未转义 `%`/`_`
+- `begin_transaction()` 无嵌套保护
+- `ProjectService.delete()` N+1 循环删除
+- `KnowledgeRepository` 方法签名与基类不一致
+- schema 迁移列名未用 `[{col}]` 括号
+- `BaseRepository._columns()` 对异常表缺防护
+- PDF 字体注册非线程安全（影响小）
+
+#### UI 层 🔴 阻塞项 (4)
+| # | 问题 | 文件 | 说明 |
+|---|------|------|------|
+| U1 | `_refresh_all()` 全量刷新 180+ 行 | `main.py:245-426` | 任何数据变更触发所有 Tab 重建 |
+| U2 | 无去重/节流机制 | `main.py:83` | 批量操作触发多次重复刷新 |
+| U3 | IssueView 鸭子类型钩子注入 | `main.py:73-77` | 绕开 Qt 信号 + lambda 循环引用 |
+| U4 | `_on_sample_edit` / `_on_ledger_edit` 重复 | `main.py:732-784` | 53×2 行完全相同 |
+
+#### UI 层 🟡 建议项 (8)
+- `main.py` 1247 行应拆分
+- `DashboardView.refresh()` 13 个参数 → dataclass
+- `constants.py` 暗色色值 + `theme.py` 亮色色值混用
+- 项目下拉框用名称匹配而非 ID
+- 空状态模式 8 处重复
+- 4 个 CRUD 视图高度相似
+- `_chart_sample_status` 重复 set_data
+- 多处未使用 import

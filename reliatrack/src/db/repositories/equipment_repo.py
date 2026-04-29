@@ -21,3 +21,11 @@ class EquipmentRepository(BaseRepository):
     def get_by_type(self, type: str) -> list[Equipment]:
         """按类型筛选设备。"""
         return self.list_all(type=type)
+
+    def count_task_references(self, equipment_id: int) -> int:
+        """统计设备被测试任务引用的次数。"""
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM [test_tasks] WHERE equipment_id = ?",
+            (equipment_id,),
+        ).fetchone()
+        return row[0] if row else 0

@@ -76,7 +76,7 @@ class AppController:
         self.undo_manager = UndoManager(max_history=50)
 
         # 数据变更回调
-        self._on_data_changed: list[Callable[[], None]] = []
+        self._on_data_changed: list[Callable[[str], None]] = []
 
     # ── 初始化 ──
 
@@ -115,15 +115,23 @@ class AppController:
 
     # ── 变更通知 ──
 
-    def register_on_data_changed(self, callback: Callable[[], None]) -> None:
+    def register_on_data_changed(self, callback: Callable[[str], None]) -> None:
         """注册数据变更回调（UI 层用来刷新显示）。"""
         self._on_data_changed.append(callback)
 
-    def notify_data_changed(self) -> None:
-        """通知所有监听者数据已变更。"""
+    def notify_data_changed(
+        self, entity_type: str = "all"
+    ) -> None:
+        """通知所有监听者数据已变更。
+
+        Args:
+            entity_type: 变更的实体类型，用于按需刷新。
+                'all' | 'project' | 'sample' | 'task' | 'issue' |
+                'equipment' | 'technician' | 'knowledge' | 'plan' | 'undo'
+        """
         for cb in self._on_data_changed:
             try:
-                cb()
+                cb(entity_type)
             except Exception:
                 logger.exception("Error in data changed callback")
 

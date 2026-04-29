@@ -41,20 +41,7 @@ class TestPlanService:
                 self._task_repo.delete_issues_by_task(task.id)
                 self._task_repo.delete(task.id)
             # 清理直接引用 plan_id 但无 task_id 的孤立 issue
-            orphan_rows = self._plan_repo._conn.execute(
-                "SELECT id FROM [issues] WHERE plan_id = ? AND task_id IS NULL",
-                (plan_id,),
-            ).fetchall()
-            for (issue_id,) in orphan_rows:
-                self._plan_repo._conn.execute(
-                    "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
-                )
-                self._plan_repo._conn.execute(
-                    "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
-                )
-                self._plan_repo._conn.execute(
-                    "DELETE FROM [issues] WHERE id = ?", (issue_id,)
-                )
+            self._plan_repo.delete_orphan_issues_by_plan(plan_id)
             self._plan_repo.delete(plan_id)
             self._plan_repo.commit()
         except Exception:

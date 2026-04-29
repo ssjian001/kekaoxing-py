@@ -36,3 +36,20 @@ class TestPlanRepository(BaseRepository):
             "SELECT COUNT(*) FROM [test_tasks] WHERE plan_id = ?", (plan_id,)
         ).fetchone()
         return row[0] if row else 0
+
+    def delete_orphan_issues_by_plan(self, plan_id: int) -> None:
+        """删除直接引用 plan_id 但无 task_id 的孤立 issue 及其子表。"""
+        orphan_rows = self._conn.execute(
+            "SELECT id FROM [issues] WHERE plan_id = ? AND task_id IS NULL",
+            (plan_id,),
+        ).fetchall()
+        for (issue_id,) in orphan_rows:
+            self._conn.execute(
+                "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
+            )
+            self._conn.execute(
+                "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
+            )
+            self._conn.execute(
+                "DELETE FROM [issues] WHERE id = ?", (issue_id,)
+            )

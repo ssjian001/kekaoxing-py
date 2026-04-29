@@ -355,7 +355,7 @@ def init_schema(conn: apsw.Connection) -> int:
     Returns:
         初始化后的 schema 版本号。
     """
-    # 确保迁移追踪表存在
+    # 确保迁移追踪表存在（DDL 自动提交，无需事务）
     conn.execute(
         """CREATE TABLE IF NOT EXISTS schema_version (
             version     INTEGER NOT NULL,
@@ -364,22 +364,32 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
+    needs_migration = current < 5  # 更新此值当新增迁移版本
 
-    if current < 1:
-        _migrate_v1(conn)
+    if not needs_migration:
+        return current
 
-    # ── 增量迁移（按版本递增顺序执行）──
-    if current < 2:
-        _migrate_v2(conn)
+    # 整体迁移包裹事务，防止中途失败导致半迁移状态
+    conn.execute("BEGIN")
+    try:
+        if current < 1:
+            _migrate_v1(conn)
 
-    if current < 3:
-        _migrate_v3(conn)
+        if current < 2:
+            _migrate_v2(conn)
 
-    # ── v4: 环境参数字段 ──
-    if current < 4:
-        _migrate_v4(conn)
+        if current < 3:
+            _migrate_v3(conn)
 
-    if current < 5:
-        _migrate_v5(conn)
+        if current < 4:
+            _migrate_v4(conn)
+
+        if current < 5:
+            _migrate_v5(conn)
+
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
 
     return _get_current_version(conn)

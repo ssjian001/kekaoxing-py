@@ -79,8 +79,9 @@ class SampleRepository(BaseRepository):
         conditions: list[str] = []
 
         if filter_sn.strip():
-            conditions.append("s.sn LIKE ?")
-            params.append(f"%{filter_sn.strip()}%")
+            conditions.append("s.sn LIKE ? ESCAPE '\\'")
+            sn_escaped = filter_sn.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{sn_escaped}%")
         if filter_type.strip():
             conditions.append("st.type = ?")
             params.append(filter_type.strip())
@@ -93,7 +94,7 @@ class SampleRepository(BaseRepository):
         # apsw: empty result sets auto-complete, getdescription fails; hardcode cols
         cols = [
             "id", "sample_id", "type", "operator_id", "purpose",
-            "related_task_id", "expected_return", "created_at",
+            "related_task_id", "expected_return", "actual_return", "notes", "created_at",
             "sample_sn", "batch_no", "operator_name",
         ]
         return [dict(zip(cols, row)) for row in rows]

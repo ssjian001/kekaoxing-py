@@ -8,6 +8,7 @@ from __future__ import annotations
 import sys
 import os
 from collections import Counter
+from typing import Any
 
 # 确保项目根目录在 Python 路径中
 _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QComboBox,
 )
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QKeySequence
 
 from src.styles.theme import get_stylesheet, TEXT, SURFACE0, SURFACE1, MANTLE
@@ -76,11 +78,18 @@ class MainWindow(QMainWindow):
         self._issue_view._on_fa_record_added = self._handle_fa_record_added  # type: ignore[method-assign]
         self._issue_view._current_fa_records = lambda: self._current_fa_records  # type: ignore[method-assign]
 
+        # Debounce 刷新定时器
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(100)  # 100ms debounce
+        self._refresh_timer.timeout.connect(self._do_refresh_all)
+        self._pending_entity_types: set[str] = set()
+
         # 初始数据加载
         self._refresh_all()
 
         # 监听数据变更
-        controller.register_on_data_changed(self._refresh_all)
+        controller.register_on_data_changed(self._schedule_refresh)
 
     def _setup_central_widget(self) -> None:
         """创建中央 Tab Widget。"""
@@ -242,40 +251,102 @@ class MainWindow(QMainWindow):
 
     # ── 数据刷新 ──
 
+    def _get_filter_project_id(self):
+        """获取当前筛选的项目 ID（None = 全部）。"""
+        return self._project_filter_combo.currentData()
+
     def _refresh_all(self) -> None:
-        """刷新所有视图数据。"""
+        """全量刷新（项目筛选切换时调用）。"""
+        self._pending_entity_types.clear()
+        self._do_refresh_all()
+
+    def _schedule_refresh(self, entity_type: str = "all") -> None:
+        """节流刷新：合并短时间内的多次变更，100ms 后统一刷新。"""
+        if entity_type == "all":
+            self._pending_entity_types.clear()
+        else:
+            self._pending_entity_types.add(entity_type)
+            # plan 变更也影响 dashboard
+            self._pending_entity_types.add("plan")
+        self._refresh_timer.start()
+
+    def _do_refresh_all(self) -> None:
+        """执行实际的刷新操作。"""
+        pending = self._pending_entity_types
+        need_all = not pending or "all" in pending
+
+        if need_all:
+            pending.clear()
+
+        # 根据需要选择刷新范围
+        if need_all:
+            self._refresh_projects()
+            self._refresh_dashboard()
+            self._refresh_samples()
+            self._refresh_plans()
+            self._refresh_issues()
+            self._refresh_equipment()
+            self._refresh_technicians()
+            self._refresh_knowledge()
+        else:
+            if "project" in pending:
+                self._refresh_projects()
+                self._refresh_dashboard()  # Dashboard 依赖项目
+            if "sample" in pending:
+                self._refresh_samples()
+                self._refresh_dashboard()
+            if "task" in pending or "plan" in pending:
+                self._refresh_plans()
+                self._refresh_dashboard()
+            if "issue" in pending:
+                self._refresh_issues()
+                self._refresh_dashboard()
+            if "equipment" in pending:
+                self._refresh_equipment()
+            if "technician" in pending:
+                self._refresh_technicians()
+            if "knowledge" in pending:
+                self._refresh_knowledge()
+
+        # 撤销/重做按钮始终更新
+        self._refresh_undo_state()
+
+        pending.clear()
+
+    def _refresh_projects(self) -> None:
+        """刷新项目管理视图 + 筛选 combo。"""
         ctrl = self._ctrl
-        if ctrl is None:
+        if not ctrl or not ctrl.project_service:
+            return
+        all_projects = ctrl.project_service.list_all()
+        self._project_view.refresh(all_projects)
+        # 更新筛选 combo 选项（不触发信号）
+        self._project_filter_combo.blockSignals(True)
+        current_filter = self._project_filter_combo.currentData()
+        self._project_filter_combo.clear()
+        self._project_filter_combo.addItem("📋 全部项目", None)
+        for p in all_projects:
+            self._project_filter_combo.addItem(f"📁 {p.name}", p.id)
+        # 恢复之前选中的筛选项
+        for i in range(self._project_filter_combo.count()):
+            if self._project_filter_combo.itemData(i) == current_filter:
+                self._project_filter_combo.setCurrentIndex(i)
+                break
+        self._project_filter_combo.blockSignals(False)
+
+    def _refresh_dashboard(self) -> None:
+        """刷新 Dashboard KPI + 图表 + 样品图表。"""
+        ctrl = self._ctrl
+        if not ctrl:
             return
 
-        # 获取当前筛选的项目 ID（None = 全部）
-        filter_project_id = self._project_filter_combo.currentData()
+        filter_project_id = self._get_filter_project_id()
 
-        # 项目管理 — 始终显示全部项目 + 更新筛选器下拉列表
-        if ctrl.project_service:
-            all_projects = ctrl.project_service.list_all()
-            self._project_view.refresh(all_projects)
-            # 更新筛选 combo 选项（不触发信号）
-            self._project_filter_combo.blockSignals(True)
-            current_filter = self._project_filter_combo.currentData()
-            self._project_filter_combo.clear()
-            self._project_filter_combo.addItem("📋 全部项目", None)
-            for p in all_projects:
-                self._project_filter_combo.addItem(f"📁 {p.name}", p.id)
-            # 恢复之前选中的筛选项
-            for i in range(self._project_filter_combo.count()):
-                if self._project_filter_combo.itemData(i) == current_filter:
-                    self._project_filter_combo.setCurrentIndex(i)
-                    break
-            self._project_filter_combo.blockSignals(False)
-            # 重新读取筛选值（可能在 blockSignals 期间被恢复）
-            filter_project_id = self._project_filter_combo.currentData()
-
-        # 注入项目列表和默认项目到 IssueView（供弹窗使用）
-        self._issue_view._project_list = all_projects if ctrl.project_service else []
+        # 获取项目列表和名称
+        all_projects = ctrl.project_service.list_all() if ctrl.project_service else []
+        self._issue_view._project_list = all_projects
         self._issue_view._default_project_id = filter_project_id
 
-        # 当前筛选项目名称
         current_project_name: str | None = None
         if filter_project_id and ctrl.project_service:
             for p in all_projects:
@@ -283,7 +354,6 @@ class MainWindow(QMainWindow):
                     current_project_name = p.name
                     break
 
-        # Dashboard KPI + 图表
         task_status_data: dict[str, int] = {}
         sample_status_data: dict[str, int] = {}
         issue_severity_data: dict[str, int] = {}
@@ -298,6 +368,8 @@ class MainWindow(QMainWindow):
             sample_count = len(all_samples)
             sample_counter = Counter(s.status for s in all_samples)
             sample_status_data = dict(sample_counter)
+        else:
+            all_samples = []
 
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             all_tasks = ctrl.test_tasks.list_all()
@@ -343,87 +415,107 @@ class MainWindow(QMainWindow):
                 issue_severity_data=issue_severity_data,
             )
 
-        # 样品视图
-        if ctrl.sample_service:
-            # 更新样品状态图表
-            self._dashboard._chart_sample_status.set_data(
-                {({"in_stock": "在库", "checked_out": "已借出", "in_test": "测试中",
-                   "suspended": "暂停", "scrapped": "已报废", "returned": "已归还"}).get(k, k): v
-                 for k, v in sample_status_data.items() if v > 0}
+    def _refresh_samples(self) -> None:
+        """刷新样品视图。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        filter_project_id = self._get_filter_project_id()
+        if filter_project_id:
+            all_samples = ctrl.sample_service.get_by_project(filter_project_id)
+        else:
+            all_samples = ctrl.sample_service.list_all()
+        self._sample_view.refresh_ledger(all_samples)
+        # 样品池只显示在库样品（也按项目筛选）
+        in_stock = [s for s in all_samples if s.status == "in_stock"]
+        self._sample_view.refresh_pool(in_stock)
+        # 出入库记录
+        self._refresh_sample_usage()
+
+    def _refresh_plans(self) -> None:
+        """刷新测试计划 + 甘特图。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.test_plan_service or not ctrl.test_tasks:
+            return
+        filter_project_id = self._get_filter_project_id()
+        # 按项目筛选计划
+        if filter_project_id:
+            all_plans = ctrl.test_plan_service.get_plans_by_project(
+                filter_project_id
             )
+        else:
+            all_plans = ctrl.test_plan_service.list_all_plans()
+        # 保存当前选中索引
+        current_plan_id = self._test_plan_view.get_selected_plan_id()
+        self._test_plan_view._plan_combo.blockSignals(True)
+        self._test_plan_view.set_plans(
+            [p.name for p in all_plans],
+            [p.id for p in all_plans],  # type: ignore[misc]
+        )
+        restore_idx = 0
+        if all_plans:
+            # 尝试恢复之前选中的计划
+            target_id = current_plan_id if current_plan_id else all_plans[0].id
+            # 在新 plan_ids 中找到对应索引
+            new_ids = [p.id for p in all_plans]
+            restore_idx = new_ids.index(target_id) if target_id in new_ids else 0
+            self._test_plan_view._plan_combo.setCurrentIndex(restore_idx)
+        self._test_plan_view._plan_combo.blockSignals(False)
+        # 手动加载选中计划的任务
+        if all_plans:
+            plan_id = all_plans[restore_idx].id
+            assert plan_id is not None
+            tasks = ctrl.test_plan_service.get_tasks(plan_id)
+            max_day = max((t.start_day + t.duration for t in tasks), default=30)
+            self._test_plan_view.refresh(tasks, max_day)
 
-            self._sample_view.refresh_ledger(all_samples)
-            # 样品池只显示在库样品（也按项目筛选）
-            in_stock = [s for s in all_samples if s.status == "in_stock"]
-            self._sample_view.refresh_pool(in_stock)
-            # 出入库记录
-            self._refresh_sample_usage()
+    def _refresh_issues(self) -> None:
+        """刷新 Issue 追踪视图。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        filter_project_id = self._get_filter_project_id()
+        if filter_project_id:
+            all_issues = ctrl.issue_service.get_by_project(filter_project_id)
+        else:
+            all_issues = ctrl.issue_service.list_all()
+        self._issue_view.refresh(all_issues)
 
-        # 测试计划
-        if ctrl.test_plan_service and ctrl.test_tasks:
-            # 按项目筛选计划
-            if filter_project_id:
-                all_plans = ctrl.test_plan_service.get_plans_by_project(
-                    filter_project_id
-                )
-            else:
-                all_plans = ctrl.test_plan_service.list_all_plans()
-            # 保存当前选中索引
-            current_plan_id = self._test_plan_view.get_selected_plan_id()
-            self._test_plan_view._plan_combo.blockSignals(True)
-            self._test_plan_view.set_plans(
-                [p.name for p in all_plans],
-                [p.id for p in all_plans],  # type: ignore[misc]
-            )
-            restore_idx = 0
-            if all_plans:
-                # 尝试恢复之前选中的计划
-                target_id = current_plan_id if current_plan_id else all_plans[0].id
-                # 在新 plan_ids 中找到对应索引
-                new_ids = [p.id for p in all_plans]
-                restore_idx = new_ids.index(target_id) if target_id in new_ids else 0
-                self._test_plan_view._plan_combo.setCurrentIndex(restore_idx)
-            self._test_plan_view._plan_combo.blockSignals(False)
-            # 手动加载选中计划的任务
-            if all_plans:
-                plan_id = all_plans[restore_idx].id
-                assert plan_id is not None
-                tasks = ctrl.test_plan_service.get_tasks(plan_id)
-                max_day = max((t.start_day + t.duration for t in tasks), default=30)
-                self._test_plan_view.refresh(tasks, max_day)
+    def _refresh_equipment(self) -> None:
+        """刷新设备管理视图。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.equipment_service:
+            return
+        all_equipment = ctrl.equipment_service.list_all()
+        self._equipment_view.refresh(all_equipment)
 
-        # Issue 追踪
-        if ctrl.issue_service:
-            # 按项目筛选 issues
-            if filter_project_id:
-                all_issues = ctrl.issue_service.get_by_project(filter_project_id)
-            else:
-                all_issues = ctrl.issue_service.list_all()
-            self._issue_view.refresh(all_issues)
+    def _refresh_technicians(self) -> None:
+        """刷新技术员管理视图。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.technicians:
+            return
+        all_technicians = ctrl.technicians.list_all()
+        self._technician_view.refresh(all_technicians)
 
-        # 设备管理 — 无 project_id，不筛选
-        if ctrl.equipment_service:
-            all_equipment = ctrl.equipment_service.list_all()
-            self._equipment_view.refresh(all_equipment)
+    def _refresh_knowledge(self) -> None:
+        """刷新知识库视图。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.knowledge_service:
+            return
+        all_knowledge = ctrl.knowledge_service.list_all()
+        self._knowledge_view.refresh(all_knowledge)
 
-        # 技术员管理 — 无 project_id，不筛选
-        if ctrl.technicians:
-            all_technicians = ctrl.technicians.list_all()
-            self._technician_view.refresh(all_technicians)
-
-        # knowledge management: 知识库 — 无 project_id，不筛选
-        if ctrl.knowledge_service:
-            all_knowledge = ctrl.knowledge_service.list_all()
-            self._knowledge_view.refresh(all_knowledge)
-
-        # 更新撤销/重做按钮状态
-        if ctrl.undo_manager:
-            self._act_undo.setEnabled(ctrl.undo_manager.can_undo())
-            self._act_redo.setEnabled(ctrl.undo_manager.can_redo())
-            if ctrl.undo_manager.undo_description():
-                self._act_undo.setText(f"↩ {ctrl.undo_manager.undo_description()}")
-            if ctrl.undo_manager.redo_description():
-                self._act_redo.setText(f"↪ {ctrl.undo_manager.redo_description()}")
+    def _refresh_undo_state(self) -> None:
+        """更新撤销/重做按钮状态。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.undo_manager:
+            return
+        self._act_undo.setEnabled(ctrl.undo_manager.can_undo())
+        self._act_redo.setEnabled(ctrl.undo_manager.can_redo())
+        if ctrl.undo_manager.undo_description():
+            self._act_undo.setText(f"↩ {ctrl.undo_manager.undo_description()}")
+        if ctrl.undo_manager.redo_description():
+            self._act_redo.setText(f"↪ {ctrl.undo_manager.redo_description()}")
 
     # ── 槽函数 ──
 
@@ -438,7 +530,7 @@ class MainWindow(QMainWindow):
         desc = um.undo()
         if desc:
             self.statusBar().showMessage(f"已撤销: {desc}", 3000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("undo")
 
     def _on_redo(self) -> None:
         um = self._ctrl.undo_manager
@@ -447,7 +539,7 @@ class MainWindow(QMainWindow):
         desc = um.redo()
         if desc:
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("undo")
 
     def _on_auto_schedule(self) -> None:
         """执行自动排程。"""
@@ -479,7 +571,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"❌ 排程失败: {e}", 10000)
 
         # 刷新视图
-        self._refresh_all()
+        self._ctrl.notify_data_changed("task")
 
     def _on_plan_add(self) -> None:
         """新建测试计划。"""
@@ -505,7 +597,7 @@ class MainWindow(QMainWindow):
                     return
                 ctrl.test_plan_service.create_plan(**kwargs)
                 self.statusBar().showMessage(f"✅ 计划「{data['name']}」已创建", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("plan")
             except Exception as e:
                 QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
 
@@ -535,7 +627,7 @@ class MainWindow(QMainWindow):
             try:
                 ctrl.test_plan_service.update_plan(plan_id_from_data, **data)
                 self.statusBar().showMessage(f"✅ 计划「{data['name']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("plan")
             except Exception as e:
                 QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
 
@@ -572,7 +664,7 @@ class MainWindow(QMainWindow):
             data = dlg.get_data()
             ctrl.test_plan_service.create_task(plan_id, **data)
             self.statusBar().showMessage(f"✅ 任务「{data['name']}」已创建", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("task")
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""
@@ -594,7 +686,7 @@ class MainWindow(QMainWindow):
             data = dlg.get_data()
             ctrl.test_plan_service.update_task(task.id, **data)
             self.statusBar().showMessage(f"✅ 任务「{data['name']}」已更新", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("task")
 
     def _on_task_delete(self, task) -> None:
         """删除测试任务。"""
@@ -604,7 +696,7 @@ class MainWindow(QMainWindow):
         name = task.name
         ctrl.test_plan_service.delete_task(task.id)
         self.statusBar().showMessage(f"✅ 任务「{name}」已删除", 5000)
-        self._ctrl.notify_data_changed()
+        self._ctrl.notify_data_changed("task")
 
     def _refresh_sample_usage(self) -> None:
         """刷新出入库记录 Tab。"""
@@ -646,7 +738,7 @@ class MainWindow(QMainWindow):
                     status="in_stock",
                 )
                 self.statusBar().showMessage(f"✅ 样品 {data['sn']} 入库成功", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("sample")
             except Exception as e:
                 QMessageBox.critical(self, "入库失败", f"保存失败: {e}")
 
@@ -682,7 +774,7 @@ class MainWindow(QMainWindow):
                 )
                 ctrl.sample_service.update_status(sample.id, "checked_out")
                 self.statusBar().showMessage(f"✅ 样品 {sample.sn} 出库成功", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("sample")
             except Exception as e:
                 QMessageBox.critical(self, "出库失败", f"保存失败: {e}")
 
@@ -726,42 +818,23 @@ class MainWindow(QMainWindow):
         )
         dlg.exec()
         if dlg.was_imported():
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("sample")
             self.statusBar().showMessage("✅ 样品批量导入完成", 5000)
 
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.sample_service:
-            return
-        sample_id = self._sample_view.pool_tab.table.get_selected_sample_id()
-        if sample_id is None:
-            QMessageBox.warning(self, "提示", "请先选中一个样品。")
-            return
-        sample = ctrl.sample_service.get(sample_id)
-        if sample is None:
-            return
-        dlg = SampleEditDialog(
-            sample=sample,
-            project_list=ctrl.project_service.list_all() if ctrl.project_service else [],
-            parent=self,
-        )
-        if dlg.exec():
-            try:
-                data = dlg.get_data()
-                assert sample.id is not None
-                ctrl.sample_service.update(sample.id, **data)
-                self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
-            except Exception as e:
-                QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
+        self._edit_sample_from_table(self._sample_view.pool_tab.table)
 
     def _on_ledger_edit(self) -> None:
         """编辑选中样品（样品台账 Tab）。"""
+        self._edit_sample_from_table(self._sample_view.ledger_tab.table)
+
+    def _edit_sample_from_table(self, table: Any) -> None:
+        """从指定表格获取选中样品并编辑。"""
         ctrl = self._ctrl
         if not ctrl or not ctrl.sample_service:
             return
-        sample_id = self._sample_view.ledger_tab.table.get_selected_sample_id()
+        sample_id = table.get_selected_sample_id()
         if sample_id is None:
             QMessageBox.warning(self, "提示", "请先选中一个样品。")
             return
@@ -779,7 +852,7 @@ class MainWindow(QMainWindow):
                 assert sample.id is not None
                 ctrl.sample_service.update(sample.id, **data)
                 self.statusBar().showMessage(f"✅ 样品「{data['sn']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("sample")
             except Exception as e:
                 QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
 
@@ -796,7 +869,7 @@ class MainWindow(QMainWindow):
             try:
                 ctrl.project_service.create(**data)
                 self.statusBar().showMessage(f"✅ 项目「{data['name']}」已创建", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("project")
             except Exception as e:
                 QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
 
@@ -818,7 +891,7 @@ class MainWindow(QMainWindow):
             try:
                 ctrl.project_service.update(proj_id, **data)
                 self.statusBar().showMessage(f"✅ 项目「{data['name']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("project")
             except Exception as e:
                 QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
 
@@ -843,7 +916,7 @@ class MainWindow(QMainWindow):
             assert proj.id is not None
             ctrl.project_service.delete(proj.id)
             self.statusBar().showMessage(f"✅ 项目「{proj.name}」已删除", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("project")
         except ValueError as e:
             QMessageBox.warning(self, "删除失败", str(e))
         except Exception as e:
@@ -862,7 +935,7 @@ class MainWindow(QMainWindow):
             try:
                 ctrl.equipment_service.create(**data)
                 self.statusBar().showMessage(f"✅ 设备「{data['name']}」已创建", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("equipment")
             except Exception as e:
                 QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
 
@@ -882,7 +955,7 @@ class MainWindow(QMainWindow):
                 assert eq.id is not None
                 ctrl.equipment_service.update(eq.id, **data)
                 self.statusBar().showMessage(f"✅ 设备「{data['name']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("equipment")
             except Exception as e:
                 QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
 
@@ -907,7 +980,7 @@ class MainWindow(QMainWindow):
             assert eq.id is not None
             ctrl.equipment_service.delete(eq.id)
             self.statusBar().showMessage(f"✅ 设备「{eq.name}」已删除", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("equipment")
         except ValueError as e:
             QMessageBox.warning(self, "删除失败", str(e))
         except Exception as e:
@@ -926,7 +999,7 @@ class MainWindow(QMainWindow):
             try:
                 ctrl.technicians.insert(**data)
                 self.statusBar().showMessage(f"✅ 技术员「{data['name']}」已创建", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("technician")
             except Exception as e:
                 QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
 
@@ -946,7 +1019,7 @@ class MainWindow(QMainWindow):
                 assert tech.id is not None
                 ctrl.technicians.update(tech.id, **data)
                 self.statusBar().showMessage(f"✅ 技术员「{data['name']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("technician")
             except Exception as e:
                 QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
 
@@ -971,7 +1044,7 @@ class MainWindow(QMainWindow):
             assert tech.id is not None
             ctrl.technicians.delete(tech.id)
             self.statusBar().showMessage(f"✅ 技术员「{tech.name}」已删除", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("technician")
         except ValueError as e:
             QMessageBox.warning(self, "删除失败", str(e))
         except Exception as e:
@@ -990,7 +1063,7 @@ class MainWindow(QMainWindow):
             try:
                 ctrl.knowledge_service.create(**data)
                 self.statusBar().showMessage(f"✅ 知识条目「{data['failure_mode']}」已创建", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("knowledge")
             except Exception as e:
                 QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
 
@@ -1010,7 +1083,7 @@ class MainWindow(QMainWindow):
                 assert entry.id is not None
                 ctrl.knowledge_service.update(entry.id, **data)
                 self.statusBar().showMessage(f"✅ 知识条目「{data['failure_mode']}」已更新", 5000)
-                self._ctrl.notify_data_changed()
+                self._ctrl.notify_data_changed("knowledge")
             except Exception as e:
                 QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
 
@@ -1035,7 +1108,7 @@ class MainWindow(QMainWindow):
             assert entry.id is not None
             ctrl.knowledge_service.delete(entry.id)
             self.statusBar().showMessage(f"✅ 知识条目「{entry.failure_mode}」已删除", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("knowledge")
         except ValueError as e:
             QMessageBox.warning(self, "删除失败", str(e))
         except Exception as e:
@@ -1073,7 +1146,7 @@ class MainWindow(QMainWindow):
             else:
                 ctrl.issue_service.create(**data)
                 self.statusBar().showMessage("✅ Issue 已创建", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self, "保存失败", f"Issue 保存失败: {e}")
 
@@ -1085,7 +1158,7 @@ class MainWindow(QMainWindow):
         try:
             ctrl.issue_service.delete(issue_id)
             self.statusBar().showMessage(f"✅ Issue #{issue_id} 已删除", 5000)
-            self._ctrl.notify_data_changed()
+            self._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self, "删除失败", f"Issue 删除失败: {e}")
 
