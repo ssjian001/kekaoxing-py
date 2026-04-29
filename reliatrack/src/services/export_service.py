@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -277,10 +278,46 @@ class ExportService:
 
     # ── PDF 导出 ──────────────────────────────────────────────
 
-    # 中文字体路径 — reportlab 不支持 CFF/OTF outline，使用 Droid TrueType
-    _FONT_REGULAR = "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
-    _FONT_BOLD = "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
-    _FONT_FAMILY = "Droid"
+    @staticmethod
+    def _find_cjk_font() -> tuple[str, str, int | None, int | None]:
+        """跨平台查找可用的中文字体。
+
+        Returns:
+            (regular_path, bold_path, regular_subfont, bold_subfont)
+            subfont 为 None 表示纯 TTF 文件，无需指定索引。
+        """
+        if sys.platform == "win32":
+            windir = os.environ.get("WINDIR", r"C:\Windows")
+            fd = os.path.join(windir, "Fonts")
+            candidates: list[tuple[str, str, int | None, int | None]] = [
+                # 微软雅黑: msyh.ttc(reg) + msyhbd.ttc(bold)
+                (os.path.join(fd, "msyh.ttc"), os.path.join(fd, "msyhbd.ttc"), 0, 0),
+                # msyh.ttc 单文件（部分版本 bold 在同一 ttc 内）
+                (os.path.join(fd, "msyh.ttc"), os.path.join(fd, "msyh.ttc"), 0, 1),
+                # 黑体
+                (os.path.join(fd, "simhei.ttf"), os.path.join(fd, "simhei.ttf"), None, None),
+            ]
+        elif sys.platform == "darwin":
+            candidates = [
+                ("/System/Library/Fonts/PingFang.ttc",
+                 "/System/Library/Fonts/PingFang.ttc", 1, 3),
+            ]
+        else:
+            # Linux
+            candidates = [
+                ("/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+                 "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+                 None, None),
+            ]
+
+        for reg, bld, r_sub, b_sub in candidates:
+            if os.path.isfile(reg) and (reg == bld or os.path.isfile(bld)):
+                return reg, bld, r_sub, b_sub
+
+        raise FileNotFoundError(
+            "未找到可用的中文字体。请安装微软雅黑 (Windows) 或 "
+            "DroidSansFallback (Linux) 字体。"
+        )
 
     def export_report_pdf(
         self,
@@ -293,6 +330,7 @@ class ExportService:
         """导出综合测试报告为 PDF (reportlab)。
 
         包含：概览统计、任务列表、Issue 列表、样品状态。
+        自动检测系统中可用的中文字体（Windows/macOS/Linux）。
         """
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
@@ -306,12 +344,27 @@ class ExportService:
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
 
-        # 注册中文字体（Droid TrueType，Normal 和 Bold 使用同一字体）
-        pdfmetrics.registerFont(TTFont("Droid", self._FONT_REGULAR))
-        pdfmetrics.registerFont(TTFont("Droid-Bold", self._FONT_BOLD))
-        pdfmetrics.registerFontFamily(
-            "Droid", normal="Droid", bold="Droid-Bold",
-        )
+        from reportlab.pdfgen.canvas import Canvas as _Canvas
+
+        # 跨平台字体检测
+        reg_path, bld_path, reg_sub, bld_sub = self._find_cjk_font()
+        _FN = "CJK"   # 内部注册名（固定）
+        _FN_B = "CJK-Bold"
+
+        # 注册字体（已注册则跳过）
+        if _FN not in pdfmetrics.getRegisteredFontNames():
+            kw: dict[str, object] = {}
+            if reg_sub is not None:
+                kw["subfontIndex"] = reg_sub
+            pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
+
+        if _FN_B not in pdfmetrics.getRegisteredFontNames():
+            kw = {}
+            if bld_sub is not None:
+                kw["subfontIndex"] = bld_sub
+            pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw))
+
+        pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
 
         # 颜色
         _BLUE = HexColor("#2B579A")
@@ -322,40 +375,38 @@ class ExportService:
 
         # 样式
         style_title = ParagraphStyle(
-            "Title", fontName="Droid-Bold", fontSize=24,
+            "Title", fontName=_FN_B, fontSize=24,
             textColor=_BLUE, alignment=TA_CENTER, spaceAfter=8 * mm,
         )
         style_subtitle = ParagraphStyle(
-            "Subtitle", fontName="Droid", fontSize=14,
+            "Subtitle", fontName=_FN, fontSize=14,
             textColor=_GRAY, alignment=TA_CENTER, spaceAfter=4 * mm,
         )
         style_ts = ParagraphStyle(
-            "Timestamp", fontName="Droid", fontSize=10,
+            "Timestamp", fontName=_FN, fontSize=10,
             textColor=_LIGHT_GRAY, alignment=TA_CENTER,
         )
         style_section = ParagraphStyle(
-            "Section", fontName="Droid-Bold", fontSize=16,
+            "Section", fontName=_FN_B, fontSize=16,
             textColor=_BLUE, spaceAfter=3 * mm, spaceBefore=6 * mm,
         )
         style_section_red = ParagraphStyle(
-            "SectionRed", fontName="Droid-Bold", fontSize=14,
+            "SectionRed", fontName=_FN_B, fontSize=14,
             textColor=_RED, spaceAfter=2 * mm, spaceBefore=4 * mm,
         )
         style_stat = ParagraphStyle(
-            "Stat", fontName="Droid", fontSize=11,
+            "Stat", fontName=_FN, fontSize=11,
             textColor=_DARK, spaceAfter=1 * mm,
         )
         style_header = ParagraphStyle(
-            "Header", fontName="Droid", fontSize=8,
+            "Header", fontName=_FN, fontSize=8,
             textColor=_LIGHT_GRAY, alignment=TA_CENTER,
         )
-
-        from reportlab.pdfgen.canvas import Canvas as _Canvas
 
         # 页眉页脚回调
         def _header_footer(canvas: _Canvas, doc: object) -> None:  # noqa: ANN001
             canvas.saveState()
-            canvas.setFont("Droid", 8)
+            canvas.setFont(_FN, 8)
             canvas.setFillColor(_LIGHT_GRAY)
             canvas.drawRightString(A4[0] - 20 * mm, A4[1] - 12 * mm,
                                    "ReliaTrack — 可靠性测试报告")
@@ -414,12 +465,12 @@ class ExportService:
         task_headers = ["#", "名称", "类别", "工期", "开始", "进度", "状态", "优先级"]
         task_col_widths = [18, 130, 55, 40, 40, 40, 50, 40]
         header_row = [Paragraph(h, ParagraphStyle(
-            "TH", fontName="Droid-Bold", fontSize=9,
+            "TH", fontName=_FN_B, fontSize=9,
             textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
         )) for h in task_headers]
 
         cell_style = ParagraphStyle(
-            "Cell", fontName="Droid", fontSize=8,
+            "Cell", fontName=_FN, fontSize=8,
             textColor=_DARK, alignment=TA_CENTER,
         )
 
@@ -459,7 +510,7 @@ class ExportService:
             issue_headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式"]
             issue_col_widths = [18, 140, 45, 45, 40, 100]
             issue_header_row = [Paragraph(h, ParagraphStyle(
-                "IH", fontName="Droid-Bold", fontSize=9,
+                "IH", fontName=_FN_B, fontSize=9,
                 textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
             )) for h in issue_headers]
 
