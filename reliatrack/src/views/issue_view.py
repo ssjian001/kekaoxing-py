@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, Qt, Signal
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
@@ -226,7 +226,13 @@ class _FAPanel(QScrollArea):
 
 
 class IssueView(QWidget):
-    """Issue 追踪视图 — 左侧 Issue 列表 + 右侧 FA 面板。"""
+    """Issue 追踪视图 — Issue 列表 + FA 分析记录。"""
+
+    # ── 信号（替代旧钩子方法）──
+    issue_saved = Signal(dict)          # Issue 保存/更新时发射 data: dict
+    issue_deleted = Signal(int)         # Issue 删除时发射 issue_id
+    issue_selected = Signal(object)     # Issue 选中时发射 issue_id (int | None)
+    fa_record_added = Signal(dict)      # FA 记录添加时发射 data: dict
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -333,7 +339,7 @@ class IssueView(QWidget):
             parent=self,
         )
         if dlg.exec():
-            self._on_issue_saved(dlg.get_data())
+            self.issue_saved.emit(dlg.get_data())
 
     def _open_edit_dialog(self, issue: Issue) -> None:
         """打开编辑 Issue 弹窗。"""
@@ -345,7 +351,7 @@ class IssueView(QWidget):
         if dlg.exec():
             data = dlg.get_data()
             data["id"] = issue.id
-            self._on_issue_saved(data)
+            self.issue_saved.emit(data)
 
     def _delete_issue(self, issue: Issue) -> None:
         """删除 Issue（带确认）。"""
@@ -358,7 +364,7 @@ class IssueView(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             assert issue.id is not None
-            self._on_issue_deleted(issue.id)
+            self.issue_deleted.emit(issue.id)
 
     # ── FA 步骤 ──────────────────────────────────────────────
 
@@ -374,37 +380,27 @@ class IssueView(QWidget):
         if dlg.exec():
             data = dlg.get_data()
             data["issue_id"] = issue_id
-            self._on_fa_record_added(data)
-
-    def _current_fa_records(self) -> list[FARecord]:
-        """返回当前 FA 面板中显示的记录列表（供外部覆盖）。"""
-        return []
+            self.fa_record_added.emit(data)
 
     # ── 选中变化 ──────────────────────────────────────────────
 
     def _on_issue_selection_changed(self) -> None:
         """选中 Issue 时触发加载 FA 记录。"""
         issue_id = self.get_selected_issue_id()
-        if issue_id is not None:
-            self._on_issue_selected(issue_id)
+        self.issue_selected.emit(issue_id)
 
-    # ── 钩子方法（由 presenter / controller 连接）───────────
+    # ── 回调属性（供外部设置）──
 
-    def _on_issue_saved(self, data: dict) -> None:
-        """钩子：Issue 保存后回调。由外部连接。"""
-        pass
+    def set_fa_records_callback(self, callback: object) -> None:  # type: ignore[type-arg]
+        """设置获取当前 FA 记录列表的回调。"""
+        self._fa_records_callback = callback
 
-    def _on_issue_deleted(self, issue_id: int) -> None:
-        """钩子：Issue 删除后回调。由外部连接。"""
-        pass
-
-    def _on_issue_selected(self, issue_id: int) -> None:
-        """钩子：Issue 选中时回调（用于加载 FA 记录）。由外部连接。"""
-        pass
-
-    def _on_fa_record_added(self, data: dict) -> None:
-        """钩子：FA 记录添加后回调。由外部连接。"""
-        pass
+    def _current_fa_records(self) -> list[FARecord]:
+        """返回当前 FA 面板中显示的记录列表。"""
+        cb = getattr(self, "_fa_records_callback", None)
+        if callable(cb):
+            return cb()  # type: ignore[no-any-return]
+        return []
 
     # ── 空状态 ──────────────────────────────────────────────
 

@@ -73,12 +73,12 @@ class MainWindow(QMainWindow):
         self._setup_toolbar()
         self._setup_status_bar()
 
-        # Issue 追踪钩子
-        self._issue_view._on_issue_saved = self._handle_issue_saved  # type: ignore[method-assign]
-        self._issue_view._on_issue_deleted = self._handle_issue_deleted  # type: ignore[method-assign]
-        self._issue_view._on_issue_selected = self._handle_issue_selected  # type: ignore[method-assign]
-        self._issue_view._on_fa_record_added = self._handle_fa_record_added  # type: ignore[method-assign]
-        self._issue_view._current_fa_records = lambda: self._current_fa_records  # type: ignore[method-assign]
+        # Issue 追踪信号连接
+        self._issue_view.issue_saved.connect(self._handle_issue_saved)
+        self._issue_view.issue_deleted.connect(self._handle_issue_deleted)
+        self._issue_view.issue_selected.connect(self._handle_issue_selected)
+        self._issue_view.fa_record_added.connect(self._handle_fa_record_added)
+        self._issue_view.set_fa_records_callback(lambda: self._current_fa_records)
 
         # Debounce 刷新定时器
         self._refresh_timer = QTimer(self)
@@ -1343,8 +1343,12 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "删除失败", f"Issue 删除失败: {e}")
 
-    def _handle_issue_selected(self, issue_id: int) -> None:
+    def _handle_issue_selected(self, issue_id: int | None) -> None:
         """Issue 选中时加载 FA 记录。"""
+        if issue_id is None:
+            self._current_fa_records = []
+            self._issue_view.refresh_fa([])
+            return
         ctrl = self._ctrl
         if not ctrl or not ctrl.issue_service:
             return
