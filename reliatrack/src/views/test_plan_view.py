@@ -19,8 +19,8 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
 )
-from PySide6.QtCore import Qt, QRect, QSize
-from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction
+from PySide6.QtCore import Qt, QRect, QSize, Signal, QPoint
+from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, QWheelEvent
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
@@ -146,7 +146,10 @@ class _TaskTable(QTableWidget):
 
 
 class _GanttWidget(QWidget):
-    """简化版甘特图 — 基于 QWidget 自绘。"""
+    """简化版甘特图 — 基于 QWidget 自绘。
+
+    支持鼠标悬浮提示、滚轮缩放、任务条拖拽移动。
+    """
 
     # 类别 → 颜色
     CATEGORY_COLORS = {
@@ -158,6 +161,13 @@ class _GanttWidget(QWidget):
         "": LAVENDER,
     }
 
+    # 拖拽移动任务后发射 (task_id, new_start_day)
+    task_moved = Signal(int, int)
+
+    _LABEL_W = 200  # 左侧标签列宽度
+    _MIN_DAY_W = 6  # 最小每天像素宽度
+    _MAX_DAY_W = 80  # 最大每天像素宽度
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._tasks: list[TestTask] = []
@@ -165,16 +175,108 @@ class _GanttWidget(QWidget):
         self._row_height: int = 28
         self._header_height: int = 24
         self._bar_height: int = 18
+        self._day_w: float = 30.0  # 每天像素宽度（可缩放）
         self.setMinimumHeight(150)
+        self.setMouseTracking(True)  # 悬浮提示需要
         self.setStyleSheet(f"background-color: {BASE};")
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
+        # 拖拽状态
+        self._drag_task_idx: int | None = None
+        self._drag_offset_x: int = 0
+        self._drag_start_day: int = 0
+        self._hover_task_idx: int | None = None
 
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30) -> None:
         self._tasks = tasks
         self._total_days = max(total_days, 1)
         self.update()
 
+    def _chart_w(self) -> int:
+        return max(self.width() - self._LABEL_W, 100)
+
     def sizeHint(self) -> QSize:
         return QSize(800, max(200, len(self._tasks) * self._row_height + self._header_height + 20))
+
+    # ── 布局计算辅助 ──
+
+    def _bar_rect(self, idx: int) -> QRect:
+        """返回第 idx 个任务条的 QRect。"""
+        task = self._tasks[idx]
+        x = self._LABEL_W + task.start_day * self._day_w
+        y = self._header_height + idx * self._row_height + (self._row_height - self._bar_height) / 2
+        return QRect(int(x), int(y), int(task.duration * self._day_w), self._bar_height)
+
+    def _hit_test(self, pos: QPoint) -> int | None:
+        """返回鼠标位置下的任务索引，没有则 None。"""
+        for i in range(len(self._tasks)):
+            if self._bar_rect(i).contains(pos):
+                return i
+        return None
+
+    # ── 事件处理 ──
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
+        pos = event.position().toPoint()
+
+        if self._drag_task_idx is not None:
+            # 拖拽中 — 更新 cursor 并实时预览
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            # 计算新 start_day
+            bar = self._bar_rect(self._drag_task_idx)
+            dx = pos.x() - self._drag_offset_x - bar.x()
+            new_day = self._drag_start_day + round(dx / self._day_w)
+            new_day = max(0, new_day)
+            # 临时移动任务以预览
+            task = self._tasks[self._drag_task_idx]
+            task.start_day = new_day
+            self.update()
+            return
+
+        # 悬浮检测
+        idx = self._hit_test(pos)
+        if idx != self._hover_task_idx:
+            self._hover_task_idx = idx
+            if idx is not None:
+                self.setCursor(Qt.CursorShape.OpenHandCursor)
+                task = self._tasks[idx]
+                tooltip = (
+                    f"{task.name}\n"
+                    f"类别: {task.category or '-'}\n"
+                    f"工期: {task.duration} 天\n"
+                    f"开始: D{task.start_day} → D{task.start_day + task.duration}\n"
+                    f"进度: {task.progress:.0f}%\n"
+                    f"状态: {task.status}"
+                )
+                self.setToolTip(tooltip)
+            else:
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+                self.setToolTip("")
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
+        if event.button() == Qt.MouseButton.LeftButton:
+            idx = self._hit_test(event.position().toPoint())
+            if idx is not None:
+                self._drag_task_idx = idx
+                self._drag_offset_x = event.position().toPoint().x() - self._bar_rect(idx).x()
+                self._drag_start_day = self._tasks[idx].start_day
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
+        if event.button() == Qt.MouseButton.LeftButton and self._drag_task_idx is not None:
+            task = self._tasks[self._drag_task_idx]
+            new_day = task.start_day
+            if task.id is not None and new_day != self._drag_start_day:
+                self.task_moved.emit(task.id, new_day)
+            self._drag_task_idx = None
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:  # type: ignore[override]
+        """滚轮缩放天宽度。"""
+        delta = event.angleDelta().y()
+        factor = 1.1 if delta > 0 else 0.9
+        self._day_w = max(self._MIN_DAY_W, min(self._MAX_DAY_W, self._day_w * factor))
+        self.update()
 
     def paintEvent(self, event) -> None:  # type: ignore[override]
         if not self._tasks:
@@ -189,10 +291,8 @@ class _GanttWidget(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         w = self.width()
-        # 左边留给标签
-        label_w = 200
+        label_w = self._LABEL_W
         chart_w = w - label_w
-        day_w = chart_w / self._total_days if self._total_days > 0 else 30
 
         # ── 表头（天数标尺）──
         p.fillRect(0, 0, w, self._header_height, QColor(SURFACE0))
@@ -200,7 +300,7 @@ class _GanttWidget(QWidget):
         p.setFont(QFont("sans-serif", 9))
         step = max(1, self._total_days // 15)
         for d in range(0, self._total_days + 1, step):
-            x = label_w + d * day_w
+            x = label_w + d * self._day_w
             p.drawText(int(x) - 10, 0, 30, self._header_height,
                        Qt.AlignmentFlag.AlignCenter, f"D{d}")
             p.setPen(QColor(SURFACE1))
@@ -223,8 +323,8 @@ class _GanttWidget(QWidget):
                        task.name[:16])
 
             # 甘特条
-            bar_x = label_w + task.start_day * day_w
-            bar_w = task.duration * day_w
+            bar_x = label_w + task.start_day * self._day_w
+            bar_w = task.duration * self._day_w
             bar_y = y + (self._row_height - self._bar_height) / 2
 
             color = QColor(self.CATEGORY_COLORS.get(task.category, LAVENDER))
@@ -259,6 +359,9 @@ class _GanttWidget(QWidget):
 
 class TestPlanView(QWidget):
     """测试计划视图 — 左侧任务表 + 右侧甘特图。"""
+
+    # 转发甘特图拖拽信号
+    task_moved = Signal(int, int)  # (task_id, new_start_day)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -331,6 +434,7 @@ class TestPlanView(QWidget):
         # 甘特图（下）
         self._gantt = _GanttWidget()
         self._gantt.setStyleSheet(f"background-color: {BASE}; border: 1px solid {SURFACE1}; border-radius: 6px;")
+        self._gantt.task_moved.connect(self.task_moved.emit)
         layout.addWidget(self._gantt, stretch=2)
 
     def refresh(self, tasks: list[TestTask], total_days: int = 30) -> None:

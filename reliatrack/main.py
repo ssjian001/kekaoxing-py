@@ -56,7 +56,7 @@ from src.views.project_view import ProjectView
 # knowledge management
 from src.views.knowledge_view import KnowledgeView
 from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
-from src.services.undo_manager import BatchScheduleCommand
+from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand
 
 
 class MainWindow(QMainWindow):
@@ -133,6 +133,7 @@ class MainWindow(QMainWindow):
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "📋 测试计划")
         self._test_plan_view.btn_schedule.clicked.connect(self._on_auto_schedule)
+        self._test_plan_view.task_moved.connect(self._on_gantt_task_moved)
         self._test_plan_view.btn_add_plan.clicked.connect(self._on_plan_add)
         self._test_plan_view.btn_edit_plan.clicked.connect(self._on_plan_edit)
         self._test_plan_view._plan_combo.currentIndexChanged.connect(
@@ -678,6 +679,24 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"排程失败: {e}", 10000)
 
         # 刷新视图
+        self._ctrl.notify_data_changed("task")
+
+    def _on_gantt_task_moved(self, task_id: int, new_start_day: int) -> None:
+        """甘特图拖拽移动任务后，写回数据库并注册撤销。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.test_tasks:
+            return
+        # 读取旧值
+        task = ctrl.test_tasks.get_by_id(task_id)
+        if task is None:
+            return
+        old_day = task.start_day
+        if old_day == new_start_day:
+            return
+        # 用 UndoManager 包装
+        ctrl.undo_manager.execute(
+            MoveTaskCommand(ctrl.test_tasks, task_id, old_day, new_start_day)
+        )
         self._ctrl.notify_data_changed("task")
 
     def _on_task_batch_import(self) -> None:
