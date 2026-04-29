@@ -1,4 +1,4 @@
-"""统一主题系统 — Catppuccin Mocha 暗色主题。
+"""统一主题系统 — Catppuccin Latte 明亮主题。
 
 本模块是 QSS 样式表的唯一来源（single source of truth）。
 所有 UI 组件通过 `get_stylesheet()` 获取完整的应用样式。
@@ -9,43 +9,43 @@ from __future__ import annotations
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_NORMAL
 
 # ═══════════════════════════════════════════════════════════════════
-#  Catppuccin Mocha 色板
+#  Catppuccin Latte 色板
 # ═══════════════════════════════════════════════════════════════════
 
 # Base
-CRUST    = "#11111b"
-MANTLE   = "#181825"
-BASE     = "#1e1e2e"
-SURFACE0 = "#313244"
-SURFACE1 = "#45475a"
-SURFACE2 = "#585b70"
-OVERLAY0 = "#6c7086"
-TEXT     = "#cdd6f4"
-SUBTEXT0 = "#a6adc8"
-SUBTEXT1 = "#bac2de"
+CRUST    = "#dc8a78"
+MANTLE   = "#e6e9ef"
+BASE     = "#eff1f5"
+SURFACE0 = "#ccd0da"
+SURFACE1 = "#bcc0cc"
+SURFACE2 = "#acb0be"
+OVERLAY0 = "#9ca0b0"
+TEXT     = "#4c4f69"
+SUBTEXT0 = "#6c6f85"
+SUBTEXT1 = "#5c5f77"
 
 # Accent
-RED      = "#f38ba8"
-PEACH    = "#fab387"
-YELLOW   = "#f9e2af"
-GREEN    = "#a6e3a1"
-BLUE     = "#89b4fa"
-LAVENDER = "#b4befe"
-MAUVE    = "#cba6f7"
-PINK     = "#f5c2e7"
-TEAL     = "#94e2d5"
-SKY      = "#89dceb"
+RED      = "#d20f39"
+PEACH    = "#fe640b"
+YELLOW   = "#df8e1d"
+GREEN    = "#40a02b"
+BLUE     = "#1e66f5"
+LAVENDER = "#7287fd"
+MAUVE    = "#8839ef"
+PINK     = "#ea76cb"
+TEAL     = "#179299"
+SKY      = "#04a5e5"
 
 # Semantic aliases
-BG_DARK      = CRUST
-BG_CARD      = MANTLE
-BG_INPUT     = SURFACE0
-BG_HOVER     = SURFACE1
-FG_PRIMARY   = TEXT
-FG_SECONDARY = SUBTEXT1
-FG_MUTED     = OVERLAY0
-BORDER       = SURFACE0
-ACCENT       = BLUE
+BG_DARK      = BASE       # main background (lightest)
+BG_CARD      = MANTLE     # card/secondary background
+BG_INPUT     = SURFACE0   # input fields
+BG_HOVER     = SURFACE1   # hover states
+FG_PRIMARY   = TEXT       # primary text (dark)
+FG_SECONDARY = SUBTEXT1   # secondary text
+FG_MUTED     = OVERLAY0   # muted/disabled text
+BORDER       = SURFACE0   # borders
+ACCENT       = BLUE       # accent color
 SUCCESS      = GREEN
 DANGER       = RED
 WARNING      = YELLOW
@@ -133,22 +133,22 @@ QPushButton:checked {{
 
 /* ── 主按钮 ── */
 QPushButton[class="primary"] {{
-    background-color: #1e6640;
-    color: {SUCCESS};
-    border-color: #2d9f5f;
+    background-color: #40a02b;
+    color: #ffffff;
+    border-color: #358524;
 }}
 QPushButton[class="primary"]:hover {{
-    background-color: #2d9f5f;
+    background-color: #358524;
 }}
 
 /* ── 危险按钮 ── */
 QPushButton[class="danger"] {{
-    background-color: #6e2535;
-    color: {DANGER};
-    border-color: #a6374d;
+    background-color: #fdf2f4;
+    color: #d20f39;
+    border-color: #d20f39;
 }}
 QPushButton[class="danger"]:hover {{
-    background-color: #a6374d;
+    background-color: #fce4e8;
 }}
 
 /* ── 操作按钮 ── */
@@ -396,7 +396,7 @@ def get_stylesheet() -> str:
     """获取完整的应用 QSS 样式表。
 
     Returns:
-        Catppuccin Mocha 暗色主题的完整 QSS 字符串。
+        Catppuccin Latte 明亮主题的完整 QSS 字符串。
     """
     global _COMPILED_STYLESHEET
     if _COMPILED_STYLESHEET is None:

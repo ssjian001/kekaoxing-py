@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSplitter,
+
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -185,7 +185,7 @@ class _FAPanel(QScrollArea):
 
         if not records:
             label = QLabel("选择一个 Issue 查看 FA 分析记录")
-            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 20px;")
+            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
             self._layout.addWidget(label)
             return
 
@@ -198,7 +198,7 @@ class _FAPanel(QScrollArea):
                 }}
             """)
             card_layout = QVBoxLayout(card)
-            card_layout.setContentsMargins(16, 12, 16, 12)
+            card_layout.setContentsMargins(10, 8, 10, 8)
 
             # 标题行
             header = QHBoxLayout()
@@ -281,18 +281,11 @@ class IssueView(QWidget):
 
         layout.addLayout(toolbar)
 
-        # 分割器
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-
         self._issue_table = _IssueTable()
-        splitter.addWidget(self._issue_table)
+        layout.addWidget(self._issue_table, stretch=3)
 
         self._fa_panel = _FAPanel()
-        splitter.addWidget(self._fa_panel)
-
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
-        splitter.setStyleSheet("QSplitter::handle { background-color: #45475a; width: 2px; }")
+        layout.addWidget(self._fa_panel, stretch=2)
 
         # 空状态提示
         self._empty_label = QLabel("暂无 Issue 数据")
@@ -302,8 +295,6 @@ class IssueView(QWidget):
         self._empty_label.setParent(self._issue_table)
         self._empty_label.hide()
         self._issue_table.installEventFilter(self)
-
-        layout.addWidget(splitter)
 
         # ── 信号连接 ──
         self._btn_add.clicked.connect(self._open_create_dialog)
