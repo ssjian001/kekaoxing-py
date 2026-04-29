@@ -51,10 +51,12 @@ from src.views.dialogs.project_edit_dialog import ProjectEditDialog
 from src.views.dialogs.sample_edit_dialog import SampleEditDialog
 # attachment management
 from src.views.dialogs.attachment_dialog import AttachmentDialog
+from src.views.dialogs.schedule_config_dialog import ScheduleConfigDialog
 from src.views.project_view import ProjectView
 # knowledge management
 from src.views.knowledge_view import KnowledgeView
 from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
+from src.services.undo_manager import BatchScheduleCommand
 
 
 class MainWindow(QMainWindow):
@@ -603,24 +605,68 @@ class MainWindow(QMainWindow):
             self._ctrl.notify_data_changed("undo")
 
     def _on_auto_schedule(self) -> None:
-        """执行自动排程。"""
+        """弹出排程参数配置弹窗，然后执行自动排程。"""
         ctrl = self._ctrl
         if not ctrl or not ctrl.scheduler_service:
             return
 
         plan_id = self._test_plan_view.get_selected_plan_id()
         if plan_id is None:
-            self.statusBar().showMessage("⚠️ 没有测试计划，请先创建计划", 5000)
+            self.statusBar().showMessage("请先创建并选择测试计划", 5000)
             return
 
-        self.statusBar().showMessage("⏳ 正在排程…", 0)
+        # -- 弹出参数配置弹窗 --
+        equipment_list = (
+            ctrl.equipment_service.list_all()
+            if ctrl.equipment_service
+            else []
+        )
+        dlg = ScheduleConfigDialog(
+            equipment_list=equipment_list,
+            parent=self,
+        )
+        if dlg.exec() != dlg.DialogCode.Accepted:
+            return
+
+        config = dlg.get_config()
+
+        self.statusBar().showMessage("正在排程...", 0)
 
         try:
+            # 排程前记录所有任务的 start_day
+            old_start_days: dict[int, int] = {}
+            if ctrl.test_tasks:
+                for task in ctrl.test_tasks.get_by_plan(plan_id):
+                    if task.id is not None:
+                        old_start_days[task.id] = task.start_day
+
+            # 执行排程（内部会写回 DB）
             report = ctrl.scheduler_service.auto_schedule(
-                plan_id, skip_weekends=True,
+                plan_id,
+                skip_weekends=config["skip_weekends"],
+                lock_existing=config["lock_existing"],
+                deadline=config["deadline"],
+                equipment_capacity=config["equipment_capacity"],
             )
+
+            # 排程后重新读取，计算 diff
+            changes: list[tuple[int, int, int]] = []
+            if ctrl.test_tasks:
+                for task in ctrl.test_tasks.get_by_plan(plan_id):
+                    if task.id is not None:
+                        old_day = old_start_days.get(task.id, 0)
+                        new_day = task.start_day
+                        if old_day != new_day:
+                            changes.append((task.id, old_day, new_day))
+
+            # 用 BatchScheduleCommand 包装写回操作（支持撤销/重做）
+            if changes and ctrl.test_tasks:
+                ctrl.undo_manager.execute(
+                    BatchScheduleCommand(ctrl.test_tasks, changes)
+                )
+
             msg = (
-                f"✅ 排程完成：{report['task_count']} 个任务，"
+                f"排程完成：{report['task_count']} 个任务，"
                 f"总工期 {report['total_days']} 天，"
                 f"更新 {report['updated_count']} 个任务"
             )
@@ -629,7 +675,7 @@ class MainWindow(QMainWindow):
                 for s in report["suggestions"][:2]:
                     print(f"[Schedule] {s}")
         except Exception as e:
-            self.statusBar().showMessage(f"❌ 排程失败: {e}", 10000)
+            self.statusBar().showMessage(f"排程失败: {e}", 10000)
 
         # 刷新视图
         self._ctrl.notify_data_changed("task")

@@ -115,6 +115,39 @@ class AddEntityCommand(Command):
             self._repo.delete(self._created_id)
 
 
+class BatchScheduleCommand(Command):
+    """批量更新任务排程（支持撤销/重做整个排程操作）。"""
+
+    def __init__(self, task_repo: Any, changes: list[tuple[int, int, int]]) -> None:
+        """
+        Parameters
+        ----------
+        task_repo : TestTaskRepository
+            任务仓库。
+        changes : list[tuple[int, int, int]]
+            [(task_id, old_start_day, new_start_day), ...]
+        """
+        self._task_repo = task_repo
+        self._changes = changes
+        self.description = "自动排程"
+
+    def do(self) -> None:
+        """执行所有 new_start_day 更新。"""
+        updates = [(tid, new_day) for tid, _old, new_day in self._changes]
+        if updates:
+            self._task_repo.bulk_update_start_day(updates)
+
+    def undo(self) -> None:
+        """恢复所有 old_start_day。"""
+        restores = [(tid, old_day) for tid, old_day, _new in self._changes]
+        if restores:
+            self._task_repo.bulk_update_start_day(restores)
+
+    def redo(self) -> None:
+        """重新执行 new_start_day 更新。"""
+        self.do()
+
+
 class DeleteEntityCommand(Command):
     """删除实体并保存数据用于恢复。"""
 
