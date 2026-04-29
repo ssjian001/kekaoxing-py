@@ -31,7 +31,7 @@ class TechnicianEditDialog(_BaseDialog):
     ) -> None:
         is_edit = technician is not None
         super().__init__(
-            "✏️ 编辑技术员" if is_edit else "➕ 新建技术员",
+            "编辑技术员" if is_edit else "新建技术员",
             parent,
             width=420,
         )

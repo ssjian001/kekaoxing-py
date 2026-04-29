@@ -36,6 +36,7 @@ from src.views.sample_view import SampleView
 from src.views.test_plan_view import TestPlanView
 from src.views.issue_view import IssueView
 from src.views.equipment_view import EquipmentView
+from src.views.technician_view import TechnicianView
 from src.views.dialogs.sample_checkin_dialog import SampleCheckInDialog
 from src.views.dialogs.sample_checkout_dialog import SampleCheckoutDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
@@ -43,6 +44,7 @@ from src.views.dialogs.task_dialog import TaskEditDialog
 from src.views.dialogs.plan_edit_dialog import PlanEditDialog
 from src.views.dialogs.export_dialog import ExportDialog
 from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
+from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
 from src.views.dialogs.project_edit_dialog import ProjectEditDialog
 from src.views.dialogs.sample_edit_dialog import SampleEditDialog
 # attachment management
@@ -144,12 +146,19 @@ class MainWindow(QMainWindow):
         # Issue 追踪 — FA 记录缓存
         self._current_fa_records: list = []
 
-        # Tab 5: 设备管理
+        # Tab 5: 设备 & 技术员管理（内部双 tab）
+        self._equip_tech_tabs = QTabWidget()
         self._equipment_view = EquipmentView()
-        self._tab_widget.addTab(self._equipment_view, "🔧 设备管理")
+        self._equip_tech_tabs.addTab(self._equipment_view, "设备")
+        self._technician_view = TechnicianView()
+        self._equip_tech_tabs.addTab(self._technician_view, "技术员")
+        self._tab_widget.addTab(self._equip_tech_tabs, "🔧 设备管理")
         self._equipment_view.btn_add.clicked.connect(self._on_equipment_add)
         self._equipment_view.btn_edit.clicked.connect(self._on_equipment_edit)
         self._equipment_view.btn_delete.clicked.connect(self._on_equipment_delete)
+        self._technician_view.btn_add.clicked.connect(self._on_technician_add)
+        self._technician_view.btn_edit.clicked.connect(self._on_technician_edit)
+        self._technician_view.btn_delete.clicked.connect(self._on_technician_delete)
 
         # knowledge management: Tab 6: 知识库
         self._knowledge_view = KnowledgeView()
@@ -398,6 +407,11 @@ class MainWindow(QMainWindow):
         if ctrl.equipment_service:
             all_equipment = ctrl.equipment_service.list_all()
             self._equipment_view.refresh(all_equipment)
+
+        # 技术员管理 — 无 project_id，不筛选
+        if ctrl.technicians:
+            all_technicians = ctrl.technicians.list_all()
+            self._technician_view.refresh(all_technicians)
 
         # knowledge management: 知识库 — 无 project_id，不筛选
         if ctrl.knowledge_service:
@@ -961,6 +975,70 @@ class MainWindow(QMainWindow):
             assert eq.id is not None
             ctrl.equipment_service.delete(eq.id)
             self.statusBar().showMessage(f"✅ 设备「{eq.name}」已删除", 5000)
+            self._ctrl.notify_data_changed()
+        except ValueError as e:
+            QMessageBox.warning(self, "删除失败", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "删除失败", f"删除失败: {e}")
+
+    # ── 技术员管理回调 ──
+
+    def _on_technician_add(self) -> None:
+        """新建技术员。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.technicians:
+            return
+        dlg = TechnicianEditDialog(parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                ctrl.technicians.insert(**data)
+                self.statusBar().showMessage(f"✅ 技术员「{data['name']}」已创建", 5000)
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "创建失败", f"保存失败: {e}")
+
+    def _on_technician_edit(self) -> None:
+        """编辑选中的技术员。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.technicians:
+            return
+        tech = self._technician_view.get_selected_technician()
+        if tech is None:
+            self.statusBar().showMessage("⚠️ 请先选中一个技术员", 5000)
+            return
+        dlg = TechnicianEditDialog(technician=tech, parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                assert tech.id is not None
+                ctrl.technicians.update(tech.id, **data)
+                self.statusBar().showMessage(f"✅ 技术员「{data['name']}」已更新", 5000)
+                self._ctrl.notify_data_changed()
+            except Exception as e:
+                QMessageBox.critical(self, "更新失败", f"保存失败: {e}")
+
+    def _on_technician_delete(self) -> None:
+        """删除选中的技术员。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.technicians:
+            return
+        tech = self._technician_view.get_selected_technician()
+        if tech is None:
+            self.statusBar().showMessage("⚠️ 请先选中一个技术员", 5000)
+            return
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除技术员「{tech.name}」({tech.employee_id or tech.department}) 吗？\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            assert tech.id is not None
+            ctrl.technicians.delete(tech.id)
+            self.statusBar().showMessage(f"✅ 技术员「{tech.name}」已删除", 5000)
             self._ctrl.notify_data_changed()
         except ValueError as e:
             QMessageBox.warning(self, "删除失败", str(e))
