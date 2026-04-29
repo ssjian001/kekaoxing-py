@@ -151,7 +151,7 @@ class _SamplePoolTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无样品数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -365,7 +365,7 @@ class _SampleUsageTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无出入库记录")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -510,7 +510,7 @@ class _QRCodeDialog(QDialog):
 
         # 标题
         title = QLabel(f"🔲 样品二维码：{sn}")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {TEXT};")
+        title.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {TEXT};")
         layout.addWidget(title)
 
         # 图片
@@ -657,10 +657,10 @@ class SampleView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 16, 24, 16)
+        layout.setContentsMargins(16, 10, 16, 10)
 
         title = QLabel("📦 样品管理")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
         layout.addWidget(title)
 
         self._tabs = QTabWidget()
@@ -678,7 +678,7 @@ class SampleView(QWidget):
                 margin-right: 2px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
-                font-size: 14px;
+                font-size: 12px;
             }}
             QTabBar::tab:selected {{
                 background-color: {SURFACE1};

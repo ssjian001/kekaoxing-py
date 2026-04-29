@@ -93,7 +93,7 @@ class BatchImportDialog(_BaseDialog):
         mapping_layout.setSpacing(8)
 
         lbl_map = QLabel("📌 列映射 — 请为每个字段选择对应的 Excel 列")
-        lbl_map.setStyleSheet(f"color: {TEXT}; font-size: 14px; font-weight: bold;")
+        lbl_map.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         mapping_layout.addWidget(lbl_map)
 
         self._combos: dict[str, QComboBox] = {}
@@ -124,7 +124,7 @@ class BatchImportDialog(_BaseDialog):
 
         # 3. 预览表格
         lbl_preview = QLabel("📊 数据预览（前 20 行）")
-        lbl_preview.setStyleSheet(f"color: {TEXT}; font-size: 14px; font-weight: bold;")
+        lbl_preview.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._root.addWidget(lbl_preview)
 
         self._preview_table = QTableWidget()
@@ -157,7 +157,7 @@ class BatchImportDialog(_BaseDialog):
         self._btn_import.setStyleSheet(
             f"QPushButton {{ background-color: {GREEN}; color: {CRUST}; "
             f"border: none; border-radius: 6px; padding: 8px 24px; "
-            f"font-weight: bold; font-size: 14px; }}"
+            f"font-weight: bold; font-size: 12px; }}"
             f"QPushButton:disabled {{ background-color: {SURFACE0}; color: {SUBTEXT0}; }}"
         )
         self._btn_import.setEnabled(False)
@@ -168,7 +168,7 @@ class BatchImportDialog(_BaseDialog):
         self._btn_close.setStyleSheet(
             f"QPushButton {{ background-color: {SURFACE1}; color: {TEXT}; "
             f"border: none; border-radius: 6px; padding: 8px 24px; "
-            f"font-weight: bold; font-size: 14px; }}"
+            f"font-weight: bold; font-size: 12px; }}"
         )
         self._btn_close.clicked.connect(self._on_close)
         btn_bar.addWidget(self._btn_close)
@@ -357,12 +357,12 @@ class BatchImportDialog(_BaseDialog):
         )
         if skip_count > 0:
             self._lbl_result.setStyleSheet(
-                f"color: {YELLOW}; font-size: 14px; padding: 8px; "
+                f"color: {YELLOW}; font-size: 12px; padding: 8px; "
                 f"background-color: {SURFACE0}; border-radius: 6px;"
             )
         else:
             self._lbl_result.setStyleSheet(
-                f"color: {GREEN}; font-size: 14px; padding: 8px; "
+                f"color: {GREEN}; font-size: 12px; padding: 8px; "
                 f"background-color: {SURFACE0}; border-radius: 6px;"
             )
 

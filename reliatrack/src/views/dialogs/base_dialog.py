@@ -48,16 +48,16 @@ _DIALOG_STYLE = f"""
     }}
     QLabel {{
         color: {TEXT};
-        font-size: 14px;
+        font-size: 12px;
     }}
     QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit, QTextEdit, QComboBox {{
         background-color: {SURFACE0};
         color: {TEXT};
         border: 1px solid {SURFACE1};
         border-radius: 6px;
-        padding: 6px 10px;
-        font-size: 14px;
-        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 12px;
+        min-height: 24px;
     }}
     QLineEdit:focus, QComboBox:focus {{
         border-color: {BLUE};
@@ -67,9 +67,9 @@ _DIALOG_STYLE = f"""
         color: {CRUST};
         border: none;
         border-radius: 6px;
-        padding: 8px 20px;
+        padding: 6px 16px;
         font-weight: bold;
-        font-size: 14px;
+        font-size: 12px;
     }}
     QPushButton:hover {{
         background-color: {SURFACE1};
@@ -83,9 +83,9 @@ _DIALOG_STYLE = f"""
         color: {TEXT};
         border: 1px solid {SURFACE1};
         border-radius: 8px;
-        margin-top: 12px;
-        padding-top: 16px;
-        font-size: 15px;
+        margin-top: 10px;
+        padding-top: 14px;
+        font-size: 13px;
         font-weight: bold;
     }}
     QGroupBox::title {{
@@ -117,12 +117,12 @@ class _BaseDialog(QDialog):
 
         # 主布局
         self._root = QVBoxLayout(self)
-        self._root.setContentsMargins(20, 16, 20, 16)
-        self._root.setSpacing(12)
+        self._root.setContentsMargins(16, 12, 16, 12)
+        self._root.setSpacing(8)
 
         # 表单布局
         self._form = QFormLayout()
-        self._form.setSpacing(10)
+        self._form.setSpacing(8)
         self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         self._root.addLayout(self._form)
 

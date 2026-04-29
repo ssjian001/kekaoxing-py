@@ -185,7 +185,7 @@ class _FAPanel(QScrollArea):
 
         if not records:
             label = QLabel("选择一个 Issue 查看 FA 分析记录")
-            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 15px; padding: 20px;")
+            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 20px;")
             self._layout.addWidget(label)
             return
 
@@ -203,7 +203,7 @@ class _FAPanel(QScrollArea):
             # 标题行
             header = QHBoxLayout()
             step_label = QLabel(f"Step {rec.step_no}")
-            step_label.setStyleSheet(f"color: {BLUE}; font-weight: bold; font-size: 14px;")
+            step_label.setStyleSheet(f"color: {BLUE}; font-weight: bold; font-size: 12px;")
             header.addWidget(step_label)
 
             method_label = QLabel(rec.method or "")
@@ -214,20 +214,20 @@ class _FAPanel(QScrollArea):
 
             # 步骤标题
             title = QLabel(rec.step_title or "")
-            title.setStyleSheet(f"color: {TEXT}; font-size: 14px; font-weight: bold;")
+            title.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
             card_layout.addWidget(title)
 
             # 描述
             desc = QLabel(rec.description or "")
             desc.setWordWrap(True)
-            desc.setStyleSheet(f"color: {TEXT}; font-size: 14px;")
+            desc.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
             card_layout.addWidget(desc)
 
             # 发现
             if rec.findings:
                 findings = QLabel(f"🔍 发现: {rec.findings}")
                 findings.setWordWrap(True)
-                findings.setStyleSheet(f"color: {PEACH}; font-size: 14px;")
+                findings.setStyleSheet(f"color: {PEACH}; font-size: 12px;")
                 card_layout.addWidget(findings)
 
             self._layout.addWidget(card)
@@ -244,10 +244,10 @@ class IssueView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 16, 24, 16)
+        layout.setContentsMargins(16, 10, 16, 10)
 
         title = QLabel("🐛 Issue 追踪")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
         layout.addWidget(title)
 
         # 工具栏
@@ -280,7 +280,7 @@ class IssueView(QWidget):
 
         # 统计标签
         self._stats_label = QLabel("0 个 Issue")
-        self._stats_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 14px;")
+        self._stats_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px;")
         toolbar.addWidget(self._stats_label)
 
         layout.addLayout(toolbar)
@@ -301,7 +301,7 @@ class IssueView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无 Issue 数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._issue_table)
         self._empty_label.hide()

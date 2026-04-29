@@ -51,7 +51,7 @@ class KnowledgeView(QWidget):
 
         # 页面标题
         title = QLabel("📚 知识库")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
         layout.addWidget(title)
 
         # 工具栏
@@ -109,7 +109,7 @@ class KnowledgeView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无知识库条目")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()

@@ -68,7 +68,7 @@ class _KPICard(QFrame):
         layout.setContentsMargins(20, 12, 20, 12)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 14px; border: none;")
+        title_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; border: none;")
         layout.addWidget(title_label)
 
         value_label = QLabel(value)
@@ -246,11 +246,11 @@ class DashboardView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 16, 24, 16)
+        layout.setContentsMargins(16, 10, 16, 10)
 
         # 标题
         title = QLabel("📊 项目总览")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 24px; font-weight: bold;")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
         layout.addWidget(title)
 
         # 项目筛选指示器
