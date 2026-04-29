@@ -132,7 +132,7 @@ class AttachmentDialog(_BaseDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        self._btn_add = QPushButton("➕ 添加附件")
+        self._btn_add = QPushButton("添加附件")
         self._btn_add.setStyleSheet(f"""
             QPushButton {{
                 background-color: {GREEN}; color: {CRUST}; border: none;
@@ -143,7 +143,7 @@ class AttachmentDialog(_BaseDialog):
         self._btn_add.clicked.connect(self._on_add_attachments)
         btn_layout.addWidget(self._btn_add)
 
-        self._btn_delete = QPushButton("🗑 删除")
+        self._btn_delete = QPushButton("删除")
         self._btn_delete.setStyleSheet(f"""
             QPushButton {{
                 background-color: {RED}; color: {CRUST}; border: none;

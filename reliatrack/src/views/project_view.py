@@ -72,11 +72,6 @@ class ProjectView(QWidget):
         layout.setContentsMargins(*VIEW_MARGINS)
         layout.setSpacing(8)
 
-        # 页面标题
-        title = QLabel("📁 项目管理")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
-
         # 工具栏
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
@@ -84,21 +79,21 @@ class ProjectView(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 搜索项目名称 / 产品 / 客户…")
         self.search_input.setClearButtonEnabled(True)
-        self.search_input.setFixedWidth(280)
+        self.search_input.setMinimumWidth(160)
         self.search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self.search_input)
 
-        self.btn_add = QPushButton("➕ 新建")
+        self.btn_add = QPushButton("新建")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.setMinimumWidth(70)
         toolbar.addWidget(self.btn_add)
 
-        self.btn_edit = QPushButton("✏️ 编辑")
+        self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
         self.btn_edit.setMinimumWidth(70)
         toolbar.addWidget(self.btn_edit)
 
-        self.btn_delete = QPushButton("🗑 删除")
+        self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setMinimumWidth(70)
         toolbar.addWidget(self.btn_delete)

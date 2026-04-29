@@ -246,11 +246,6 @@ class DashboardView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 10, 16, 10)
 
-        # 标题
-        title = QLabel("📊 项目总览")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
-
         # 项目筛选指示器
         self._filter_label = QLabel("📋 全部项目")
         self._filter_label.setStyleSheet(

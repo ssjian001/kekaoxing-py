@@ -76,7 +76,7 @@ class BatchImportDialog(_BaseDialog):
         self._lbl_file.setStyleSheet(f"color: {SUBTEXT0}; font-size: 13px;")
         file_bar.addWidget(self._lbl_file, 1)
 
-        self._btn_browse = QPushButton("📂 选择 Excel 文件")
+        self._btn_browse = QPushButton("选择 Excel 文件")
         self._btn_browse.setStyleSheet(
             f"QPushButton {{ background-color: {BLUE}; color: {CRUST}; "
             f"border: none; border-radius: 6px; padding: 8px 16px; "

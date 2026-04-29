@@ -47,7 +47,7 @@ class TaskEditDialog(_BaseDialog):
     ) -> None:
         is_edit = task is not None
         super().__init__(
-            "✏️ 编辑测试任务" if is_edit else "➕ 新建测试任务",
+            "编辑测试任务" if is_edit else "新建测试任务",
             parent,
             width=560,
         )
@@ -129,7 +129,7 @@ class TaskEditDialog(_BaseDialog):
 
     def _add_env_group(self, task: TestTask | None) -> None:
         """添加「🌡️ 环境参数」分组框（温度 + 湿度）。"""
-        group = QGroupBox("🌡️ 环境参数")
+        group = QGroupBox("环境参数")
         form = QHBoxLayout(group)
         form.setContentsMargins(12, 20, 12, 12)
         form.setSpacing(16)
@@ -183,7 +183,7 @@ class TaskEditDialog(_BaseDialog):
         self._log_file_edit = QLineEdit(task.log_file if task else "")
         self._log_file_edit.setPlaceholderText("选择设备原始日志文件路径…")
 
-        browse_btn = QPushButton("📁 浏览")
+        browse_btn = QPushButton("浏览")
         browse_btn.setFixedWidth(80)
         browse_btn.clicked.connect(self._browse_log_file)
 

@@ -60,8 +60,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._ctrl = controller
         self.setWindowTitle("ReliaTrack — 可靠性测试管理")
-        self.setMinimumSize(1024, 768)
-        self.resize(1280, 800)
+        self.setMinimumSize(800, 600)
+        self.resize(1100, 700)
 
         self._setup_central_widget()
         self._setup_toolbar()

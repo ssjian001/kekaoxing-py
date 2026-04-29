@@ -53,11 +53,6 @@ class TechnicianView(QWidget):
         layout.setContentsMargins(*VIEW_MARGINS)
         layout.setSpacing(8)
 
-        # 页面标题
-        title = QLabel("👷 技术员管理")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
-
         # 工具栏
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
@@ -65,21 +60,21 @@ class TechnicianView(QWidget):
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("🔍 搜索姓名 / 工号 / 部门…")
         self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setFixedWidth(280)
+        self._search_edit.setMinimumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_edit)
 
-        self.btn_add = QPushButton("➕ 新增")
+        self.btn_add = QPushButton("新增")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.setMinimumWidth(70)
         toolbar.addWidget(self.btn_add)
 
-        self.btn_edit = QPushButton("✏️ 编辑")
+        self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
         self.btn_edit.setMinimumWidth(70)
         toolbar.addWidget(self.btn_edit)
 
-        self.btn_delete = QPushButton("🗑 删除")
+        self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setMinimumWidth(70)
         toolbar.addWidget(self.btn_delete)

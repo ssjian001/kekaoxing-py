@@ -118,9 +118,9 @@ class _TaskTable(QTableWidget):
             QMenu::item {{ padding: 6px 24px; }}
             QMenu::item:selected {{ background-color: {SURFACE1}; }}
         """)
-        act_edit = QAction("✏️ 编辑", self)
+        act_edit = QAction("编辑", self)
         act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
-        act_delete = QAction("🗑️ 删除", self)
+        act_delete = QAction("删除", self)
         act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
         menu.addAction(act_edit)
         menu.addAction(act_delete)
@@ -282,10 +282,6 @@ class TestPlanView(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 10, 16, 10)
-
-        title = QLabel("📋 测试计划")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
 
         # 工具栏
         toolbar = QHBoxLayout()

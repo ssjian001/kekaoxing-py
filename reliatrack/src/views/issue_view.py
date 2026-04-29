@@ -117,8 +117,8 @@ class _IssueTable(QTableWidget):
                 QMenu::item {{ padding: 6px 24px; }}
                 QMenu::item:selected {{ background-color: {SURFACE1}; }}
             """)
-            self._act_edit = self._context_menu.addAction("✏️ 编辑 Issue")
-            self._act_delete = self._context_menu.addAction("🗑️ 删除 Issue")
+            self._act_edit = self._context_menu.addAction("编辑 Issue")
+            self._act_delete = self._context_menu.addAction("删除 Issue")
             self._act_edit.triggered.connect(self._on_edit_action)
             self._act_delete.triggered.connect(self._on_delete_action)
 
@@ -246,15 +246,11 @@ class IssueView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 10, 16, 10)
 
-        title = QLabel("🐛 Issue 追踪")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
-
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("🔍 搜索 Issue...")
-        self._search_input.setFixedWidth(280)
+        self._search_input.setMinimumWidth(160)
         self._search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {SURFACE0}; color: {TEXT};
@@ -263,16 +259,16 @@ class IssueView(QWidget):
         """)
         toolbar.addWidget(self._search_input)
 
-        self._btn_add = QPushButton("➕ 新建 Issue")
+        self._btn_add = QPushButton("新建 Issue")
         self._btn_add.setProperty("class", "action")
         toolbar.addWidget(self._btn_add)
 
-        self._btn_add_fa = QPushButton("➕ 新建 FA 步骤")
+        self._btn_add_fa = QPushButton("新建 FA 步骤")
         self._btn_add_fa.setProperty("class", "action")
         toolbar.addWidget(self._btn_add_fa)
 
         # attachment management: 附件按钮
-        self._btn_attachments = QPushButton("📎 附件")
+        self._btn_attachments = QPushButton("附件")
         self._btn_attachments.setProperty("class", "action")
         toolbar.addWidget(self._btn_attachments)
 

@@ -212,7 +212,7 @@ class _BaseDialog(QDialog):
     ) -> QTextEdit:
         """添加 QTextEdit 多行文本字段并返回控件。"""
         edit = QTextEdit(default)
-        edit.setMinimumHeight(72)
+        edit.setMinimumHeight(48)
         self._form.addRow(label, edit)
         return edit
 

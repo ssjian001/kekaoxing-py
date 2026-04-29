@@ -103,7 +103,7 @@ class _SamplePoolTab(QWidget):
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("🔍 搜索 SN / 批次号...")
-        self._search_input.setFixedWidth(280)
+        self._search_input.setMinimumWidth(160)
         self._search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {SURFACE0};
@@ -118,27 +118,27 @@ class _SamplePoolTab(QWidget):
         toolbar.addWidget(self._search_input)
         toolbar.addStretch()
 
-        self._btn_add = QPushButton("➕ 入库")
+        self._btn_add = QPushButton("入库")
         self._btn_add.setProperty("class", "action")
         self._btn_add.setMinimumWidth(70)
         toolbar.addWidget(self._btn_add)
 
-        self._btn_batch_import = QPushButton("📥 批量导入")
+        self._btn_batch_import = QPushButton("批量导入")
         self._btn_batch_import.setProperty("class", "action")
         self._btn_batch_import.setMinimumWidth(70)
         toolbar.addWidget(self._btn_batch_import)
 
-        self._btn_out = QPushButton("📤 出库")
+        self._btn_out = QPushButton("出库")
         self._btn_out.setProperty("class", "action")
         self._btn_out.setMinimumWidth(70)
         toolbar.addWidget(self._btn_out)
 
-        self._btn_edit = QPushButton("✏️ 编辑")
+        self._btn_edit = QPushButton("编辑")
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
         toolbar.addWidget(self._btn_edit)
 
-        self._btn_generate_qr = QPushButton("🔲 生成二维码")
+        self._btn_generate_qr = QPushButton("生成二维码")
         self._btn_generate_qr.setProperty("class", "action")
         self._btn_generate_qr.setMinimumWidth(70)
         toolbar.addWidget(self._btn_generate_qr)
@@ -298,7 +298,7 @@ class _SampleUsageTab(QWidget):
 
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("🔍 搜索 SN...")
-        self._search_input.setFixedWidth(280)
+        self._search_input.setMinimumWidth(160)
         self._search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {SURFACE0};
@@ -322,13 +322,13 @@ class _SampleUsageTab(QWidget):
         self._type_combo.currentIndexChanged.connect(self._apply_filter)
         toolbar.addWidget(self._type_combo)
 
-        self._btn_search = QPushButton("🔍 查询")
+        self._btn_search = QPushButton("查询")
         self._btn_search.setProperty("class", "action")
         self._btn_search.setMinimumWidth(70)
         self._btn_search.clicked.connect(self._request_refresh)
         toolbar.addWidget(self._btn_search)
 
-        self._btn_reset = QPushButton("↻ 重置")
+        self._btn_reset = QPushButton("重置")
         self._btn_reset.setProperty("class", "action")
         self._btn_reset.setMinimumWidth(70)
         self._btn_reset.clicked.connect(self._on_reset)
@@ -505,11 +505,11 @@ class _QRCodeDialog(QDialog):
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
 
         # 标题
-        title = QLabel(f"🔲 样品二维码：{sn}")
+        title = QLabel(f"样品二维码：{sn}")
         title.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {TEXT};")
         layout.addWidget(title)
 
@@ -525,7 +525,7 @@ class _QRCodeDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        btn_save_file = QPushButton("💾 保存到文件")
+        btn_save_file = QPushButton("保存到文件")
         btn_save_file.setStyleSheet(f"""
             QPushButton {{
                 background-color: {BLUE};
@@ -543,7 +543,7 @@ class _QRCodeDialog(QDialog):
         btn_save_file.clicked.connect(self._save_to_file)
         btn_layout.addWidget(btn_save_file)
 
-        btn_save_db = QPushButton("💾 保存到数据库")
+        btn_save_db = QPushButton("保存到数据库")
         btn_save_db.setStyleSheet(f"""
             QPushButton {{
                 background-color: {BLUE};
@@ -613,12 +613,12 @@ class _SampleLedgerTab(QWidget):
         toolbar = QHBoxLayout()
         toolbar.addStretch()
 
-        self._btn_edit = QPushButton("✏️ 编辑")
+        self._btn_edit = QPushButton("编辑")
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
         toolbar.addWidget(self._btn_edit)
 
-        self._btn_generate_qr = QPushButton("🔲 生成二维码")
+        self._btn_generate_qr = QPushButton("生成二维码")
         self._btn_generate_qr.setProperty("class", "action")
         self._btn_generate_qr.setMinimumWidth(70)
         toolbar.addWidget(self._btn_generate_qr)
@@ -658,10 +658,6 @@ class SampleView(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 10, 16, 10)
-
-        title = QLabel("📦 样品管理")
-        title.setStyleSheet(f"color: {TEXT}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
 
         self._tabs = QTabWidget()
         self._tabs.setStyleSheet(f"""
