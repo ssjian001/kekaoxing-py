@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QFrame,
 )
 from PySide6.QtCore import QEvent, Signal, Qt
 
@@ -58,16 +59,13 @@ class TechnicianView(QWidget):
         toolbar.setSpacing(8)
 
         self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("🔍 搜索姓名 / 工号 / 部门…")
+        self._search_edit.setPlaceholderText("搜索姓名 / 工号 / 部门…")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setMinimumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_edit)
 
-        self.btn_add = QPushButton("新增")
-        self.btn_add.setProperty("class", "primary")
-        self.btn_add.setMinimumWidth(70)
-        toolbar.addWidget(self.btn_add)
+        toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
@@ -79,7 +77,15 @@ class TechnicianView(QWidget):
         self.btn_delete.setMinimumWidth(70)
         toolbar.addWidget(self.btn_delete)
 
-        toolbar.addStretch()
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setStyleSheet(f"color: {SURFACE1};")
+        toolbar.addWidget(sep)
+
+        self.btn_add = QPushButton("新增")
+        self.btn_add.setProperty("class", "primary")
+        self.btn_add.setMinimumWidth(70)
+        toolbar.addWidget(self.btn_add)
         layout.addLayout(toolbar)
 
         # 表格
@@ -91,13 +97,13 @@ class TechnicianView(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
-        self._table.setSortingEnabled(False)
+        self._table.setSortingEnabled(True)
 
         # 列宽
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 工号
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)            # 姓名
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 姓名
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 部门
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 职位
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 联系方式
@@ -124,6 +130,8 @@ class TechnicianView(QWidget):
 
     def _populate_table(self, items: list[Technician]) -> None:
         """填充表格。"""
+        header = self._table.horizontalHeader()
+        header.blockSignals(True)
         self._table.setRowCount(len(items))
         for row, tech in enumerate(items):
             for col, (_, attr) in enumerate(self._COLUMNS):
@@ -132,6 +140,7 @@ class TechnicianView(QWidget):
                 item.setData(Qt.ItemDataRole.UserRole, tech.id)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self._table.setItem(row, col, item)
+        header.blockSignals(False)
 
         self._update_empty_state()
 

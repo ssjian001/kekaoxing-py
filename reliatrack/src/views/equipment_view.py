@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QMessageBox,
+    QFrame,
 )
 from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtGui import QColor
@@ -41,7 +42,7 @@ class EquipmentView(QWidget):
     # 表格列：(显示名, 对应 Equipment 属性)
     _COLUMNS = [
         ("ID", "id"),
-        ("编号", "model"),
+        ("型号", "model"),
         ("名称", "name"),
         ("类型", "type"),
         ("校准日期", "calibration_date"),
@@ -66,16 +67,13 @@ class EquipmentView(QWidget):
         toolbar.setSpacing(8)
 
         self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("🔍 搜索设备名称 / 编号 / 类型…")
+        self._search_edit.setPlaceholderText("搜索设备名称 / 型号 / 类型…")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setMinimumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_edit)
 
-        self.btn_add = QPushButton("新增")
-        self.btn_add.setProperty("class", "primary")
-        self.btn_add.setMinimumWidth(70)
-        toolbar.addWidget(self.btn_add)
+        toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
@@ -87,7 +85,15 @@ class EquipmentView(QWidget):
         self.btn_delete.setMinimumWidth(70)
         toolbar.addWidget(self.btn_delete)
 
-        toolbar.addStretch()
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setStyleSheet(f"color: {SURFACE1};")
+        toolbar.addWidget(sep)
+
+        self.btn_add = QPushButton("新增")
+        self.btn_add.setProperty("class", "primary")
+        self.btn_add.setMinimumWidth(70)
+        toolbar.addWidget(self.btn_add)
         layout.addLayout(toolbar)
 
         # 表格
@@ -99,12 +105,12 @@ class EquipmentView(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
-        self._table.setSortingEnabled(False)
+        self._table.setSortingEnabled(True)
 
         # 列宽
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 编号
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 型号
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)            # 名称
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 类型
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 校准日期
@@ -132,6 +138,8 @@ class EquipmentView(QWidget):
 
     def _populate_table(self, items: list[Equipment]) -> None:
         """填充表格。"""
+        header = self._table.horizontalHeader()
+        header.blockSignals(True)
         self._table.setRowCount(len(items))
         for row, eq in enumerate(items):
             for col, (_, attr) in enumerate(self._COLUMNS):
@@ -153,6 +161,7 @@ class EquipmentView(QWidget):
                     color = EQUIPMENT_STATUS_COLORS.get(str(value) if value else "", TEXT)
                     item.setForeground(QColor(color))
                 self._table.setItem(row, col, item)
+        header.blockSignals(False)
 
         self._update_empty_state()
 

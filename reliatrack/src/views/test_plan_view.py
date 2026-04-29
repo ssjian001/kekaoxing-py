@@ -27,7 +27,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
-from src.styles.constants import TABLE_QSS
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
@@ -281,7 +281,7 @@ class TestPlanView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(*VIEW_MARGINS)
 
         # 工具栏
         toolbar = QHBoxLayout()

@@ -27,8 +27,10 @@ from src.styles.theme import (
     TEAL, LAVENDER, PINK, SKY,
 )
 
+from src.styles.constants import VIEW_MARGINS
 
-# ═══════════════════════════════════════════════════════════════════
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 #  Catppuccin 配色盘（用于条形图）
 # ═══════════════════════════════════════════════════════════════════
 
@@ -244,7 +246,7 @@ class DashboardView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(*VIEW_MARGINS)
 
         # 项目筛选指示器
         self._filter_label = QLabel("📋 全部项目")

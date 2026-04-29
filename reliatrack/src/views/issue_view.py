@@ -33,7 +33,7 @@ from src.styles.theme import (
 from src.models.issue import Issue, FARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
-from src.styles.constants import TABLE_QSS
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS
 
 
 class _IssueTable(QTableWidget):
@@ -71,14 +71,16 @@ class _IssueTable(QTableWidget):
     def set_issues(self, issues: list[Issue]) -> None:
         self._issues = issues
         self.setRowCount(len(issues))
-        severity_colors = {"critical": RED, "major": PEACH, "minor": YELLOW, "cosmetic": SUBTEXT0}
-        status_colors = {"open": RED, "analyzing": BLUE, "verified": YELLOW, "closed": GREEN}
+        severity_labels = {"critical": "严重", "major": "主要", "minor": "次要", "cosmetic": "外观"}
+        status_labels = {"open": "待处理", "analyzing": "分析中", "verified": "已验证", "closed": "已关闭"}
+        severity_colors = {"严重": RED, "主要": PEACH, "次要": YELLOW, "外观": SUBTEXT0}
+        status_colors = {"待处理": RED, "分析中": BLUE, "已验证": YELLOW, "已关闭": GREEN}
         for row, issue in enumerate(issues):
             for col, val in enumerate([
                 issue.id,
                 issue.title,
-                issue.severity,
-                issue.status,
+                severity_labels.get(issue.severity, issue.severity),
+                status_labels.get(issue.status, issue.status),
                 issue.priority,
                 (issue.root_cause or "")[:15],
                 (issue.created_at or "")[:10],
@@ -225,7 +227,7 @@ class _FAPanel(QScrollArea):
 
             # 发现
             if rec.findings:
-                findings = QLabel(f"🔍 发现: {rec.findings}")
+                findings = QLabel(f"发现: {rec.findings}")
                 findings.setWordWrap(True)
                 findings.setStyleSheet(f"color: {PEACH}; font-size: 12px;")
                 card_layout.addWidget(findings)
@@ -244,12 +246,12 @@ class IssueView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(*VIEW_MARGINS)
 
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("🔍 搜索 Issue...")
+        self._search_input.setPlaceholderText("搜索 Issue 标题 / 根因…")
         self._search_input.setMinimumWidth(160)
         self._search_input.setStyleSheet(f"""
             QLineEdit {{
@@ -260,7 +262,7 @@ class IssueView(QWidget):
         toolbar.addWidget(self._search_input)
 
         self._btn_add = QPushButton("新建 Issue")
-        self._btn_add.setProperty("class", "action")
+        self._btn_add.setProperty("class", "primary")
         toolbar.addWidget(self._btn_add)
 
         self._btn_add_fa = QPushButton("新建 FA 步骤")

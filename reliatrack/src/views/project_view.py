@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QFrame,
 )
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor
@@ -77,16 +78,13 @@ class ProjectView(QWidget):
         toolbar.setSpacing(8)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 搜索项目名称 / 产品 / 客户…")
+        self.search_input.setPlaceholderText("搜索项目名称 / 产品 / 客户…")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setMinimumWidth(160)
         self.search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self.search_input)
 
-        self.btn_add = QPushButton("新建")
-        self.btn_add.setProperty("class", "primary")
-        self.btn_add.setMinimumWidth(70)
-        toolbar.addWidget(self.btn_add)
+        toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
@@ -98,7 +96,16 @@ class ProjectView(QWidget):
         self.btn_delete.setMinimumWidth(70)
         toolbar.addWidget(self.btn_delete)
 
-        toolbar.addStretch()
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setStyleSheet(f"color: {SURFACE1};")
+        toolbar.addWidget(sep)
+
+        self.btn_add = QPushButton("新建")
+        self.btn_add.setProperty("class", "primary")
+        self.btn_add.setMinimumWidth(70)
+        toolbar.addWidget(self.btn_add)
+
         layout.addLayout(toolbar)
 
         # 表格
@@ -110,7 +117,7 @@ class ProjectView(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
-        self._table.setSortingEnabled(False)
+        self._table.setSortingEnabled(True)
 
         # 列宽
         header = self._table.horizontalHeader()
@@ -142,6 +149,8 @@ class ProjectView(QWidget):
 
     def _populate_table(self, items: list[Project]) -> None:
         """填充表格。"""
+        header = self._table.horizontalHeader()
+        header.blockSignals(True)
         self._table.setRowCount(len(items))
         for row, proj in enumerate(items):
             for col, (_, attr) in enumerate(self._COLUMNS):
@@ -158,6 +167,7 @@ class ProjectView(QWidget):
                     color = self._STATUS_COLORS.get(str(value) if value else "", TEXT)
                     item.setForeground(QColor(color))
                 self._table.setItem(row, col, item)
+        header.blockSignals(False)
 
         self._update_empty_state()
 

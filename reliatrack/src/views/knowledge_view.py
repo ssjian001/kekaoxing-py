@@ -13,13 +13,14 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QMessageBox,
+    QFrame,
 )
 from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtGui import QColor
 
 from src.models.knowledge import KnowledgeEntry
 from src.styles.constants import KNOWLEDGE_CATEGORY_COLORS, VIEW_MARGINS
-from src.styles.theme import OVERLAY0, TEXT
+from src.styles.theme import OVERLAY0, TEXT, SURFACE1
 
 
 class KnowledgeView(QWidget):
@@ -54,16 +55,13 @@ class KnowledgeView(QWidget):
         toolbar.setSpacing(8)
 
         self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("🔍 搜索类别 / 失效模式 / 原因分析 / 改进措施…")
+        self._search_edit.setPlaceholderText("搜索类别 / 失效模式 / 原因分析…")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setMinimumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_edit)
 
-        self.btn_add = QPushButton("新增")
-        self.btn_add.setProperty("class", "primary")
-        self.btn_add.setMinimumWidth(70)
-        toolbar.addWidget(self.btn_add)
+        toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
@@ -75,7 +73,15 @@ class KnowledgeView(QWidget):
         self.btn_delete.setMinimumWidth(70)
         toolbar.addWidget(self.btn_delete)
 
-        toolbar.addStretch()
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setStyleSheet(f"color: {SURFACE1};")
+        toolbar.addWidget(sep)
+
+        self.btn_add = QPushButton("新增")
+        self.btn_add.setProperty("class", "primary")
+        self.btn_add.setMinimumWidth(70)
+        toolbar.addWidget(self.btn_add)
         layout.addLayout(toolbar)
 
         # 表格
@@ -87,14 +93,14 @@ class KnowledgeView(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
-        self._table.setSortingEnabled(False)
+        self._table.setSortingEnabled(True)
 
         # 列宽
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 类别
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)           # 失效模式
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)           # 原因分析
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 失效模式
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 原因分析
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)           # 改进措施
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 参考标准
 
@@ -119,6 +125,8 @@ class KnowledgeView(QWidget):
 
     def _populate_table(self, items: list[KnowledgeEntry]) -> None:
         """填充表格。"""
+        header = self._table.horizontalHeader()
+        header.blockSignals(True)
         self._table.setRowCount(len(items))
         for row, entry in enumerate(items):
             for col, (_, attr) in enumerate(self._COLUMNS):
@@ -140,6 +148,7 @@ class KnowledgeView(QWidget):
                 if len(str(value) if value else "") > 60:
                     item.setToolTip(str(value))
                 self._table.setItem(row, col, item)
+        header.blockSignals(False)
 
         self._update_empty_state()
 
