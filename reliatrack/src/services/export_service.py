@@ -1,4 +1,4 @@
-"""导出服务 — Excel (openpyxl) + PDF (fpdf2) + Word (python-docx) 导出。"""
+"""导出服务 — Excel (openpyxl) + PDF (reportlab) + Word (python-docx) 导出。"""
 
 from __future__ import annotations
 
@@ -277,10 +277,10 @@ class ExportService:
 
     # ── PDF 导出 ──────────────────────────────────────────────
 
-    # 中文字体路径（NotoSansCJK）
-    _FONT_REGULAR = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
-    _FONT_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-    _FONT_FAMILY = "NotoSC"
+    # 中文字体路径 — reportlab 不支持 CFF/OTF outline，使用 Droid TrueType
+    _FONT_REGULAR = "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
+    _FONT_BOLD = "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
+    _FONT_FAMILY = "Droid"
 
     def export_report_pdf(
         self,
@@ -290,58 +290,103 @@ class ExportService:
         samples: list[Sample],
         filepath: str | None = None,
     ) -> str:
-        """导出综合测试报告为 PDF。
+        """导出综合测试报告为 PDF (reportlab)。
 
         包含：概览统计、任务列表、Issue 列表、样品状态。
         """
-        from fpdf import FPDF
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.lib.colors import HexColor
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+            PageBreak,
+        )
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
 
-        ff = self._FONT_FAMILY
-        font_reg = self._FONT_REGULAR
-        font_bld = self._FONT_BOLD
+        # 注册中文字体（Droid TrueType，Normal 和 Bold 使用同一字体）
+        pdfmetrics.registerFont(TTFont("Droid", self._FONT_REGULAR))
+        pdfmetrics.registerFont(TTFont("Droid-Bold", self._FONT_BOLD))
+        pdfmetrics.registerFontFamily(
+            "Droid", normal="Droid", bold="Droid-Bold",
+        )
 
-        class _ReportPDF(FPDF):
-            def header(self) -> None:
-                self.set_font(ff, "B", 10)
-                self.set_text_color(100, 100, 100)
-                self.cell(0, 6, "ReliaTrack — 可靠性测试报告", align="R")
-                self.ln(8)
+        # 颜色
+        _BLUE = HexColor("#2B579A")
+        _RED = HexColor("#C0504D")
+        _GRAY = HexColor("#646464")
+        _LIGHT_GRAY = HexColor("#969696")
+        _DARK = HexColor("#323232")
 
-            def footer(self) -> None:
-                self.set_y(-15)
-                self.set_font(ff, "", 8)
-                self.set_text_color(150, 150, 150)
-                self.cell(0, 10, f"第 {self.page_no()}/{{nb}} 页", align="C")
+        # 样式
+        style_title = ParagraphStyle(
+            "Title", fontName="Droid-Bold", fontSize=24,
+            textColor=_BLUE, alignment=TA_CENTER, spaceAfter=8 * mm,
+        )
+        style_subtitle = ParagraphStyle(
+            "Subtitle", fontName="Droid", fontSize=14,
+            textColor=_GRAY, alignment=TA_CENTER, spaceAfter=4 * mm,
+        )
+        style_ts = ParagraphStyle(
+            "Timestamp", fontName="Droid", fontSize=10,
+            textColor=_LIGHT_GRAY, alignment=TA_CENTER,
+        )
+        style_section = ParagraphStyle(
+            "Section", fontName="Droid-Bold", fontSize=16,
+            textColor=_BLUE, spaceAfter=3 * mm, spaceBefore=6 * mm,
+        )
+        style_section_red = ParagraphStyle(
+            "SectionRed", fontName="Droid-Bold", fontSize=14,
+            textColor=_RED, spaceAfter=2 * mm, spaceBefore=4 * mm,
+        )
+        style_stat = ParagraphStyle(
+            "Stat", fontName="Droid", fontSize=11,
+            textColor=_DARK, spaceAfter=1 * mm,
+        )
+        style_header = ParagraphStyle(
+            "Header", fontName="Droid", fontSize=8,
+            textColor=_LIGHT_GRAY, alignment=TA_CENTER,
+        )
 
-        pdf = _ReportPDF()
-        # 注册中文字体
-        pdf.add_font(ff, fname=font_reg)
-        pdf.add_font(ff, fname=font_bld, style="B")
-        pdf.alias_nb_pages()
-        pdf.set_auto_page_break(auto=True, margin=20)
+        from reportlab.pdfgen.canvas import Canvas as _Canvas
+
+        # 页眉页脚回调
+        def _header_footer(canvas: _Canvas, doc: object) -> None:  # noqa: ANN001
+            canvas.saveState()
+            canvas.setFont("Droid", 8)
+            canvas.setFillColor(_LIGHT_GRAY)
+            canvas.drawRightString(A4[0] - 20 * mm, A4[1] - 12 * mm,
+                                   "ReliaTrack — 可靠性测试报告")
+            canvas.drawCentredString(A4[0] / 2, 12 * mm,
+                                     f"第 {canvas.getPageNumber()} 页")
+            canvas.restoreState()
+
+        out = filepath or str(
+            self._ensure_dir() / f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf"
+        )
+        doc = SimpleDocTemplate(
+            out, pagesize=A4,
+            topMargin=18 * mm, bottomMargin=18 * mm,
+            leftMargin=15 * mm, rightMargin=15 * mm,
+        )
+
+        story: list[object] = []
 
         # ── 封面 ──
-        pdf.add_page()
-        pdf.ln(40)
-        pdf.set_font(ff, "B", 24)
-        pdf.set_text_color(43, 87, 154)
-        pdf.cell(0, 15, "可靠性测试报告", align="C")
-        pdf.ln(20)
-        pdf.set_font(ff, "", 14)
-        pdf.set_text_color(80, 80, 80)
-        pdf.cell(0, 10, f"计划: {plan.name}", align="C")
-        pdf.ln(8)
-        pdf.cell(0, 10, f"测试标准: {plan.test_standard or '—'}", align="C")
-        pdf.ln(8)
-        pdf.set_font(ff, "", 10)
-        pdf.cell(0, 10, f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}", align="C")
+        story.append(Spacer(1, 40 * mm))
+        story.append(Paragraph("可靠性测试报告", style_title))
+        story.append(Paragraph(
+            f"计划: {plan.name}", style_subtitle))
+        story.append(Paragraph(
+            f"测试标准: {plan.test_standard or '—'}", style_subtitle))
+        story.append(Paragraph(
+            f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}", style_ts))
 
         # ── 概览 ──
-        pdf.add_page()
-        pdf.set_font(ff, "B", 16)
-        pdf.set_text_color(43, 87, 154)
-        pdf.cell(0, 12, "概览统计", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(4)
+        story.append(PageBreak())
+        story.append(Paragraph("概览统计", style_section))
 
         total = len(tasks)
         completed = sum(1 for t in tasks if t.status == "completed")
@@ -351,8 +396,6 @@ class ExportService:
         open_issues = sum(1 for i in issues if i.status in ("open", "analyzing"))
         in_stock = sum(1 for s in samples if s.status == "in_stock")
 
-        pdf.set_font(ff, "", 11)
-        pdf.set_text_color(50, 50, 50)
         stats = [
             f"总任务数: {total}",
             f"已完成: {completed}  |  进行中: {in_progress}  |  待开始: {pending}",
@@ -361,80 +404,93 @@ class ExportService:
             f"在库样品: {in_stock} / {len(samples)}",
         ]
         for s in stats:
-            pdf.cell(0, 8, s, new_x="LMARGIN", new_y="NEXT")
+            story.append(Paragraph(s, style_stat))
 
         # ── 任务列表 ──
-        pdf.ln(6)
-        pdf.set_font(ff, "B", 14)
-        pdf.set_text_color(43, 87, 154)
-        pdf.cell(0, 10, "测试任务", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
+        story.append(Spacer(1, 6 * mm))
+        story.append(Paragraph("测试任务", style_section))
 
         # 表头
-        pdf.set_font(ff, "B", 9)
-        pdf.set_fill_color(43, 87, 154)
-        pdf.set_text_color(255, 255, 255)
-        col_widths = [8, 50, 25, 18, 18, 18, 20, 18]
-        headers = ["#", "名称", "类别", "工期", "开始", "进度", "状态", "优先级"]
-        for i, (w, h) in enumerate(zip(col_widths, headers)):
-            pdf.cell(w, 7, h, border=1, align="C", fill=True)
-        pdf.ln()
+        task_headers = ["#", "名称", "类别", "工期", "开始", "进度", "状态", "优先级"]
+        task_col_widths = [18, 130, 55, 40, 40, 40, 50, 40]
+        header_row = [Paragraph(h, ParagraphStyle(
+            "TH", fontName="Droid-Bold", fontSize=9,
+            textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
+        )) for h in task_headers]
 
-        pdf.set_font(ff, "", 8)
-        pdf.set_text_color(50, 50, 50)
+        cell_style = ParagraphStyle(
+            "Cell", fontName="Droid", fontSize=8,
+            textColor=_DARK, alignment=TA_CENTER,
+        )
+
+        task_data = [header_row]
         for idx, task in enumerate(tasks, 1):
             cat = self.CATEGORY_MAP.get(task.category, task.category)
             status = self.STATUS_MAP.get(task.status, task.status)
-            vals = [
-                str(idx),
-                task.name[:25],
-                cat,
-                str(task.duration),
-                f"D{task.start_day}",
-                f"{task.progress:.0f}%",
-                status,
-                str(task.priority),
-            ]
-            for w, v in zip(col_widths, vals):
-                pdf.cell(w, 6, v, border=1, align="C")
-            pdf.ln()
+            task_data.append([
+                Paragraph(str(idx), cell_style),
+                Paragraph(task.name[:25], cell_style),
+                Paragraph(cat, cell_style),
+                Paragraph(str(task.duration), cell_style),
+                Paragraph(f"D{task.start_day}", cell_style),
+                Paragraph(f"{task.progress:.0f}%", cell_style),
+                Paragraph(status, cell_style),
+                Paragraph(str(task.priority), cell_style),
+            ])
+
+        task_table = Table(task_data, colWidths=task_col_widths)
+        task_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
+            ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [HexColor("#FFFFFF"), HexColor("#F5F7FA")]),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(task_table)
 
         # ── Issue 列表 ──
         if issues:
-            pdf.add_page()
-            pdf.set_font(ff, "B", 14)
-            pdf.set_text_color(192, 80, 77)
-            pdf.cell(0, 10, "Issue 追踪", new_x="LMARGIN", new_y="NEXT")
-            pdf.ln(2)
+            story.append(PageBreak())
+            story.append(Paragraph("Issue 追踪", style_section_red))
 
-            pdf.set_font(ff, "B", 9)
-            pdf.set_fill_color(192, 80, 77)
-            pdf.set_text_color(255, 255, 255)
-            issue_cols = [8, 55, 18, 18, 15, 35]
             issue_headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式"]
-            for w, h in zip(issue_cols, issue_headers):
-                pdf.cell(w, 7, h, border=1, align="C", fill=True)
-            pdf.ln()
+            issue_col_widths = [18, 140, 45, 45, 40, 100]
+            issue_header_row = [Paragraph(h, ParagraphStyle(
+                "IH", fontName="Droid-Bold", fontSize=9,
+                textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
+            )) for h in issue_headers]
 
-            pdf.set_font(ff, "", 8)
-            pdf.set_text_color(50, 50, 50)
+            issue_data = [issue_header_row]
             for issue in issues:
                 sev = issue.severity
                 status = self.STATUS_MAP.get(issue.status, issue.status)
-                vals = [
-                    str(issue.id),
-                    issue.title[:30],
-                    sev,
-                    status,
-                    str(issue.priority),
-                    (issue.failure_mode or "")[:20],
-                ]
-                for w, v in zip(issue_cols, vals):
-                    pdf.cell(w, 6, v, border=1, align="C")
-                pdf.ln()
+                issue_data.append([
+                    Paragraph(str(issue.id), cell_style),
+                    Paragraph(issue.title[:30], cell_style),
+                    Paragraph(sev, cell_style),
+                    Paragraph(status, cell_style),
+                    Paragraph(str(issue.priority), cell_style),
+                    Paragraph((issue.failure_mode or "")[:20], cell_style),
+                ])
 
-        out = filepath or str(self._ensure_dir() / f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf")
-        pdf.output(out)
+            issue_table = Table(issue_data, colWidths=issue_col_widths)
+            issue_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), _RED),
+                ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
+                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                 [HexColor("#FFFFFF"), HexColor("#FFF5F5")]),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(issue_table)
+
+        # ── 生成 PDF ──
+        doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
         return os.path.abspath(out)
 
     # ── Word 导出 ──────────────────────────────────────────────
