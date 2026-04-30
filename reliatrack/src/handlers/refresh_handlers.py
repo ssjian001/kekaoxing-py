@@ -239,7 +239,28 @@ class RefreshHandlers:
             assert plan_id is not None
             tasks = ctrl.test_plan_service.get_tasks(plan_id)
             max_day = max((t.start_day + t.duration for t in tasks), default=30)
-            self._win._test_plan_view.refresh(tasks, max_day)
+
+            # 构建技术员映射 {technician_id: name}
+            technician_map: dict[int, str] = {}
+            if ctrl.technicians:
+                for t in ctrl.technicians.list_all():
+                    if t.id is not None:
+                        technician_map[t.id] = t.name
+
+            # 构建通过率映射 {task_id: (pass_count, total)}
+            result_map: dict[int, tuple[int, int]] = {}
+            if ctrl.test_results:
+                for task in tasks:
+                    if task.id is not None:
+                        results = ctrl.test_plan_service.get_task_results(task.id)
+                        total = len(results)
+                        pass_count = sum(1 for r in results if r.result == "pass")
+                        if total > 0:
+                            result_map[task.id] = (pass_count, total)
+
+            self._win._test_plan_view.refresh(
+                tasks, max_day, technician_map, result_map
+            )
 
     def _refresh_issues(self) -> None:
         """刷新 Issue 追踪视图。"""

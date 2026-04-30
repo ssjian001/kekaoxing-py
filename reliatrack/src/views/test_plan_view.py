@@ -35,7 +35,7 @@ from src.models.common import Equipment, Technician
 class _TaskTable(QTableWidget):
     """测试任务列表表格。"""
 
-    COLUMNS = ["#", "名称", "类别", "天数", "开始", "进度", "优先级", "状态", "实际开始", "实际完成"]
+    COLUMNS = ["#", "名称", "类别", "天数", "开始", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
 
     _STATUS_LABELS: dict[str, str] = {
         "pending": "待开始",
@@ -53,8 +53,10 @@ class _TaskTable(QTableWidget):
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        self.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)
         self.setColumnWidth(0, 32)
         self.setColumnWidth(6, 50)
+        self.setColumnWidth(9, 60)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -137,13 +139,23 @@ class _TaskTable(QTableWidget):
             menu.addAction(act_complete)
         menu.exec(self.viewport().mapToGlobal(pos))
 
-    def set_tasks(self, tasks: list[TestTask]) -> None:
+    def set_tasks(
+        self,
+        tasks: list[TestTask],
+        technician_map: dict[int, str] | None = None,
+        result_map: dict[int, tuple[int, int]] | None = None,
+    ) -> None:
         self._tasks = tasks
+        tech_map = technician_map or {}
+        res_map = result_map or {}
         self.setRowCount(len(tasks))
         for row, task in enumerate(tasks):
-            # 列: #, 名称, 类别, 天数, 开始, 进度, 优先级, 状态
+            # 列: #, 名称, 类别, 天数, 开始, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
             status_text = self._STATUS_LABELS.get(task.status, task.status)
             priority_text = {"1": "P1", "2": "P2", "3": "P3", "4": "P4", "5": "P5"}.get(str(task.priority), str(task.priority))
+            tech_name = tech_map.get(task.technician_id, "") if task.technician_id else ""
+            pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
+            rate_text = f"{pass_count}/{total}" if total > 0 else "—"
             values = [
                 row + 1,
                 task.name,
@@ -153,6 +165,8 @@ class _TaskTable(QTableWidget):
                 f"{task.progress:.0f}%",
                 priority_text,
                 status_text,
+                tech_name,
+                rate_text,
                 task.actual_start_date or "—",
                 task.actual_end_date or "—",
             ]
@@ -165,6 +179,12 @@ class _TaskTable(QTableWidget):
                 # 优先级颜色 (col 6)
                 elif col == 6:
                     item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, TEXT)))
+                # 通过率着色 (col 9)
+                elif col == 9 and total > 0:
+                    if pass_count == total:
+                        item.setForeground(QColor(GREEN))
+                    elif pass_count == 0:
+                        item.setForeground(QColor(RED))
                 self.setItem(row, col, item)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
@@ -470,8 +490,14 @@ class TestPlanView(QWidget):
         self._gantt.task_moved.connect(self.task_moved.emit)
         layout.addWidget(self._gantt, stretch=2)
 
-    def refresh(self, tasks: list[TestTask], total_days: int = 30) -> None:
-        self._task_table.set_tasks(tasks)
+    def refresh(
+        self,
+        tasks: list[TestTask],
+        total_days: int = 30,
+        technician_map: dict[int, str] | None = None,
+        result_map: dict[int, tuple[int, int]] | None = None,
+    ) -> None:
+        self._task_table.set_tasks(tasks, technician_map, result_map)
         self._gantt.set_tasks(tasks, total_days)
         self._gantt.setMinimumHeight(max(150, len(tasks) * 28 + 24))
 
