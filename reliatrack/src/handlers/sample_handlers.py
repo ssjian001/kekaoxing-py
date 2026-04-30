@@ -21,6 +21,16 @@ class SampleHandlers:
     def __init__(self, win: MainWindow) -> None:
         self._win = win
 
+    def connect_signals(self) -> None:
+        win = self._win
+        v = win._sample_view
+        v.pool_tab.btn_add.clicked.connect(self._on_sample_checkin)
+        v.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
+        v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
+        v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
+        v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
+        v.usage_tab.set_refresh_callback(self._refresh_sample_usage)
+
     def _refresh_sample_usage(self) -> None:
         """刷新出入库记录 Tab。"""
         ctrl = self._win._ctrl

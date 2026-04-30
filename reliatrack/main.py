@@ -83,11 +83,14 @@ class MainWindow(QMainWindow):
         self._setup_toolbar()
         self._setup_status_bar()
 
-        # Issue 追踪信号连接
-        self._issue_view.issue_saved.connect(self._issue_handlers._handle_issue_saved)
-        self._issue_view.issue_deleted.connect(self._issue_handlers._handle_issue_deleted)
-        self._issue_view.issue_selected.connect(self._issue_handlers._handle_issue_selected)
-        self._issue_view.fa_record_added.connect(self._issue_handlers._handle_fa_record_added)
+        # Connect all handler signals
+        self._project_handlers.connect_signals()
+        self._sample_handlers.connect_signals()
+        self._plan_handlers.connect_signals()
+        self._issue_handlers.connect_signals()
+        self._equipment_handlers.connect_signals()
+        self._technician_handlers.connect_signals()
+        self._knowledge_handlers.connect_signals()
 
         # Debounce 刷新定时器
         self._refresh_timer = QTimer(self)
@@ -113,9 +116,6 @@ class MainWindow(QMainWindow):
         # Tab 0: 项目管理
         self._project_view = ProjectView()
         self._tab_widget.addTab(self._project_view, "📁 项目管理")
-        self._project_view.btn_add.clicked.connect(self._project_handlers._on_project_add)
-        self._project_view.btn_edit.clicked.connect(self._project_handlers._on_project_edit)
-        self._project_view.btn_delete.clicked.connect(self._project_handlers._on_project_delete)
 
         # Tab 1: 仪表盘
         self._dashboard = DashboardView()
@@ -125,40 +125,14 @@ class MainWindow(QMainWindow):
         # Tab 2: 样品管理
         self._sample_view = SampleView()
         self._tab_widget.addTab(self._sample_view, "📦 样品管理")
-        self._sample_view.pool_tab.btn_add.clicked.connect(self._sample_handlers._on_sample_checkin)
-        self._sample_view.pool_tab.btn_out.clicked.connect(self._sample_handlers._on_sample_checkout)
-        self._sample_view.pool_tab.btn_batch_import.clicked.connect(self._sample_handlers._on_sample_batch_import)
-        self._sample_view.pool_tab.btn_edit.clicked.connect(self._sample_handlers._on_sample_edit)
-        self._sample_view.ledger_tab.btn_edit.clicked.connect(self._sample_handlers._on_ledger_edit)
-        self._sample_view.usage_tab.set_refresh_callback(self._sample_handlers._refresh_sample_usage)
 
         # Tab 3: 测试计划
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "📋 测试计划")
-        self._test_plan_view.btn_schedule.clicked.connect(self._plan_handlers._on_auto_schedule)
-        self._test_plan_view.task_moved.connect(self._plan_handlers._on_gantt_task_moved)
-        self._test_plan_view.btn_add_plan.clicked.connect(self._plan_handlers._on_plan_add)
-        self._test_plan_view.btn_edit_plan.clicked.connect(self._plan_handlers._on_plan_edit)
-        self._test_plan_view._plan_combo.currentIndexChanged.connect(
-            self._plan_handlers._on_plan_changed
-        )
-        self._test_plan_view.btn_import_tasks.clicked.connect(
-            self._plan_handlers._on_task_batch_import
-        )
-        self._test_plan_view.btn_record_result.clicked.connect(
-            self._plan_handlers._on_record_result
-        )
-        self._test_plan_view.setup_task_callbacks(
-            on_add=self._plan_handlers._on_task_add,
-            on_edit=self._plan_handlers._on_task_edit,
-            on_delete=self._plan_handlers._on_task_delete,
-            on_status_advance=self._plan_handlers._on_task_status_advance,
-        )
 
         # Tab 4: Issue 追踪
         self._issue_view = IssueView()
         self._tab_widget.addTab(self._issue_view, "🐛 Issue 追踪")
-        self._issue_view.btn_attachments.clicked.connect(self._issue_handlers._on_issue_attachments)
 
         # Tab 5: 设备 & 技术员管理（内部双 tab）
         self._equip_tech_tabs = QTabWidget()
@@ -167,19 +141,10 @@ class MainWindow(QMainWindow):
         self._technician_view = TechnicianView()
         self._equip_tech_tabs.addTab(self._technician_view, "技术员")
         self._tab_widget.addTab(self._equip_tech_tabs, "🔧 设备管理")
-        self._equipment_view.btn_add.clicked.connect(self._equipment_handlers._on_equipment_add)
-        self._equipment_view.btn_edit.clicked.connect(self._equipment_handlers._on_equipment_edit)
-        self._equipment_view.btn_delete.clicked.connect(self._equipment_handlers._on_equipment_delete)
-        self._technician_view.btn_add.clicked.connect(self._technician_handlers._on_technician_add)
-        self._technician_view.btn_edit.clicked.connect(self._technician_handlers._on_technician_edit)
-        self._technician_view.btn_delete.clicked.connect(self._technician_handlers._on_technician_delete)
 
         # Tab 6: 知识库
         self._knowledge_view = KnowledgeView()
         self._tab_widget.addTab(self._knowledge_view, "📚 知识库")
-        self._knowledge_view.btn_add.clicked.connect(self._knowledge_handlers._on_knowledge_add)
-        self._knowledge_view.btn_edit.clicked.connect(self._knowledge_handlers._on_knowledge_edit)
-        self._knowledge_view.btn_delete.clicked.connect(self._knowledge_handlers._on_knowledge_delete)
 
         layout.addWidget(self._tab_widget)
         self.setCentralWidget(central)

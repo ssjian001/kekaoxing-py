@@ -18,6 +18,12 @@ class ProjectHandlers:
     def __init__(self, win: MainWindow) -> None:
         self._win = win
 
+    def connect_signals(self) -> None:
+        win = self._win
+        win._project_view.btn_add.clicked.connect(self._on_project_add)
+        win._project_view.btn_edit.clicked.connect(self._on_project_edit)
+        win._project_view.btn_delete.clicked.connect(self._on_project_delete)
+
     def _on_project_add(self) -> None:
         """新建项目。"""
         ctrl = self._win._ctrl

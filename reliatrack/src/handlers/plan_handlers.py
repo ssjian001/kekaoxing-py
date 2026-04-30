@@ -30,6 +30,23 @@ class PlanHandlers:
     def __init__(self, win: MainWindow) -> None:
         self._win = win
 
+    def connect_signals(self) -> None:
+        win = self._win
+        v = win._test_plan_view
+        v.btn_schedule.clicked.connect(self._on_auto_schedule)
+        v.task_moved.connect(self._on_gantt_task_moved)
+        v.btn_add_plan.clicked.connect(self._on_plan_add)
+        v.btn_edit_plan.clicked.connect(self._on_plan_edit)
+        v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
+        v.btn_import_tasks.clicked.connect(self._on_task_batch_import)
+        v.btn_record_result.clicked.connect(self._on_record_result)
+        v.setup_task_callbacks(
+            on_add=self._on_task_add,
+            on_edit=self._on_task_edit,
+            on_delete=self._on_task_delete,
+            on_status_advance=self._on_task_status_advance,
+        )
+
     def _on_auto_schedule(self) -> None:
         """弹出排程参数配置弹窗，然后执行自动排程。"""
         ctrl = self._win._ctrl

@@ -18,6 +18,13 @@ class TechnicianHandlers:
     def __init__(self, win: MainWindow) -> None:
         self._win = win
 
+    def connect_signals(self) -> None:
+        win = self._win
+        v = win._technician_view
+        v.btn_add.clicked.connect(self._on_technician_add)
+        v.btn_edit.clicked.connect(self._on_technician_edit)
+        v.btn_delete.clicked.connect(self._on_technician_delete)
+
     def _on_technician_add(self) -> None:
         """新建技术员。"""
         ctrl = self._win._ctrl

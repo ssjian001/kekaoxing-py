@@ -19,6 +19,15 @@ class IssueHandlers:
         self._win = win
         self._current_fa_records: list = []
 
+    def connect_signals(self) -> None:
+        win = self._win
+        v = win._issue_view
+        v.issue_saved.connect(self._handle_issue_saved)
+        v.issue_deleted.connect(self._handle_issue_deleted)
+        v.issue_selected.connect(self._handle_issue_selected)
+        v.fa_record_added.connect(self._handle_fa_record_added)
+        v.btn_attachments.clicked.connect(self._on_issue_attachments)
+
     def _on_issue_attachments(self) -> None:
         """打开 Issue 附件管理弹窗。"""
         ctrl = self._win._ctrl
