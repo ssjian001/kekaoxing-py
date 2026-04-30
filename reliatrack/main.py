@@ -198,6 +198,8 @@ class MainWindow(QMainWindow):
         self._shortcut_delete.activated.connect(self._on_shortcut_delete)
         self._shortcut_edit = QShortcut(QKeySequence("F2"), self)
         self._shortcut_edit.activated.connect(self._on_shortcut_edit)
+        self._shortcut_find = QShortcut(QKeySequence("Ctrl+F"), self)
+        self._shortcut_find.activated.connect(self._on_shortcut_find)
 
         # 撤销 / 重做
         self._act_undo = QAction("↩ 撤销", self)
@@ -280,6 +282,24 @@ class MainWindow(QMainWindow):
             self._technician_handlers._on_technician_edit()
         elif idx == 7:
             self._knowledge_handlers._on_knowledge_edit()
+
+    def _on_shortcut_find(self) -> None:
+        """Ctrl+F: 聚焦当前 Tab 的搜索框。"""
+        search_map = {
+            0: lambda: self._project_view.search_input,
+            2: lambda: self._sample_view.pool_tab.search_input,
+            3: lambda: self._test_plan_view._search_edit,
+            4: lambda: self._issue_view._search_input,
+            5: lambda: self._equipment_view._search_edit,
+            6: lambda: self._technician_view._search_edit,
+            7: lambda: self._knowledge_view._search_edit,
+        }
+        idx = self._tab_widget.currentIndex()
+        getter = search_map.get(idx)
+        if getter:
+            widget = getter()
+            widget.setFocus()
+            widget.selectAll()
 
     # ── 刷新/撤销快捷入口（委托给 handler） ──
 
