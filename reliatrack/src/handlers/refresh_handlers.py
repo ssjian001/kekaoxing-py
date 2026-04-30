@@ -261,19 +261,15 @@ class RefreshHandlers:
                     if t.id is not None:
                         technician_map[t.id] = t.name
 
-            # 构建通过率映射 {task_id: (pass_count, total)}
+            # 批量获取通过率映射 {task_id: (pass_count, total)}
             result_map: dict[int, tuple[int, int]] = {}
-            if ctrl.test_results:
-                for task in tasks:
-                    if task.id is not None:
-                        results = ctrl.test_plan_service.get_task_results(task.id)
-                        total = len(results)
-                        pass_count = sum(1 for r in results if r.result == "pass")
-                        if total > 0:
-                            result_map[task.id] = (pass_count, total)
+            task_ids = [t.id for t in tasks if t.id is not None]
+            if task_ids and ctrl.test_plan_service:
+                result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
 
             self._win._test_plan_view.refresh(
-                tasks, max_day, technician_map, result_map
+                tasks, max_day, technician_map, result_map,
+                start_date=all_plans[restore_idx].start_date,
             )
 
     def _refresh_issues(self) -> None:

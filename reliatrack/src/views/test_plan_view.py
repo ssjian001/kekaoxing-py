@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Callable, Optional
 
 from PySide6.QtWidgets import (
@@ -229,6 +230,7 @@ class _GanttWidget(QWidget):
         super().__init__(parent)
         self._tasks: list[TestTask] = []
         self._total_days: int = 30
+        self._start_date: str = ""  # 计划开始日期 (YYYY-MM-DD)
         self._row_height: int = 28
         self._header_height: int = 24
         self._bar_height: int = 18
@@ -244,9 +246,10 @@ class _GanttWidget(QWidget):
         self._drag_start_day: int = 0
         self._hover_task_idx: int | None = None
 
-    def set_tasks(self, tasks: list[TestTask], total_days: int = 30) -> None:
+    def set_tasks(self, tasks: list[TestTask], total_days: int = 30, start_date: str = "") -> None:
         self._tasks = tasks
         self._total_days = max(total_days, 1)
+        self._start_date = start_date
         self.update()
 
     def _chart_w(self) -> int:
@@ -356,12 +359,41 @@ class _GanttWidget(QWidget):
         p.setPen(QColor(SUBTEXT1))
         p.setFont(QFont("sans-serif", 9))
         step = max(1, self._total_days // 15)
-        for d in range(0, self._total_days + 1, step):
+
+        # 周末列背景 — 计算哪些天是周末
+        weekend_days: set[int] = set()
+        base_date: date | None = None
+        if self._start_date:
+            try:
+                base_date = date.fromisoformat(self._start_date)
+            except ValueError:
+                pass
+
+        for d in range(0, self._total_days + 1):
             x = label_w + d * self._day_w
-            p.drawText(int(x) - 10, 0, 30, self._header_height,
-                       Qt.AlignmentFlag.AlignCenter, f"D{d}")
+            # 判断是否周末
+            is_weekend = False
+            if base_date is not None:
+                real_date = base_date + timedelta(days=d)
+                if real_date.weekday() >= 5:  # 5=Sat, 6=Sun
+                    is_weekend = True
+                    weekend_days.add(d)
+            if is_weekend:
+                # 周末列浅色背景
+                p.fillRect(int(x), self._header_height, int(self._day_w) + 1,
+                           self.height() - self._header_height, QColor(MANTLE))
+
+            if d % step == 0:
+                p.setPen(QColor(SUBTEXT1))
+                label = f"D{d}"
+                if is_weekend and base_date is not None:
+                    real_date = base_date + timedelta(days=d)
+                    label = f"D{d} ({'六' if real_date.weekday() == 5 else '日'})"
+                p.drawText(int(x) - 15, 0, 40, self._header_height,
+                           Qt.AlignmentFlag.AlignCenter, label)
             p.setPen(QColor(SURFACE1))
-            p.drawLine(int(x), self._header_height, int(x), self.height())
+            if d % step == 0:
+                p.drawLine(int(x), self._header_height, int(x), self.height())
             p.setPen(QColor(SUBTEXT0))
 
         # ── 任务条 ──
@@ -543,6 +575,7 @@ class TestPlanView(QWidget):
         self._all_tasks_for_filter: list[TestTask] = []
         self._last_technician_map: dict[int, str] = {}
         self._last_result_map: dict[int, tuple[int, int]] = {}
+        self._last_start_date: str = ""
 
     def _on_task_search(self, text: str) -> None:
         """根据搜索关键词过滤任务列表。"""
@@ -557,7 +590,7 @@ class TestPlanView(QWidget):
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
         )
-        self._gantt.set_tasks(filtered)
+        self._gantt.set_tasks(filtered, start_date=self._last_start_date)
 
     def refresh(
         self,
@@ -565,12 +598,14 @@ class TestPlanView(QWidget):
         total_days: int = 30,
         technician_map: dict[int, str] | None = None,
         result_map: dict[int, tuple[int, int]] | None = None,
+        start_date: str = "",
     ) -> None:
         self._all_tasks_for_filter = tasks
         self._last_technician_map = technician_map or {}
         self._last_result_map = result_map or {}
+        self._last_start_date = start_date
         self._on_task_search(self._search_edit.text())
-        self._gantt.set_tasks(tasks, total_days)
+        self._gantt.set_tasks(tasks, total_days, start_date)
         self._gantt.setMinimumHeight(max(150, len(tasks) * 28 + 24))
 
     def set_plans(self, plan_names: list[str], plan_ids: list[int] | None = None) -> None:

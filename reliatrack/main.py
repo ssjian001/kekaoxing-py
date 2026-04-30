@@ -332,7 +332,19 @@ class MainWindow(QMainWindow):
             self._ctrl.notify_data_changed("undo")
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        """处理窗口关闭事件 — 清理资源。"""
+        """处理窗口关闭事件 — 有未撤销操作时确认。"""
+        um = self._ctrl.undo_manager
+        if um and um.can_undo():
+            reply = QMessageBox.question(
+                self,
+                "确认关闭",
+                "有尚未保存的撤销历史，关闭后将无法恢复。\n确定要退出吗？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
         self._ctrl.shutdown()
         event.accept()
 

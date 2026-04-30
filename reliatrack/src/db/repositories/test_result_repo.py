@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, cast
 
 import apsw
 
@@ -60,3 +60,34 @@ class TestResultRepository(BaseRepository):
     def count_by_task(self, task_id: int) -> int:
         """统计任务的测试结果数量。"""
         return self.count(task_id=task_id)
+
+    def get_pass_counts_by_tasks(self, task_ids: list[int]) -> dict[int, tuple[int, int]]:
+        """批量获取多个任务的通过率统计。
+
+        Returns:
+            {task_id: (pass_count, total_count)} — 只包含有结果的 task_id。
+        """
+        if not task_ids:
+            return {}
+        placeholders = ",".join("?" * len(task_ids))
+        rows = self._conn.execute(
+            f"SELECT task_id, result, COUNT(*) as cnt "
+            f"FROM [test_results] WHERE task_id IN ({placeholders}) "
+            f"GROUP BY task_id, result",
+            task_ids,
+        ).fetchall()
+        # 先聚合 {task_id: {result: count}}
+        agg: dict[int, dict[str, int]] = {}
+        for row in rows:
+            tid = cast(int, row[0])
+            res = cast(str, row[1])
+            cnt = cast(int, row[2])
+            agg.setdefault(tid, {})[res] = cnt
+        # 转为 (pass_count, total)
+        result_map: dict[int, tuple[int, int]] = {}
+        for tid, by_result in agg.items():
+            total = sum(by_result.values())
+            pass_count = by_result.get("pass", 0)
+            if total > 0:
+                result_map[tid] = (pass_count, total)
+        return result_map

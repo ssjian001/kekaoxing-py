@@ -284,6 +284,7 @@ class PlanHandlers:
         plan_id = self._win._test_plan_view.get_selected_plan_id()
         if plan_id is None:
             return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
         tasks = ctrl.test_plan_service.get_tasks(plan_id)
         max_day = max((t.start_day + t.duration for t in tasks), default=30)
 
@@ -294,18 +295,16 @@ class PlanHandlers:
                 if t.id is not None:
                     technician_map[t.id] = t.name
 
-        # 构建通过率映射
+        # 批量获取通过率映射
         result_map: dict[int, tuple[int, int]] = {}
-        if ctrl.test_results:
-            for task in tasks:
-                if task.id is not None:
-                    results = ctrl.test_plan_service.get_task_results(task.id)
-                    total = len(results)
-                    pass_count = sum(1 for r in results if r.result == "pass")
-                    if total > 0:
-                        result_map[task.id] = (pass_count, total)
+        task_ids = [t.id for t in tasks if t.id is not None]
+        if task_ids:
+            result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
 
-        self._win._test_plan_view.refresh(tasks, max_day, technician_map, result_map)
+        self._win._test_plan_view.refresh(
+            tasks, max_day, technician_map, result_map,
+            start_date=plan.start_date if plan else "",
+        )
 
     def _get_project_samples(self, ctrl: object) -> list:
         """获取当前项目下的样品列表。"""

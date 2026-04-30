@@ -89,6 +89,10 @@ class TestPlanService:
         """获取任务的所有测试结果。"""
         return self._result_repo.get_by_task(task_id)
 
+    def get_pass_counts_by_tasks(self, task_ids: list[int]) -> dict[int, tuple[int, int]]:
+        """批量获取多个任务的通过率 {task_id: (pass_count, total)}。"""
+        return self._result_repo.get_pass_counts_by_tasks(task_ids)
+
     def save_result(
         self,
         task_id: int,
