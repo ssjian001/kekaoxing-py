@@ -55,7 +55,8 @@ class EquipmentHandlers:
         if dlg.exec():
             data = dlg.get_data()
             try:
-                assert eq.id is not None
+                if eq.id is None:
+                    raise ValueError("Equipment id is None")
                 ctrl.equipment_service.update(eq.id, **data)
                 self._win.statusBar().showMessage(
                     f"✅ 设备「{data['name']}」已更新", 5000
@@ -83,7 +84,8 @@ class EquipmentHandlers:
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
-            assert eq.id is not None
+            if eq.id is None:
+                raise ValueError("Equipment id is None")
             ctrl.equipment_service.delete(eq.id)
             self._win.statusBar().showMessage(
                 f"✅ 设备「{eq.name}」已删除", 5000

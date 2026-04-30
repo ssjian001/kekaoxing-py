@@ -34,15 +34,10 @@ class SampleService:
         self._repo.update_status(sample_id, status)
 
     def delete(self, sample_id: int) -> None:
-        self._repo.begin_transaction()
-        try:
+        with self._repo.transaction():
             # 先删出入库记录（子表），再删样品（父表）
             self._repo.delete_transactions(sample_id)
             self._repo.delete(sample_id)
-            self._repo.commit()
-        except Exception:
-            self._repo.rollback()
-            raise
 
     def list_all(self) -> list[Sample]:
         return self._repo.list_all()

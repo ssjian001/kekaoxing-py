@@ -156,7 +156,8 @@ class RefreshHandlers:
 
             # 按项目筛选任务：通过关联的计划筛选
             if filter_project_id:
-                assert ctrl.test_plan_service is not None
+                if ctrl.test_plan_service is None:
+                    return
                 filtered_plans = ctrl.test_plan_service.get_plans_by_project(
                     filter_project_id
                 )
@@ -248,7 +249,8 @@ class RefreshHandlers:
         # 手动加载选中计划的任务
         if all_plans:
             plan_id = all_plans[restore_idx].id
-            assert plan_id is not None
+            if plan_id is None:
+                return
             tasks = ctrl.test_plan_service.get_tasks(plan_id)
             max_day = max((t.start_day + t.duration for t in tasks), default=30)
 

@@ -55,7 +55,8 @@ class KnowledgeHandlers:
         if dlg.exec():
             data = dlg.get_data()
             try:
-                assert entry.id is not None
+                if entry.id is None:
+                    raise ValueError("Knowledge entry id is None")
                 ctrl.knowledge_service.update(entry.id, **data)
                 self._win.statusBar().showMessage(
                     f"✅ 知识条目「{data['failure_mode']}」已更新", 5000
@@ -83,7 +84,8 @@ class KnowledgeHandlers:
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
-            assert entry.id is not None
+            if entry.id is None:
+                raise ValueError("Knowledge entry id is None")
             ctrl.knowledge_service.delete(entry.id)
             self._win.statusBar().showMessage(
                 f"✅ 知识条目「{entry.failure_mode}」已删除", 5000

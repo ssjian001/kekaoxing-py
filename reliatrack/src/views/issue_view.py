@@ -376,7 +376,8 @@ class IssueView(QWidget):
             QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            assert issue.id is not None
+            if issue.id is None:
+                raise ValueError("Cannot delete issue without id")
             self.issue_deleted.emit(issue.id)
 
     # ── FA 步骤 ──────────────────────────────────────────────

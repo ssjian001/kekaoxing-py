@@ -84,7 +84,8 @@ class ProjectHandlers:
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
-            assert proj.id is not None
+            if proj.id is None:
+                raise ValueError("Project id is None")
             ctrl.project_service.delete(proj.id)
             self._win.statusBar().showMessage(
                 f"✅ 项目「{proj.name}」已删除", 5000

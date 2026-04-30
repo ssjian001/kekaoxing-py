@@ -27,10 +27,12 @@ class ExportHandlers:
         ctrl = self._win._ctrl
         if not ctrl:
             return
-        assert ctrl is not None
-        assert ctrl.test_plan_service is not None
-        assert ctrl.issue_service is not None
-        assert ctrl.sample_service is not None
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        if not ctrl.issue_service:
+            return
+        if not ctrl.sample_service:
+            return
         dlg = ExportDialog(parent=self._win)
         if not dlg.exec():
             return

@@ -36,16 +36,11 @@ class IssueService:
         self._repo.update_status(issue_id, status)
 
     def delete(self, issue_id: int) -> None:
-        self._repo.begin_transaction()
-        try:
+        with self._repo.transaction():
             # 先删 FA 记录和附件（子表），再删 Issue（父表）
             self._repo.delete_fa_records(issue_id)
             self._repo.delete_attachments(issue_id)
             self._repo.delete(issue_id)
-            self._repo.commit()
-        except Exception:
-            self._repo.rollback()
-            raise
 
     def list_all(self) -> list[Issue]:
         return self._repo.list_all()

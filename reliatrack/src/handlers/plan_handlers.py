@@ -311,7 +311,8 @@ class PlanHandlers:
         """获取当前项目下的样品列表。"""
         from src.controllers.app_controller import AppController
 
-        assert isinstance(ctrl, AppController)
+        if not isinstance(ctrl, AppController):
+            return []
         if not ctrl.test_plan_service or not ctrl.sample_service:
             return []
         # 从当前计划获取 project_id
@@ -483,7 +484,8 @@ class PlanHandlers:
         from src.models.test_plan import TestTask
         from datetime import date as _date
 
-        assert isinstance(task, TestTask)
+        if not isinstance(task, TestTask):
+            return
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.test_plan_service:
             return

@@ -47,8 +47,8 @@ class SampleHandlers:
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.sample_service:
             return
-        assert ctrl is not None
-        assert ctrl.sample_service is not None
+
+
         sample_svc = ctrl.sample_service
         project_list = ctrl.project_service.list_all() if ctrl.project_service else []
         default_project_id = self._win._project_filter_combo.currentData()
@@ -106,7 +106,8 @@ class SampleHandlers:
         if dlg.exec():
             data = dlg.get_data()
             try:
-                assert sample.id is not None
+                if sample.id is None:
+                    raise ValueError("Sample id is None")
                 ctrl.sample_service.add_transaction(
                     sample_id=sample.id,
                     txn_type="check_out",
@@ -132,10 +133,9 @@ class SampleHandlers:
 
         def _do_import(sample_list: list[dict]) -> tuple[int, int]:
             """执行批量导入，返回 (成功数, 跳过数)。"""
+            assert ctrl is not None and ctrl.sample_service is not None
             success = 0
             skip = 0
-            assert ctrl is not None
-            assert ctrl.sample_service is not None
             for data in sample_list:
                 sn = data.get("sn", "").strip()
                 if not sn:
@@ -196,7 +196,8 @@ class SampleHandlers:
         if dlg.exec():
             try:
                 data = dlg.get_data()
-                assert sample.id is not None
+                if sample.id is None:
+                    raise ValueError("Sample id is None")
                 ctrl.sample_service.update(sample.id, **data)
                 self._win.statusBar().showMessage(
                     f"✅ 样品「{data['sn']}」已更新", 5000
