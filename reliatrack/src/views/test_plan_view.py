@@ -51,12 +51,18 @@ class _TaskTable(QTableWidget):
         self.setColumnCount(len(self.COLUMNS))
         self.setHorizontalHeaderLabels(self.COLUMNS)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
-        self.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)
+        self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)   # #
+        self.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)   # 优先级
+        self.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)   # 技术员
+        self.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)   # 通过率
+        self.horizontalHeader().setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 实际开始
+        self.horizontalHeader().setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际完成
         self.setColumnWidth(0, 32)
         self.setColumnWidth(6, 50)
+        self.setColumnWidth(8, 70)
         self.setColumnWidth(9, 60)
+        self.setColumnWidth(10, 90)
+        self.setColumnWidth(11, 90)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -173,6 +179,9 @@ class _TaskTable(QTableWidget):
             for col, val in enumerate(values):
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                # 名称列 tooltip (col 1)
+                if col == 1 and task.name:
+                    item.setToolTip(task.name)
                 # 状态颜色 (col 7)
                 if col == 7:
                     item.setForeground(QColor(self._STATUS_COLORS.get(task.status, TEXT)))
@@ -479,16 +488,34 @@ class TestPlanView(QWidget):
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
-        # 任务表格（上）
-        self._task_table = _TaskTable()
-        self._task_table.setMaximumHeight(260)
-        layout.addWidget(self._task_table, stretch=3)
+        # 子 Tab: 测试项 / 甘特图
+        from PySide6.QtWidgets import QTabWidget
+        self._sub_tabs = QTabWidget()
+        self._sub_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{ border: 1px solid {SURFACE1}; border-radius: 4px; background: {BASE}; }}
+            QTabBar::tab {{ padding: 4px 16px; background: {SURFACE0}; color: {TEXT}; border: 1px solid {SURFACE1}; border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 2px; }}
+            QTabBar::tab:selected {{ background: {BASE}; font-weight: bold; }}
+        """)
 
-        # 甘特图（下）
+        # Tab 1: 任务表格
+        tab_table = QWidget()
+        tab_table_layout = QVBoxLayout(tab_table)
+        tab_table_layout.setContentsMargins(0, 0, 0, 0)
+        self._task_table = _TaskTable()
+        tab_table_layout.addWidget(self._task_table)
+        self._sub_tabs.addTab(tab_table, "测试项")
+
+        # Tab 2: 甘特图
+        tab_gantt = QWidget()
+        tab_gantt_layout = QVBoxLayout(tab_gantt)
+        tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
         self._gantt = _GanttWidget()
         self._gantt.setStyleSheet(f"background-color: {BASE}; border: 1px solid {SURFACE1}; border-radius: 6px;")
         self._gantt.task_moved.connect(self.task_moved.emit)
-        layout.addWidget(self._gantt, stretch=2)
+        tab_gantt_layout.addWidget(self._gantt)
+        self._sub_tabs.addTab(tab_gantt, "甘特图")
+
+        layout.addWidget(self._sub_tabs, stretch=1)
 
     def refresh(
         self,
@@ -505,7 +532,9 @@ class TestPlanView(QWidget):
         """设置计划下拉选项。"""
         self._plan_combo.blockSignals(True)
         self._plan_combo.clear()
-        self._plan_combo.addItems(plan_names)
+        for i, name in enumerate(plan_names):
+            self._plan_combo.addItem(name)
+            self._plan_combo.setItemData(i, name, Qt.ItemDataRole.ToolTipRole)
         self._plan_ids = plan_ids or list(range(len(plan_names)))
         self._plan_combo.blockSignals(False)
 
