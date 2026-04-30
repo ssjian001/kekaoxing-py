@@ -12,11 +12,13 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
     QMessageBox,
     QPushButton,
     QWidget,
 )
 
+from src.models.sample import Sample
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 from src.views.dialogs.base_dialog import _BaseDialog
@@ -33,6 +35,8 @@ class TaskEditDialog(_BaseDialog):
         可选设备列表（用于设备下拉框）。
     all_tasks:
         当前计划下所有任务（用于依赖选择提示）。
+    sample_list:
+        当前项目下的样品列表（用于样品多选弹窗）。
     """
 
     _CATEGORIES = ["环境试验", "机械试验", "表面处理", "包装", "其他"]
@@ -43,6 +47,7 @@ class TaskEditDialog(_BaseDialog):
         equipment_list: list[Equipment] | None = None,
         technician_list: list | None = None,  # kept for backward compat, unused
         all_tasks: list[TestTask] | None = None,
+        sample_list: list[Sample] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         is_edit = task is not None
@@ -55,6 +60,16 @@ class TaskEditDialog(_BaseDialog):
         self._equipment_list = equipment_list or []
         self._technician_list = technician_list or []
         self._all_tasks = [t for t in (all_tasks or []) if t.id != (task.id if task else None)]
+        self._sample_list = sample_list or []
+        self._selected_sample_ids: list[int] = []
+        # 编辑时解析已有的 sample_ids
+        if task:
+            try:
+                self._selected_sample_ids = json.loads(task.sample_ids)
+                if not isinstance(self._selected_sample_ids, list):
+                    self._selected_sample_ids = []
+            except (json.JSONDecodeError, TypeError):
+                self._selected_sample_ids = []
 
         # ── 基本信息 ──
         self._name_edit = self._add_text_field(
@@ -82,6 +97,87 @@ class TaskEditDialog(_BaseDialog):
             default=task.priority if task else 3,
             min_val=1, max_val=5,
         )
+
+        # ── 样品选择 ──
+        sample_container = QWidget()
+        sample_layout = QHBoxLayout(sample_container)
+        sample_layout.setContentsMargins(0, 0, 0, 0)
+        sample_layout.setSpacing(8)
+
+        self._sample_select_btn = QPushButton("选择样品")
+        self._sample_select_btn.setProperty("class", "action")
+        self._sample_select_btn.setFixedWidth(100)
+        self._sample_select_btn.clicked.connect(self._open_sample_select)
+
+        self._sample_count_label = QLabel(
+            self._format_sample_count()
+        )
+        self._sample_count_label.setStyleSheet("color: #6c6f85;")
+
+        sample_layout.addWidget(self._sample_select_btn)
+        sample_layout.addWidget(self._sample_count_label, stretch=1)
+        self._form.addRow("关联样品", sample_container)
+
+        self._add_separator()
+
+        # ── 执行状态 & 进度 ──
+        from src.models.test_plan import TestTaskStatus
+        status_options = [
+            ("待开始", TestTaskStatus.PENDING.value),
+            ("进行中", TestTaskStatus.IN_PROGRESS.value),
+            ("已完成", TestTaskStatus.COMPLETED.value),
+            ("已跳过", TestTaskStatus.SKIPPED.value),
+        ]
+        status_items = [label for label, _ in status_options]
+        self._status_combo = self._add_combo_field(
+            "状态",
+            items=status_items,
+            default=self._find_status_label(task) if task else status_items[0],
+        )
+
+        # 进度滑块
+        from PySide6.QtWidgets import QSlider, QLabel as _QLabel
+        from PySide6.QtCore import Qt as _Qt, QDate as _QDate
+        prog_container = QWidget()
+        prog_layout = QHBoxLayout(prog_container)
+        prog_layout.setContentsMargins(0, 0, 0, 0)
+        self._progress_slider = QSlider(_Qt.Orientation.Horizontal)
+        self._progress_slider.setRange(0, 100)
+        self._progress_slider.setValue(int(task.progress) if task else 0)
+        self._progress_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._progress_slider.setTickInterval(25)
+        self._progress_label = _QLabel(f"{int(task.progress) if task else 0}%")
+        self._progress_label.setFixedWidth(40)
+        self._progress_slider.valueChanged.connect(
+            lambda v: self._progress_label.setText(f"{v}%")
+        )
+        prog_layout.addWidget(self._progress_slider, stretch=1)
+        prog_layout.addWidget(self._progress_label)
+        self._form.addRow("进度", prog_container)
+
+        # 日期字段
+        self._actual_start_edit = self._add_date_field(
+            "实际开始日期",
+        )
+        if task and task.actual_start_date:
+            try:
+                d = _QDate.fromString(task.actual_start_date, "yyyy-MM-dd")
+                if d.isValid():
+                    self._actual_start_edit.setDate(d)
+            except Exception:
+                pass
+
+        self._actual_end_edit = self._add_date_field(
+            "实际完成日期",
+        )
+        if task and task.actual_end_date:
+            try:
+                d = _QDate.fromString(task.actual_end_date, "yyyy-MM-dd")
+                if d.isValid():
+                    self._actual_end_edit.setDate(d)
+            except Exception:
+                pass
+
         self._add_separator()
 
         # ── 设备 & 技术员 ──
@@ -203,6 +299,39 @@ class TaskEditDialog(_BaseDialog):
         if path:
             self._log_file_edit.setText(path)
 
+    # ── 样品选择 ───────────────────────────────────────────────
+
+    def _open_sample_select(self) -> None:
+        """打开样品多选弹窗。"""
+        from src.views.dialogs.sample_select_dialog import SampleSelectDialog
+
+        dlg = SampleSelectDialog(
+            samples=self._sample_list,
+            selected_ids=self._selected_sample_ids,
+            parent=self,
+        )
+        if dlg.exec():
+            self._selected_sample_ids = dlg.get_selected_ids()
+            self._sample_count_label.setText(self._format_sample_count())
+
+    def _format_sample_count(self) -> str:
+        """格式化已选样品数量标签。"""
+        count = len(self._selected_sample_ids)
+        total = len(self._sample_list)
+        if count == 0:
+            return f"未选择（共 {total} 个可选）"
+        # 展示已选样品的 SN
+        selected_sns = []
+        for sid in self._selected_sample_ids:
+            for s in self._sample_list:
+                if s.id == sid:
+                    selected_sns.append(s.sn)
+                    break
+        sn_text = ", ".join(selected_sns[:5])
+        if len(selected_sns) > 5:
+            sn_text += f" …等 {len(selected_sns)} 个"
+        return f"已选 {count} 个: {sn_text}"
+
     # ── 辅助方法 ───────────────────────────────────────────────
 
     def _find_equip_label(self, equip_id: Optional[int]) -> str:
@@ -220,6 +349,15 @@ class TaskEditDialog(_BaseDialog):
             if t.id == tech_id:
                 return f"{t.id} — {t.name}"
         return "（无）"
+
+    def _find_status_label(self, task: TestTask) -> str:
+        status_map = {
+            "pending": "待开始",
+            "in_progress": "进行中",
+            "completed": "已完成",
+            "skipped": "已跳过",
+        }
+        return status_map.get(task.status, "待开始")
 
     def _format_deps(self, task: TestTask) -> str:
         """将 JSON 依赖数组转为逗号分隔字符串。"""
@@ -272,14 +410,29 @@ class TaskEditDialog(_BaseDialog):
             except ValueError:
                 pass
 
+        # 解析状态
+        status_map = {
+            "待开始": "pending",
+            "进行中": "in_progress",
+            "已完成": "completed",
+            "已跳过": "skipped",
+        }
+        status_text = self._status_combo.currentText()
+        task_status = status_map.get(status_text, "pending")
+
         return {
             "name": self._name_edit.text().strip(),
             "category": self._category_combo.currentText(),
             "test_standard": self._standard_edit.text().strip(),
             "duration": self._duration_spin.value(),
             "priority": self._priority_spin.value(),
+            "status": task_status,
+            "progress": float(self._progress_slider.value()),
+            "actual_start_date": self._actual_start_edit.date().toString("yyyy-MM-dd") if self._actual_start_edit.date().isValid() and self._actual_start_edit.date().year() >= 2020 else "",
+            "actual_end_date": self._actual_end_edit.date().toString("yyyy-MM-dd") if self._actual_end_edit.date().isValid() and self._actual_end_edit.date().year() >= 2020 else "",
             "equipment_id": equipment_id,
             "technician_id": technician_id,
+            "sample_ids": json.dumps(self._selected_sample_ids, ensure_ascii=False),
             "dependencies": json.dumps(dep_ids, ensure_ascii=False),
             "environment": self._env_edit.text().strip(),
             "temperature": self._temp_edit.text().strip(),

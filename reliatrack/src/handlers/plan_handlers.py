@@ -271,6 +271,25 @@ class PlanHandlers:
         max_day = max((t.start_day + t.duration for t in tasks), default=30)
         self._win._test_plan_view.refresh(tasks, max_day)
 
+    def _get_project_samples(self, ctrl: object) -> list:
+        """获取当前项目下的样品列表。"""
+        from src.controllers.app_controller import AppController
+
+        assert isinstance(ctrl, AppController)
+        if not ctrl.test_plan_service or not ctrl.sample_service:
+            return []
+        # 从当前计划获取 project_id
+        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            return []
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if plan is None:
+            return []
+        project_id = plan.project_id
+        if not project_id:
+            return []
+        return ctrl.sample_service.get_by_project(project_id)
+
     def _on_task_add(self) -> None:
         """新建测试任务。"""
         ctrl = self._win._ctrl
@@ -281,11 +300,13 @@ class PlanHandlers:
             self._win.statusBar().showMessage("⚠️ 没有测试计划，请先创建计划", 5000)
             return
         current_tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        sample_list = self._get_project_samples(ctrl)
         dlg = TaskEditDialog(
             task=None,
             equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
             technician_list=[],
             all_tasks=current_tasks,
+            sample_list=sample_list,
             parent=self._win,
         )
         if dlg.exec():
@@ -305,15 +326,26 @@ class PlanHandlers:
         if plan_id is None:
             return
         current_tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        sample_list = self._get_project_samples(ctrl)
         dlg = TaskEditDialog(
             task=task,
             equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
             technician_list=[],
             all_tasks=current_tasks,
+            sample_list=sample_list,
             parent=self._win,
         )
         if dlg.exec():
             data = dlg.get_data()
+            # 自动记录实际日期
+            from datetime import date as _date
+            today = _date.today().isoformat()
+            new_status = data.get("status", "")
+            if new_status == "in_progress" and not data.get("actual_start_date"):
+                data["actual_start_date"] = today
+            if new_status == "completed" and not data.get("actual_end_date"):
+                data["actual_end_date"] = today
+                data["progress"] = 100.0
             ctrl.test_plan_service.update_task(task.id, **data)
             self._win.statusBar().showMessage(
                 f"✅ 任务「{data['name']}」已更新", 5000
