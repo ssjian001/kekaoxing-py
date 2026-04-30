@@ -240,6 +240,10 @@ class IssueView(QWidget):
         super().__init__(parent)
         self._project_list: list = []  # 项目列表，由 main.py 注入
         self._default_project_id: int | None = None  # 默认项目，由 main.py 注入
+        self._task_list: list = []  # 任务列表，由 refresh_handlers 注入
+        self._sample_list: list = []  # 样品列表，由 refresh_handlers 注入
+        self._default_task_id: int | None = None
+        self._default_sample_id: int | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -338,6 +342,10 @@ class IssueView(QWidget):
             issue=None,
             project_list=self._project_list,
             default_project_id=self._default_project_id,
+            task_list=self._task_list,
+            default_task_id=self._default_task_id,
+            sample_list=self._sample_list,
+            default_sample_id=self._default_sample_id,
             parent=self,
         )
         if dlg.exec():
@@ -348,6 +356,8 @@ class IssueView(QWidget):
         dlg = IssueEditDialog(
             issue=issue,
             project_list=self._project_list,
+            task_list=self._task_list,
+            sample_list=self._sample_list,
             parent=self,
         )
         if dlg.exec():

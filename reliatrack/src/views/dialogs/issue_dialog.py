@@ -37,16 +37,22 @@ class IssueEditDialog(_BaseDialog):
         issue: Issue | None = None,
         project_list: list | None = None,
         default_project_id: int | None = None,
+        task_list: list | None = None,
+        default_task_id: int | None = None,
+        sample_list: list | None = None,
+        default_sample_id: int | None = None,
         parent: QWidget | None = None,
     ) -> None:
         is_edit = issue is not None
         super().__init__(
-            "✏️ 编辑 Issue" if is_edit else "➕ 新建 Issue",
+            "编辑 Issue" if is_edit else "新建 Issue",
             parent,
             width=520,
         )
         self._issue = issue
         self._project_list = project_list or []
+        self._task_list = task_list or []
+        self._sample_list = sample_list or []
 
         # ── 基本信息 ──
         self._title_edit = self._add_text_field(
@@ -113,6 +119,48 @@ class IssueEditDialog(_BaseDialog):
             default=project_default,
         )
 
+        # ── 关联任务 ──
+        task_names = ["（无）"]
+        task_names += [f"{t.name}" for t in self._task_list]
+        task_default = "（无）"
+        # 编辑模式
+        if issue and issue.task_id:
+            for t in self._task_list:
+                if t.id == issue.task_id:
+                    task_default = t.name
+                    break
+        elif default_task_id is not None and not is_edit:
+            for t in self._task_list:
+                if t.id == default_task_id:
+                    task_default = t.name
+                    break
+        self._task_combo = self._add_combo_field(
+            "关联任务",
+            items=task_names,
+            default=task_default,
+        )
+
+        # ── 关联样品 ──
+        sample_names = ["（无）"]
+        sample_names += [f"{s.sn}" for s in self._sample_list]
+        sample_default = "（无）"
+        # 编辑模式
+        if issue and issue.sample_id:
+            for s in self._sample_list:
+                if s.id == issue.sample_id:
+                    sample_default = s.sn
+                    break
+        elif default_sample_id is not None and not is_edit:
+            for s in self._sample_list:
+                if s.id == default_sample_id:
+                    sample_default = s.sn
+                    break
+        self._sample_combo = self._add_combo_field(
+            "关联样品",
+            items=sample_names,
+            default=sample_default,
+        )
+
         self._add_separator()
 
         # ── 根因 & 解决方案 ──
@@ -135,6 +183,22 @@ class IssueEditDialog(_BaseDialog):
                 if p.name == proj_text:
                     project_id = p.id
                     break
+        # 解析 task_id
+        task_id: int | None = None
+        task_text = self._task_combo.currentText()
+        if task_text != "（无）":
+            for t in self._task_list:
+                if t.name == task_text:
+                    task_id = t.id
+                    break
+        # 解析 sample_id
+        sample_id: int | None = None
+        sample_text = self._sample_combo.currentText()
+        if sample_text != "（无）":
+            for s in self._sample_list:
+                if s.sn == sample_text:
+                    sample_id = s.id
+                    break
         return {
             "title": self._title_edit.text().strip(),
             "failure_mode": self._failure_mode_edit.text().strip(),
@@ -144,6 +208,8 @@ class IssueEditDialog(_BaseDialog):
             "priority": self._priority_spin.value(),
             "status": self._status_combo.currentText(),
             "project_id": project_id,
+            "task_id": task_id,
+            "sample_id": sample_id,
             "root_cause": self._root_cause_edit.toPlainText().strip(),
             "resolution": self._resolution_edit.toPlainText().strip(),
         }

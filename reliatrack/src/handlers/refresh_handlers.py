@@ -139,6 +139,18 @@ class RefreshHandlers:
         else:
             all_samples = []
 
+        # 注入任务列表和样品列表给 Issue 弹窗
+        self._win._issue_view._sample_list = all_samples
+        if ctrl.test_tasks:
+            if filter_project_id and ctrl.test_plan_service:
+                fp = ctrl.test_plan_service.get_plans_by_project(filter_project_id)
+                pids = {p.id for p in fp}
+                self._win._issue_view._task_list = [
+                    t for t in ctrl.test_tasks.list_all() if t.plan_id in pids
+                ]
+            else:
+                self._win._issue_view._task_list = ctrl.test_tasks.list_all()
+
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             all_tasks = ctrl.test_tasks.list_all()
 
