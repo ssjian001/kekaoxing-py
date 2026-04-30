@@ -102,7 +102,14 @@ class _ResultRow(QFrame):
         layout.addWidget(self._date_edit)
 
         # 备注
-        self._notes: str = existing_result.notes if existing_result else ""
+        from PySide6.QtWidgets import QLineEdit
+        self._notes_edit = QLineEdit()
+        self._notes_edit.setPlaceholderText("备注")
+        self._notes_edit.setFixedWidth(140)
+        self._notes_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        if existing_result and existing_result.notes:
+            self._notes_edit.setText(existing_result.notes)
+        layout.addWidget(self._notes_edit)
 
         layout.addStretch()
 
@@ -128,7 +135,7 @@ class _ResultRow(QFrame):
             "sample_id": self._sample.id,
             "result": self._combo.currentData() or TestResultStatus.PENDING.value,
             "test_date": self._date_edit.date().toString("yyyy-MM-dd"),
-            "notes": self._notes,
+            "notes": self._notes_edit.text().strip(),
         }
 
     @property
