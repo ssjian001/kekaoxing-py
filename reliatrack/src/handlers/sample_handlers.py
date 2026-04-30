@@ -79,9 +79,18 @@ class SampleHandlers:
         sample = ctrl.sample_service.get(sample_id)
         if sample is None:
             return
+        # 获取当前项目下的测试任务列表，供出库时关联
+        task_list: list = []
+        filter_pid = self._win._refresh_handlers._get_filter_project_id()
+        if filter_pid and ctrl.test_plan_service:
+            plans = ctrl.test_plan_service.get_plans_by_project(filter_pid)
+            for p in plans:
+                if p.id is not None:
+                    task_list.extend(ctrl.test_plan_service.get_tasks(p.id))
         dlg = SampleCheckoutDialog(
             sample=sample,
             technicians=[],
+            task_list=task_list,
             parent=self._win,
         )
         if dlg.exec():

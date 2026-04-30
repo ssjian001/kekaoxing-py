@@ -436,3 +436,44 @@ class PlanHandlers:
         ctrl.test_plan_service.delete_task(task.id)
         self._win.statusBar().showMessage(f"✅ 任务「{name}」已删除", 5000)
         self._win._ctrl.notify_data_changed("task")
+
+    def _on_task_status_advance(self, task: object, new_status: str) -> None:
+        """一键推进任务状态 — 自动填日期和进度。
+
+        Args:
+            task: TestTask 对象。
+            new_status: 目标状态 ("in_progress" 或 "completed")。
+        """
+        from src.models.test_plan import TestTask
+        from datetime import date as _date
+
+        assert isinstance(task, TestTask)
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        if task.id is None:
+            return
+
+        today = _date.today().isoformat()
+        updates: dict = {"status": new_status}
+
+        if new_status == "in_progress":
+            if not task.actual_start_date:
+                updates["actual_start_date"] = today
+            status_label = "进行中"
+        elif new_status == "completed":
+            if not task.actual_end_date:
+                updates["actual_end_date"] = today
+            updates["progress"] = 100.0
+            status_label = "已完成"
+        else:
+            status_label = new_status
+
+        try:
+            ctrl.test_plan_service.update_task(task.id, **updates)
+            self._win.statusBar().showMessage(
+                f"✅ 任务「{task.name}」已标记为{status_label}", 5000
+            )
+            self._win._ctrl.notify_data_changed("task")
+        except Exception as e:
+            QMessageBox.critical(self._win, "操作失败", f"状态更新失败: {e}")

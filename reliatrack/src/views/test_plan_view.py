@@ -35,7 +35,7 @@ from src.models.common import Equipment, Technician
 class _TaskTable(QTableWidget):
     """测试任务列表表格。"""
 
-    COLUMNS = ["#", "名称", "类别", "天数", "开始", "进度", "优先级", "状态"]
+    COLUMNS = ["#", "名称", "类别", "天数", "开始", "进度", "优先级", "状态", "实际开始", "实际完成"]
 
     _STATUS_LABELS: dict[str, str] = {
         "pending": "待开始",
@@ -64,6 +64,7 @@ class _TaskTable(QTableWidget):
         self._technician_list: list[Technician] = []
         self._on_edit_callback: Callable[[TestTask], None] | None = None
         self._on_delete_callback: Callable[[TestTask], None] | None = None
+        self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
         self.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
@@ -88,10 +89,12 @@ class _TaskTable(QTableWidget):
         self,
         on_edit: Callable[[TestTask], None] | None = None,
         on_delete: Callable[[TestTask], None] | None = None,
+        on_status_advance: Callable[[TestTask, str], None] | None = None,
     ) -> None:
-        """设置编辑/删除回调。"""
+        """设置编辑/删除/状态推进回调。"""
         self._on_edit_callback = on_edit
         self._on_delete_callback = on_delete
+        self._on_status_advance_callback = on_status_advance
 
     def _on_double_click(self, row: int, _col: int) -> None:
         task = self.get_task_at_row(row)
@@ -107,8 +110,31 @@ class _TaskTable(QTableWidget):
         act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
         act_delete = QAction("删除", self)
         act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
+
+        # 状态快捷推进
+        act_start: QAction | None = None
+        act_complete: QAction | None = None
+        if task.status == "pending":
+            act_start = QAction("开始执行", self)
+            act_start.triggered.connect(
+                lambda: self._on_status_advance_callback(task, "in_progress")
+                if self._on_status_advance_callback else None
+            )
+        elif task.status == "in_progress":
+            act_complete = QAction("标记完成", self)
+            act_complete.triggered.connect(
+                lambda: self._on_status_advance_callback(task, "completed")
+                if self._on_status_advance_callback else None
+            )
+
         menu.addAction(act_edit)
         menu.addAction(act_delete)
+        if act_start or act_complete:
+            menu.addSeparator()
+        if act_start:
+            menu.addAction(act_start)
+        if act_complete:
+            menu.addAction(act_complete)
         menu.exec(self.viewport().mapToGlobal(pos))
 
     def set_tasks(self, tasks: list[TestTask]) -> None:
@@ -127,6 +153,8 @@ class _TaskTable(QTableWidget):
                 f"{task.progress:.0f}%",
                 priority_text,
                 status_text,
+                task.actual_start_date or "—",
+                task.actual_end_date or "—",
             ]
             for col, val in enumerate(values):
                 item = QTableWidgetItem(str(val))
@@ -507,6 +535,7 @@ class TestPlanView(QWidget):
         on_add: Callable[[], None] | None = None,
         on_edit: Callable[[TestTask], None] | None = None,
         on_delete: Callable[[TestTask], None] | None = None,
+        on_status_advance: Callable[[TestTask, str], None] | None = None,
     ) -> None:
         """设置任务增删改回调。
 
@@ -525,6 +554,7 @@ class TestPlanView(QWidget):
         self._task_table.set_callbacks(
             on_edit=self._handle_table_edit,
             on_delete=self._handle_table_delete,
+            on_status_advance=on_status_advance,
         )
 
     def _handle_toolbar_edit(self) -> None:

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import apsw
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -330,6 +330,21 @@ def _migrate_v5(conn: apsw.Connection) -> None:
     )
 
 
+def _migrate_v6(conn: apsw.Connection) -> None:
+    """v6: test_tasks 表新增 actual_start_date, actual_end_date 字段。"""
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(test_tasks)").fetchall()
+    }
+    for col in ("actual_start_date", "actual_end_date"):
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE test_tasks ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (6)"
+    )
+
+
 def _get_current_version(conn: apsw.Connection) -> int:
     """读取当前 schema 版本号。数据库为空时返回 0。"""
     try:
@@ -364,7 +379,7 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    needs_migration = current < 5  # 更新此值当新增迁移版本
+    needs_migration = current < 6  # 更新此值当新增迁移版本
 
     if not needs_migration:
         return current
@@ -386,6 +401,9 @@ def init_schema(conn: apsw.Connection) -> int:
 
         if current < 5:
             _migrate_v5(conn)
+
+        if current < 6:
+            _migrate_v6(conn)
 
         conn.execute("COMMIT")
     except Exception:

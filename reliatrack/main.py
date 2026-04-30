@@ -152,6 +152,7 @@ class MainWindow(QMainWindow):
             on_add=self._plan_handlers._on_task_add,
             on_edit=self._plan_handlers._on_task_edit,
             on_delete=self._plan_handlers._on_task_delete,
+            on_status_advance=self._plan_handlers._on_task_status_advance,
         )
 
         # Tab 4: Issue 追踪

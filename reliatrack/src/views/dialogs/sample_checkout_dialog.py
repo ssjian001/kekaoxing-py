@@ -23,11 +23,13 @@ class SampleCheckoutDialog(_BaseDialog):
         self,
         sample: Sample,
         technicians: list | None = None,
+        task_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__("📤 样品出库", parent, width=460)
         self._sample = sample
         self._technicians = technicians or []
+        self._task_list = task_list or []
 
         # ── 只读信息展示 ──
         self._add_separator()
@@ -41,10 +43,15 @@ class SampleCheckoutDialog(_BaseDialog):
             label="出库目的 *",
             placeholder="测试 / 拆解分析 / 对比 / 借用 …",
         )
-        self._task_edit = self._add_text_field(
-            label="关联任务 ID",
-            placeholder="选填",
+
+        # 关联任务 — 下拉选择
+        task_items = ["（无）"] + [f"#{t.id} {t.name}" for t in self._task_list]
+        self._task_combo = self._add_combo_field(
+            label="关联任务",
+            items=task_items,
+            default="（无）",
         )
+
         self._return_edit = self._add_date_field(
             label="预计归还日期",
         )
@@ -69,12 +76,14 @@ class SampleCheckoutDialog(_BaseDialog):
         """返回表单数据字典。"""
         from PySide6.QtCore import QDate
 
-        # 解析关联任务 ID（允许非数字输入，无效时设为 None）
-        task_text = self._task_edit.text().strip()
-        try:
-            related_task_id = int(task_text) if task_text else None
-        except (ValueError, TypeError):
-            related_task_id = None
+        # 解析关联任务 ID（从下拉框提取）
+        task_text = self._task_combo.currentText().strip()
+        related_task_id: int | None = None
+        if task_text != "（无）" and task_text.startswith("#"):
+            try:
+                related_task_id = int(task_text.split()[0][1:])  # "#3 xxx" → 3
+            except (ValueError, TypeError, IndexError):
+                pass
 
         # 解析操作人 operator_id（从 "id: name" 格式提取 id）
         operator_text = self._operator_combo.currentText().strip()
