@@ -28,6 +28,7 @@ from src.styles.theme import (
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS
+from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
@@ -37,12 +38,7 @@ class _TaskTable(QTableWidget):
 
     COLUMNS = ["#", "名称", "类别", "天数", "开始", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
 
-    _STATUS_LABELS: dict[str, str] = {
-        "pending": "待开始",
-        "in_progress": "进行中",
-        "completed": "已完成",
-        "skipped": "已跳过",
-    }
+    _STATUS_LABELS: dict[str, str] = TASK_STATUS_LABELS  # type: ignore[assignment]
     _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
     _PRIORITY_COLORS: dict[int, str] = PRIORITY_COLORS
 
@@ -158,7 +154,7 @@ class _TaskTable(QTableWidget):
         for row, task in enumerate(tasks):
             # 列: #, 名称, 类别, 天数, 开始, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
             status_text = self._STATUS_LABELS.get(task.status, task.status)
-            priority_text = {"1": "P1", "2": "P2", "3": "P3", "4": "P4", "5": "P5"}.get(str(task.priority), str(task.priority))
+            priority_text = PRIORITY_LABELS.get(task.priority, str(task.priority))
             tech_name = tech_map.get(task.technician_id, "") if task.technician_id else ""
             pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
             rate_text = f"{pass_count}/{total}" if total > 0 else "—"

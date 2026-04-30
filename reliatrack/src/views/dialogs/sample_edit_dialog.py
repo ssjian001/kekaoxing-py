@@ -9,6 +9,11 @@ from PySide6.QtWidgets import (
 
 from src.models.sample import Sample
 from src.views.dialogs.base_dialog import _BaseDialog
+from src.constants import (
+    SAMPLE_STATUS_OPTIONS,
+    SAMPLE_STATUS_MAP,
+    SAMPLE_STATUS_REVERSE,
+)
 
 
 class SampleEditDialog(_BaseDialog):
@@ -22,14 +27,9 @@ class SampleEditDialog(_BaseDialog):
         项目列表（用于关联项目下拉框）。
     """
 
-    _STATUS_OPTIONS = ["在库", "测试中", "已归还", "已报废"]
-    _STATUS_MAP = {
-        "在库": "in_stock",
-        "测试中": "in_test",
-        "已归还": "returned",
-        "已报废": "scrapped",
-    }
-    _STATUS_REVERSE = {v: k for k, v in _STATUS_MAP.items()}
+    _STATUS_OPTIONS = SAMPLE_STATUS_OPTIONS
+    _STATUS_MAP = SAMPLE_STATUS_MAP
+    _STATUS_REVERSE = SAMPLE_STATUS_REVERSE
 
     def __init__(
         self,

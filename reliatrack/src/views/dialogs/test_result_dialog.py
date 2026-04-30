@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor
 
+from src.constants import RESULT_OPTIONS
 from src.models.test_plan import TestResult, TestResultStatus, TestTask
 from src.models.sample import Sample
 from src.styles.theme import (
@@ -29,13 +30,7 @@ from src.styles.theme import (
 class _ResultRow(QFrame):
     """单个样品的结果录入行。"""
 
-    _RESULT_OPTIONS: list[tuple[str, str]] = [
-        ("通过", TestResultStatus.PASS.value),
-        ("不通过", TestResultStatus.FAIL.value),
-        ("条件通过", TestResultStatus.CONDITIONAL.value),
-        ("待定", TestResultStatus.PENDING.value),
-        ("跳过", TestResultStatus.SKIP.value),
-    ]
+    _RESULT_OPTIONS = RESULT_OPTIONS
     _RESULT_COLORS: dict[str, str] = {
         "pass": GREEN, "fail": RED,
         "conditional": YELLOW, "pending": SUBTEXT0, "skip": SUBTEXT0,

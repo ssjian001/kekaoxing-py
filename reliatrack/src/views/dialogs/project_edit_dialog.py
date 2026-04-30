@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
+from src.constants import PROJECT_STATUS_OPTIONS, PROJECT_STATUS_MAP, PROJECT_STATUS_REVERSE
 from src.models.project import Project
 from src.views.dialogs.base_dialog import _BaseDialog
 
@@ -20,13 +21,9 @@ class ProjectEditDialog(_BaseDialog):
         若为 None 则为新建模式，否则为编辑模式并预填数据。
     """
 
-    _STATUS_OPTIONS = ["进行中", "暂停", "已关闭"]
-    _STATUS_MAP = {
-        "进行中": "active",
-        "暂停": "paused",
-        "已关闭": "closed",
-    }
-    _STATUS_REVERSE = {v: k for k, v in _STATUS_MAP.items()}
+    _STATUS_OPTIONS = PROJECT_STATUS_OPTIONS
+    _STATUS_MAP = PROJECT_STATUS_MAP
+    _STATUS_REVERSE = PROJECT_STATUS_REVERSE
 
     def __init__(
         self,

@@ -34,6 +34,7 @@ from src.models.issue import Issue, FARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS
+from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
 
 
 class _IssueTable(QTableWidget):
@@ -71,8 +72,8 @@ class _IssueTable(QTableWidget):
     def set_issues(self, issues: list[Issue]) -> None:
         self._issues = issues
         self.setRowCount(len(issues))
-        severity_labels = {"critical": "严重", "major": "主要", "minor": "次要", "cosmetic": "外观"}
-        status_labels = {"open": "待处理", "analyzing": "分析中", "verified": "已验证", "closed": "已关闭"}
+        severity_labels = SEVERITY_LABELS
+        status_labels = ISSUE_STATUS_LABELS
         for row, issue in enumerate(issues):
             for col, val in enumerate([
                 issue.id,

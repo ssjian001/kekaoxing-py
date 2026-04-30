@@ -12,6 +12,7 @@ from PySide6.QtCore import QDate
 
 from src.models.test_plan import TestPlan, TestPlanStatus
 from src.views.dialogs.base_dialog import _BaseDialog
+from src.constants import PLAN_STATUS_OPTIONS
 
 
 class PlanEditDialog(_BaseDialog):
@@ -25,12 +26,7 @@ class PlanEditDialog(_BaseDialog):
         可选项目列表（用于关联项目下拉框）。
     """
 
-    _STATUS_LABELS = [
-        ("draft", "草稿"),
-        ("in_progress", "进行中"),
-        ("completed", "已完成"),
-        ("paused", "已暂停"),
-    ]
+    _STATUS_LABELS = PLAN_STATUS_OPTIONS
 
     def __init__(
         self,

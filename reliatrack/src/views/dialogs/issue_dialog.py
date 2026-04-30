@@ -7,16 +7,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.constants import SEVERITY_OPTIONS
 from src.models.issue import Issue
 from src.views.dialogs.base_dialog import _BaseDialog
 
 # 严重度选项：中文标签 → 英文存储值（按严重度降序）
-_SEVERITY_OPTIONS: list[tuple[str, str]] = [
-    ("严重", "critical"),
-    ("主要", "major"),
-    ("次要", "minor"),
-    ("外观", "cosmetic"),
-]
+_SEVERITY_OPTIONS = SEVERITY_OPTIONS
 
 
 class IssueEditDialog(_BaseDialog):

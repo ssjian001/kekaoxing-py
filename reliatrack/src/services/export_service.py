@@ -7,6 +7,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from src.constants import (
+    TASK_STATUS_LABELS,
+    ISSUE_STATUS_LABELS,
+    SAMPLE_STATUS_LABELS,
+)
 from src.models.test_plan import TestPlan, TestTask
 from src.models.issue import Issue, FARecord
 from src.models.sample import Sample
@@ -29,20 +34,11 @@ class ExportService:
         "other": "其他",
     }
 
-    STATUS_MAP = {
-        "pending": "待开始",
-        "in_progress": "进行中",
-        "completed": "已完成",
-        "skipped": "已跳过",
-        "open": "待处理",
-        "analyzing": "分析中",
-        "verified": "已验证",
-        "closed": "已关闭",
-        "in_stock": "在库",
-        "checked_out": "已出库",
-        "in_test": "测试中",
-        "scrapped": "已报废",
-        "returned": "已归还",
+    # Merged status → Chinese label map (task + issue + sample)
+    STATUS_MAP: dict[str, str] = {
+        **TASK_STATUS_LABELS,
+        **ISSUE_STATUS_LABELS,
+        **SAMPLE_STATUS_LABELS,
     }
 
     def __init__(self, output_dir: str = "exports") -> None:
