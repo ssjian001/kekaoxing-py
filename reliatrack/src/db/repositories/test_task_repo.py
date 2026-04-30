@@ -23,23 +23,11 @@ class TestTaskRepository(BaseRepository):
         )
 
     def delete_issues_by_task(self, task_id: int) -> None:
-        """删除关联到任务的 Issue 及其子表（fa_records, issue_attachments）。
+        """删除关联到任务的 Issue。
 
-        注意：schema 中 fa_records / issue_attachments 的外键已添加
-        ON DELETE CASCADE，手动级联删除为兼容性保留（旧数据库可能
-        未执行 migration）。
+        schema 中 fa_records / issue_attachments 的外键已添加
+        ON DELETE CASCADE，删除 issues 后子表自动级联。
         """
-        # 先查出关联的 issue id，逐个级联删除子表
-        rows = self._conn.execute(
-            "SELECT id FROM [issues] WHERE task_id = ?", (task_id,)
-        ).fetchall()
-        for (issue_id,) in rows:
-            self._conn.execute(
-                "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
-            )
-            self._conn.execute(
-                "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
-            )
         self._conn.execute(
             "DELETE FROM [issues] WHERE task_id = ?", (task_id,)
         )
