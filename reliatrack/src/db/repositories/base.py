@@ -41,6 +41,17 @@ class BaseRepository:
     def rollback(self) -> None:
         self._conn.execute("ROLLBACK")
 
+    def transaction(self):
+        """事务上下文管理器 — 自动 commit/rollback。
+
+        用法::
+
+            with repo.transaction():
+                repo.insert(...)
+                repo.update(...)
+        """
+        return _Transaction(self)
+
     # ── 列名查询（避免位置索引）──
 
     def _columns(self) -> list[str]:
@@ -79,10 +90,19 @@ class BaseRepository:
             raise
 
     def update(self, id: int, **kwargs: Any) -> None:
-        """按 ID 更新指定字段。"""
+        """按 ID 更新指定字段。自动刷新 updated_at。"""
         if not kwargs:
             return
-        set_clause = ", ".join([f"[{k}] = ?" for k in kwargs])
+        # 自动维护 updated_at（如果表有此列且调用方未显式传入）
+        auto_ts = (
+            "updated_at" not in kwargs
+            and "updated_at" in self._columns()
+        )
+        if auto_ts:
+            set_clause = ", ".join([f"[{k}] = ?" for k in kwargs])
+            set_clause += ", [updated_at] = datetime('now','localtime')"
+        else:
+            set_clause = ", ".join([f"[{k}] = ?" for k in kwargs])
         vals = list(kwargs.values()) + [id]
         sql = f"UPDATE [{self._table}] SET {set_clause} WHERE id = ?"
         try:
@@ -139,3 +159,20 @@ class BaseRepository:
             sql += " WHERE " + " AND ".join(clauses)
         row = self._conn.execute(sql, params).fetchone()
         return row[0] if row else 0
+
+
+class _Transaction:
+    """事务上下文管理器。"""
+
+    def __init__(self, repo: BaseRepository) -> None:
+        self._repo = repo
+
+    def __enter__(self) -> _Transaction:
+        self._repo.begin_transaction()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        if exc_type is not None:
+            self._repo.rollback()
+        else:
+            self._repo.commit()
