@@ -254,8 +254,8 @@ class RefreshHandlers:
 
             # 构建技术员映射 {technician_id: name}
             technician_map: dict[int, str] = {}
-            if ctrl.technicians:
-                for t in ctrl.technicians.list_all():
+            if ctrl.technician_service:
+                for t in ctrl.technician_service.list_all():
                     if t.id is not None:
                         technician_map[t.id] = t.name
 
@@ -297,9 +297,9 @@ class RefreshHandlers:
     def _refresh_technicians(self) -> None:
         """刷新技术员管理视图。"""
         ctrl = self._win._ctrl
-        if not ctrl or not ctrl.technicians:
+        if not ctrl or not ctrl.technician_service:
             return
-        all_technicians = ctrl.technicians.list_all()
+        all_technicians = ctrl.technician_service.list_all()
         self._win._technician_view.refresh(all_technicians)
 
     def _refresh_knowledge(self) -> None:

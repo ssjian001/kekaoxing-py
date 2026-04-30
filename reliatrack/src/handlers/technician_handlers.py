@@ -21,13 +21,13 @@ class TechnicianHandlers:
     def _on_technician_add(self) -> None:
         """新建技术员。"""
         ctrl = self._win._ctrl
-        if not ctrl or not ctrl.technicians:
+        if not ctrl or not ctrl.technician_service:
             return
         dlg = TechnicianEditDialog(parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
             try:
-                ctrl.technicians.insert(**data)
+                ctrl.technician_service.create(**data)
                 self._win.statusBar().showMessage(
                     f"✅ 技术员「{data['name']}」已创建", 5000
                 )
@@ -38,7 +38,7 @@ class TechnicianHandlers:
     def _on_technician_edit(self) -> None:
         """编辑选中的技术员。"""
         ctrl = self._win._ctrl
-        if not ctrl or not ctrl.technicians:
+        if not ctrl or not ctrl.technician_service:
             return
         tech = self._win._technician_view.get_selected_technician()
         if tech is None:
@@ -48,8 +48,9 @@ class TechnicianHandlers:
         if dlg.exec():
             data = dlg.get_data()
             try:
-                assert tech.id is not None
-                ctrl.technicians.update(tech.id, **data)
+                if tech.id is None:
+                    raise ValueError("技术员 ID 不能为空")
+                ctrl.technician_service.update(tech.id, **data)
                 self._win.statusBar().showMessage(
                     f"✅ 技术员「{data['name']}」已更新", 5000
                 )
@@ -60,7 +61,7 @@ class TechnicianHandlers:
     def _on_technician_delete(self) -> None:
         """删除选中的技术员。"""
         ctrl = self._win._ctrl
-        if not ctrl or not ctrl.technicians:
+        if not ctrl or not ctrl.technician_service:
             return
         tech = self._win._technician_view.get_selected_technician()
         if tech is None:
@@ -76,8 +77,9 @@ class TechnicianHandlers:
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
-            assert tech.id is not None
-            ctrl.technicians.delete(tech.id)
+            if tech.id is None:
+                raise ValueError("技术员 ID 不能为空")
+            ctrl.technician_service.delete(tech.id)
             self._win.statusBar().showMessage(
                 f"✅ 技术员「{tech.name}」已删除", 5000
             )

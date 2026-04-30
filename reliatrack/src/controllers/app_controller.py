@@ -39,6 +39,7 @@ from src.services import (
     SettingsService,
     SchedulerService,
     KnowledgeService,
+    TechnicianService,
 )
 from src.services.undo_manager import UndoManager
 
@@ -73,6 +74,7 @@ class AppController:
         self.settings_service: SettingsService | None = None
         self.scheduler_service: SchedulerService | None = None
         self.knowledge_service: KnowledgeService | None = None
+        self.technician_service: TechnicianService | None = None
 
         # Undo/Redo
         self.undo_manager = UndoManager(max_history=50)
@@ -113,6 +115,7 @@ class AppController:
             self.test_tasks, self.equipment, self.test_plans,
         )
         self.knowledge_service = KnowledgeService(self.knowledge)
+        self.technician_service = TechnicianService(self.technicians)
 
         logger.info("All services initialized")
 
