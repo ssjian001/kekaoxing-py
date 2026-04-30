@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QMenu,
     QMessageBox,
+    QLineEdit,
 )
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QPoint
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, QWheelEvent
@@ -63,6 +64,7 @@ class _TaskTable(QTableWidget):
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
         self.verticalHeader().setVisible(False)
+        self.setSortingEnabled(True)
         self._tasks: list[TestTask] = []
         self._equipment_list: list[Equipment] = []
         self._technician_list: list[Technician] = []
@@ -150,6 +152,7 @@ class _TaskTable(QTableWidget):
         self._tasks = tasks
         tech_map = technician_map or {}
         res_map = result_map or {}
+        self.setSortingEnabled(False)
         self.setRowCount(len(tasks))
         for row, task in enumerate(tasks):
             # 列: #, 名称, 类别, 天数, 开始, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
@@ -191,6 +194,7 @@ class _TaskTable(QTableWidget):
                     elif pass_count == 0:
                         item.setForeground(QColor(RED))
                 self.setItem(row, col, item)
+        self.setSortingEnabled(True)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
         if 0 <= row < len(self._tasks):
@@ -437,16 +441,19 @@ class TestPlanView(QWidget):
         self._btn_add_plan = QPushButton("新建计划")
         self._btn_add_plan.setProperty("class", "action")
         self._btn_add_plan.setFixedHeight(28)
+        self._btn_add_plan.setToolTip("新建测试计划")
         toolbar.addWidget(self._btn_add_plan)
 
         self._btn_edit_plan = QPushButton("编辑计划")
         self._btn_edit_plan.setProperty("class", "action")
         self._btn_edit_plan.setFixedHeight(28)
+        self._btn_edit_plan.setToolTip("编辑当前计划")
         toolbar.addWidget(self._btn_edit_plan)
 
         self._btn_schedule = QPushButton("自动排程")
         self._btn_schedule.setProperty("class", "action")
         self._btn_schedule.setFixedHeight(28)
+        self._btn_schedule.setToolTip("自动排程（资源约束优化）")
         toolbar.addWidget(self._btn_schedule)
 
         # ── 分隔线 ──
@@ -459,26 +466,45 @@ class TestPlanView(QWidget):
         self._btn_add_task = QPushButton("添加任务")
         self._btn_add_task.setProperty("class", "action")
         self._btn_add_task.setFixedHeight(28)
+        self._btn_add_task.setToolTip("添加测试任务")
         toolbar.addWidget(self._btn_add_task)
 
         self._btn_edit_task = QPushButton("编辑任务")
         self._btn_edit_task.setProperty("class", "action")
         self._btn_edit_task.setFixedHeight(28)
+        self._btn_edit_task.setToolTip("编辑选中任务")
         toolbar.addWidget(self._btn_edit_task)
 
         self._btn_delete_task = QPushButton("删除任务")
         self._btn_delete_task.setProperty("class", "action")
         self._btn_delete_task.setFixedHeight(28)
+        self._btn_delete_task.setToolTip("删除选中任务")
         toolbar.addWidget(self._btn_delete_task)
+
+        # ── 搜索框 ──
+        self._search_edit = QLineEdit()
+        self._search_edit.setPlaceholderText("🔍 搜索任务名...")
+        self._search_edit.setClearButtonEnabled(True)
+        self._search_edit.setMaximumWidth(160)
+        self._search_edit.textChanged.connect(self._on_task_search)
+        toolbar.addWidget(self._search_edit)
+
+        # ── 分隔线 ──
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.Shape.VLine)
+        sep2.setStyleSheet(f"color: {SURFACE1};")
+        toolbar.addWidget(sep2)
 
         self._btn_import_tasks = QPushButton("导入任务")
         self._btn_import_tasks.setProperty("class", "action")
         self._btn_import_tasks.setFixedHeight(28)
+        self._btn_import_tasks.setToolTip("从 Excel 批量导入任务")
         toolbar.addWidget(self._btn_import_tasks)
 
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
         self._btn_record_result.setFixedHeight(28)
+        self._btn_record_result.setToolTip("录入测试结果")
         toolbar.addWidget(self._btn_record_result)
 
         toolbar.addStretch()
@@ -513,6 +539,26 @@ class TestPlanView(QWidget):
 
         layout.addWidget(self._sub_tabs, stretch=1)
 
+        # 全量任务缓存（用于搜索过滤）
+        self._all_tasks_for_filter: list[TestTask] = []
+        self._last_technician_map: dict[int, str] = {}
+        self._last_result_map: dict[int, tuple[int, int]] = {}
+
+    def _on_task_search(self, text: str) -> None:
+        """根据搜索关键词过滤任务列表。"""
+        text = text.strip().lower()
+        if not text:
+            filtered = self._all_tasks_for_filter
+        else:
+            filtered = [
+                t for t in self._all_tasks_for_filter
+                if text in (t.name or "").lower()
+            ]
+        self._task_table.set_tasks(
+            filtered, self._last_technician_map, self._last_result_map,
+        )
+        self._gantt.set_tasks(filtered)
+
     def refresh(
         self,
         tasks: list[TestTask],
@@ -520,7 +566,10 @@ class TestPlanView(QWidget):
         technician_map: dict[int, str] | None = None,
         result_map: dict[int, tuple[int, int]] | None = None,
     ) -> None:
-        self._task_table.set_tasks(tasks, technician_map, result_map)
+        self._all_tasks_for_filter = tasks
+        self._last_technician_map = technician_map or {}
+        self._last_result_map = result_map or {}
+        self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days)
         self._gantt.setMinimumHeight(max(150, len(tasks) * 28 + 24))
 

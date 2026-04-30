@@ -65,6 +65,7 @@ class _SampleTable(QTableWidget):
 
     def set_samples(self, samples: list[Sample]) -> None:
         self._data = samples
+        self.setSortingEnabled(False)
         self.setRowCount(len(samples))
         for row_idx, sample in enumerate(samples):
             for col_idx, (_, field_name) in enumerate(self._columns):
@@ -72,6 +73,7 @@ class _SampleTable(QTableWidget):
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.setItem(row_idx, col_idx, item)
+        self.setSortingEnabled(True)
 
     def get_selected_sample_id(self) -> int | None:
         row = self.currentRow()
@@ -108,21 +110,25 @@ class _SamplePoolTab(QWidget):
         self._btn_add = QPushButton("入库")
         self._btn_add.setProperty("class", "action")
         self._btn_add.setMinimumWidth(70)
+        self._btn_add.setToolTip("样品入库")
         toolbar.addWidget(self._btn_add)
 
         self._btn_batch_import = QPushButton("批量导入")
         self._btn_batch_import.setProperty("class", "action")
         self._btn_batch_import.setMinimumWidth(70)
+        self._btn_batch_import.setToolTip("从 Excel 批量导入样品")
         toolbar.addWidget(self._btn_batch_import)
 
         self._btn_out = QPushButton("出库")
         self._btn_out.setProperty("class", "action")
         self._btn_out.setMinimumWidth(70)
+        self._btn_out.setToolTip("样品出库")
         toolbar.addWidget(self._btn_out)
 
         self._btn_edit = QPushButton("编辑")
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
+        self._btn_edit.setToolTip("编辑选中样品")
         toolbar.addWidget(self._btn_edit)
 
         layout.addLayout(toolbar)
@@ -301,6 +307,7 @@ class _SampleUsageTab(QWidget):
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
+        self._table.setSortingEnabled(True)
         self._table.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
@@ -365,6 +372,7 @@ class _SampleUsageTab(QWidget):
         if type_val:
             filtered = [d for d in filtered if d.get("type") == type_val]
 
+        self._table.setSortingEnabled(False)
         self._table.setRowCount(len(filtered))
         for row_idx, record in enumerate(filtered):
             txn_type = record.get("type", "")
@@ -390,6 +398,7 @@ class _SampleUsageTab(QWidget):
                     item.setForeground(_color_fg(color))
                 self._table.setItem(row_idx, col_idx, item)
 
+        self._table.setSortingEnabled(True)
         self._update_empty_state()
 
     def _update_empty_state(self) -> None:
@@ -432,11 +441,20 @@ class _SampleLedgerTab(QWidget):
 
         # 工具栏
         toolbar = QHBoxLayout()
+
+        self._search_input = QLineEdit()
+        self._search_input.setPlaceholderText("🔍 搜索 SN / 批次号 / 规格...")
+        self._search_input.setMinimumWidth(160)
+        self._search_input.setClearButtonEnabled(True)
+        self._search_input.textChanged.connect(self._on_search)
+        toolbar.addWidget(self._search_input)
+
         toolbar.addStretch()
 
         self._btn_edit = QPushButton("编辑")
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
+        self._btn_edit.setToolTip("编辑选中样品")
         toolbar.addWidget(self._btn_edit)
 
         layout.addLayout(toolbar)
@@ -451,6 +469,9 @@ class _SampleLedgerTab(QWidget):
         self._ctx_act_edit = self._context_menu.addAction("编辑样品")
         self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
 
+        # 全量数据缓存（用于搜索过滤）
+        self._all_samples: list[Sample] = []
+
     def _show_context_menu(self, pos) -> None:
         """在表格行上显示右键菜单。"""
         row = self._table.rowAt(pos.y())
@@ -463,8 +484,24 @@ class _SampleLedgerTab(QWidget):
         """右键编辑 → 触发工具栏编辑按钮。"""
         self._btn_edit.click()
 
+    def _on_search(self, text: str) -> None:
+        """根据搜索关键词过滤样品列表。"""
+        text = text.strip().lower()
+        if not text:
+            filtered = self._all_samples
+        else:
+            filtered = [
+                s for s in self._all_samples
+                if text in (s.sn or "").lower()
+                or text in (s.batch_no or "").lower()
+                or text in (s.spec or "").lower()
+            ]
+        self._table.set_samples(filtered)
+
     def refresh(self, samples: list[Sample]) -> None:
-        self._table.set_samples(samples)
+        """刷新台账数据并应用当前搜索过滤。"""
+        self._all_samples = samples
+        self._on_search(self._search_input.text())
 
     @property
     def btn_edit(self) -> QPushButton:

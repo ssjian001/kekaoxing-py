@@ -80,11 +80,13 @@ class ProjectView(QWidget):
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
         self.btn_edit.setMinimumWidth(70)
+        self.btn_edit.setToolTip("编辑选中项目 (F2)")
         toolbar.addWidget(self.btn_edit)
 
         self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setMinimumWidth(70)
+        self.btn_delete.setToolTip("删除选中项目 (Delete)")
         toolbar.addWidget(self.btn_delete)
 
         sep = QFrame()
@@ -95,6 +97,7 @@ class ProjectView(QWidget):
         self.btn_add = QPushButton("新建")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.setMinimumWidth(70)
+        self.btn_add.setToolTip("新建项目 (Ctrl+N)")
         toolbar.addWidget(self.btn_add)
 
         layout.addLayout(toolbar)

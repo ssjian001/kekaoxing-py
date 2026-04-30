@@ -53,6 +53,7 @@ class _IssueTable(QTableWidget):
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
         self.verticalHeader().setVisible(False)
+        self.setSortingEnabled(True)
         self._issues: list[Issue] = []
         self._context_menu: QMenu | None = None
 
@@ -71,6 +72,7 @@ class _IssueTable(QTableWidget):
 
     def set_issues(self, issues: list[Issue]) -> None:
         self._issues = issues
+        self.setSortingEnabled(False)
         self.setRowCount(len(issues))
         severity_labels = SEVERITY_LABELS
         status_labels = ISSUE_STATUS_LABELS
@@ -91,6 +93,7 @@ class _IssueTable(QTableWidget):
                 elif col == 3:  # status
                     item.setForeground(QColor(ISSUE_STATUS_COLORS.get(issue.status, TEXT)))
                 self.setItem(row, col, item)
+        self.setSortingEnabled(True)
 
     def get_selected_issue_id(self) -> Optional[int]:
         row = self.currentRow()
@@ -260,15 +263,18 @@ class IssueView(QWidget):
 
         self._btn_add = QPushButton("新建 Issue")
         self._btn_add.setProperty("class", "primary")
+        self._btn_add.setToolTip("新建 Issue (Ctrl+N)")
         toolbar.addWidget(self._btn_add)
 
         self._btn_add_fa = QPushButton("新建 FA 步骤")
         self._btn_add_fa.setProperty("class", "action")
+        self._btn_add_fa.setToolTip("添加 FA 分析步骤")
         toolbar.addWidget(self._btn_add_fa)
 
         # attachment management: 附件按钮
         self._btn_attachments = QPushButton("附件")
         self._btn_attachments.setProperty("class", "action")
+        self._btn_attachments.setToolTip("管理附件")
         toolbar.addWidget(self._btn_attachments)
 
         toolbar.addStretch()

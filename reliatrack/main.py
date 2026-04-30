@@ -203,12 +203,14 @@ class MainWindow(QMainWindow):
         self._act_undo = QAction("↩ 撤销", self)
         self._act_undo.setEnabled(False)
         self._act_undo.setShortcut("Ctrl+Z")
+        self._act_undo.setToolTip("撤销 (Ctrl+Z)")
         self._act_undo.triggered.connect(self._on_undo)
         toolbar.addAction(self._act_undo)
 
         self._act_redo = QAction("↪ 重做", self)
         self._act_redo.setEnabled(False)
         self._act_redo.setShortcuts([QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")])
+        self._act_redo.setToolTip("重做 (Ctrl+Y)")
         self._act_redo.triggered.connect(self._on_redo)
         toolbar.addAction(self._act_redo)
 
@@ -216,11 +218,13 @@ class MainWindow(QMainWindow):
 
         # 刷新
         act_refresh = QAction("🔄 刷新", self)
+        act_refresh.setToolTip("刷新所有数据")
         act_refresh.triggered.connect(self._refresh_all)
         toolbar.addAction(act_refresh)
 
         # 导出
         act_export = QAction("📤 导出", self)
+        act_export.setToolTip("导出报告")
         act_export.triggered.connect(self._export_handlers._on_export)
         toolbar.addAction(act_export)
 

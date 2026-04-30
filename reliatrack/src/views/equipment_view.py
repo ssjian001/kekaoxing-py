@@ -79,11 +79,13 @@ class EquipmentView(QWidget):
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
         self.btn_edit.setMinimumWidth(70)
+        self.btn_edit.setToolTip("编辑选中设备 (F2)")
         toolbar.addWidget(self.btn_edit)
 
         self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setMinimumWidth(70)
+        self.btn_delete.setToolTip("删除选中设备 (Delete)")
         toolbar.addWidget(self.btn_delete)
 
         sep = QFrame()
@@ -94,6 +96,7 @@ class EquipmentView(QWidget):
         self.btn_add = QPushButton("新增")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.setMinimumWidth(70)
+        self.btn_add.setToolTip("新增设备 (Ctrl+N)")
         toolbar.addWidget(self.btn_add)
         layout.addLayout(toolbar)
 

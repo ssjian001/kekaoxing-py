@@ -24,7 +24,7 @@ from PySide6.QtGui import (
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1, GREEN, YELLOW, RED, BLUE, MAUVE, PEACH,
-    TEAL, LAVENDER, PINK, SKY,
+    TEAL, LAVENDER, PINK, SKY, OVERLAY0,
 )
 
 from src.styles.constants import VIEW_MARGINS, CHART_COLORS
@@ -287,6 +287,14 @@ class DashboardView(QWidget):
         chart_grid.addWidget(self._chart_issue_severity, 0, 2)
 
         layout.addLayout(chart_grid)
+
+        # 空状态提示 — 当所有计数器为 0 时显示
+        self._empty_label = QLabel("暂无数据，请先创建项目和测试计划")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
+        self._empty_label.hide()
+        layout.addWidget(self._empty_label)
+
         layout.addStretch()
 
     def refresh(
@@ -351,6 +359,13 @@ class DashboardView(QWidget):
             sample_status_data or {},
             issue_severity_data or {},
         )
+
+        # 空状态判断 — 所有计数器为 0 时显示占位提示
+        total = task_total + issue_count + equipment_count + sample_count
+        if total == 0:
+            self._empty_label.show()
+        else:
+            self._empty_label.hide()
 
     # ── 图表刷新 ──
 
