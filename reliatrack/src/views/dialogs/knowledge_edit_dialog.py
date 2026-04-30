@@ -68,6 +68,27 @@ class KnowledgeEditDialog(_BaseDialog):
             default=entry.improvement if entry else "",
         )
 
+        self._add_separator()
+
+        # ── 关键词 & 深度分析 ──
+        self._keywords_edit = self._add_text_field(
+            "关键词",
+            default=entry.keywords if entry else "",
+            placeholder="逗号分隔，如：焊接, 热应力, PCB",
+        )
+        self._summary_area = self._add_text_area(
+            "摘要",
+            default=entry.summary if entry else "",
+        )
+        self._root_cause_area = self._add_text_area(
+            "根因",
+            default=entry.root_cause if entry else "",
+        )
+        self._resolution_area = self._add_text_area(
+            "解决方案",
+            default=entry.resolution if entry else "",
+        )
+
     # ── 公开 API ───────────────────────────────────────────────
 
     def get_data(self) -> dict:
@@ -78,6 +99,10 @@ class KnowledgeEditDialog(_BaseDialog):
             "cause_analysis": self._cause_area.toPlainText().strip(),
             "improvement": self._improvement_area.toPlainText().strip(),
             "reference_standard": self._reference_edit.text().strip(),
+            "keywords": self._keywords_edit.text().strip(),
+            "summary": self._summary_area.toPlainText().strip(),
+            "root_cause": self._root_cause_area.toPlainText().strip(),
+            "resolution": self._resolution_area.toPlainText().strip(),
         }
 
     # ── 校验 ───────────────────────────────────────────────────
