@@ -1,0 +1,88 @@
+"""Knowledge base management handlers — add / edit / delete knowledge entries."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from PySide6.QtWidgets import QMessageBox
+
+from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
+
+if TYPE_CHECKING:
+    from main import MainWindow
+
+
+class KnowledgeHandlers:
+    """Handles knowledge base CRUD operations triggered from the UI."""
+
+    def __init__(self, win: MainWindow) -> None:
+        self._win = win
+
+    def _on_knowledge_add(self) -> None:
+        """新建知识条目。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.knowledge_service:
+            return
+        dlg = KnowledgeEditDialog(parent=self._win)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                ctrl.knowledge_service.create(**data)
+                self._win.statusBar().showMessage(
+                    f"✅ 知识条目「{data['failure_mode']}」已创建", 5000
+                )
+                self._win._ctrl.notify_data_changed("knowledge")
+            except Exception as e:
+                QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
+
+    def _on_knowledge_edit(self) -> None:
+        """编辑选中的知识条目。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.knowledge_service:
+            return
+        entry = self._win._knowledge_view.get_selected_entry()
+        if entry is None:
+            self._win.statusBar().showMessage("⚠️ 请先选中一个知识条目", 5000)
+            return
+        dlg = KnowledgeEditDialog(entry=entry, parent=self._win)
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                assert entry.id is not None
+                ctrl.knowledge_service.update(entry.id, **data)
+                self._win.statusBar().showMessage(
+                    f"✅ 知识条目「{data['failure_mode']}」已更新", 5000
+                )
+                self._win._ctrl.notify_data_changed("knowledge")
+            except Exception as e:
+                QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
+
+    def _on_knowledge_delete(self) -> None:
+        """删除选中的知识条目。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.knowledge_service:
+            return
+        entry = self._win._knowledge_view.get_selected_entry()
+        if entry is None:
+            self._win.statusBar().showMessage("⚠️ 请先选中一个知识条目", 5000)
+            return
+        reply = QMessageBox.question(
+            self._win,
+            "确认删除",
+            f"确定要删除知识条目「{entry.failure_mode}」({entry.category}) 吗？\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            assert entry.id is not None
+            ctrl.knowledge_service.delete(entry.id)
+            self._win.statusBar().showMessage(
+                f"✅ 知识条目「{entry.failure_mode}」已删除", 5000
+            )
+            self._win._ctrl.notify_data_changed("knowledge")
+        except ValueError as e:
+            QMessageBox.warning(self._win, "删除失败", str(e))
+        except Exception as e:
+            QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
