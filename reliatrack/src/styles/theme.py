@@ -81,13 +81,37 @@ QGroupBox::title {{
 }}
 
 /* ── 输入控件 ── */
-QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
+QLineEdit, QDoubleSpinBox, QComboBox {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     border-radius: 4px;
     padding: 5px 8px;
     min-height: 24px;
+}}
+QSpinBox {{
+    background-color: {BG_INPUT};
+    color: {FG_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 4px;
+    padding: 2px 4px;
+    min-height: 24px;
+}}
+QSpinBox::up-button, QSpinBox::down-button {{
+    width: 16px;
+    border: none;
+    background-color: {BORDER};
+}}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+    background-color: {ACCENT};
+}}
+QSpinBox::up-arrow {{
+    width: 8px;
+    height: 8px;
+}}
+QSpinBox::down-arrow {{
+    width: 8px;
+    height: 8px;
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};

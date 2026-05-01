@@ -178,5 +178,7 @@ class _BaseDialog(QDialog):
         spin = QSpinBox()
         spin.setRange(min_val, max_val)
         spin.setValue(default)
+        spin.setMinimumWidth(80)
+        spin.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._form.addRow(label, spin)
         return spin
