@@ -301,9 +301,20 @@ class ExportService:
         else:
             # Linux
             candidates = [
+                # DroidSansFallback (纯 TrueType，reportlab 兼容最好)
                 ("/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
                  "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
                  None, None),
+                ("/usr/share/fonts-droid-fallback/truetype/DroidSansFallback.ttf",
+                 "/usr/share/fonts-droid-fallback/truetype/DroidSansFallback.ttf",
+                 None, None),
+                # Noto Sans CJK (TTC, 需要 subfontIndex)
+                ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                 "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+                 0, 0),
+                ("/usr/share/fonts/opentype/noto/NotoSansCJK-Medium.ttc",
+                 "/usr/share/fonts/opentype/noto/NotoSansCJK-Medium.ttc",
+                 0, 1),
             ]
 
         for reg, bld, r_sub, b_sub in candidates:
