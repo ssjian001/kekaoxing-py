@@ -475,11 +475,14 @@ class _GanttWidget(QWidget):
             if i % 2 == 1:
                 p.fillRect(0, y, w, self._row_height, QColor(MANTLE))
 
-            # 任务名称标签
+            # 任务名称标签 — 根据可用宽度自动省略
             p.setPen(QColor(TEXT))
+            p.setFont(QFont("sans-serif", 10))
+            fm = p.fontMetrics()
+            name = fm.elidedText(task.name, Qt.TextElideMode.ElideRight, label_w - 16)
             p.drawText(8, y, label_w - 16, self._row_height,
                        Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                       task.name[:16])
+                       name)
 
             # 甘特条
             bar_x = label_w + task.start_day * self._day_w
