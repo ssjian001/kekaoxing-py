@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.services.import_service import import_technicians
+from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
 
 if TYPE_CHECKING:
@@ -24,6 +26,7 @@ class TechnicianHandlers:
         v.btn_add.clicked.connect(self._on_technician_add)
         v.btn_edit.clicked.connect(self._on_technician_edit)
         v.btn_delete.clicked.connect(self._on_technician_delete)
+        v.btn_import.clicked.connect(self._on_technician_import)
 
     def _on_technician_add(self) -> None:
         """新建技术员。"""
@@ -89,3 +92,40 @@ class TechnicianHandlers:
             QMessageBox.warning(self._win, "删除失败", str(e))
         except Exception as e:
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
+
+    def _on_technician_import(self) -> None:
+        """批量导入技术员。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.technician_service:
+            return
+
+        field_map = [
+            ("姓名（必填）", "name"),
+            ("工号", "employee_id"),
+            ("职位", "role"),
+            ("部门", "department"),
+            ("联系方式", "phone"),
+            ("邮箱", "email"),
+        ]
+        required = ["name"]
+        guess_keywords = {
+            "name": ["姓名", "名字", "名称", "name", "技术员"],
+            "employee_id": ["工号", "员工编号", "employee", "employee_id", "编号"],
+            "role": ["职位", "岗位", "角色", "role"],
+            "department": ["部门", "department", "dept"],
+            "phone": ["联系方式", "电话", "手机", "phone", "tel"],
+            "email": ["邮箱", "邮件", "email", "邮件地址"],
+        }
+
+        dlg = BatchImportDialog(
+            parent=self._win,
+            title="导入技术员",
+            field_map=field_map,
+            required_fields=required,
+            guess_keywords=guess_keywords,
+            result_msg_labels=("成功导入", "跳过（姓名为空或重复）"),
+            on_import=lambda rows: import_technicians(rows, ctrl.technician_service),
+        )
+        dlg.exec()
+        if dlg.was_imported():
+            ctrl.notify_data_changed("technician")

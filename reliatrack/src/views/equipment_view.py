@@ -98,6 +98,13 @@ class EquipmentView(QWidget):
         self.btn_add.setMinimumWidth(70)
         self.btn_add.setToolTip("新增设备 (Ctrl+N)")
         toolbar.addWidget(self.btn_add)
+
+        self.btn_import = QPushButton("导入")
+        self.btn_import.setProperty("class", "action")
+        self.btn_import.setMinimumWidth(70)
+        self.btn_import.setToolTip("从 Excel 批量导入设备")
+        toolbar.addWidget(self.btn_import)
+
         layout.addLayout(toolbar)
 
         # 表格

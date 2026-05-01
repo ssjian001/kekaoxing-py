@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.services.import_service import import_equipment
+from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
 
 if TYPE_CHECKING:
@@ -24,6 +26,7 @@ class EquipmentHandlers:
         v.btn_add.clicked.connect(self._on_equipment_add)
         v.btn_edit.clicked.connect(self._on_equipment_edit)
         v.btn_delete.clicked.connect(self._on_equipment_delete)
+        v.btn_import.clicked.connect(self._on_equipment_import)
 
     def _on_equipment_add(self) -> None:
         """新建设备。"""
@@ -89,3 +92,42 @@ class EquipmentHandlers:
             QMessageBox.warning(self._win, "删除失败", str(e))
         except Exception as e:
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
+
+    def _on_equipment_import(self) -> None:
+        """批量导入设备。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.equipment_service:
+            return
+
+        field_map = [
+            ("设备名称（必填）", "name"),
+            ("设备类型", "type"),
+            ("型号", "model"),
+            ("存放位置", "location"),
+            ("状态", "status"),
+            ("校准日期", "calibration_date"),
+            ("下次校准日期", "next_calibration_date"),
+        ]
+        required = ["name"]
+        guess_keywords = {
+            "name": ["名称", "设备名称", "设备名", "name", "设备"],
+            "type": ["类型", "设备类型", "type", "类别"],
+            "model": ["型号", "model", "规格"],
+            "location": ["位置", "存放位置", "库位", "location"],
+            "status": ["状态", "status", "设备状态"],
+            "calibration_date": ["校准日期", "校准", "calibration", "calibration_date"],
+            "next_calibration_date": ["下次校准", "next", "next_calibration", "下次校准日期"],
+        }
+
+        dlg = BatchImportDialog(
+            parent=self._win,
+            title="导入设备",
+            field_map=field_map,
+            required_fields=required,
+            guess_keywords=guess_keywords,
+            result_msg_labels=("成功导入", "跳过（名称空或重复）"),
+            on_import=lambda rows: import_equipment(rows, ctrl.equipment_service),
+        )
+        dlg.exec()
+        if dlg.was_imported():
+            ctrl.notify_data_changed("equipment")
