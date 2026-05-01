@@ -53,12 +53,12 @@ class IssueHandlers:
             if "id" in data:
                 kwargs = {k: v for k, v in data.items() if k != "id"}
                 ctrl.issue_service.update(data["id"], **kwargs)
-                self._win.statusBar().showMessage(
-                    f"✅ Issue #{data['id']} 已更新", 5000
-                )
+                from src.styles.toast import ToastWidget
+                ToastWidget.show_toast(self._win, f"Issue #{data['id']} 已更新", ToastWidget.SUCCESS)
             else:
                 ctrl.issue_service.create(**data)
-                self._win.statusBar().showMessage("✅ Issue 已创建", 5000)
+                from src.styles.toast import ToastWidget
+                ToastWidget.show_toast(self._win, "Issue 已创建", ToastWidget.SUCCESS)
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"Issue 保存失败: {e}")
@@ -103,5 +103,7 @@ class IssueHandlers:
             self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
             self._win._issue_view.refresh_fa(self._current_fa_records)
             self._win.statusBar().showMessage("✅ FA 步骤已添加", 5000)
+            from src.styles.toast import ToastWidget
+            ToastWidget.show_toast(self._win, "FA 步骤已添加", ToastWidget.SUCCESS)
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")

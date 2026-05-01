@@ -200,6 +200,8 @@ class MainWindow(QMainWindow):
         self._shortcut_edit.activated.connect(self._on_shortcut_edit)
         self._shortcut_find = QShortcut(QKeySequence("Ctrl+F"), self)
         self._shortcut_find.activated.connect(self._on_shortcut_find)
+        self._shortcut_export = QShortcut(QKeySequence("Ctrl+E"), self)
+        self._shortcut_export.activated.connect(self._export_handlers._on_export)
 
         # 撤销 / 重做
         self._act_undo = QAction("↩ 撤销", self)
@@ -226,7 +228,7 @@ class MainWindow(QMainWindow):
 
         # 导出
         act_export = QAction("📤 导出", self)
-        act_export.setToolTip("导出报告")
+        act_export.setToolTip("导出报告 (Ctrl+E)")
         act_export.triggered.connect(self._export_handlers._on_export)
         toolbar.addAction(act_export)
 

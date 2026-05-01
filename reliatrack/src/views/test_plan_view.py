@@ -48,19 +48,30 @@ class _TaskTable(QTableWidget):
         super().__init__(parent)
         self.setColumnCount(len(self.COLUMNS))
         self.setHorizontalHeaderLabels(self.COLUMNS)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)   # #
-        self.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)   # 优先级
-        self.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)   # 技术员
-        self.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)   # 通过率
-        self.horizontalHeader().setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 实际开始
-        self.horizontalHeader().setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际完成
-        self.setColumnWidth(0, 32)
-        self.setColumnWidth(6, 50)
-        self.setColumnWidth(8, 70)
-        self.setColumnWidth(9, 60)
-        self.setColumnWidth(10, 90)
-        self.setColumnWidth(11, 90)
+        # 列宽策略：Interactive 允许用户拖动并持久化，Fixed 禁止拖动
+        header = self.horizontalHeader()
+        # 默认全部 Interactive
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        # Fixed 列（序号/优先级/技术员/通过率/日期）
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)   # #
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)   # 优先级
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)   # 技术员
+        header.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)   # 通过率
+        header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 实际开始
+        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际完成
+        # 初始宽度
+        self.setColumnWidth(0, 32)    # #
+        self.setColumnWidth(1, 200)   # 名称
+        self.setColumnWidth(2, 80)    # 类别
+        self.setColumnWidth(3, 50)    # 天数
+        self.setColumnWidth(4, 70)    # 开始
+        self.setColumnWidth(5, 80)    # 进度
+        self.setColumnWidth(6, 50)    # 优先级
+        self.setColumnWidth(7, 70)    # 状态
+        self.setColumnWidth(8, 70)    # 技术员
+        self.setColumnWidth(9, 60)    # 通过率
+        self.setColumnWidth(10, 90)   # 实际开始
+        self.setColumnWidth(11, 90)   # 实际完成
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -82,6 +93,13 @@ class _TaskTable(QTableWidget):
         # 右键菜单
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
+        # 恢复上次列宽
+        from src.styles.column_persistence import restore_column_widths, save_column_widths
+        restore_column_widths(self, "task_table")
+        # 列宽变化时自动保存
+        self.horizontalHeader().sectionResized.connect(
+            lambda *_: save_column_widths(self, "task_table")
+        )
 
     def set_reference_data(
         self,
@@ -398,6 +416,21 @@ class _GanttWidget(QWidget):
             if d % step == 0:
                 p.drawLine(int(x), self._header_height, int(x), self.height())
             p.setPen(QColor(SUBTEXT0))
+
+        # ── 今日线 ──
+        if base_date is not None:
+            today = date.today()
+            today_offset = (today - base_date).days
+            if 0 <= today_offset <= self._total_days:
+                tx = label_w + today_offset * self._day_w
+                pen = QPen(QColor(PEACH), 2, Qt.PenStyle.DashLine)
+                p.setPen(pen)
+                p.drawLine(int(tx), self._header_height, int(tx), self.height())
+                # "今天" 标签
+                p.setPen(QColor(PEACH))
+                p.setFont(QFont("sans-serif", 8))
+                p.drawText(int(tx) - 20, 0, 40, self._header_height,
+                           Qt.AlignmentFlag.AlignCenter, "今天")
 
         # ── 任务条 ──
         p.setFont(QFont("sans-serif", 10))

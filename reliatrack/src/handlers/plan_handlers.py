@@ -471,6 +471,8 @@ class PlanHandlers:
         name = task.name
         ctrl.test_plan_service.delete_task(task.id)
         self._win.statusBar().showMessage(f"✅ 任务「{name}」已删除", 5000)
+        from src.styles.toast import ToastWidget
+        ToastWidget.show_toast(self._win, f"任务「{name}」已删除", ToastWidget.SUCCESS)
         self._win._ctrl.notify_data_changed("task")
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:
