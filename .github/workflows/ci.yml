@@ -36,7 +36,7 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip
-          pip install pyside6 apsw fpdf2 openpyxl python-docx qrcode[pil]
+          pip install pyside6 apsw openpyxl python-docx reportlab lxml qrcode[pil]
 
       - name: Compile check
         run: |
@@ -44,7 +44,7 @@ jobs:
           cd reliatrack
           python -m py_compile main.py
           find src -name "*.py" -exec python -m py_compile {} \;
-          echo "✅ All files compile successfully"
+          echo "All files compile successfully"
 
       - name: Run E2E tests
         run: |
