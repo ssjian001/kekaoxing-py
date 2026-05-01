@@ -18,6 +18,9 @@ class RefreshHandlers:
         self._win = win
         # Cross-handler references — set by MainWindow after construction
         self._sample_handlers: SampleHandlers | None = None  # type: ignore[name-defined]
+        # 全量刷新时的共享数据缓存（避免重复 DB 查询）
+        self._cached_projects: list | None = None
+        self._cached_samples: list | None = None
 
     def _get_filter_project_id(self):
         """获取当前筛选的项目 ID（None = 全部）。"""
@@ -46,6 +49,10 @@ class RefreshHandlers:
         if need_all:
             pending.clear()
 
+        # 全量刷新时预取共享数据，避免重复 DB 查询
+        if need_all:
+            self._prefetch_shared_data()
+
         # 根据需要选择刷新范围
         if need_all:
             self._refresh_projects()
@@ -57,36 +64,56 @@ class RefreshHandlers:
             self._refresh_technicians()
             self._refresh_knowledge()
         else:
+            _need_dashboard = False
             if "project" in pending:
                 self._refresh_projects()
-                self._refresh_dashboard()  # Dashboard 依赖项目
+                _need_dashboard = True
             if "sample" in pending:
                 self._refresh_samples()
-                self._refresh_dashboard()
+                _need_dashboard = True
             if "task" in pending or "plan" in pending:
                 self._refresh_plans()
-                self._refresh_dashboard()
+                _need_dashboard = True
             if "issue" in pending:
                 self._refresh_issues()
-                self._refresh_dashboard()
+                _need_dashboard = True
             if "equipment" in pending:
                 self._refresh_equipment()
             if "technician" in pending:
                 self._refresh_technicians()
             if "knowledge" in pending:
                 self._refresh_knowledge()
+            if _need_dashboard:
+                self._refresh_dashboard()
 
         # 撤销/重做按钮始终更新
         self._refresh_undo_state()
 
         pending.clear()
+        # 清除缓存
+        self._cached_projects = None
+        self._cached_samples = None
+
+    def _prefetch_shared_data(self) -> None:
+        """全量刷新前预取共享数据。"""
+        ctrl = self._win._ctrl
+        if not ctrl:
+            return
+        if ctrl.project_service:
+            self._cached_projects = ctrl.project_service.list_all()
+        if ctrl.sample_service:
+            fpid = self._get_filter_project_id()
+            if fpid:
+                self._cached_samples = ctrl.sample_service.get_by_project(fpid)
+            else:
+                self._cached_samples = ctrl.sample_service.list_all()
 
     def _refresh_projects(self) -> None:
         """刷新项目管理视图 + 筛选 combo。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.project_service:
             return
-        all_projects = ctrl.project_service.list_all()
+        all_projects = self._cached_projects if self._cached_projects is not None else ctrl.project_service.list_all()
         self._win._project_view.refresh(all_projects)
         # 更新筛选 combo 选项（不触发信号）
         self._win._project_filter_combo.blockSignals(True)
@@ -111,7 +138,7 @@ class RefreshHandlers:
         filter_project_id = self._get_filter_project_id()
 
         # 获取项目列表和名称
-        all_projects = ctrl.project_service.list_all() if ctrl.project_service else []
+        all_projects = self._cached_projects if self._cached_projects is not None else (ctrl.project_service.list_all() if ctrl.project_service else [])
         self._win._issue_view._project_list = all_projects
         self._win._issue_view._default_project_id = filter_project_id
 
@@ -127,9 +154,11 @@ class RefreshHandlers:
         issue_severity_data: dict[str, int] = {}
         sample_count = 0
 
-        # 样品（提前加载以供 Dashboard 使用）
+        # 样品（优先使用缓存）
         if ctrl.sample_service:
-            if filter_project_id:
+            if self._cached_samples is not None:
+                all_samples = self._cached_samples
+            elif filter_project_id:
                 all_samples = ctrl.sample_service.get_by_project(filter_project_id)
             else:
                 all_samples = ctrl.sample_service.list_all()
@@ -141,36 +170,30 @@ class RefreshHandlers:
 
         # 注入任务列表和样品列表给 Issue 弹窗
         self._win._issue_view._sample_list = all_samples
-        if ctrl.test_tasks:
-            if filter_project_id and ctrl.test_plan_service:
-                fp = ctrl.test_plan_service.get_plans_by_project(filter_project_id)
-                pids = {p.id for p in fp}
-                self._win._issue_view._task_list = [
-                    t for t in ctrl.test_tasks.list_all() if t.plan_id in pids
-                ]
-            else:
-                self._win._issue_view._task_list = ctrl.test_tasks.list_all()
-
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             all_tasks = ctrl.test_tasks.list_all()
 
             # 按项目筛选任务：通过关联的计划筛选
-            if filter_project_id:
-                if ctrl.test_plan_service is None:
-                    return
+            plan_ids: set | None = None
+            if filter_project_id and ctrl.test_plan_service:
                 filtered_plans = ctrl.test_plan_service.get_plans_by_project(
                     filter_project_id
                 )
                 plan_ids = {p.id for p in filtered_plans}
-                all_tasks = [t for t in all_tasks if t.plan_id in plan_ids]
+                filtered_tasks = [t for t in all_tasks if t.plan_id in plan_ids]
+            else:
+                filtered_tasks = all_tasks
 
-            total = len(all_tasks)
-            completed = sum(1 for t in all_tasks if t.status == "completed")
-            in_progress = sum(1 for t in all_tasks if t.status == "in_progress")
-            pending = sum(1 for t in all_tasks if t.status == "pending")
+            # 注入给 Issue 弹窗
+            self._win._issue_view._task_list = filtered_tasks
+
+            total = len(filtered_tasks)
+            completed = sum(1 for t in filtered_tasks if t.status == "completed")
+            in_progress = sum(1 for t in filtered_tasks if t.status == "in_progress")
+            pending_count = sum(1 for t in filtered_tasks if t.status == "pending")
 
             # 任务状态分布
-            task_counter = Counter(t.status for t in all_tasks)
+            task_counter = Counter(t.status for t in filtered_tasks)
             task_status_data = dict(task_counter)
 
             # 按项目筛选 issues
@@ -189,7 +212,7 @@ class RefreshHandlers:
                 task_total=total,
                 task_completed=completed,
                 task_in_progress=in_progress,
-                task_pending=pending,
+                task_pending=pending_count,
                 issue_count=issues,
                 equipment_count=equipment,
                 sample_count=sample_count,
@@ -205,7 +228,9 @@ class RefreshHandlers:
         if not ctrl or not ctrl.sample_service:
             return
         filter_project_id = self._get_filter_project_id()
-        if filter_project_id:
+        if self._cached_samples is not None:
+            all_samples = self._cached_samples
+        elif filter_project_id:
             all_samples = ctrl.sample_service.get_by_project(filter_project_id)
         else:
             all_samples = ctrl.sample_service.list_all()

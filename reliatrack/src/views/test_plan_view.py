@@ -244,6 +244,7 @@ class _GanttWidget(QWidget):
         self._drag_task_idx: int | None = None
         self._drag_offset_x: int = 0
         self._drag_start_day: int = 0
+        self._drag_preview_offset: int = 0  # 拖拽预览偏移（不直接改 model）
         self._hover_task_idx: int | None = None
 
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30, start_date: str = "") -> None:
@@ -263,7 +264,11 @@ class _GanttWidget(QWidget):
     def _bar_rect(self, idx: int) -> QRect:
         """返回第 idx 个任务条的 QRect。"""
         task = self._tasks[idx]
-        x = self._LABEL_W + task.start_day * self._day_w
+        start_day = task.start_day
+        # 拖拽中的任务使用预览偏移量，不改 model
+        if self._drag_task_idx == idx:
+            start_day = self._drag_start_day + self._drag_preview_offset
+        x = self._LABEL_W + start_day * self._day_w
         y = self._header_height + idx * self._row_height + (self._row_height - self._bar_height) / 2
         return QRect(int(x), int(y), int(task.duration * self._day_w), self._bar_height)
 
@@ -282,14 +287,11 @@ class _GanttWidget(QWidget):
         if self._drag_task_idx is not None:
             # 拖拽中 — 更新 cursor 并实时预览
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
-            # 计算新 start_day
+            # 计算预览偏移量（不直接改 task model）
             bar = self._bar_rect(self._drag_task_idx)
             dx = pos.x() - self._drag_offset_x - bar.x()
-            new_day = self._drag_start_day + round(dx / self._day_w)
-            new_day = max(0, new_day)
-            # 临时移动任务以预览
-            task = self._tasks[self._drag_task_idx]
-            task.start_day = new_day
+            day_offset = round(dx / self._day_w)
+            self._drag_preview_offset = max(-self._drag_start_day, day_offset)
             self.update()
             return
 
@@ -325,10 +327,11 @@ class _GanttWidget(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
         if event.button() == Qt.MouseButton.LeftButton and self._drag_task_idx is not None:
             task = self._tasks[self._drag_task_idx]
-            new_day = task.start_day
-            if task.id is not None and new_day != self._drag_start_day:
+            new_day = self._drag_start_day + self._drag_preview_offset
+            if task.id is not None and self._drag_preview_offset != 0:
                 self.task_moved.emit(task.id, new_day)
             self._drag_task_idx = None
+            self._drag_preview_offset = 0
             self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def wheelEvent(self, event: QWheelEvent) -> None:  # type: ignore[override]

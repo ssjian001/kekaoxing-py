@@ -72,13 +72,21 @@ class _SampleTable(QTableWidget):
                 value = getattr(sample, field_name, "")
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                # 在第一列存储 sample ID，排序后仍可通过 item 取回
+                if col_idx == 0 and sample.id is not None:
+                    item.setData(Qt.ItemDataRole.UserRole, sample.id)
                 self.setItem(row_idx, col_idx, item)
         self.setSortingEnabled(True)
 
     def get_selected_sample_id(self) -> int | None:
         row = self.currentRow()
-        if 0 <= row < len(self._data):
-            return self._data[row].id
+        if row < 0:
+            return None
+        item = self.item(row, 0)
+        if item is not None:
+            sid = item.data(Qt.ItemDataRole.UserRole)
+            if sid is not None:
+                return int(sid)
         return None
 
 
@@ -472,6 +480,14 @@ class _SampleLedgerTab(QWidget):
         # 全量数据缓存（用于搜索过滤）
         self._all_samples: list[Sample] = []
 
+        # 空状态提示
+        self._empty_label = QLabel("暂无样品台账数据")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self._table)
+        self._empty_label.hide()
+
     def _show_context_menu(self, pos) -> None:
         """在表格行上显示右键菜单。"""
         row = self._table.rowAt(pos.y())
@@ -483,6 +499,19 @@ class _SampleLedgerTab(QWidget):
     def _on_ctx_edit(self) -> None:
         """右键编辑 → 触发工具栏编辑按钮。"""
         self._btn_edit.click()
+
+    def _update_empty_state(self) -> None:
+        """更新空状态提示。"""
+        if self._table.rowCount() == 0:
+            self._empty_label.setGeometry(self._table.viewport().rect())
+            self._empty_label.show()
+        else:
+            self._empty_label.hide()
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        if self._empty_label.isVisible():
+            self._empty_label.setGeometry(self._table.viewport().rect())
 
     def _on_search(self, text: str) -> None:
         """根据搜索关键词过滤样品列表。"""
@@ -497,6 +526,7 @@ class _SampleLedgerTab(QWidget):
                 or text in (s.spec or "").lower()
             ]
         self._table.set_samples(filtered)
+        self._update_empty_state()
 
     def refresh(self, samples: list[Sample]) -> None:
         """刷新台账数据并应用当前搜索过滤。"""
