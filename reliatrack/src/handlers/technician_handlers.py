@@ -35,9 +35,7 @@ class TechnicianHandlers:
             data = dlg.get_data()
             try:
                 ctrl.technician_service.create(**data)
-                self._win.statusBar().showMessage(
-                    f"✅ 技术员「{data['name']}」已创建", 5000
-                )
+                self._win.toast(f"技术员「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("technician")
             except Exception as e:
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
@@ -49,7 +47,7 @@ class TechnicianHandlers:
             return
         tech = self._win._technician_view.get_selected_technician()
         if tech is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个技术员", 5000)
+            self._win.toast("请先选中一个技术员", "info")
             return
         dlg = TechnicianEditDialog(technician=tech, parent=self._win)
         if dlg.exec():
@@ -58,9 +56,7 @@ class TechnicianHandlers:
                 if tech.id is None:
                     raise ValueError("技术员 ID 不能为空")
                 ctrl.technician_service.update(tech.id, **data)
-                self._win.statusBar().showMessage(
-                    f"✅ 技术员「{data['name']}」已更新", 5000
-                )
+                self._win.toast(f"技术员「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("technician")
             except Exception as e:
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
@@ -72,7 +68,7 @@ class TechnicianHandlers:
             return
         tech = self._win._technician_view.get_selected_technician()
         if tech is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个技术员", 5000)
+            self._win.toast("请先选中一个技术员", "info")
             return
         reply = QMessageBox.question(
             self._win,
@@ -87,9 +83,7 @@ class TechnicianHandlers:
             if tech.id is None:
                 raise ValueError("技术员 ID 不能为空")
             ctrl.technician_service.delete(tech.id)
-            self._win.statusBar().showMessage(
-                f"✅ 技术员「{tech.name}」已删除", 5000
-            )
+            self._win.toast(f"技术员「{tech.name}」已删除", "success")
             self._win._ctrl.notify_data_changed("technician")
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))

@@ -127,40 +127,74 @@ class _TaskTable(QTableWidget):
             self._on_edit_callback(task)
 
     def _show_context_menu(self, pos) -> None:
-        task = self.get_task_at_row(self.rowAt(pos.y()))
-        if not task:
+        rows = self.selectionModel().selectedRows()
+        if not rows:
             return
+        
         menu = QMenu(self)
-        act_edit = QAction("编辑", self)
-        act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
-        act_delete = QAction("删除", self)
-        act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
+        
+        if len(rows) == 1:
+            # 单选 — 保持原有菜单
+            task = self.get_task_at_row(rows[0].row())
+            if not task:
+                return
+            act_edit = QAction("编辑", self)
+            act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
+            act_delete = QAction("删除", self)
+            act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
 
-        # 状态快捷推进
-        act_start: QAction | None = None
-        act_complete: QAction | None = None
-        if task.status == "pending":
-            act_start = QAction("开始执行", self)
-            act_start.triggered.connect(
-                lambda: self._on_status_advance_callback(task, "in_progress")
-                if self._on_status_advance_callback else None
-            )
-        elif task.status == "in_progress":
-            act_complete = QAction("标记完成", self)
-            act_complete.triggered.connect(
-                lambda: self._on_status_advance_callback(task, "completed")
-                if self._on_status_advance_callback else None
-            )
+            act_start: QAction | None = None
+            act_complete: QAction | None = None
+            if task.status == "pending":
+                act_start = QAction("开始执行", self)
+                act_start.triggered.connect(
+                    lambda: self._on_status_advance_callback(task, "in_progress")
+                    if self._on_status_advance_callback else None
+                )
+            elif task.status == "in_progress":
+                act_complete = QAction("标记完成", self)
+                act_complete.triggered.connect(
+                    lambda: self._on_status_advance_callback(task, "completed")
+                    if self._on_status_advance_callback else None
+                )
 
-        menu.addAction(act_edit)
-        menu.addAction(act_delete)
-        if act_start or act_complete:
-            menu.addSeparator()
-        if act_start:
-            menu.addAction(act_start)
-        if act_complete:
-            menu.addAction(act_complete)
+            menu.addAction(act_edit)
+            menu.addAction(act_delete)
+            if act_start or act_complete:
+                menu.addSeparator()
+            if act_start:
+                menu.addAction(act_start)
+            if act_complete:
+                menu.addAction(act_complete)
+        else:
+            # 多选 — 批量操作
+            selected_tasks = []
+            for idx in rows:
+                t = self.get_task_at_row(idx.row())
+                if t:
+                    selected_tasks.append(t)
+            
+            act_batch_start = QAction(f"批量开始执行 ({len(selected_tasks)} 项)", self)
+            act_batch_start.triggered.connect(
+                lambda: self._batch_status_advance(selected_tasks, "in_progress")
+            )
+            act_batch_complete = QAction(f"批量标记完成 ({len(selected_tasks)} 项)", self)
+            act_batch_complete.triggered.connect(
+                lambda: self._batch_status_advance(selected_tasks, "completed")
+            )
+            menu.addAction(act_batch_start)
+            menu.addAction(act_batch_complete)
+        
         menu.exec(self.viewport().mapToGlobal(pos))
+
+    def _batch_status_advance(self, tasks: list[TestTask], new_status: str) -> None:
+        """批量推进多个任务的状态。"""
+        if not self._on_status_advance_callback:
+            return
+        for task in tasks:
+            if (new_status == "in_progress" and task.status == "pending") or \
+               (new_status == "completed" and task.status == "in_progress"):
+                self._on_status_advance_callback(task, new_status)
 
     def set_tasks(
         self,
@@ -241,8 +275,8 @@ class _GanttWidget(QWidget):
     task_moved = Signal(int, int)
 
     _LABEL_W = 200  # 左侧标签列宽度
-    _MIN_DAY_W = 6  # 最小每天像素宽度
-    _MAX_DAY_W = 80  # 最大每天像素宽度
+    _MIN_DAY_W = 4  # 最小每天像素宽度（极度缩小）
+    _MAX_DAY_W = 150  # 最大每天像素宽度（极度放大）
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)

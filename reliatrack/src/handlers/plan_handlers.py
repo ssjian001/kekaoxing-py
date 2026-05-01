@@ -237,9 +237,7 @@ class PlanHandlers:
                     QMessageBox.warning(self._win, "校验失败", "请选择关联项目后再创建计划。")
                     return
                 ctrl.test_plan_service.create_plan(**kwargs)
-                self._win.statusBar().showMessage(
-                    f"✅ 计划「{data['name']}」已创建", 5000
-                )
+                self._win.toast(f"计划「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("plan")
             except Exception as e:
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
@@ -251,7 +249,7 @@ class PlanHandlers:
             return
         plan_id = self._win._test_plan_view.get_selected_plan_id()
         if plan_id is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个测试计划", 5000)
+            self._win.toast("请先选中一个测试计划", "info")
             return
         plan = ctrl.test_plan_service.get_plan(plan_id)
         if plan is None:
@@ -269,9 +267,7 @@ class PlanHandlers:
                 return
             try:
                 ctrl.test_plan_service.update_plan(plan_id_from_data, **data)
-                self._win.statusBar().showMessage(
-                    f"✅ 计划「{data['name']}」已更新", 5000
-                )
+                self._win.toast(f"计划「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("plan")
             except Exception as e:
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
@@ -333,7 +329,7 @@ class PlanHandlers:
             return
         plan_id = self._win._test_plan_view.get_selected_plan_id()
         if plan_id is None:
-            self._win.statusBar().showMessage("⚠️ 没有测试计划，请先创建计划", 5000)
+            self._win.toast("没有测试计划，请先创建计划", "info")
             return
         current_tasks = ctrl.test_plan_service.get_tasks(plan_id)
         sample_list = self._get_project_samples(ctrl)
@@ -348,9 +344,7 @@ class PlanHandlers:
         if dlg.exec():
             data = dlg.get_data()
             ctrl.test_plan_service.create_task(plan_id, **data)
-            self._win.statusBar().showMessage(
-                f"✅ 任务「{data['name']}」已创建", 5000
-            )
+            self._win.toast(f"任务「{data['name']}」已创建", "success")
             self._win._ctrl.notify_data_changed("task")
 
     def _on_task_edit(self, task) -> None:
@@ -383,9 +377,7 @@ class PlanHandlers:
                 data["actual_end_date"] = today
                 data["progress"] = 100.0
             ctrl.test_plan_service.update_task(task.id, **data)
-            self._win.statusBar().showMessage(
-                f"✅ 任务「{data['name']}」已更新", 5000
-            )
+            self._win.toast(f"任务「{data['name']}」已更新", "success")
             self._win._ctrl.notify_data_changed("task")
 
     def _on_record_result(self) -> None:
@@ -458,9 +450,7 @@ class PlanHandlers:
                         notes=item.get("notes", ""),
                     )
                     saved += 1
-            self._win.statusBar().showMessage(
-                f"✅ 已保存 {saved} 条测试结果（任务: {task.name}）", 5000
-            )
+            self._win.toast(f"已保存 {saved} 条测试结果（任务: {task.name}）", "success")
             self._win._ctrl.notify_data_changed("task")
 
     def _on_task_delete(self, task) -> None:
@@ -470,9 +460,7 @@ class PlanHandlers:
             return
         name = task.name
         ctrl.test_plan_service.delete_task(task.id)
-        self._win.statusBar().showMessage(f"✅ 任务「{name}」已删除", 5000)
-        from src.styles.toast import ToastWidget
-        ToastWidget.show_toast(self._win, f"任务「{name}」已删除", ToastWidget.SUCCESS)
+        self._win.toast(f"任务「{name}」已删除", "success")
         self._win._ctrl.notify_data_changed("task")
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:
@@ -510,9 +498,7 @@ class PlanHandlers:
 
         try:
             ctrl.test_plan_service.update_task(task.id, **updates)
-            self._win.statusBar().showMessage(
-                f"✅ 任务「{task.name}」已标记为{status_label}", 5000
-            )
+            self._win.toast(f"任务「{task.name}」已标记为{status_label}", "success")
             self._win._ctrl.notify_data_changed("task")
         except Exception as e:
             QMessageBox.critical(self._win, "操作失败", f"状态更新失败: {e}")

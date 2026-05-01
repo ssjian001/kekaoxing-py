@@ -57,12 +57,12 @@ class ExportHandlers:
             if "测试任务" in content:
                 plan_id = self._win._test_plan_view.get_selected_plan_id()
                 if plan_id is None:
-                    self._win.statusBar().showMessage("⚠️ 没有选中测试计划", 5000)
+                    self._win.toast("没有选中测试计划", "info")
                     return
                 plan = ctrl.test_plan_service.get_plan(plan_id)
                 tasks = ctrl.test_plan_service.get_tasks(plan_id)
                 if not plan or not tasks:
-                    self._win.statusBar().showMessage("⚠️ 当前计划没有任务", 5000)
+                    self._win.toast("当前计划没有任务", "info")
                     return
                 if "Excel" in fmt:
                     path = svc.export_tasks_excel(plan, tasks)
@@ -81,12 +81,12 @@ class ExportHandlers:
                         ctrl.issue_service.list_all(),
                         ctrl.sample_service.list_all(),
                     )
-                self._win.statusBar().showMessage(f"✅ 已导出: {path}", 10000)
+                self._win.toast(f"已导出: {path}", "success")
 
             elif "Issue" in content:
                 issues = ctrl.issue_service.list_all()
                 if not issues:
-                    self._win.statusBar().showMessage("⚠️ 没有 Issue 数据", 5000)
+                    self._win.toast("没有 Issue 数据", "info")
                     return
                 # Build fa_map
                 fa_map = {}
@@ -94,20 +94,20 @@ class ExportHandlers:
                     if issue.id is not None:
                         fa_map[issue.id] = ctrl.issue_service.get_fa_records(issue.id)
                 path = svc.export_issues_excel(issues, fa_map=fa_map)
-                self._win.statusBar().showMessage(f"✅ 已导出: {path}", 10000)
+                self._win.toast(f"已导出: {path}", "success")
 
             elif "样品" in content:
                 samples = ctrl.sample_service.list_all()
                 if not samples:
-                    self._win.statusBar().showMessage("⚠️ 没有样品数据", 5000)
+                    self._win.toast("没有样品数据", "info")
                     return
                 path = svc.export_samples_excel(samples)
-                self._win.statusBar().showMessage(f"✅ 已导出: {path}", 10000)
+                self._win.toast(f"已导出: {path}", "success")
 
             elif "综合" in content:
                 plan_id = self._win._test_plan_view.get_selected_plan_id()
                 if plan_id is None:
-                    self._win.statusBar().showMessage("⚠️ 没有选中测试计划", 5000)
+                    self._win.toast("没有选中测试计划", "info")
                     return
                 plan = ctrl.test_plan_service.get_plan(plan_id)
                 tasks = ctrl.test_plan_service.get_tasks(plan_id)
@@ -128,7 +128,7 @@ class ExportHandlers:
                         ctrl.issue_service.list_all(),
                         ctrl.sample_service.list_all(),
                     )
-                self._win.statusBar().showMessage(f"✅ 已导出: {path}", 10000)
+                self._win.toast(f"已导出: {path}", "success")
 
         except Exception as e:
             import traceback

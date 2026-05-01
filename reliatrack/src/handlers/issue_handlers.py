@@ -35,7 +35,7 @@ class IssueHandlers:
             return
         issue_id = self._win._issue_view.get_selected_issue_id()
         if issue_id is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个 Issue", 5000)
+            self._win.toast("请先选中一个 Issue", "info")
             return
         dlg = AttachmentDialog(
             issue_id=issue_id,
@@ -53,12 +53,10 @@ class IssueHandlers:
             if "id" in data:
                 kwargs = {k: v for k, v in data.items() if k != "id"}
                 ctrl.issue_service.update(data["id"], **kwargs)
-                from src.styles.toast import ToastWidget
-                ToastWidget.show_toast(self._win, f"Issue #{data['id']} 已更新", ToastWidget.SUCCESS)
+                self._win.toast(f"Issue #{data['id']} 已更新", "success")
             else:
                 ctrl.issue_service.create(**data)
-                from src.styles.toast import ToastWidget
-                ToastWidget.show_toast(self._win, "Issue 已创建", ToastWidget.SUCCESS)
+                self._win.toast("Issue 已创建", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"Issue 保存失败: {e}")
@@ -70,9 +68,7 @@ class IssueHandlers:
             return
         try:
             ctrl.issue_service.delete(issue_id)
-            self._win.statusBar().showMessage(
-                f"✅ Issue #{issue_id} 已删除", 5000
-            )
+            self._win.toast(f"Issue #{issue_id} 已删除", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "删除失败", f"Issue 删除失败: {e}")
@@ -102,8 +98,6 @@ class IssueHandlers:
             # 刷新 FA 面板
             self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
             self._win._issue_view.refresh_fa(self._current_fa_records)
-            self._win.statusBar().showMessage("✅ FA 步骤已添加", 5000)
-            from src.styles.toast import ToastWidget
-            ToastWidget.show_toast(self._win, "FA 步骤已添加", ToastWidget.SUCCESS)
+            self._win.toast(f"FA 步骤已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")

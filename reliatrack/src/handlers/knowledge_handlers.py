@@ -35,9 +35,7 @@ class KnowledgeHandlers:
             data = dlg.get_data()
             try:
                 ctrl.knowledge_service.create(**data)
-                self._win.statusBar().showMessage(
-                    f"✅ 知识条目「{data['failure_mode']}」已创建", 5000
-                )
+                self._win.toast(f"知识条目「{data['failure_mode']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("knowledge")
             except Exception as e:
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
@@ -49,7 +47,7 @@ class KnowledgeHandlers:
             return
         entry = self._win._knowledge_view.get_selected_entry()
         if entry is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个知识条目", 5000)
+            self._win.toast("请先选中一个知识条目", "info")
             return
         dlg = KnowledgeEditDialog(entry=entry, parent=self._win)
         if dlg.exec():
@@ -58,9 +56,7 @@ class KnowledgeHandlers:
                 if entry.id is None:
                     raise ValueError("Knowledge entry id is None")
                 ctrl.knowledge_service.update(entry.id, **data)
-                self._win.statusBar().showMessage(
-                    f"✅ 知识条目「{data['failure_mode']}」已更新", 5000
-                )
+                self._win.toast(f"知识条目「{data['failure_mode']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("knowledge")
             except Exception as e:
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
@@ -72,7 +68,7 @@ class KnowledgeHandlers:
             return
         entry = self._win._knowledge_view.get_selected_entry()
         if entry is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个知识条目", 5000)
+            self._win.toast("请先选中一个知识条目", "info")
             return
         reply = QMessageBox.question(
             self._win,
@@ -87,9 +83,7 @@ class KnowledgeHandlers:
             if entry.id is None:
                 raise ValueError("Knowledge entry id is None")
             ctrl.knowledge_service.delete(entry.id)
-            self._win.statusBar().showMessage(
-                f"✅ 知识条目「{entry.failure_mode}」已删除", 5000
-            )
+            self._win.toast(f"知识条目「{entry.failure_mode}」已删除", "success")
             self._win._ctrl.notify_data_changed("knowledge")
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))

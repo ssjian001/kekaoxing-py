@@ -35,9 +35,7 @@ class EquipmentHandlers:
             data = dlg.get_data()
             try:
                 ctrl.equipment_service.create(**data)
-                self._win.statusBar().showMessage(
-                    f"✅ 设备「{data['name']}」已创建", 5000
-                )
+                self._win.toast(f"设备「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("equipment")
             except Exception as e:
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
@@ -49,7 +47,7 @@ class EquipmentHandlers:
             return
         eq = self._win._equipment_view.get_selected_equipment()
         if eq is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个设备", 5000)
+            self._win.toast("请先选中一个设备", "info")
             return
         dlg = EquipmentEditDialog(equipment=eq, parent=self._win)
         if dlg.exec():
@@ -58,9 +56,7 @@ class EquipmentHandlers:
                 if eq.id is None:
                     raise ValueError("Equipment id is None")
                 ctrl.equipment_service.update(eq.id, **data)
-                self._win.statusBar().showMessage(
-                    f"✅ 设备「{data['name']}」已更新", 5000
-                )
+                self._win.toast(f"设备「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("equipment")
             except Exception as e:
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
@@ -72,7 +68,7 @@ class EquipmentHandlers:
             return
         eq = self._win._equipment_view.get_selected_equipment()
         if eq is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个设备", 5000)
+            self._win.toast("请先选中一个设备", "info")
             return
         reply = QMessageBox.question(
             self._win,
@@ -87,9 +83,7 @@ class EquipmentHandlers:
             if eq.id is None:
                 raise ValueError("Equipment id is None")
             ctrl.equipment_service.delete(eq.id)
-            self._win.statusBar().showMessage(
-                f"✅ 设备「{eq.name}」已删除", 5000
-            )
+            self._win.toast(f"设备「{eq.name}」已删除", "success")
             self._win._ctrl.notify_data_changed("equipment")
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))

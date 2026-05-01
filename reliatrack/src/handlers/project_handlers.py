@@ -34,9 +34,7 @@ class ProjectHandlers:
             data = dlg.get_data()
             try:
                 ctrl.project_service.create(**data)
-                self._win.statusBar().showMessage(
-                    f"✅ 项目「{data['name']}」已创建", 5000
-                )
+                self._win.toast(f"项目「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("project")
             except Exception as e:
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
@@ -48,7 +46,7 @@ class ProjectHandlers:
             return
         proj = self._win._project_view.get_selected_project()
         if proj is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个项目", 5000)
+            self._win.toast("请先选中一个项目", "info")
             return
         dlg = ProjectEditDialog(project=proj, parent=self._win)
         if dlg.exec():
@@ -58,9 +56,7 @@ class ProjectHandlers:
                 return
             try:
                 ctrl.project_service.update(proj_id, **data)
-                self._win.statusBar().showMessage(
-                    f"✅ 项目「{data['name']}」已更新", 5000
-                )
+                self._win.toast(f"项目「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("project")
             except Exception as e:
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
@@ -72,7 +68,7 @@ class ProjectHandlers:
             return
         proj = self._win._project_view.get_selected_project()
         if proj is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个项目", 5000)
+            self._win.toast("请先选中一个项目", "info")
             return
         reply = QMessageBox.question(
             self._win,
@@ -87,9 +83,7 @@ class ProjectHandlers:
             if proj.id is None:
                 raise ValueError("Project id is None")
             ctrl.project_service.delete(proj.id)
-            self._win.statusBar().showMessage(
-                f"✅ 项目「{proj.name}」已删除", 5000
-            )
+            self._win.toast(f"项目「{proj.name}」已删除", "success")
             self._win._ctrl.notify_data_changed("project")
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))

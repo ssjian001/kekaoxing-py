@@ -70,9 +70,7 @@ class SampleHandlers:
                     notes=data.get("notes") or "",
                     status="in_stock",
                 )
-                self._win.statusBar().showMessage(
-                    f"✅ 样品 {data['sn']} 入库成功", 5000
-                )
+                self._win.toast(f"样品 {data['sn']} 入库成功", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
                 QMessageBox.critical(self._win, "入库失败", f"保存失败: {e}")
@@ -84,7 +82,7 @@ class SampleHandlers:
             return
         sample_id = self._win._sample_view.pool_tab.table.get_selected_sample_id()
         if sample_id is None:
-            self._win.statusBar().showMessage("⚠️ 请先选中一个样品", 5000)
+            self._win.toast("请先选中一个样品", "info")
             return
         sample = ctrl.sample_service.get(sample_id)
         if sample is None:
@@ -118,9 +116,7 @@ class SampleHandlers:
                     notes=data.get("notes"),
                 )
                 ctrl.sample_service.update_status(sample.id, "checked_out")
-                self._win.statusBar().showMessage(
-                    f"✅ 样品 {sample.sn} 出库成功", 5000
-                )
+                self._win.toast(f"样品 {sample.sn} 出库成功", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
                 QMessageBox.critical(self._win, "出库失败", f"保存失败: {e}")
@@ -166,7 +162,7 @@ class SampleHandlers:
         dlg.exec()
         if dlg.was_imported():
             self._win._ctrl.notify_data_changed("sample")
-            self._win.statusBar().showMessage("✅ 样品批量导入完成", 5000)
+            self._win.toast(f"样品批量导入完成", "success")
 
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""
@@ -199,9 +195,7 @@ class SampleHandlers:
                 if sample.id is None:
                     raise ValueError("Sample id is None")
                 ctrl.sample_service.update(sample.id, **data)
-                self._win.statusBar().showMessage(
-                    f"✅ 样品「{data['sn']}」已更新", 5000
-                )
+                self._win.toast(f"样品「{data['sn']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")

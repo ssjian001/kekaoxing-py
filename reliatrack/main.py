@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QPushButton,
 )
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from src.styles.theme import get_stylesheet, TEXT, SURFACE0, SURFACE1, MANTLE
@@ -145,6 +145,16 @@ class MainWindow(QMainWindow):
         # Tab 6: 知识库
         self._knowledge_view = KnowledgeView()
         self._tab_widget.addTab(self._knowledge_view, "📚 知识库")
+
+        # 恢复上次选中的 Tab
+        settings = QSettings()
+        last_tab = int(settings.value("ReliaTrack/last_tab_index", 0))
+        if 0 <= last_tab < self._tab_widget.count():
+            self._tab_widget.setCurrentIndex(last_tab)
+        # Tab 切换时保存
+        self._tab_widget.currentChanged.connect(
+            lambda idx: QSettings().setValue("ReliaTrack/last_tab_index", idx)
+        )
 
         layout.addWidget(self._tab_widget)
         self.setCentralWidget(central)
@@ -332,6 +342,11 @@ class MainWindow(QMainWindow):
         if desc:
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
             self._ctrl.notify_data_changed("undo")
+
+    def toast(self, message: str, level: str = "success") -> None:
+        """显示 Toast 提示（替代 statusBar 的成功/警告消息）。"""
+        from src.styles.toast import ToastWidget
+        ToastWidget.show_toast(self, message, level)
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """处理窗口关闭事件 — 有未撤销操作时确认。"""
