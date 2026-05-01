@@ -227,8 +227,8 @@ class TaskEditDialog(_BaseDialog):
         """添加「🌡️ 环境参数」分组框（温度 + 湿度）。"""
         group = QGroupBox("环境参数")
         form = QHBoxLayout(group)
-        form.setContentsMargins(12, 20, 12, 12)
-        form.setSpacing(16)
+        form.setContentsMargins(8, 14, 8, 8)
+        form.setSpacing(12)
 
         # 温度
         temp_label = self._make_group_label("温度")

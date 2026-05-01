@@ -30,6 +30,7 @@ class _BaseDialog(QDialog):
         title: str,
         parent: QWidget | None = None,
         width: int = 420,
+        max_height: int | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -37,16 +38,35 @@ class _BaseDialog(QDialog):
         self.setSizeGripEnabled(True)
         # 不再设置独立的 styleSheet — 继承全局主题
 
+        # 限制弹窗最大高度（默认屏幕高度 85%）
+        if max_height is None:
+            from PySide6.QtGui import QScreen
+            screen = QScreen.availableGeometry(
+                self.screen() if self.screen() else __import__("PySide6.QtWidgets", fromlist=["QApplication"]).QApplication.primaryScreen()
+            )
+            max_height = int(screen.height() * 0.85)
+        self.setMaximumHeight(max_height)
+
         # 主布局
         self._root = QVBoxLayout(self)
         self._root.setContentsMargins(16, 12, 16, 12)
         self._root.setSpacing(8)
 
-        # 表单布局
-        self._form = QFormLayout()
-        self._form.setSpacing(8)
+        # 滚动区域包裹表单（长表单时自动滚动）
+        from PySide6.QtWidgets import QScrollArea
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self._form_container = QWidget()
+        self._form = QFormLayout(self._form_container)
+        self._form.setSpacing(6)
         self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        self._root.addLayout(self._form)
+        self._form.setContentsMargins(0, 0, 0, 0)
+
+        self._scroll.setWidget(self._form_container)
+        self._root.addWidget(self._scroll, stretch=1)
 
         # 按钮栏 — 使用自定义按钮避免 QDialogButtonBox 中文翻译 bug
         btn_layout = QHBoxLayout()
@@ -142,7 +162,8 @@ class _BaseDialog(QDialog):
     ) -> QTextEdit:
         """添加 QTextEdit 多行文本字段并返回控件。"""
         edit = QTextEdit(default)
-        edit.setMinimumHeight(48)
+        edit.setMinimumHeight(40)
+        edit.setMaximumHeight(80)
         self._form.addRow(label, edit)
         return edit
 
