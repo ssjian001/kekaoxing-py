@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtWidgets import QHeaderView, QTableWidget
 
 
 _SETTINGS_KEY_PREFIX = "ReliaTrack/column_widths/"
+
+# 全局 debounce timer — 每个 key 一个 timer
+_debounce_timers: dict[str, tuple[QTimer, QTableWidget, str]] = {}
 
 
 def save_column_widths(table: QTableWidget, key: str) -> None:
@@ -25,6 +28,22 @@ def save_column_widths(table: QTableWidget, key: str) -> None:
         else:
             widths.append(-1)  # 标记非 Interactive 列（Fixed/Stretch 等）
     settings.setValue(f"{_SETTINGS_KEY_PREFIX}{key}", widths)
+
+
+def save_column_widths_debounced(table: QTableWidget, key: str) -> None:
+    """debounce 版 — 300ms 内多次 sectionResized 只写一次。"""
+    if key in _debounce_timers:
+        timer, _, _ = _debounce_timers[key]
+    else:
+        timer = QTimer()
+        timer.setSingleShot(True)
+        _debounce_timers[key] = (timer, table, key)
+        timer.timeout.connect(
+            lambda: save_column_widths(_debounce_timers[key][1], key)
+        )
+    # 更新 table 引用（表格可能被重建）
+    _debounce_timers[key] = (timer, table, key)
+    timer.start(300)
 
 
 def restore_column_widths(table: QTableWidget, key: str) -> None:

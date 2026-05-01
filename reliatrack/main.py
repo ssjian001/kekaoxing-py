@@ -148,7 +148,10 @@ class MainWindow(QMainWindow):
 
         # 恢复上次选中的 Tab
         settings = QSettings()
-        last_tab = int(settings.value("ReliaTrack/last_tab_index", 0))
+        try:
+            last_tab = int(settings.value("ReliaTrack/last_tab_index", 0))
+        except (ValueError, TypeError):
+            last_tab = 0
         if 0 <= last_tab < self._tab_widget.count():
             self._tab_widget.setCurrentIndex(last_tab)
         # Tab 切换时保存

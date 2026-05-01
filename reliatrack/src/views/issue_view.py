@@ -73,9 +73,9 @@ class _IssueTable(QTableWidget):
         ))
 
         # 恢复/保存列宽
-        from src.styles.column_persistence import restore_column_widths, save_column_widths
+        from src.styles.column_persistence import restore_column_widths, save_column_widths_debounced
         restore_column_widths(self, "issue_table")
-        header.sectionResized.connect(lambda *_: save_column_widths(self, "issue_table"))
+        header.sectionResized.connect(lambda *_: save_column_widths_debounced(self, "issue_table"))
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)

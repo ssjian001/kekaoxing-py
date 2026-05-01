@@ -94,11 +94,11 @@ class _TaskTable(QTableWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
         # 恢复上次列宽
-        from src.styles.column_persistence import restore_column_widths, save_column_widths
+        from src.styles.column_persistence import restore_column_widths, save_column_widths_debounced
         restore_column_widths(self, "task_table")
-        # 列宽变化时自动保存
+        # 列宽变化时自动保存（debounce 300ms）
         self.horizontalHeader().sectionResized.connect(
-            lambda *_: save_column_widths(self, "task_table")
+            lambda *_: save_column_widths_debounced(self, "task_table")
         )
 
     def set_reference_data(
@@ -231,6 +231,9 @@ class _TaskTable(QTableWidget):
             for col, val in enumerate(values):
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                # 序号列存储 task.id 到 UserRole，排序后可通过 ID 定位
+                if col == 0 and task.id is not None:
+                    item.setData(Qt.ItemDataRole.UserRole, task.id)
                 # 名称列 tooltip (col 1)
                 if col == 1 and task.name:
                     item.setToolTip(task.name)
@@ -250,6 +253,16 @@ class _TaskTable(QTableWidget):
         self.setSortingEnabled(True)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
+        """获取指定视觉行对应的任务对象（排序安全）。"""
+        item = self.item(row, 0)
+        if item is None:
+            return None
+        task_id = item.data(Qt.ItemDataRole.UserRole)
+        if task_id is not None:
+            for t in self._tasks:
+                if t.id == task_id:
+                    return t
+        # 回退：ID 未存储时用索引（如未排序的新数据）
         if 0 <= row < len(self._tasks):
             return self._tasks[row]
         return None

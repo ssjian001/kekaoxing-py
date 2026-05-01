@@ -18,13 +18,15 @@ def import_equipment(
         service: EquipmentService 实例
 
     Returns:
-        (成功数, 跳过数)
+        (成功数, 跳过数) — 跳过包括名称为空、与已有/本次已导入设备重名
     """
+    existing = {eq.name for eq in service.list_all()}
+    seen_this_batch: set[str] = set()
     success = 0
     skipped = 0
     for row in rows:
         name = row.get("name", "").strip()
-        if not name:
+        if not name or name in existing or name in seen_this_batch:
             skipped += 1
             continue
         try:
@@ -37,6 +39,7 @@ def import_equipment(
                 calibration_date=row.get("calibration_date", "").strip(),
                 next_calibration_date=row.get("next_calibration_date", "").strip(),
             )
+            seen_this_batch.add(name)
             success += 1
         except Exception:
             skipped += 1
@@ -54,8 +57,10 @@ def import_technicians(
         service: TechnicianService 实例
 
     Returns:
-        (成功数, 跳过数)
+        (成功数, 跳过数) — 跳过包括名称为空、与已有/本次已导入技术员重名
     """
+    existing = {(t.name, t.employee_id) for t in service.list_all()}
+    seen_this_batch: set[tuple[str, str]] = set()
     success = 0
     skipped = 0
     for row in rows:
@@ -63,15 +68,21 @@ def import_technicians(
         if not name:
             skipped += 1
             continue
+        emp_id = row.get("employee_id", "").strip()
+        key = (name, emp_id)
+        if key in existing or key in seen_this_batch:
+            skipped += 1
+            continue
         try:
             service.create(
                 name=name,
-                employee_id=row.get("employee_id", "").strip(),
+                employee_id=emp_id,
                 role=row.get("role", "").strip(),
                 department=row.get("department", "").strip(),
                 phone=row.get("phone", "").strip(),
                 email=row.get("email", "").strip(),
             )
+            seen_this_batch.add(key)
             success += 1
         except Exception:
             skipped += 1

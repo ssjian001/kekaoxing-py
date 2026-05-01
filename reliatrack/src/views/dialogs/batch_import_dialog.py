@@ -311,7 +311,11 @@ class BatchImportDialog(_BaseDialog):
             skip_row = False
             for req_field in self._required_fields:
                 if req_field in field_to_col:
-                    val = (row[field_to_col[req_field]] or "").strip()
+                    col_idx = field_to_col[req_field]
+                    if col_idx >= len(row):
+                        skip_row = True
+                        break
+                    val = (row[col_idx] or "").strip()
                     if not val:
                         skip_row = True
                         break

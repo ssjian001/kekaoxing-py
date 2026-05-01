@@ -38,6 +38,9 @@ class ToastWidget(QWidget):
         INFO: BASE,
     }
 
+    # 多 Toast 堆叠偏移计数
+    _active_count: int = 0
+
     def __init__(
         self,
         parent: QWidget,
@@ -76,7 +79,11 @@ class ToastWidget(QWidget):
         self._fade_animation.setEndValue(0.0)
 
         QTimer.singleShot(duration_ms, self._start_fadeout)
-        self._fade_animation.finished.connect(self.close)
+        self._fade_animation.finished.connect(self._on_finished)
+
+        # 堆叠偏移
+        ToastWidget._active_count += 1
+        self._stack_idx = ToastWidget._active_count
 
         self.adjustSize()
         self._center_on_parent(parent)
@@ -85,12 +92,18 @@ class ToastWidget(QWidget):
     def _start_fadeout(self) -> None:
         self._fade_animation.start()
 
+    def _on_finished(self) -> None:
+        ToastWidget._active_count = max(0, ToastWidget._active_count - 1)
+        self.close()
+
     def _center_on_parent(self, parent: QWidget) -> None:
         if not parent:
             return
         parent_geo = parent.geometry()
         x = parent_geo.x() + (parent_geo.width() - self.width()) // 2
-        y = parent_geo.y() + parent_geo.height() - self.height() - 40
+        # 多条 Toast 向上堆叠，每条偏移 (高度+4)
+        offset = (self._stack_idx - 1) * (self.height() + 4) if hasattr(self, "_stack_idx") else 0
+        y = parent_geo.y() + parent_geo.height() - self.height() - 40 - offset
         self.move(x, y)
 
     @classmethod
