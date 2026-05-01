@@ -60,7 +60,7 @@ class _TaskTable(QTableWidget):
         header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 实际开始
         header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际完成
         # 初始宽度
-        self.setColumnWidth(0, 32)    # #
+        self.setColumnWidth(0, 48)    # #
         self.setColumnWidth(1, 200)   # 名称
         self.setColumnWidth(2, 80)    # 类别
         self.setColumnWidth(3, 50)    # 天数
