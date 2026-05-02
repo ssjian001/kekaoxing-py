@@ -76,6 +76,7 @@ class TestTask:
     notes: str = ""
     temperature: str = ""     # 例: "-40°C ~ 85°C"
     humidity: str = ""        # 例: "85%RH"
+    accept_criteria: str = "" # 判定准则 JSON 或描述
     actual_start_date: str = ""
     actual_end_date: str = ""
     sort_order: int = 0

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.db.repositories import IssueRepository
-from src.models.issue import Issue, FARecord, IssueAttachment
+from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
 
 
 class IssueService:
@@ -37,8 +37,9 @@ class IssueService:
 
     def delete(self, issue_id: int) -> None:
         with self._repo.transaction():
-            # 先删 FA 记录和附件（子表），再删 Issue（父表）
+            # 先删子表，再删 Issue（父表）
             self._repo.delete_fa_records(issue_id)
+            self._repo.delete_capa_records(issue_id)
             self._repo.delete_attachments(issue_id)
             self._repo.delete(issue_id)
 
@@ -64,3 +65,11 @@ class IssueService:
     def delete_attachment(self, attachment_id: int) -> None:  # attachment management
         """删除单条附件。"""
         self._repo.delete_attachment(attachment_id)
+
+    # ── CAPA 记录 ──
+
+    def add_capa_record(self, issue_id: int, **kwargs: object) -> int:
+        return self._repo.add_capa_record(issue_id, **kwargs)
+
+    def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
+        return self._repo.get_capa_records(issue_id)

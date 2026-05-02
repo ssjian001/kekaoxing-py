@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import apsw
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -119,6 +119,7 @@ _DDL_TABLES: list[str] = [
         notes           TEXT    NOT NULL DEFAULT '',
         temperature     TEXT    NOT NULL DEFAULT '',
         humidity        TEXT    NOT NULL DEFAULT '',
+        accept_criteria TEXT    NOT NULL DEFAULT '',
         sort_order      INTEGER NOT NULL DEFAULT 0,
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -168,6 +169,9 @@ _DDL_TABLES: list[str] = [
         description     TEXT    NOT NULL DEFAULT '',
         method          TEXT    NOT NULL DEFAULT '',
         findings        TEXT    NOT NULL DEFAULT '',
+        possible_cause  TEXT    NOT NULL DEFAULT '',
+        cause_category  TEXT    NOT NULL DEFAULT '',
+        confirmed       INTEGER NOT NULL DEFAULT 0,
         analyst_id      INTEGER REFERENCES technicians(id),
         attachments     TEXT    NOT NULL DEFAULT '[]',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -181,6 +185,20 @@ _DDL_TABLES: list[str] = [
         file_type   TEXT    NOT NULL DEFAULT 'image',
         description TEXT    NOT NULL DEFAULT '',
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+    )""",
+
+    # ── CAPA 纠正预防措施 ──
+    """CREATE TABLE IF NOT EXISTS capa_records (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        action              TEXT    NOT NULL,
+        assignee_id         INTEGER REFERENCES technicians(id),
+        due_date            TEXT    NOT NULL DEFAULT '',
+        status              TEXT    NOT NULL DEFAULT 'pending',
+        verification_result TEXT    NOT NULL DEFAULT '',
+        verified_by         INTEGER REFERENCES technicians(id),
+        created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+        updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
     # ── 知识库（Phase 2 预建）──
@@ -244,6 +262,9 @@ _DDL_INDEXES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_fa_issue ON fa_records(issue_id)",
     # issue_attachments
     "CREATE INDEX IF NOT EXISTS idx_attachments_issue ON issue_attachments(issue_id)",
+    # capa_records
+    "CREATE INDEX IF NOT EXISTS idx_capa_issue ON capa_records(issue_id)",
+    "CREATE INDEX IF NOT EXISTS idx_capa_status ON capa_records(status)",
     # knowledge_entries
     "CREATE INDEX IF NOT EXISTS idx_knowledge_mode ON knowledge_entries(failure_mode)",
     # equipment
@@ -345,6 +366,55 @@ def _migrate_v6(conn: apsw.Connection) -> None:
     )
 
 
+def _migrate_v7(conn: apsw.Connection) -> None:
+    """v7: test_tasks 增加 accept_criteria; fa_records 增加 possible_cause/cause_category/confirmed; 新增 capa_records 表。"""
+    # test_tasks: accept_criteria
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(test_tasks)").fetchall()
+    }
+    if "accept_criteria" not in cols:
+        conn.execute(
+            "ALTER TABLE test_tasks ADD COLUMN accept_criteria TEXT NOT NULL DEFAULT ''"
+        )
+
+    # fa_records: possible_cause, cause_category, confirmed
+    cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(fa_records)").fetchall()
+    }
+    for col, col_type, default in [
+        ("possible_cause", "TEXT", "''"),
+        ("cause_category", "TEXT", "''"),
+        ("confirmed", "INTEGER", "0"),
+    ]:
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE fa_records ADD COLUMN {col} {col_type} NOT NULL DEFAULT {default}"
+            )
+
+    # capa_records 表（仅新增，已存在则跳过）
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS capa_records (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            action              TEXT    NOT NULL,
+            assignee_id         INTEGER REFERENCES technicians(id),
+            due_date            TEXT    NOT NULL DEFAULT '',
+            status              TEXT    NOT NULL DEFAULT 'pending',
+            verification_result TEXT    NOT NULL DEFAULT '',
+            verified_by         INTEGER REFERENCES technicians(id),
+            created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )"""
+    )
+    # capa_records 索引
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_capa_issue ON capa_records(issue_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_capa_status ON capa_records(status)")
+
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (7)"
+    )
+
+
 def _get_current_version(conn: apsw.Connection) -> int:
     """读取当前 schema 版本号。数据库为空时返回 0。"""
     try:
@@ -379,7 +449,7 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    needs_migration = current < 6  # 更新此值当新增迁移版本
+    needs_migration = current < 7  # 更新此值当新增迁移版本
 
     if not needs_migration:
         return current
@@ -404,6 +474,9 @@ def init_schema(conn: apsw.Connection) -> int:
 
         if current < 6:
             _migrate_v6(conn)
+
+        if current < 7:
+            _migrate_v7(conn)
 
         conn.execute("COMMIT")
     except Exception:

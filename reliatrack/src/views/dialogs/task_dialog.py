@@ -221,6 +221,14 @@ class TaskEditDialog(_BaseDialog):
         # ── 环境参数分组框 ──
         self._add_env_group(task)
 
+        # ── 判定准则 ──
+        self._criteria_edit = self._add_text_field(
+            "判定准则",
+            default=task.accept_criteria if task else "",
+            placeholder="如: C=0 (全部通过) / 5收0拒 / 自定义",
+        )
+        self._test_type_combo.currentTextChanged.connect(self._on_test_type_criteria)
+
         # ── 测试日志 ──
         self._add_log_file_field(task)
 
@@ -280,6 +288,18 @@ class TaskEditDialog(_BaseDialog):
         tpl_note = " | ".join(tpl_note_parts)
         if tpl_note and not notes:
             self._notes_edit.setPlainText(tpl_note)
+
+        # 判定准则字段
+        if tpl.accept_criteria and not self._criteria_edit.text().strip():
+            self._criteria_edit.setText(tpl.accept_criteria)
+
+    def _on_test_type_criteria(self, text: str) -> None:
+        """测试类型变化时更新判定准则（仅当准则为空时）。"""
+        if text == "（自定义）":
+            return
+        tpl = get_template_by_name(text)
+        if tpl and tpl.accept_criteria and not self._criteria_edit.text().strip():
+            self._criteria_edit.setText(tpl.accept_criteria)
 
     # ── 环境参数分组框 ─────────────────────────────────────────
 
@@ -498,6 +518,7 @@ class TaskEditDialog(_BaseDialog):
             "temperature": self._temp_edit.text().strip(),
             "humidity": self._humidity_edit.text().strip(),
             "log_file": self._log_file_edit.text().strip(),
+            "accept_criteria": self._criteria_edit.text().strip(),
             "notes": self._notes_edit.toPlainText().strip(),
         }
 

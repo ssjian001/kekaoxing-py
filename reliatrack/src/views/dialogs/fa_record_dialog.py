@@ -18,12 +18,14 @@ class FARecordDialog(_BaseDialog):
         已有步骤号列表，用于自动计算下一个 step_no。
     """
 
+    _CAUSE_CATEGORIES = ["（无）", "人", "机", "料", "法", "环", "测"]
+
     def __init__(
         self,
         existing_step_nos: list[int] | None = None,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__("🔬 新建 FA 分析步骤", parent, width=480)
+        super().__init__("新建 FA 分析步骤", parent, width=500)
         step_nos = existing_step_nos or []
         next_step = max(step_nos, default=0) + 1
 
@@ -43,17 +45,35 @@ class FARecordDialog(_BaseDialog):
         self._findings_edit = self._add_text_area(
             "发现",
         )
+        self._add_separator()
+        self._cause_edit = self._add_text_field(
+            "可能原因",
+            placeholder="该步骤发现的可能原因",
+        )
+        self._cause_category_combo = self._add_combo_field(
+            "原因分类（鱼骨图）",
+            items=self._CAUSE_CATEGORIES,
+        )
+        self._confirmed_combo = self._add_combo_field(
+            "确认状态",
+            items=["待定", "确认", "排除"],
+        )
 
     # ── 公开 API ───────────────────────────────────────────────
 
     def get_data(self) -> dict:
         """返回表单数据字典。"""
+        confirmed_map = {"待定": 0, "确认": 1, "排除": 2}
+        category_text = self._cause_category_combo.currentText()
         return {
             "step_no": self._step_spin.value(),
             "step_title": self._title_edit.text().strip(),
             "description": self._description_edit.toPlainText().strip(),
             "method": self._method_combo.currentText(),
             "findings": self._findings_edit.toPlainText().strip(),
+            "possible_cause": self._cause_edit.text().strip(),
+            "cause_category": category_text if category_text != "（无）" else "",
+            "confirmed": confirmed_map.get(self._confirmed_combo.currentText(), 0),
         }
 
     def accept(self) -> None:

@@ -6,7 +6,7 @@ import apsw
 
 from typing import Any, cast
 
-from src.models.issue import Issue, FARecord, IssueAttachment
+from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
 from src.db.repositories.base import BaseRepository
 
 
@@ -100,4 +100,50 @@ class IssueRepository(BaseRepository):
         """删除单条附件。"""
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
+        )
+
+    # ── CAPA 记录 ──
+
+    def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
+        """获取 Issue 的 CAPA 记录。"""
+        cols = self._conn.execute(
+            "PRAGMA table_info([capa_records])"
+        ).fetchall()
+        col_names = [c[1] for c in cols]
+        rows = self._conn.execute(
+            "SELECT * FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
+            (issue_id,),
+        ).fetchall()
+        return [CAPARecord(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
+
+    def add_capa_record(self, issue_id: int, **kwargs: object) -> int:
+        """添加 CAPA 记录。"""
+        kwargs["issue_id"] = issue_id
+        cols = list(kwargs.keys())
+        vals = list(kwargs.values())
+        placeholders = ", ".join(["?"] * len(cols))
+        col_str = ", ".join([f"[{c}]" for c in cols])
+        sql = f"INSERT INTO [capa_records] ({col_str}) VALUES ({placeholders})"
+        self._conn.execute(sql, vals)
+        row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
+        return row[0] if row else 0
+
+    def update_capa_record(self, capa_id: int, **kwargs: object) -> None:
+        """更新 CAPA 记录。"""
+        sets = ", ".join(f"[{k}] = ?" for k in kwargs)
+        vals = list(kwargs.values()) + [capa_id]
+        self._conn.execute(
+            f"UPDATE [capa_records] SET {sets} WHERE id = ?", vals
+        )
+
+    def delete_capa_record(self, capa_id: int) -> None:
+        """删除单条 CAPA 记录。"""
+        self._conn.execute(
+            "DELETE FROM [capa_records] WHERE id = ?", (capa_id,)
+        )
+
+    def delete_capa_records(self, issue_id: int) -> None:
+        """删除 Issue 的所有 CAPA 记录。"""
+        self._conn.execute(
+            "DELETE FROM [capa_records] WHERE issue_id = ?", (issue_id,)
         )

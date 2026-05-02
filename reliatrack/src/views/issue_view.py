@@ -35,6 +35,7 @@ from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS
 from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
+from src.views.dialogs.base_dialog import _BaseDialog
 
 
 class _IssueTable(QTableWidget):
@@ -242,6 +243,27 @@ class _FAPanel(QScrollArea):
                 findings.setStyleSheet(f"color: {PEACH}; font-size: 12px;")
                 card_layout.addWidget(findings)
 
+            # 可能原因（鱼骨图分类）
+            if rec.possible_cause:
+                cause = QLabel(f"可能原因: {rec.possible_cause}")
+                cause.setWordWrap(True)
+                cause.setStyleSheet(f"color: {MAUVE}; font-size: 12px;")
+                card_layout.addWidget(cause)
+
+            # 原因分类 + 确认状态
+            meta_parts = []
+            if rec.cause_category:
+                meta_parts.append(f"分类: {rec.cause_category}")
+            confirmed_labels = {0: "待定", 1: "确认", 2: "排除"}
+            confirmed_colors = {0: SUBTEXT0, 1: GREEN, 2: RED}
+            confirmed_label = confirmed_labels.get(rec.confirmed, "待定")
+            confirmed_color = confirmed_colors.get(rec.confirmed, SUBTEXT0)
+            meta_parts.append(f"状态: {confirmed_label}")
+            meta_text = "  |  ".join(meta_parts)
+            meta = QLabel(meta_text)
+            meta.setStyleSheet(f"color: {confirmed_color}; font-size: 11px;")
+            card_layout.addWidget(meta)
+
             self._layout.addWidget(card)
 
 
@@ -253,6 +275,7 @@ class IssueView(QWidget):
     issue_deleted = Signal(int)         # Issue 删除时发射 issue_id
     issue_selected = Signal(object)     # Issue 选中时发射 issue_id (int | None)
     fa_record_added = Signal(dict)      # FA 记录添加时发射 data: dict
+    capa_record_added = Signal(dict)    # CAPA 记录添加时发射 data: dict
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -285,6 +308,12 @@ class IssueView(QWidget):
         self._btn_add_fa.setToolTip("添加 FA 分析步骤")
         toolbar.addWidget(self._btn_add_fa)
 
+        # CAPA 按钮
+        self._btn_add_capa = QPushButton("新建 CAPA")
+        self._btn_add_capa.setProperty("class", "action")
+        self._btn_add_capa.setToolTip("添加纠正预防措施")
+        toolbar.addWidget(self._btn_add_capa)
+
         # attachment management: 附件按钮
         self._btn_attachments = QPushButton("附件")
         self._btn_attachments.setProperty("class", "action")
@@ -306,6 +335,14 @@ class IssueView(QWidget):
         self._fa_panel = _FAPanel()
         layout.addWidget(self._fa_panel, stretch=2)
 
+        # CAPA 面板
+        self._capa_label = QLabel("CAPA 纠正预防措施")
+        self._capa_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
+        layout.addWidget(self._capa_label)
+
+        self._capa_panel = _CAPAPanel()
+        layout.addWidget(self._capa_panel, stretch=2)
+
         # 空状态提示
         self._empty_label = QLabel("暂无 Issue 数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -318,6 +355,7 @@ class IssueView(QWidget):
         # ── 信号连接 ──
         self._btn_add.clicked.connect(self._open_create_dialog)
         self._btn_add_fa.clicked.connect(self._open_fa_dialog)
+        self._btn_add_capa.clicked.connect(self._open_capa_dialog)
         # 选中 Issue 时自动加载 FA 记录
         self._issue_table.itemSelectionChanged.connect(self._on_issue_selection_changed)
 
@@ -333,6 +371,10 @@ class IssueView(QWidget):
     def refresh_fa(self, records: list[FARecord]) -> None:
         self._fa_panel.set_fa_records(records)
 
+    def refresh_capa(self, records: list) -> None:
+        """刷新 CAPA 面板。"""
+        self._capa_panel.set_capa_records(records)
+
     # ── 属性 ──────────────────────────────────────────────────
 
     @property
@@ -346,6 +388,10 @@ class IssueView(QWidget):
     @property
     def btn_add_fa(self) -> QPushButton:
         return self._btn_add_fa
+
+    @property
+    def btn_add_capa(self) -> QPushButton:
+        return self._btn_add_capa
 
     @property
     def btn_attachments(self) -> QPushButton:  # attachment management
@@ -416,6 +462,18 @@ class IssueView(QWidget):
             data["issue_id"] = issue_id
             self.fa_record_added.emit(data)
 
+    def _open_capa_dialog(self) -> None:
+        """打开新建 CAPA 弹窗。"""
+        issue_id = self.get_selected_issue_id()
+        if issue_id is None:
+            QMessageBox.information(self, "提示", "请先在左侧列表中选中一个 Issue。")
+            return
+        dlg = _CAPADialog(parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            data["issue_id"] = issue_id
+            self.capa_record_added.emit(data)
+
     # ── 选中变化 ──────────────────────────────────────────────
 
     def _on_issue_selection_changed(self) -> None:
@@ -442,3 +500,136 @@ class IssueView(QWidget):
         if obj is self._issue_table and event.type() == QEvent.Type.Resize:
             self._empty_label.setGeometry(self._issue_table.viewport().rect())
         return super().eventFilter(obj, event)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  CAPA 面板 + 弹窗
+# ═══════════════════════════════════════════════════════════════════
+
+class _CAPAPanel(QScrollArea):
+    """CAPA 纠正预防措施面板。"""
+
+    _STATUS_LABELS = {
+        "pending": ("待执行", SUBTEXT0),
+        "in_progress": ("进行中", YELLOW),
+        "completed": ("已完成", GREEN),
+        "verified": ("已验证", BLUE),
+    }
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self._container = QWidget()
+        self._layout = QVBoxLayout(self._container)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.setWidget(self._container)
+        self.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {BASE}; border: 1px solid {SURFACE1};
+                border-radius: 8px;
+            }}
+        """)
+        # 初始占位
+        label = QLabel("选择一个 Issue 查看 CAPA 记录")
+        label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
+        self._layout.addWidget(label)
+
+    def set_capa_records(self, records: list) -> None:
+        """刷新 CAPA 记录卡片。"""
+        # 清空
+        while self._layout.count():
+            child = self._layout.takeAt(0)
+            if child is not None:
+                w = child.widget()
+                if w is not None:
+                    w.deleteLater()
+
+        if not records:
+            label = QLabel("暂无 CAPA 记录")
+            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
+            self._layout.addWidget(label)
+            return
+
+        for rec in records:
+            card = QFrame()
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {SURFACE0}; border-radius: 8px;
+                    border: 1px solid {SURFACE1};
+                }}
+            """)
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(10, 8, 10, 8)
+
+            # 状态行
+            status_label_text, status_color = self._STATUS_LABELS.get(
+                rec.status, ("未知", SUBTEXT0)
+            )
+            header = QHBoxLayout()
+            status_lbl = QLabel(status_label_text)
+            status_lbl.setStyleSheet(f"color: {status_color}; font-weight: bold; font-size: 12px;")
+            header.addWidget(status_lbl)
+            if rec.due_date:
+                due_lbl = QLabel(f"截止: {rec.due_date}")
+                due_lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+                header.addWidget(due_lbl)
+            header.addStretch()
+            card_layout.addLayout(header)
+
+            # 措施内容
+            action_lbl = QLabel(rec.action)
+            action_lbl.setWordWrap(True)
+            action_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+            card_layout.addWidget(action_lbl)
+
+            # 验证结果
+            if rec.verification_result:
+                v_lbl = QLabel(f"验证: {rec.verification_result}")
+                v_lbl.setWordWrap(True)
+                v_lbl.setStyleSheet(f"color: {GREEN}; font-size: 11px;")
+                card_layout.addWidget(v_lbl)
+
+            self._layout.addWidget(card)
+
+
+class _CAPADialog(_BaseDialog):
+    """新建 CAPA 记录弹窗。"""
+
+    _STATUS_OPTIONS = [
+        ("待执行", "pending"),
+        ("进行中", "in_progress"),
+        ("已完成", "completed"),
+        ("已验证", "verified"),
+    ]
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__("新建 CAPA 纠正预防措施", parent, width=480)
+
+        self._action_edit = self._add_text_area(
+            "措施描述",
+            placeholder="描述纠正或预防措施",
+        )
+        self._due_date_edit = self._add_date_field("截止日期")
+        status_labels = [label for label, _ in self._STATUS_OPTIONS]
+        self._status_combo = self._add_combo_field(
+            "状态",
+            items=status_labels,
+        )
+
+    def get_data(self) -> dict:
+        status_map = {label: val for label, val in self._STATUS_OPTIONS}
+        return {
+            "action": self._action_edit.toPlainText().strip(),
+            "due_date": self._due_date_edit.date().toString("yyyy-MM-dd")
+                if self._due_date_edit.date().isValid() and self._due_date_edit.date().year() >= 2020
+                else "",
+            "status": status_map.get(self._status_combo.currentText(), "pending"),
+        }
+
+    def accept(self) -> None:
+        from PySide6.QtWidgets import QMessageBox
+        if not self._action_edit.toPlainText().strip():
+            QMessageBox.warning(self, "校验失败", "措施描述为必填项。")
+            self._action_edit.setFocus()
+            return
+        super().accept()

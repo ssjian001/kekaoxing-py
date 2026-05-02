@@ -18,6 +18,7 @@ class IssueHandlers:
     def __init__(self, win: MainWindow) -> None:
         self._win = win
         self._current_fa_records: list = []
+        self._current_capa_records: list = []
 
     def connect_signals(self) -> None:
         win = self._win
@@ -26,6 +27,7 @@ class IssueHandlers:
         v.issue_deleted.connect(self._handle_issue_deleted)
         v.issue_selected.connect(self._handle_issue_selected)
         v.fa_record_added.connect(self._handle_fa_record_added)
+        v.capa_record_added.connect(self._handle_capa_record_added)
         v.btn_attachments.clicked.connect(self._on_issue_attachments)
 
     def _on_issue_attachments(self) -> None:
@@ -74,16 +76,21 @@ class IssueHandlers:
             QMessageBox.critical(self._win, "删除失败", f"Issue 删除失败: {e}")
 
     def _handle_issue_selected(self, issue_id: int | None) -> None:
-        """Issue 选中时加载 FA 记录。"""
+        """Issue 选中时加载 FA 和 CAPA 记录。"""
         if issue_id is None:
             self._current_fa_records = []
+            self._current_capa_records = []
             self._win._issue_view.refresh_fa([])
+            self._win._issue_view.refresh_capa([])
             return
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
         self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
         self._win._issue_view.refresh_fa(self._current_fa_records)
+        # CAPA 记录
+        self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
+        self._win._issue_view.refresh_capa(self._current_capa_records)
 
     def _handle_fa_record_added(self, data: dict) -> None:
         """FA 记录添加后回调。"""
@@ -101,3 +108,20 @@ class IssueHandlers:
             self._win.toast(f"FA 步骤已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")
+
+    def _handle_capa_record_added(self, data: dict) -> None:
+        """CAPA 记录添加后回调。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        issue_id = data.pop("issue_id", None)
+        if issue_id is None:
+            return
+        try:
+            ctrl.issue_service.add_capa_record(issue_id, **data)
+            # 刷新 CAPA 面板
+            self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
+            self._win._issue_view.refresh_capa(self._current_capa_records)
+            self._win.toast("CAPA 措施已添加", "success")
+        except Exception as e:
+            QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")

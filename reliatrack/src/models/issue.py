@@ -71,6 +71,9 @@ class FARecord:
     description: str = ""
     method: str = ""          # 外观检查/切片分析/CT扫描/SEM/...
     findings: str = ""
+    possible_cause: str = ""  # 可能原因
+    cause_category: str = ""  # 鱼骨图分类: 人/机/料/法/环/测
+    confirmed: int = 0        # 是否确认: 0=待定, 1=确认, 2=排除
     analyst_id: Optional[int] = None
     attachments: str = "[]"   # JSON
     created_at: str = ""
@@ -85,3 +88,26 @@ class IssueAttachment:
     file_type: str = AttachmentType.IMAGE.value
     description: str = ""
     created_at: str = ""
+
+
+class CAPAStatus(str, Enum):
+    """CAPA 状态。"""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    VERIFIED = "verified"
+
+
+@dataclass
+class CAPARecord:
+    """CAPA 纠正预防措施 — Issue 关联的改进行动。"""
+    id: Optional[int] = None
+    issue_id: int = 0
+    action: str = ""           # 纠正/预防措施描述
+    assignee_id: Optional[int] = None
+    due_date: str = ""         # 截止日期
+    status: str = CAPAStatus.PENDING.value
+    verification_result: str = ""  # 验证结果
+    verified_by: Optional[int] = None
+    created_at: str = ""
+    updated_at: str = ""
