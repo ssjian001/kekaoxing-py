@@ -447,6 +447,7 @@ class PlanHandlers:
                         sample_id=item["sample_id"],
                         result=item["result"],
                         test_date=item["test_date"],
+                        measured_value=item.get("measured_value", ""),
                         notes=item.get("notes", ""),
                         environment=item.get("environment", "{}"),
                     )

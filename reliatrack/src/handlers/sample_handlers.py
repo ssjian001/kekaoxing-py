@@ -67,6 +67,8 @@ class SampleHandlers:
                     spec=data.get("spec") or "",
                     project_id=data.get("project_id") or None,
                     location=data.get("location") or "",
+                    test_hours=data.get("test_hours") or 0.0,
+                    supplier=data.get("supplier") or "",
                     notes=data.get("notes") or "",
                     status="in_stock",
                 )
@@ -146,6 +148,7 @@ class SampleHandlers:
                         batch_no=data.get("batch_no") or "",
                         spec=data.get("spec") or "",
                         location=data.get("location") or "",
+                        supplier=data.get("supplier") or "",
                         notes=data.get("notes") or "",
                         status="in_stock",
                     )
