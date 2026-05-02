@@ -88,6 +88,8 @@ class AppController:
         """初始化数据库连接、schema 和所有 Repository/Service。"""
         self._conn = get_connection(self._db_path)
         init_schema(self._conn)
+        # 启动时自动备份
+        self._startup_backup()
         logger.info("Database initialized: %s", self._db_path)
 
         # Repositories
@@ -107,7 +109,7 @@ class AppController:
             self.projects, self.test_plans, self.test_tasks, self.samples, self.issues
         )
         self.equipment_service = EquipmentService(self.equipment)
-        self.sample_service = SampleService(self.samples)
+        self.sample_service = SampleService(self.samples, self.test_results, self.issues)
         self.test_plan_service = TestPlanService(self.test_plans, self.test_tasks, self.test_results)
         self.issue_service = IssueService(self.issues)
         self.settings_service = SettingsService(self.settings)
@@ -115,9 +117,29 @@ class AppController:
             self.test_tasks, self.equipment, self.test_plans,
         )
         self.knowledge_service = KnowledgeService(self.knowledge)
-        self.technician_service = TechnicianService(self.technicians)
+        self.technician_service = TechnicianService(self.technicians, self.test_tasks, self.issues)
 
         logger.info("All services initialized")
+
+    def _startup_backup(self) -> None:
+        """启动时自动备份数据库。"""
+        import datetime
+        from pathlib import Path
+
+        backup_dir = Path(self._db_path).parent / 'backups'
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        date_str = datetime.date.today().strftime('%Y%m%d')
+        backup_path = backup_dir / f'reliatrack_{date_str}.db'
+        # 同一天只备份一次
+        if not backup_path.exists():
+            try:
+                self._conn.execute(f"VACUUM INTO '{backup_path}'")
+                logger.info("Backup created: %s", backup_path)
+            except Exception:
+                logger.exception("Backup failed")
+        # 清理超过30天的旧备份
+        for old in sorted(backup_dir.glob('reliatrack_*.db'))[:-30]:
+            old.unlink(missing_ok=True)
 
     # ── 变更通知 ──
 

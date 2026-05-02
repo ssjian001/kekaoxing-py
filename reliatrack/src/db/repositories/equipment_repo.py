@@ -22,6 +22,14 @@ class EquipmentRepository(BaseRepository):
         """按类型筛选设备。"""
         return self.list_all(type=type)
 
+    def count_calibration_due(self, threshold_date: str) -> int:
+        """统计校准到期/即将到期的设备数。"""
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM [equipment] WHERE next_calibration_date != '' AND next_calibration_date <= ?",
+            (threshold_date,)
+        ).fetchone()
+        return row[0] if row else 0
+
     def count_task_references(self, equipment_id: int) -> int:
         """统计设备被测试任务引用的次数。"""
         row = self._conn.execute(

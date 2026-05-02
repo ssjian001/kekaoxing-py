@@ -68,7 +68,7 @@ _DDL_TABLES: list[str] = [
         sn          TEXT    NOT NULL UNIQUE,
         batch_no    TEXT    NOT NULL DEFAULT '',
         spec        TEXT    NOT NULL DEFAULT '',
-        project_id  INTEGER REFERENCES projects(id),
+        project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         status      TEXT    NOT NULL DEFAULT 'in_stock',
         location    TEXT    NOT NULL DEFAULT '',
         test_hours  REAL    NOT NULL DEFAULT 0.0,
@@ -97,7 +97,7 @@ _DDL_TABLES: list[str] = [
     # ── 测试计划 ──
     """CREATE TABLE IF NOT EXISTS test_plans (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id      INTEGER NOT NULL REFERENCES projects(id),
+        project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name            TEXT    NOT NULL,
         test_standard   TEXT    NOT NULL DEFAULT '',
         start_date      TEXT    NOT NULL DEFAULT '',
@@ -111,7 +111,7 @@ _DDL_TABLES: list[str] = [
     # ── 测试任务 ──
     """CREATE TABLE IF NOT EXISTS test_tasks (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        plan_id         INTEGER NOT NULL REFERENCES test_plans(id),
+        plan_id         INTEGER NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
         name            TEXT    NOT NULL,
         category        TEXT    NOT NULL DEFAULT '',
         test_standard   TEXT    NOT NULL DEFAULT '',
@@ -153,10 +153,10 @@ _DDL_TABLES: list[str] = [
     # ── Issue / 失效追踪 ──
     """CREATE TABLE IF NOT EXISTS issues (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id      INTEGER REFERENCES projects(id),
-        plan_id         INTEGER REFERENCES test_plans(id),
-        task_id         INTEGER REFERENCES test_tasks(id),
-        sample_id       INTEGER REFERENCES samples(id),
+        project_id      INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        plan_id         INTEGER REFERENCES test_plans(id) ON DELETE CASCADE,
+        task_id         INTEGER REFERENCES test_tasks(id) ON DELETE CASCADE,
+        sample_id       INTEGER REFERENCES samples(id) ON DELETE CASCADE,
         title           TEXT    NOT NULL,
         failure_mode    TEXT    NOT NULL DEFAULT '',
         failure_stage   TEXT    NOT NULL DEFAULT '',
@@ -526,7 +526,8 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    needs_migration = current < 9  # 更新此值当新增迁移版本
+    SCHEMA_VERSION = 9  # 更新此值当新增迁移版本
+    needs_migration = current < SCHEMA_VERSION
 
     if not needs_migration:
         return current

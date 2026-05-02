@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import shutil
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl
@@ -31,6 +33,8 @@ from src.styles.theme import (
     SUBTEXT1,
     BLUE,
 )
+
+ATTACHMENT_DIR = Path.home() / '.reliatrack' / 'attachments'
 
 from src.views.dialogs.base_dialog import _BaseDialog
 
@@ -196,6 +200,23 @@ class AttachmentDialog(_BaseDialog):
                     file_type = "document"
                 else:
                     file_type = "other"
+
+                # 复制文件到安全目录
+                ATTACHMENT_DIR.mkdir(parents=True, exist_ok=True)
+                dest_dir = ATTACHMENT_DIR / str(self._issue_id)
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                dest_path = dest_dir / Path(file_path).name
+                # 处理同名文件
+                if dest_path.exists():
+                    stem = dest_path.stem
+                    suffix = dest_path.suffix
+                    i = 1
+                    while dest_path.exists():
+                        dest_path = dest_dir / f'{stem}_{i}{suffix}'
+                        i += 1
+                shutil.copy2(file_path, str(dest_path))
+                # 存储安全路径
+                file_path = str(dest_path)
 
                 self._issue_service.add_attachment(
                     self._issue_id,

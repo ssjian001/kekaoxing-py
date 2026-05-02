@@ -62,6 +62,12 @@ class Issue:
     created_at: str = ""
     updated_at: str = ""
 
+    def __post_init__(self):
+        if self.occurrence_count < 1:
+            raise ValueError(f"发生次数必须≥1: {self.occurrence_count}")
+        if self.priority < 1 or self.priority > 5:
+            raise ValueError(f"优先级必须在 1-5 之间: {self.priority}")
+
 
 @dataclass
 class FARecord:

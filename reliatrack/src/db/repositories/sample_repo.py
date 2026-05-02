@@ -104,3 +104,14 @@ class SampleRepository(BaseRepository):
         self._conn.execute(
             "DELETE FROM [sample_transactions] WHERE sample_id = ?", (sample_id,)
         )
+
+    def delete_by_project(self, project_id: int) -> int:
+        """删除项目关联的所有样品（含 transactions），返回删除行数。"""
+        self._conn.execute(
+            "DELETE FROM [sample_transactions] WHERE sample_id IN "
+            "(SELECT id FROM [samples] WHERE project_id = ?)", (project_id,)
+        )
+        cursor = self._conn.execute(
+            "DELETE FROM [samples] WHERE project_id = ?", (project_id,)
+        )
+        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

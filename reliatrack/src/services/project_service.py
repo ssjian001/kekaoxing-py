@@ -42,31 +42,19 @@ class ProjectService:
         self._repo.update(project_id, **kwargs)
 
     def delete(self, project_id: int) -> None:
+        """删除项目及所有关联数据（批量 SQL，无 N+1）。"""
         with self._repo.transaction():
-            # 1. 删除关联 issue 的 fa_records + attachments + issues
-            for issue in self._issue_repo.get_by_project(project_id):
-                if issue.id is None:
-                    raise ValueError("Issue id is None during project deletion")
-                self._issue_repo.delete_fa_records(issue.id)
-                self._issue_repo.delete_attachments(issue.id)
-                self._issue_repo.delete(issue.id)
-            # 2. 删除关联 sample 的 transactions + samples
-            for sample in self._sample_repo.get_by_project(project_id):
-                if sample.id is None:
-                    raise ValueError("Sample id is None during project deletion")
-                self._sample_repo.delete_transactions(sample.id)
-                self._sample_repo.delete(sample.id)
-            # 3. 删除关联 plan 的 tasks(test_results/issues) + plans
+            # 1. 批量删除 issues（含 fa_records / attachments / capa_records）
+            self._issue_repo.delete_by_project(project_id)
+            # 2. 批量删除 samples（含 transactions）
+            self._sample_repo.delete_by_project(project_id)
+            # 3. 批量删除 plans 下的 tasks（含 test_results / issues 子表）
             for plan in self._plan_repo.get_by_project(project_id):
-                if plan.id is None:
-                    raise ValueError("Plan id is None during project deletion")
-                for task in self._task_repo.get_by_plan(plan.id):
-                    if task.id is None:
-                        raise ValueError("Task id is None during project deletion")
-                    self._task_repo.delete_test_results(task.id)
-                    self._task_repo.delete_issues_by_task(task.id)
-                    self._task_repo.delete(task.id)
-                self._plan_repo.delete(plan.id)
+                if plan.id is not None:
+                    self._task_repo.delete_by_plan(plan.id)
+            # 4. 批量删除 plans（含孤立 issues 及其子表）
+            self._plan_repo.delete_by_project(project_id)
+            # 5. 删除项目本身
             self._repo.delete(project_id)
 
     def list_all(self) -> list[Project]:

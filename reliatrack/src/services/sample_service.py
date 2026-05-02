@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 from src.db.repositories import SampleRepository
+from src.db.repositories.test_result_repo import TestResultRepository
+from src.db.repositories.issue_repo import IssueRepository
 from src.models.sample import Sample, SampleTransaction
 
 
 class SampleService:
     """样品业务逻辑。"""
 
-    def __init__(self, repo: SampleRepository) -> None:
+    def __init__(
+        self,
+        repo: SampleRepository,
+        test_result_repo: TestResultRepository | None = None,
+        issue_repo: IssueRepository | None = None,
+    ) -> None:
         self._repo = repo
+        self._test_result_repo = test_result_repo
+        self._issue_repo = issue_repo
 
     def create(self, sn: str, **kwargs: object) -> int:
         return self._repo.insert(sn=sn, **kwargs)
@@ -34,6 +43,25 @@ class SampleService:
         self._repo.update_status(sample_id, status)
 
     def delete(self, sample_id: int) -> None:
+        """删除样品，有引用时拒绝删除。"""
+        reasons: list[str] = []
+
+        if self._test_result_repo is not None:
+            result_count = self._test_result_repo.count_by_sample(sample_id)
+            if result_count > 0:
+                reasons.append(f"{result_count} 条测试结果")
+
+        if self._issue_repo is not None:
+            issue_count = self._issue_repo.count_by_sample(sample_id)
+            if issue_count > 0:
+                reasons.append(f"{issue_count} 个 Issue")
+
+        if reasons:
+            detail = "、".join(reasons)
+            raise ValueError(
+                f"样品 #{sample_id} 仍被 {detail} 引用，请先解除关联"
+            )
+
         with self._repo.transaction():
             # 先删出入库记录（子表），再删样品（父表）
             self._repo.delete_transactions(sample_id)

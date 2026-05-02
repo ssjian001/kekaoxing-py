@@ -60,6 +60,25 @@ class TestTaskRepository(BaseRepository):
         ).fetchall()
         return self._rows_to_models(rows)
 
+    def count_by_status(self, **filters) -> dict[str, int]:
+        """按状态分组计数。"""
+        where = ""
+        params: list = []
+        if filters.get('project_id'):
+            plan_ids = [r[0] for r in self._conn.execute(
+                "SELECT id FROM test_plans WHERE project_id = ?", (filters['project_id'],)
+            ).fetchall()]
+            if plan_ids:
+                placeholders = ','.join(['?'] * len(plan_ids))
+                where = f"WHERE plan_id IN ({placeholders})"
+                params = plan_ids
+        sql = f"SELECT status, COUNT(*) FROM [test_tasks] {where} GROUP BY status"
+        return dict(self._conn.execute(sql, params).fetchall())
+
+    def count_by_technician(self, technician_id: int) -> int:
+        """统计指定技术员的任务数量。"""
+        return self.count(technician_id=technician_id)
+
     def update_progress(self, id: int, progress: float) -> None:
         """更新任务进度。"""
         self.update(id, progress=progress)
@@ -77,3 +96,37 @@ class TestTaskRepository(BaseRepository):
         except Exception:
             self.rollback()
             raise
+
+    def delete_by_plan(self, plan_id: int) -> int:
+        """删除计划关联的所有测试任务（含 test_results / issues 子表），返回删除行数。"""
+        # 先删 test_results
+        self._conn.execute(
+            "DELETE FROM [test_results] WHERE task_id IN "
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?)", (plan_id,)
+        )
+        # 删 issues 子表 (fa_records / issue_attachments / capa_records)
+        self._conn.execute(
+            "DELETE FROM [fa_records] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE task_id IN "
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
+        )
+        self._conn.execute(
+            "DELETE FROM [issue_attachments] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE task_id IN "
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
+        )
+        self._conn.execute(
+            "DELETE FROM [capa_records] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE task_id IN "
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
+        )
+        # 删 issues
+        self._conn.execute(
+            "DELETE FROM [issues] WHERE task_id IN "
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?)", (plan_id,)
+        )
+        # 删 tasks
+        cursor = self._conn.execute(
+            "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,)
+        )
+        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

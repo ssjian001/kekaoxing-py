@@ -176,10 +176,17 @@ class RefreshHandlers:
         if ctrl.knowledge_service:
             self._win._issue_view._knowledge_list = ctrl.knowledge_service.list_all()
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
-            all_tasks = ctrl.test_tasks.list_all()
+            # ── 任务状态：SQL 聚合 ──
+            task_status_data = ctrl.test_tasks.count_by_status(
+                project_id=filter_project_id
+            )
+            total = sum(task_status_data.values())
+            completed = task_status_data.get("completed", 0)
+            in_progress = task_status_data.get("in_progress", 0)
+            pending_count = task_status_data.get("pending", 0)
 
-            # 按项目筛选任务：通过关联的计划筛选
-            plan_ids: set | None = None
+            # 仍需任务列表供 Issue 弹窗 & 通过率计算
+            all_tasks = ctrl.test_tasks.list_all()
             if filter_project_id and ctrl.test_plan_service:
                 filtered_plans = ctrl.test_plan_service.get_plans_by_project(
                     filter_project_id
@@ -191,15 +198,6 @@ class RefreshHandlers:
 
             # 注入给 Issue 弹窗
             self._win._issue_view._task_list = filtered_tasks
-
-            total = len(filtered_tasks)
-            completed = sum(1 for t in filtered_tasks if t.status == "completed")
-            in_progress = sum(1 for t in filtered_tasks if t.status == "in_progress")
-            pending_count = sum(1 for t in filtered_tasks if t.status == "pending")
-
-            # 任务状态分布
-            task_counter = Counter(t.status for t in filtered_tasks)
-            task_status_data = dict(task_counter)
 
             # 按项目筛选 issues
             if filter_project_id:
@@ -230,19 +228,11 @@ class RefreshHandlers:
                 closed_count = sum(1 for i in issues_list if i.status == "closed")
                 issue_close_rate = closed_count / len(issues_list) * 100
 
-            # 3. 校准预警（30天内到期）
+            # 3. 校准预警（30天内到期）— SQL 聚合
             cal_warning = 0
             if ctrl.equipment:
-                today = date.today()
-                threshold = today + timedelta(days=30)
-                for eq in ctrl.equipment.list_all():
-                    if eq.next_calibration_date:
-                        try:
-                            next_cal = date.fromisoformat(eq.next_calibration_date)
-                            if next_cal <= threshold:
-                                cal_warning += 1
-                        except ValueError:
-                            pass
+                threshold = (date.today() + timedelta(days=30)).isoformat()
+                cal_warning = ctrl.equipment.count_calibration_due(threshold)
 
             self._win._dashboard.refresh(
                 task_total=total,

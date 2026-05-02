@@ -52,6 +52,10 @@ class Equipment:
     accuracy: str = ""       # 精度/不确定度
     created_at: str = ""
 
+    def __post_init__(self):
+        if self.calibration_interval_months < 1:
+            raise ValueError(f"校准间隔必须≥1个月: {self.calibration_interval_months}")
+
 
 @dataclass
 class Settings:

@@ -16,6 +16,22 @@ class IssueRepository(BaseRepository):
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "issues", Issue)
 
+    def count_by_assignee(self, assignee_id: int) -> int:
+        """统计指定指派人（技术员）的 Issue 数量。"""
+        return self.count(assignee_id=assignee_id)
+
+    def count_by_sample(self, sample_id: int) -> int:
+        """统计指定样品的 Issue 数量。"""
+        return self.count(sample_id=sample_id)
+
+    def count_by_analyst(self, analyst_id: int) -> int:
+        """统计 fa_records 中指定分析人的记录数量。"""
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM [fa_records] WHERE analyst_id = ?",
+            (analyst_id,),
+        ).fetchone()
+        return row[0] if row else 0
+
     def get_by_project(self, project_id: int) -> list[Issue]:
         return self.list_all(project_id=project_id)
 
@@ -147,3 +163,23 @@ class IssueRepository(BaseRepository):
         self._conn.execute(
             "DELETE FROM [capa_records] WHERE issue_id = ?", (issue_id,)
         )
+
+    def delete_by_project(self, project_id: int) -> int:
+        """删除项目关联的所有 issue（含 FA/CAPA/附件），返回删除行数。"""
+        # 先删子表
+        self._conn.execute(
+            "DELETE FROM [fa_records] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
+        )
+        self._conn.execute(
+            "DELETE FROM [issue_attachments] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
+        )
+        self._conn.execute(
+            "DELETE FROM [capa_records] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
+        )
+        cursor = self._conn.execute(
+            "DELETE FROM [issues] WHERE project_id = ?", (project_id,)
+        )
+        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

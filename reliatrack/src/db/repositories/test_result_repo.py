@@ -61,6 +61,10 @@ class TestResultRepository(BaseRepository):
         """统计任务的测试结果数量。"""
         return self.count(task_id=task_id)
 
+    def count_by_sample(self, sample_id: int) -> int:
+        """统计指定样品的测试结果数量。"""
+        return self.count(sample_id=sample_id)
+
     def get_all_by_tasks(self, task_ids: list[int]) -> list[TestResult]:
         """批量获取多个任务的全部测试结果。"""
         if not task_ids:

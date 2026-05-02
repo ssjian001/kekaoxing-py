@@ -50,6 +50,10 @@ class Sample:
     created_at: str = ""
     updated_at: str = ""
 
+    def __post_init__(self):
+        if self.test_hours < 0:
+            raise ValueError(f"测试小时数不能为负数: {self.test_hours}")
+
 
 @dataclass
 class SampleTransaction:

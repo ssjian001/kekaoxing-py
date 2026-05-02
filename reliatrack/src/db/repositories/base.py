@@ -62,6 +62,10 @@ class BaseRepository:
         self._columns_cache = [str(r[1]) for r in rows]
         return self._columns_cache
 
+    def invalidate_columns_cache(self) -> None:
+        """清除列名缓存（Schema 迁移后调用）。"""
+        self._columns_cache = None
+
     def _rows_to_models(self, rows: list[tuple]) -> list[Any]:
         """将查询结果转为 dataclass 列表。"""
         cols = self._columns()
