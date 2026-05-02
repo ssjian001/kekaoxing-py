@@ -32,15 +32,44 @@ class ScheduleConfig:
     """排程配置。"""
     start_date: str = ""           # 项目起始日期 "YYYY-MM-DD"
     skip_weekends: bool = True     # 跳过周末
+    skip_holidays: bool = True     # 跳过法定节假日
     lock_existing: bool = False    # 锁定已有排期的任务
     deadline: str = ""             # 截止日期 "YYYY-MM-DD"（可选）
     # 设备并行数：equipment_id → 并行任务上限（默认 1）
     equipment_capacity: dict[int, int] = field(default_factory=dict)
+    # 法定节假日集合 {"2025-01-01", "2025-01-28", ...}
+    holidays: set[str] = field(default_factory=set)
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  Helpers – weekend / calendar arithmetic
+#  Helpers – weekend / calendar / holiday arithmetic
 # ═══════════════════════════════════════════════════════════════════
+
+# 2025-2026 中国法定节假日（可扩展）
+_CHINA_HOLIDAYS_2025: set[str] = {
+    "2025-01-01",  # 元旦
+    "2025-01-28", "2025-01-29", "2025-01-30", "2025-01-31",  # 春节
+    "2025-02-01", "2025-02-02", "2025-02-03", "2025-02-04",
+    "2025-04-04", "2025-04-05", "2025-04-06",  # 清明
+    "2025-05-01", "2025-05-02", "2025-05-03", "2025-05-04", "2025-05-05",  # 劳动节
+    "2025-05-31", "2025-06-01", "2025-06-02",  # 端午
+    "2025-10-01", "2025-10-02", "2025-10-03", "2025-10-04",  # 国庆+中秋
+    "2025-10-05", "2025-10-06", "2025-10-07", "2025-10-08",
+}
+
+_CHINA_HOLIDAYS_2026: set[str] = {
+    "2026-01-01", "2026-01-02", "2026-01-03",  # 元旦
+    "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20",  # 春节
+    "2026-02-21", "2026-02-22", "2026-02-23",
+    "2026-04-04", "2026-04-05", "2026-04-06",  # 清明
+    "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05",  # 劳动节
+    "2026-05-30", "2026-05-31", "2026-06-01",  # 端午
+    "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",  # 国庆
+    "2026-10-05", "2026-10-06", "2026-10-07",
+}
+
+DEFAULT_HOLIDAYS = _CHINA_HOLIDAYS_2025 | _CHINA_HOLIDAYS_2026
+
 
 def _is_weekend(day_number: int, start_date_str: str) -> bool:
     """Return True if *day_number* (0-indexed calendar day from *start_date_str*)
@@ -52,18 +81,40 @@ def _is_weekend(day_number: int, start_date_str: str) -> bool:
     return target.weekday() >= 5
 
 
+def _is_holiday(day_number: int, start_date_str: str, holidays: set[str]) -> bool:
+    """Return True if the date is a configured holiday."""
+    if not start_date_str or not holidays:
+        return False
+    start = datetime.strptime(start_date_str, "%Y-%m-%d")
+    target = start + timedelta(days=day_number)
+    return target.strftime("%Y-%m-%d") in holidays
+
+
+def _is_non_working(day_number: int, start_date_str: str,
+                     skip_weekends: bool, skip_holidays: bool,
+                     holidays: set[str]) -> bool:
+    """Return True if the day is a non-working day (weekend or holiday)."""
+    if skip_weekends and _is_weekend(day_number, start_date_str):
+        return True
+    if skip_holidays and _is_holiday(day_number, start_date_str, holidays):
+        return True
+    return False
+
+
 def _work_day_end(
     start_day: int, duration: int,
     skip_weekends: bool, start_date_str: str,
+    skip_holidays: bool = False, holidays: set[str] | None = None,
 ) -> int:
     """Return the calendar day index immediately *after* the task's last
     working day.  This is the earliest day a dependent task may start."""
     if start_day < 0:
         return 0
+    _holidays = holidays or set()
     day = start_day
     remaining = duration
     while remaining > 0:
-        if skip_weekends and start_date_str and _is_weekend(day, start_date_str):
+        if _is_non_working(day, start_date_str, skip_weekends, skip_holidays, _holidays):
             day += 1
             continue
         remaining -= 1
@@ -74,13 +125,15 @@ def _work_day_end(
 def _iterate_work_days(
     start_day: int, duration: int,
     skip_weekends: bool, start_date_str: str,
+    skip_holidays: bool = False, holidays: set[str] | None = None,
 ) -> list[int]:
     """Return calendar-day indices for each working day of the task."""
+    _holidays = holidays or set()
     days: list[int] = []
     day = start_day
     placed = 0
     while placed < duration:
-        if skip_weekends and start_date_str and _is_weekend(day, start_date_str):
+        if _is_non_working(day, start_date_str, skip_weekends, skip_holidays, _holidays):
             day += 1
             continue
         days.append(day)
@@ -187,6 +240,7 @@ def can_place_at(
     any equipment capacity on every working day."""
     work_days = _iterate_work_days(
         start_day, task.duration, config.skip_weekends, config.start_date,
+        config.skip_holidays, config.holidays,
     )
     cap = _get_equipment_capacity(task.equipment_id, config)
 
@@ -223,6 +277,7 @@ def place_task(
     """Allocate equipment resource in *timeline* for *task*."""
     work_days = _iterate_work_days(
         start_day, task.duration, config.skip_weekends, config.start_date,
+        config.skip_holidays, config.holidays,
     )
     for day in work_days:
         if day not in timeline:
@@ -240,6 +295,7 @@ def remove_task_from_timeline(
     """Release equipment resource previously allocated."""
     work_days = _iterate_work_days(
         start_day, task.duration, config.skip_weekends, config.start_date,
+        config.skip_holidays, config.holidays,
     )
     for day in work_days:
         if day not in timeline:
@@ -294,6 +350,7 @@ def compress_schedule(
                 dep_end = _work_day_end(
                     dep_task.start_day, dep_task.duration,
                     config.skip_weekends, config.start_date,
+                    config.skip_holidays, config.holidays,
                 )
                 earliest = max(earliest, dep_end)
 
@@ -313,6 +370,8 @@ def _compute_earliest_from_deps(
     id_to_task: dict[int, TestTask],
     skip_weekends: bool,
     start_date_str: str,
+    skip_holidays: bool = False,
+    holidays: set[str] | None = None,
 ) -> int:
     """Determine the earliest calendar day a task may start."""
     earliest = 0
@@ -322,6 +381,7 @@ def _compute_earliest_from_deps(
             dep_end = _work_day_end(
                 dep_task.start_day, dep_task.duration,
                 skip_weekends, start_date_str,
+                skip_holidays, holidays,
             )
             earliest = max(earliest, dep_end)
     return earliest
@@ -407,6 +467,7 @@ def run_auto_schedule(
         earliest = _compute_earliest_from_deps(
             task, dep_map, id_to_task,
             config.skip_weekends, config.start_date,
+            config.skip_holidays, config.holidays,
         )
         slot = find_earliest_slot(task, earliest, timeline, config)
         task.start_day = slot

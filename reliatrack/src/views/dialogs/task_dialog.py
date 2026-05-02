@@ -40,7 +40,7 @@ class TaskEditDialog(_BaseDialog):
         当前项目下的样品列表（用于样品多选弹窗）。
     """
 
-    _CATEGORIES = ["环境试验", "机械试验", "表面处理", "包装", "其他"]
+    _CATEGORIES = ["环境试验", "机械试验", "表面处理", "工艺试验", "包装", "寿命试验", "EMC", "其他"]
 
     def __init__(
         self,

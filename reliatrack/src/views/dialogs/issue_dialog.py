@@ -37,6 +37,7 @@ class IssueEditDialog(_BaseDialog):
         default_task_id: int | None = None,
         sample_list: list | None = None,
         default_sample_id: int | None = None,
+        knowledge_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         is_edit = issue is not None
@@ -49,6 +50,7 @@ class IssueEditDialog(_BaseDialog):
         self._project_list = project_list or []
         self._task_list = task_list or []
         self._sample_list = sample_list or []
+        self._knowledge_list = knowledge_list or []
 
         # ── 基本信息 ──
         self._title_edit = self._add_text_field(
@@ -59,6 +61,7 @@ class IssueEditDialog(_BaseDialog):
             "失效模式", default=issue.failure_mode if issue else "",
             placeholder="如：短路 / 开路 / 变形 …",
         )
+        self._failure_mode_edit.textChanged.connect(self._on_failure_mode_changed)
         self._failure_stage_edit = self._add_text_field(
             "失效阶段", default=issue.failure_stage if issue else "",
             placeholder="如：48h 高温 / 跌落第3次 …",
@@ -67,6 +70,9 @@ class IssueEditDialog(_BaseDialog):
             "描述", default=issue.description if issue else "",
         )
         self._add_separator()
+
+        # ── 知识库推荐（失效模式匹配时自动显示历史经验） ──
+        self._kb_hint_label = self._add_label_field("知识库推荐", "输入失效模式后自动匹配历史经验")
 
         # ── 属性 ──
         self._severity_combo = self._add_combo_field(
@@ -159,6 +165,18 @@ class IssueEditDialog(_BaseDialog):
 
         self._add_separator()
 
+        # ── 失效代码 & 发生次数 ──
+        self._failure_code_edit = self._add_text_field(
+            "失效代码",
+            default=issue.failure_code if issue else "",
+            placeholder="如 GJB/Z 1391 编码",
+        )
+        self._occurrence_spin = self._add_spin_field(
+            "发生次数",
+            default=issue.occurrence_count if issue else 1,
+            min_val=1, max_val=9999,
+        )
+
         # ── 根因 & 解决方案 ──
         self._root_cause_edit = self._add_text_area(
             "根因分析", default=issue.root_cause if issue else "",
@@ -206,9 +224,50 @@ class IssueEditDialog(_BaseDialog):
             "project_id": project_id,
             "task_id": task_id,
             "sample_id": sample_id,
+            "failure_code": self._failure_code_edit.text().strip(),
+            "occurrence_count": self._occurrence_spin.value(),
             "root_cause": self._root_cause_edit.toPlainText().strip(),
             "resolution": self._resolution_edit.toPlainText().strip(),
         }
+
+    # ── 知识库推荐 ───────────────────────────────────────────
+
+    def _on_failure_mode_changed(self, text: str) -> None:
+        """失效模式输入变化时搜索知识库推荐。"""
+        keyword = text.strip().lower()
+        if not keyword or not self._knowledge_list:
+            self._kb_hint_label.setText("输入失效模式后自动匹配历史经验")
+            return
+
+        # 模糊匹配：failure_mode / keywords / category 包含关键词
+        matches = []
+        for entry in self._knowledge_list:
+            haystack = " ".join([
+                entry.failure_mode or "",
+                entry.keywords or "",
+                entry.category or "",
+                entry.summary or "",
+            ]).lower()
+            if keyword in haystack:
+                matches.append(entry)
+            if len(matches) >= 3:
+                break
+
+        if not matches:
+            self._kb_hint_label.setText("未找到匹配的知识库条目")
+            return
+
+        parts = []
+        for i, m in enumerate(matches, 1):
+            hint = f"[{i}] {m.failure_mode or m.category}"
+            if m.improvement:
+                hint += f" → {m.improvement[:40]}"
+            elif m.resolution:
+                hint += f" → {m.resolution[:40]}"
+            if m.reference_standard:
+                hint += f" ({m.reference_standard})"
+            parts.append(hint)
+        self._kb_hint_label.setText("\n".join(parts))
 
     # ── 校验 ───────────────────────────────────────────────────
 

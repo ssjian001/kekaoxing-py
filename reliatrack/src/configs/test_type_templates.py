@@ -276,6 +276,158 @@ TEMPLATES: list[TestTypeTemplate] = [
         notes="温湿度+振动三综合试验，模拟运输/使用环境",
         keywords=["综合", "三综合", "combined", "温振"],
     ),
+
+    # ═══════════════════════════════════════════════════════════════
+    #  电磁兼容 (EMC)
+    # ═══════════════════════════════════════════════════════════════
+
+    TestTypeTemplate(
+        name="静电放电 (ESD)",
+        category="环境试验",
+        test_standard="IEC 61000-4-2 / GB/T 17626.2",
+        duration=1,
+        temperature="",
+        humidity="",
+        suggested_samples=5,
+        accept_criteria="接触放电±4kV / 空气放电±8kV 无异常",
+        notes="HBM 模型，常见等级 1~4 级；需记录放电点位置",
+        keywords=["ESD", "静电", "静电放电", "electrostatic discharge"],
+    ),
+    TestTypeTemplate(
+        name="辐射抗扰度 (RS)",
+        category="环境试验",
+        test_standard="IEC 61000-4-3 / GB/T 17626.3",
+        duration=1,
+        temperature="",
+        humidity="",
+        suggested_samples=3,
+        accept_criteria="80MHz~1GHz, 3V/m~10V/m 无异常",
+        notes="射频电磁场辐射抗扰度",
+        keywords=["RS", "辐射抗扰", "radiated immunity"],
+    ),
+    TestTypeTemplate(
+        name="浪涌 (Surge)",
+        category="环境试验",
+        test_standard="IEC 61000-4-5 / GB/T 17626.5",
+        duration=1,
+        temperature="",
+        humidity="",
+        suggested_samples=3,
+        accept_criteria="±1kV~±4kV 无损坏",
+        notes="雷击浪涌抗扰度，线-线/线-地分别测试",
+        keywords=["浪涌", "surge", "雷击", "surge immunity"],
+    ),
+
+    # ═══════════════════════════════════════════════════════════════
+    #  机械寿命/耐久
+    # ═══════════════════════════════════════════════════════════════
+
+    TestTypeTemplate(
+        name="插拔寿命",
+        category="机械试验",
+        test_standard="EIA-364-09 / USB-IF USB-C",
+        duration=3,
+        temperature="",
+        humidity="",
+        suggested_samples=5,
+        accept_criteria="≥5000次（或按产品规格），接触电阻合格",
+        notes="连接器/端子插拔耐久性，记录插拔力变化",
+        keywords=["插拔", "mating", "插拔寿命", "durability", "连接器"],
+    ),
+    TestTypeTemplate(
+        name="按键寿命",
+        category="机械试验",
+        test_standard="企业标准 / 客户规格",
+        duration=5,
+        temperature="",
+        humidity="",
+        suggested_samples=5,
+        accept_criteria="≥100万次（或按产品规格），手感/功能正常",
+        notes="开关/按键机械耐久性，记录力度衰减曲线",
+        keywords=["按键", "按键寿命", "key life", "耐久", "开关"],
+    ),
+    TestTypeTemplate(
+        name="弯折/挠曲",
+        category="机械试验",
+        test_standard="IPC-TM-650 2.4.3 / JIS C 5016",
+        duration=3,
+        temperature="",
+        humidity="",
+        suggested_samples=5,
+        accept_criteria="≥5000次无断路/短路",
+        notes="FPC/线材弯折耐久，记录弯曲半径/角度/频率",
+        keywords=["弯折", "挠曲", "FPC", "flex", "bending"],
+    ),
+
+    # ═══════════════════════════════════════════════════════════════
+    #  半导体专项
+    # ═══════════════════════════════════════════════════════════════
+
+    TestTypeTemplate(
+        name="恒温恒湿偏压 (THB+Bias)",
+        category="环境试验",
+        test_standard="JESD22-A101 / IEC 60068-2-78",
+        duration=14,
+        temperature="85°C",
+        humidity="85%RH",
+        suggested_samples=25,
+        accept_criteria="加电状态下，偏压电流/功能无异常",
+        notes="THB 加偏压，评估 IC 封装耐湿能力",
+        keywords=["THB", "偏压", "Bias", "HAST", "湿热偏压"],
+    ),
+    TestTypeTemplate(
+        name="无铅回流焊 (MSL)",
+        category="工艺试验",
+        test_standard="IPC/JEDEC J-STD-020 / J-STD-033",
+        duration=1,
+        temperature="峰值 260°C",
+        humidity="",
+        suggested_samples=10,
+        accept_criteria="MSL 等级对应回流次数后无剥离/分层",
+        notes="湿度敏感等级评估，需先按 MSL 等级预处理",
+        keywords=["MSL", "回流焊", "reflow", "湿度敏感", "分层"],
+    ),
+    TestTypeTemplate(
+        name="PCB 离子清洁度",
+        category="工艺试验",
+        test_standard="IPC-TM-650 2.3.25 / J-STD-001",
+        duration=1,
+        temperature="",
+        humidity="",
+        suggested_samples=5,
+        accept_criteria="NaCl当量 ≤1.56μg/cm² (Class 3)",
+        notes="离子污染度测试，清洁度等级按 IPC 标准",
+        keywords=["清洁度", "离子", "ion", "cleanliness", "污染"],
+    ),
+
+    # ═══════════════════════════════════════════════════════════════
+    #  运输/包装
+    # ═══════════════════════════════════════════════════════════════
+
+    TestTypeTemplate(
+        name="随机振动 (运输模拟)",
+        category="包装",
+        test_standard="ASTM D4728 / ISTA 2A",
+        duration=1,
+        temperature="",
+        humidity="",
+        suggested_samples=3,
+        accept_criteria="包装无破损，产品功能正常",
+        notes="模拟公路/铁路运输振动谱",
+        keywords=["运输", "运输模拟", "ISTA", "ASTM", "包装振动"],
+    ),
+    TestTypeTemplate(
+        name="包装抗压 (堆码)",
+        category="包装",
+        test_standard="ASTM D642 / GB/T 4857.4",
+        duration=1,
+        temperature="",
+        humidity="",
+        suggested_samples=3,
+        accept_criteria="抗压强度≥计算值，变形≤允许值",
+        notes="仓库堆码条件下的包装抗压能力",
+        keywords=["抗压", "堆码", "compression", "包装强度"],
+    ),
 ]
 
 

@@ -56,6 +56,15 @@ class PlanEditDialog(_BaseDialog):
             placeholder="如：MIL-STD-810H",
         )
 
+        # ── APQP 阶段 ──
+        apqp_options = ["(无)", "P1 概念策划", "P2 产品设计", "P3 过程设计", "P4 产品确认", "P5 反馈改进"]
+        apqp_default = plan.apqp_phase if plan and plan.apqp_phase else "(无)"
+        self._apqp_combo = self._add_combo_field(
+            "APQP 阶段",
+            items=apqp_options,
+            default=apqp_default,
+        )
+
         # ── 关联项目 ──
         project_names = ["（无）"]
         project_names += [f"{p.id} — {p.name}" for p in self._project_list]
@@ -135,6 +144,7 @@ class PlanEditDialog(_BaseDialog):
         data: dict = {
             "name": self._name_edit.text().strip(),
             "test_standard": self._standard_edit.text().strip(),
+            "apqp_phase": self._apqp_combo.currentText() if self._apqp_combo.currentText() != "(无)" else "",
             "start_date": self._start_date_edit.date().toString("yyyy-MM-dd"),
             "end_date": self._end_date_edit.date().toString("yyyy-MM-dd"),
             "status": status_value,

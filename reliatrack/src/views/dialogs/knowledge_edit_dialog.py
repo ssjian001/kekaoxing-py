@@ -50,10 +50,36 @@ class KnowledgeEditDialog(_BaseDialog):
             default=entry.failure_mode if entry else "",
             placeholder="必填，如：焊点开裂、电容短路…",
         )
-        self._reference_edit = self._add_text_field(
+        self._reference_edit = self._add_combo_field(
             "参考标准",
-            default=entry.reference_standard if entry else "",
-            placeholder="如：IPC-A-610, JEDEC…",
+            items=[
+                "MIL-STD-810H",
+                "IEC 60068-2-1 (低温)",
+                "IEC 60068-2-2 (高温)",
+                "IEC 60068-2-14 (温度循环)",
+                "IEC 60068-2-6 (正弦振动)",
+                "IEC 60068-2-27 (冲击)",
+                "IEC 60068-2-78 (湿热)",
+                "IEC 60068-2-11 (盐雾)",
+                "IEC 60068-2-13 (低气压)",
+                "IEC 60068-2-64 (随机振动)",
+                "IPC-A-610",
+                "JEDEC JESD22-A103 (HTSL)",
+                "JEDEC JESD22-A108 (HTOL)",
+                "JEDEC JESD22-A104 (温度循环)",
+                "JEDEC JESD22-A114 (ESD HBM)",
+                "AEC-Q100",
+                "AEC-Q101",
+                "AEC-Q200",
+                "GB/T 2423",
+                "ISO 16750",
+                "SAE J1455",
+                "GMW3172",
+                "其他",
+            ],
+            default=entry.reference_standard if entry else "其他",
+            editable=True,
+            placeholder="选择或输入标准号",
         )
 
         self._add_separator()
@@ -98,7 +124,7 @@ class KnowledgeEditDialog(_BaseDialog):
             "failure_mode": self._failure_mode_edit.text().strip(),
             "cause_analysis": self._cause_area.toPlainText().strip(),
             "improvement": self._improvement_area.toPlainText().strip(),
-            "reference_standard": self._reference_edit.text().strip(),
+            "reference_standard": self._reference_edit.currentText().strip(),
             "keywords": self._keywords_edit.text().strip(),
             "summary": self._summary_area.toPlainText().strip(),
             "root_cause": self._root_cause_area.toPlainText().strip(),

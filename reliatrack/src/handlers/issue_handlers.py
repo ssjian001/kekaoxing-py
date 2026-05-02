@@ -53,15 +53,68 @@ class IssueHandlers:
             return
         try:
             if "id" in data:
+                # 记录关闭前的状态，用于判断是否刚关闭
+                old_issue = ctrl.issue_service.get(data["id"])
+                old_status = old_issue.status if old_issue else None
+
                 kwargs = {k: v for k, v in data.items() if k != "id"}
                 ctrl.issue_service.update(data["id"], **kwargs)
                 self._win.toast(f"Issue #{data['id']} 已更新", "success")
+
+                # 状态变更为 closed 时弹出归档确认
+                new_status = data.get("status")
+                if new_status == "closed" and old_status != "closed":
+                    self._prompt_archive_to_knowledge(old_issue or data)
             else:
                 ctrl.issue_service.create(**data)
                 self._win.toast("Issue 已创建", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"Issue 保存失败: {e}")
+
+    def _prompt_archive_to_knowledge(self, issue_or_data) -> None:
+        """Issue 关闭后提示归档到知识库。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.knowledge_service:
+            return
+
+        # 从 Issue 对象或 dict 中提取字段
+        if isinstance(issue_or_data, dict):
+            title = issue_or_data.get("title", "")
+            failure_mode = issue_or_data.get("failure_mode", "")
+            root_cause = issue_or_data.get("root_cause", "")
+            resolution = issue_or_data.get("resolution", "")
+            description = issue_or_data.get("description", "")
+        else:
+            title = getattr(issue_or_data, "title", "")
+            failure_mode = getattr(issue_or_data, "failure_mode", "")
+            root_cause = getattr(issue_or_data, "root_cause", "")
+            resolution = getattr(issue_or_data, "resolution", "")
+            description = getattr(issue_or_data, "description", "")
+
+        reply = QMessageBox.question(
+            self._win,
+            "归档到知识库",
+            f"Issue \"{title}\" 已关闭。\n是否将失效分析经验归档到知识库？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                entry_data = {
+                    "category": "其他",
+                    "failure_mode": failure_mode,
+                    "cause_analysis": root_cause,
+                    "improvement": resolution,
+                    "keywords": failure_mode,
+                    "summary": f"{title}: {description[:100]}",
+                    "root_cause": root_cause,
+                    "resolution": resolution,
+                }
+                ctrl.knowledge_service.create(**entry_data)
+                self._win.toast("已归档到知识库", "success")
+                self._win._ctrl.notify_data_changed("knowledge")
+            except Exception as e:
+                QMessageBox.warning(self._win, "归档失败", f"知识库归档失败: {e}")
 
     def _handle_issue_deleted(self, issue_id: int) -> None:
         """Issue 删除后回调。"""

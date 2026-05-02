@@ -57,6 +57,8 @@ class Issue:
     assignee_id: Optional[int] = None
     root_cause: str = ""
     resolution: str = ""
+    failure_code: str = ""      # 失效代码 (如 GJB/Z 1391 编码)
+    occurrence_count: int = 1   # 发生次数
     created_at: str = ""
     updated_at: str = ""
 
@@ -73,6 +75,7 @@ class FARecord:
     findings: str = ""
     possible_cause: str = ""  # 可能原因
     cause_category: str = ""  # 鱼骨图分类: 人/机/料/法/环/测
+    failure_mechanism: str = ""  # 失效机理分类
     confirmed: int = 0        # 是否确认: 0=待定, 1=确认, 2=排除
     analyst_id: Optional[int] = None
     attachments: str = "[]"   # JSON

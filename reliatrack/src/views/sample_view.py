@@ -440,6 +440,8 @@ class _SampleLedgerTab(QWidget):
         ("规格", "spec"),
         ("项目ID", "project_id"),
         ("状态", "status"),
+        ("供应商", "supplier"),
+        ("累计测试(h)", "test_hours"),
         ("创建时间", "created_at"),
     ]
 

@@ -147,6 +147,20 @@ class ExportHandlers:
                 path = svc.export_dvpr_pdf(plan, tasks, results, issues, samples)
                 self._win.toast(f"DVP&R 已导出: {path}", "success")
 
+            elif "8D" in content:
+                issue_id = self._win._issue_view.get_selected_issue_id()
+                if issue_id is None:
+                    self._win.toast("请先选中一个 Issue", "info")
+                    return
+                issue = ctrl.issue_service.get(issue_id)
+                if not issue:
+                    self._win.toast("未找到该 Issue", "info")
+                    return
+                fa_records = ctrl.issue_service.get_fa_records(issue_id)
+                capa_records = ctrl.issue_service.get_capa_records(issue_id)
+                path = svc.export_8d_pdf(issue, fa_records, capa_records)
+                self._win.toast(f"8D 报告已导出: {path}", "success")
+
         except Exception as e:
             import traceback
 

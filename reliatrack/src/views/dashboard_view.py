@@ -269,6 +269,10 @@ class DashboardView(QWidget):
         self._card_issue_close_rate = _KPICard("Issue 闭环率", "—%", BLUE, tab_index=4)
         self._card_cal_warning = _KPICard("校准预警", "0", YELLOW, tab_index=6)
 
+        # 可靠性 KPI
+        self._card_failure_rate = _KPICard("失效率", "—%", RED, tab_index=4)
+        self._card_capa_rate = _KPICard("CAPA 完成率", "—%", MAUVE, tab_index=4)
+
         grid.addWidget(self._card_tasks, 0, 0)
         grid.addWidget(self._card_completed, 0, 1)
         grid.addWidget(self._card_in_progress, 0, 2)
@@ -279,6 +283,8 @@ class DashboardView(QWidget):
         grid.addWidget(self._card_pass_rate, 2, 1)
         grid.addWidget(self._card_issue_close_rate, 2, 2)
         grid.addWidget(self._card_cal_warning, 3, 0)
+        grid.addWidget(self._card_failure_rate, 3, 1)
+        grid.addWidget(self._card_capa_rate, 3, 2)
 
         layout.addLayout(grid)
 
@@ -321,6 +327,8 @@ class DashboardView(QWidget):
         pass_rate: float | None = None,
         issue_close_rate: float | None = None,
         calibration_warning_count: int = 0,
+        failure_rate: float | None = None,
+        capa_completion_rate: float | None = None,
     ) -> None:
         """刷新 KPI 数据 + 图表数据。
 
@@ -335,6 +343,8 @@ class DashboardView(QWidget):
             pass_rate: 测试通过率 (0-100)，None 表示无数据。
             issue_close_rate: Issue 闭环率 (0-100)，None 表示无数据。
             calibration_warning_count: 校准预警设备数。
+            failure_rate: 失效率 (0-100)，None 表示无数据。
+            capa_completion_rate: CAPA 完成率 (0-100)，None 表示无数据。
         """
         # 项目筛选指示器
         if project_name:
@@ -365,6 +375,8 @@ class DashboardView(QWidget):
             (self._card_pass_rate, f"{pass_rate:.0f}%" if pass_rate is not None else "—%"),
             (self._card_issue_close_rate, f"{issue_close_rate:.0f}%" if issue_close_rate is not None else "—%"),
             (self._card_cal_warning, calibration_warning_count),
+            (self._card_failure_rate, f"{failure_rate:.0f}%" if failure_rate is not None else "—%"),
+            (self._card_capa_rate, f"{capa_completion_rate:.0f}%" if capa_completion_rate is not None else "—%"),
         ]:
             labels = card.findChildren(QLabel)
             if len(labels) >= 2:

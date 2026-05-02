@@ -50,6 +50,7 @@ class TestPlan:
     start_date: str = ""
     end_date: str = ""
     status: str = TestPlanStatus.DRAFT.value
+    apqp_phase: str = ""       # APQP 阶段: P1/P2/P3/P4/P5
     created_at: str = ""
     updated_at: str = ""
 
@@ -96,4 +97,5 @@ class TestResult:
     environment: str = "{}"
     notes: str = ""
     attachments: str = "[]"   # JSON: [file_path, ...]
+    measured_value: str = ""
     created_at: str = ""

@@ -276,6 +276,7 @@ class IssueView(QWidget):
     issue_selected = Signal(object)     # Issue 选中时发射 issue_id (int | None)
     fa_record_added = Signal(dict)      # FA 记录添加时发射 data: dict
     capa_record_added = Signal(dict)    # CAPA 记录添加时发射 data: dict
+    export_8d_requested = Signal(int)   # 导出 8D 报告时发射 issue_id
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -283,6 +284,7 @@ class IssueView(QWidget):
         self._default_project_id: int | None = None  # 默认项目，由 main.py 注入
         self._task_list: list = []  # 任务列表，由 refresh_handlers 注入
         self._sample_list: list = []  # 样品列表，由 refresh_handlers 注入
+        self._knowledge_list: list = []  # 知识库条目，由 refresh_handlers 注入
         self._default_task_id: int | None = None
         self._default_sample_id: int | None = None
         self._setup_ui()
@@ -313,6 +315,12 @@ class IssueView(QWidget):
         self._btn_add_capa.setProperty("class", "action")
         self._btn_add_capa.setToolTip("添加纠正预防措施")
         toolbar.addWidget(self._btn_add_capa)
+
+        # 导出 8D 报告按钮
+        self._btn_export_8d = QPushButton("导出 8D 报告")
+        self._btn_export_8d.setProperty("class", "action")
+        self._btn_export_8d.setToolTip("将选中的 Issue 导出为 8D 报告 (PDF)")
+        toolbar.addWidget(self._btn_export_8d)
 
         # attachment management: 附件按钮
         self._btn_attachments = QPushButton("附件")
@@ -356,6 +364,7 @@ class IssueView(QWidget):
         self._btn_add.clicked.connect(self._open_create_dialog)
         self._btn_add_fa.clicked.connect(self._open_fa_dialog)
         self._btn_add_capa.clicked.connect(self._open_capa_dialog)
+        self._btn_export_8d.clicked.connect(self._on_export_8d)
         # 选中 Issue 时自动加载 FA 记录
         self._issue_table.itemSelectionChanged.connect(self._on_issue_selection_changed)
 
@@ -394,6 +403,11 @@ class IssueView(QWidget):
         return self._btn_add_capa
 
     @property
+    def btn_export_8d(self) -> QPushButton:
+        """8D 报告导出按钮。"""
+        return self._btn_export_8d
+
+    @property
     def btn_attachments(self) -> QPushButton:  # attachment management
         """📎 附件管理按钮。"""
         return self._btn_attachments
@@ -413,6 +427,7 @@ class IssueView(QWidget):
             default_task_id=self._default_task_id,
             sample_list=self._sample_list,
             default_sample_id=self._default_sample_id,
+            knowledge_list=self._knowledge_list,
             parent=self,
         )
         if dlg.exec():
@@ -425,6 +440,7 @@ class IssueView(QWidget):
             project_list=self._project_list,
             task_list=self._task_list,
             sample_list=self._sample_list,
+            knowledge_list=self._knowledge_list,
             parent=self,
         )
         if dlg.exec():
@@ -473,6 +489,14 @@ class IssueView(QWidget):
             data = dlg.get_data()
             data["issue_id"] = issue_id
             self.capa_record_added.emit(data)
+
+    def _on_export_8d(self) -> None:
+        """导出 8D 报告。"""
+        issue_id = self.get_selected_issue_id()
+        if issue_id is None:
+            QMessageBox.information(self, "提示", "请先在左侧列表中选中一个 Issue。")
+            return
+        self.export_8d_requested.emit(issue_id)
 
     # ── 选中变化 ──────────────────────────────────────────────
 

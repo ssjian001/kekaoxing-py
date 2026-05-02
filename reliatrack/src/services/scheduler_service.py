@@ -13,6 +13,7 @@ from src.models.common import Equipment
 from src.services.scheduler import (
     ScheduleConfig,
     run_auto_schedule,
+    DEFAULT_HOLIDAYS,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,7 @@ class SchedulerService:
             lock_existing=lock_existing,
             deadline=deadline,
             equipment_capacity=equipment_capacity or {},
+            holidays=DEFAULT_HOLIDAYS,
         )
 
         # 记录排程前的 start_day 用于对比

@@ -20,6 +20,12 @@ class FARecordDialog(_BaseDialog):
 
     _CAUSE_CATEGORIES = ["（无）", "人", "机", "料", "法", "环", "测"]
 
+    _FAILURE_MECHANISMS = [
+        "（无）", "疲劳", "蠕变", "电迁移", "热应力开裂",
+        "腐蚀", "磨损", "脆断", "屈曲", "绝缘击穿",
+        "离子污染", "银迁移", "锡须", "其他",
+    ]
+
     def __init__(
         self,
         existing_step_nos: list[int] | None = None,
@@ -54,6 +60,10 @@ class FARecordDialog(_BaseDialog):
             "原因分类（鱼骨图）",
             items=self._CAUSE_CATEGORIES,
         )
+        self._failure_mechanism_combo = self._add_combo_field(
+            "失效机理",
+            items=self._FAILURE_MECHANISMS,
+        )
         self._confirmed_combo = self._add_combo_field(
             "确认状态",
             items=["待定", "确认", "排除"],
@@ -65,6 +75,7 @@ class FARecordDialog(_BaseDialog):
         """返回表单数据字典。"""
         confirmed_map = {"待定": 0, "确认": 1, "排除": 2}
         category_text = self._cause_category_combo.currentText()
+        fm_text = self._failure_mechanism_combo.currentText()
         return {
             "step_no": self._step_spin.value(),
             "step_title": self._title_edit.text().strip(),
@@ -73,6 +84,7 @@ class FARecordDialog(_BaseDialog):
             "findings": self._findings_edit.toPlainText().strip(),
             "possible_cause": self._cause_edit.text().strip(),
             "cause_category": category_text if category_text != "（无）" else "",
+            "failure_mechanism": fm_text if fm_text != "（无）" else "",
             "confirmed": confirmed_map.get(self._confirmed_combo.currentText(), 0),
         }
 

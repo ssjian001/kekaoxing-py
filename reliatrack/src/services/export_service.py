@@ -13,7 +13,7 @@ from src.constants import (
     SAMPLE_STATUS_LABELS,
 )
 from src.models.test_plan import TestPlan, TestTask, TestResult
-from src.models.issue import Issue, FARecord
+from src.models.issue import Issue, FARecord, CAPARecord
 from src.models.sample import Sample
 
 
@@ -672,6 +672,16 @@ class ExportService:
         story.append(Paragraph(
             f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}", style_ts))
 
+        # ── 版本号与日期 ──
+        style_version = ParagraphStyle(
+            "Version", fontName=_FN, fontSize=11,
+            textColor=_DARK, alignment=TA_CENTER, spaceAfter=2 * mm,
+        )
+        version_line = (
+            f"版本: V1.0　　　日期: {datetime.now().strftime('%Y-%m-%d')}"
+        )
+        story.append(Paragraph(version_line, style_version))
+
         # ── 概览 ──
         story.append(PageBreak())
         story.append(Paragraph("概览统计", style_section))
@@ -706,7 +716,7 @@ class ExportService:
                 lookup[(r.task_id, r.sample_id)] = r.result
 
         # 表头
-        dvpr_headers = ["#", "测试项", "判定准则"]
+        dvpr_headers = ["#", "测试项", "判定准则", "样品 SN"]
         for sid in sample_ids:
             dvpr_headers.append(sample_map.get(sid, f"#{sid}"))
         dvpr_headers.append("结论")
@@ -720,6 +730,15 @@ class ExportService:
                 Paragraph((task.name or "")[:20], cell_left),
                 Paragraph((task.accept_criteria or "")[:20], cell_left),
             ]
+            # 样品 SN 列 — 列出本任务关联的样品编号
+            task_sample_ids = sorted({
+                r.sample_id for r in results
+                if r.task_id == task.id and r.sample_id
+            })
+            task_sns = ", ".join(
+                sample_map.get(sid, f"#{sid}") for sid in task_sample_ids
+            )
+            row.append(Paragraph((task_sns or "—")[:25], cell_left))
             task_pass = 0
             task_fail = 0
             for sid in sample_ids:
@@ -748,9 +767,9 @@ class ExportService:
         # 列宽
         n_samples = len(sample_ids)
         page_w = landscape(A4)[0] - 24 * mm
-        fixed_cols = 18 + 80 + 65 + 35  # # + name + criteria + conclusion
+        fixed_cols = 18 + 80 + 65 + 60 + 35  # # + name + criteria + SN + conclusion
         sample_col_w = max(35, (page_w - fixed_cols) / max(n_samples, 1))
-        dvpr_widths = [18, 80, 65] + [sample_col_w] * n_samples + [35]
+        dvpr_widths = [18, 80, 65, 60] + [sample_col_w] * n_samples + [35]
 
         dvpr_table = Table(dvpr_data, colWidths=dvpr_widths)
         table_styles = [
@@ -768,9 +787,9 @@ class ExportService:
             for col_idx, sid in enumerate(sample_ids):
                 res = lookup.get((task.id, sid), "")
                 if res == "fail":
-                    table_styles.append(("BACKGROUND", (col_idx + 3, row_idx), (col_idx + 3, row_idx), _FAIL_BG))
+                    table_styles.append(("BACKGROUND", (col_idx + 4, row_idx), (col_idx + 4, row_idx), _FAIL_BG))
                 elif res == "pass":
-                    table_styles.append(("BACKGROUND", (col_idx + 3, row_idx), (col_idx + 3, row_idx), _PASS_BG))
+                    table_styles.append(("BACKGROUND", (col_idx + 4, row_idx), (col_idx + 4, row_idx), _PASS_BG))
 
         dvpr_table.setStyle(TableStyle(table_styles))
         story.append(dvpr_table)
@@ -800,8 +819,329 @@ class ExportService:
             ]))
             story.append(issue_table)
 
+        # ── 签字栏 ──
+        story.append(Spacer(1, 12 * mm))
+        sig_label_style = ParagraphStyle(
+            "SigLabel", fontName=_FN_B, fontSize=9,
+            textColor=_DARK, alignment=TA_CENTER,
+        )
+        sig_line_style = ParagraphStyle(
+            "SigLine", fontName=_FN, fontSize=9,
+            textColor=_LIGHT_GRAY, alignment=TA_CENTER,
+        )
+        sig_roles = ["编制", "审核", "批准"]
+        sig_cells = []
+        for role in sig_roles:
+            sig_cells.append([
+                Paragraph(role, sig_label_style),
+                Spacer(1, 10 * mm),
+                Paragraph("________________________", sig_line_style),
+            ])
+        sig_table = Table(
+            [sig_cells],
+            colWidths=[page_w / 3] * 3,
+        )
+        sig_table.setStyle(TableStyle([
+            ("BOX", (0, 0), (0, 0), 0.5, _GRAY),
+            ("BOX", (1, 0), (1, 0), 0.5, _GRAY),
+            ("BOX", (2, 0), (2, 0), 0.5, _GRAY),
+            ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(sig_table)
+
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
         return os.path.abspath(out)
+
+    # ── 8D 报告导出 ──────────────────────────────────────────────
+
+    def export_8d_pdf(
+        self,
+        issue: Issue,
+        fa_records: list[FARecord] | None = None,
+        capa_records: list[CAPARecord] | None = None,
+        filepath: str | None = None,
+    ) -> str:
+        """导出 8D Problem Solving Report 为 PDF。
+
+        包含：基本信息表、D1-D8 八个章节、底部签字栏。
+        用 Issue 已有数据填充可匹配的部分，其余留空供用户手写。
+        """
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.lib.colors import HexColor
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+        )
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.pdfgen.canvas import Canvas as _Canvas
+
+        reg_path, bld_path, reg_sub, bld_sub = self._find_cjk_font()
+        _FN = "CJK"
+        _FN_B = "CJK-Bold"
+        if _FN not in pdfmetrics.getRegisteredFontNames():
+            kw: dict[str, object] = {}
+            if reg_sub is not None:
+                kw["subfontIndex"] = reg_sub
+            pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
+        if _FN_B not in pdfmetrics.getRegisteredFontNames():
+            kw2: dict[str, object] = {}
+            if bld_sub is not None:
+                kw2["subfontIndex"] = bld_sub
+            pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw2))
+        pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
+
+        _BLUE = HexColor("#2B579A")
+        _RED = HexColor("#C0504D")
+        _GRAY = HexColor("#646464")
+        _LIGHT_GRAY = HexColor("#969696")
+        _DARK = HexColor("#323232")
+        _SECTION_BG = HexColor("#E8EDF5")
+
+        style_title = ParagraphStyle(
+            "Title8D", fontName=_FN_B, fontSize=22,
+            textColor=_BLUE, alignment=TA_CENTER, spaceAfter=6 * mm,
+        )
+        style_subtitle = ParagraphStyle(
+            "Sub8D", fontName=_FN, fontSize=12,
+            textColor=_GRAY, alignment=TA_CENTER, spaceAfter=4 * mm,
+        )
+        style_section_label = ParagraphStyle(
+            "SecL", fontName=_FN_B, fontSize=11,
+            textColor=_BLUE, spaceAfter=1 * mm, spaceBefore=2 * mm,
+        )
+        style_body = ParagraphStyle(
+            "Body8D", fontName=_FN, fontSize=9,
+            textColor=_DARK, alignment=TA_LEFT, leading=14,
+        )
+        style_cell = ParagraphStyle(
+            "Cell8D", fontName=_FN, fontSize=9,
+            textColor=_DARK, alignment=TA_LEFT, leading=13,
+        )
+        style_cell_center = ParagraphStyle(
+            "CellC8D", fontName=_FN, fontSize=9,
+            textColor=_DARK, alignment=TA_CENTER, leading=13,
+        )
+        style_cell_bold = ParagraphStyle(
+            "CellB8D", fontName=_FN_B, fontSize=9,
+            textColor=_BLUE, alignment=TA_CENTER, leading=13,
+        )
+        style_blank = ParagraphStyle(
+            "Blank8D", fontName=_FN, fontSize=9,
+            textColor=_LIGHT_GRAY, alignment=TA_LEFT, leading=13,
+        )
+        style_sig_label = ParagraphStyle(
+            "SigL8D", fontName=_FN_B, fontSize=9,
+            textColor=_DARK, alignment=TA_CENTER,
+        )
+        style_sig_line = ParagraphStyle(
+            "SigLine8D", fontName=_FN, fontSize=9,
+            textColor=_LIGHT_GRAY, alignment=TA_CENTER,
+        )
+
+        def _header_footer(canvas: _Canvas, doc: object) -> None:
+            canvas.saveState()
+            canvas.setFont(_FN, 8)
+            canvas.setFillColor(_LIGHT_GRAY)
+            canvas.drawRightString(
+                A4[0] - 20 * mm, A4[1] - 12 * mm,
+                "ReliaTrack — 8D Problem Solving Report",
+            )
+            canvas.drawCentredString(
+                A4[0] / 2, 12 * mm,
+                f"Page {canvas.getPageNumber()}",
+            )
+            canvas.restoreState()
+
+        out = filepath or str(
+            self._ensure_dir() / f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.pdf"
+        )
+        doc = SimpleDocTemplate(
+            out, pagesize=A4,
+            topMargin=18 * mm, bottomMargin=18 * mm,
+            leftMargin=15 * mm, rightMargin=15 * mm,
+        )
+
+        page_w = A4[0] - 30 * mm  # usable width
+
+        story: list[object] = []
+
+        # ── 标题 ──
+        story.append(Spacer(1, 8 * mm))
+        story.append(Paragraph("8D Problem Solving Report", style_title))
+        story.append(Paragraph(
+            f"Issue #{issue.id} — {issue.title}", style_subtitle))
+        story.append(Paragraph(
+            f"报告日期: {datetime.now().strftime('%Y-%m-%d')}", style_subtitle))
+
+        # ── 基本信息表 ──
+        severity_labels = {
+            "critical": "Critical (致命)",
+            "major": "Major (严重)",
+            "minor": "Minor (一般)",
+            "cosmetic": "Cosmetic (外观)",
+        }
+        sev_text = severity_labels.get(issue.severity, issue.severity)
+        status_text = self.STATUS_MAP.get(issue.status, issue.status)
+
+        info_data = [
+            [
+                Paragraph("Issue 编号", style_cell_bold),
+                Paragraph(str(issue.id), style_cell_center),
+                Paragraph("严重度", style_cell_bold),
+                Paragraph(sev_text, style_cell_center),
+            ],
+            [
+                Paragraph("标题", style_cell_bold),
+                Paragraph(issue.title, style_cell),
+                Paragraph("状态", style_cell_bold),
+                Paragraph(status_text, style_cell_center),
+            ],
+            [
+                Paragraph("报告日期", style_cell_bold),
+                Paragraph(datetime.now().strftime("%Y-%m-%d"), style_cell_center),
+                Paragraph("优先级", style_cell_bold),
+                Paragraph(str(issue.priority), style_cell_center),
+            ],
+        ]
+        info_table = Table(info_data, colWidths=[page_w * 0.15, page_w * 0.35, page_w * 0.15, page_w * 0.35])
+        info_table.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, _GRAY),
+            ("BACKGROUND", (0, 0), (0, -1), _SECTION_BG),
+            ("BACKGROUND", (2, 0), (2, -1), _SECTION_BG),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(info_table)
+
+        # ── D1-D8 章节 ──
+        d_sections: list[tuple[str, str, str]] = [
+            ("D1", "团队组建 (Establish the Team)", "(手写区)"),
+            ("D2", "问题描述 (Describe the Problem)", issue.description or ""),
+            ("D3", "临时遏制措施 (Interim Containment Actions)", "(手写区)"),
+            ("D4", "根因分析 (Root Cause Analysis)", self._build_d4_content(issue, fa_records)),
+            ("D5", "纠正措施 (Corrective Actions)", issue.resolution or ""),
+            ("D6", "实施验证 (Implement & Validate)", self._build_d6_content(capa_records)),
+            ("D7", "预防再发 (Prevent Recurrence)", "(手写区)"),
+            ("D8", "结论与签字 (Congratulate the Team)", "(签字区)"),
+        ]
+
+        for d_label, d_title, d_content in d_sections:
+            story.append(Spacer(1, 3 * mm))
+
+            # D 章节标题行
+            header_data = [[
+                Paragraph(f"<b>{d_label}</b>", ParagraphStyle(
+                    "DH", fontName=_FN_B, fontSize=10,
+                    textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
+                )),
+                Paragraph(f"<b>{d_title}</b>", ParagraphStyle(
+                    "DT", fontName=_FN_B, fontSize=10,
+                    textColor=HexColor("#FFFFFF"), alignment=TA_LEFT,
+                )),
+            ]]
+            header_table = Table(header_data, colWidths=[page_w * 0.12, page_w * 0.88])
+            header_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(header_table)
+
+            # D 内容行
+            content_text = d_content if d_content else ""
+            content_style = style_blank if content_text.startswith("(") else style_cell
+            content_data = [[
+                Paragraph("", style_cell),
+                Paragraph(content_text or "", content_style),
+            ]]
+            content_table = Table(content_data, colWidths=[page_w * 0.12, page_w * 0.88])
+            min_h = 50 if content_text.startswith("(") else max(30, len(content_text) // 2)
+            content_table.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.5, _GRAY),
+                ("LINEAFTER", (0, 0), (0, -1), 0.5, _GRAY),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("ROWHEIGHTS", (0, 0), (-1, -1), min_h),
+            ]))
+            story.append(content_table)
+
+        # ── 底部签字栏 ──
+        story.append(Spacer(1, 8 * mm))
+        sig_roles = ["编制 (Prepared)", "审核 (Reviewed)", "批准 (Approved)"]
+        sig_cells = []
+        for role in sig_roles:
+            sig_cells.append([
+                Paragraph(f"<b>{role}</b>", style_sig_label),
+                Spacer(1, 10 * mm),
+                Paragraph("________________________", style_sig_line),
+            ])
+        sig_table = Table(
+            [sig_cells],
+            colWidths=[page_w / 3] * 3,
+        )
+        sig_table.setStyle(TableStyle([
+            ("BOX", (0, 0), (0, 0), 0.5, _GRAY),
+            ("BOX", (1, 0), (1, 0), 0.5, _GRAY),
+            ("BOX", (2, 0), (2, 0), 0.5, _GRAY),
+            ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(sig_table)
+
+        doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        return os.path.abspath(out)
+
+    @staticmethod
+    def _build_d4_content(issue: Issue, fa_records: list[FARecord] | None) -> str:
+        """构建 D4 根因分析内容。"""
+        parts: list[str] = []
+        if issue.root_cause:
+            parts.append(f"根因: {issue.root_cause}")
+        if issue.failure_mode:
+            parts.append(f"失效模式: {issue.failure_mode}")
+        if fa_records:
+            parts.append("\nFA 分析记录摘要:")
+            for rec in fa_records:
+                confirmed_labels = {0: "待定", 1: "确认", 2: "排除"}
+                status = confirmed_labels.get(rec.confirmed, "待定")
+                parts.append(
+                    f"  Step {rec.step_no}: {rec.step_title or ''}"
+                    f" — {rec.method or ''}"
+                    f" — 发现: {rec.findings or '—'}"
+                    f" — 可能原因: {rec.possible_cause or '—'}"
+                    f" [{status}]"
+                )
+        return "\n".join(parts) if parts else ""
+
+    @staticmethod
+    def _build_d6_content(capa_records: list[CAPARecord] | None) -> str:
+        """构建 D6 实施验证内容。"""
+        if not capa_records:
+            return ""
+        parts: list[str] = []
+        for rec in capa_records:
+            status_labels = {
+                "pending": "待执行", "in_progress": "进行中",
+                "completed": "已完成", "verified": "已验证",
+            }
+            status = status_labels.get(rec.status, rec.status)
+            parts.append(f"措施: {rec.action}")
+            parts.append(f"  状态: {status}")
+            if rec.verification_result:
+                parts.append(f"  验证结果: {rec.verification_result}")
+        return "\n".join(parts)
 
     # ── Word 导出 ──────────────────────────────────────────────
 

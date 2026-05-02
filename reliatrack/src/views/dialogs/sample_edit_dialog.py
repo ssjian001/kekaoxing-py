@@ -64,6 +64,12 @@ class SampleEditDialog(_BaseDialog):
             placeholder="如：DIP-14",
         )
 
+        self._supplier_edit = self._add_text_field(
+            "供应商",
+            default=sample.supplier or "",
+            placeholder="如：村田/TDK",
+        )
+
         # ── 关联项目下拉框 ──
         project_names = ["（无）"]
         project_names += [f"{p.name}" for p in self._project_list]
@@ -96,6 +102,12 @@ class SampleEditDialog(_BaseDialog):
             default=sample.location or "",
             placeholder="如：A区-01柜",
         )
+        self._test_hours_spin = self._add_spin_field(
+            "累计测试(h)",
+            min_val=0,
+            max_val=99999,
+            default=int(sample.test_hours) if sample and sample.test_hours else 0,
+        )
 
         self._add_separator()
 
@@ -125,7 +137,9 @@ class SampleEditDialog(_BaseDialog):
             "project_id": project_id,
             "status": self._STATUS_MAP.get(status_label, "in_stock"),
             "location": self._location_edit.text().strip(),
+            "test_hours": float(self._test_hours_spin.value()),
             "notes": self._notes_edit.toPlainText().strip(),
+            "supplier": self._supplier_edit.text().strip(),
         }
 
     # ── 校验 ───────────────────────────────────────────────────

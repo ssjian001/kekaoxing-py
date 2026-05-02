@@ -64,6 +64,25 @@ class EquipmentEditDialog(_BaseDialog):
 
         self._add_separator()
 
+        # ── 资产信息 ──
+        self._asset_no_edit = self._add_text_field(
+            "资产编号",
+            default=equipment.asset_no if equipment else "",
+            placeholder="资产编号",
+        )
+        self._manufacturer_edit = self._add_text_field(
+            "制造商",
+            default=equipment.manufacturer if equipment else "",
+            placeholder="制造商",
+        )
+        self._accuracy_edit = self._add_text_field(
+            "精度/不确定度",
+            default=equipment.accuracy if equipment else "",
+            placeholder="精度/不确定度",
+        )
+
+        self._add_separator()
+
         # ── 校准信息 ──
         self._calibration_edit = self._add_date_field("校准日期")
         if equipment and equipment.calibration_date:
@@ -124,6 +143,9 @@ class EquipmentEditDialog(_BaseDialog):
             "name": self._name_edit.text().strip(),
             "model": self._model_edit.text().strip(),
             "type": self._type_combo.currentText(),
+            "asset_no": self._asset_no_edit.text().strip(),
+            "manufacturer": self._manufacturer_edit.text().strip(),
+            "accuracy": self._accuracy_edit.text().strip(),
             "calibration_date": cal_date,
             "next_calibration_date": next_cal_date,
             "calibration_interval_months": interval,

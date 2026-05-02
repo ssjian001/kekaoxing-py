@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import apsw
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -41,6 +41,9 @@ _DDL_TABLES: list[str] = [
         model       TEXT    NOT NULL DEFAULT '',
         location    TEXT    NOT NULL DEFAULT '',
         status      TEXT    NOT NULL DEFAULT 'available',
+        asset_no    TEXT    NOT NULL DEFAULT '',
+        manufacturer TEXT   NOT NULL DEFAULT '',
+        accuracy    TEXT    NOT NULL DEFAULT '',
         calibration_date TEXT NOT NULL DEFAULT '',
         next_calibration_date TEXT NOT NULL DEFAULT '',
         calibration_interval_months INTEGER NOT NULL DEFAULT 12,
@@ -68,8 +71,11 @@ _DDL_TABLES: list[str] = [
         project_id  INTEGER REFERENCES projects(id),
         status      TEXT    NOT NULL DEFAULT 'in_stock',
         location    TEXT    NOT NULL DEFAULT '',
+        test_hours  REAL    NOT NULL DEFAULT 0.0,
         qr_code     TEXT    NOT NULL DEFAULT '',
         notes       TEXT    NOT NULL DEFAULT '',
+        supplier         TEXT    NOT NULL DEFAULT '',
+        scrapped_reason  TEXT    NOT NULL DEFAULT '',
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -97,6 +103,7 @@ _DDL_TABLES: list[str] = [
         start_date      TEXT    NOT NULL DEFAULT '',
         end_date        TEXT    NOT NULL DEFAULT '',
         status          TEXT    NOT NULL DEFAULT 'draft',
+        apqp_phase      TEXT    NOT NULL DEFAULT '',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -139,6 +146,7 @@ _DDL_TABLES: list[str] = [
         environment     TEXT    NOT NULL DEFAULT '{}',
         notes           TEXT    NOT NULL DEFAULT '',
         attachments     TEXT    NOT NULL DEFAULT '[]',
+        measured_value  TEXT    NOT NULL DEFAULT '',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
@@ -159,6 +167,8 @@ _DDL_TABLES: list[str] = [
         assignee_id     INTEGER REFERENCES technicians(id),
         root_cause      TEXT    NOT NULL DEFAULT '',
         resolution      TEXT    NOT NULL DEFAULT '',
+        failure_code    TEXT    NOT NULL DEFAULT '',
+        occurrence_count INTEGER NOT NULL DEFAULT 1,
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -174,6 +184,7 @@ _DDL_TABLES: list[str] = [
         findings        TEXT    NOT NULL DEFAULT '',
         possible_cause  TEXT    NOT NULL DEFAULT '',
         cause_category  TEXT    NOT NULL DEFAULT '',
+        failure_mechanism TEXT  NOT NULL DEFAULT '',
         confirmed       INTEGER NOT NULL DEFAULT 0,
         analyst_id      INTEGER REFERENCES technicians(id),
         attachments     TEXT    NOT NULL DEFAULT '[]',
@@ -431,7 +442,8 @@ def _get_current_version(conn: apsw.Connection) -> int:
 
 
 def _migrate_v8(conn: apsw.Connection) -> None:
-    """v7→v8: equipment 增加校准间隔字段。"""
+    """v7→v8: equipment 校准字段 + samples test_hours + test_results measured_value。"""
+    # Equipment calibration fields
     cols = {r[1] for r in conn.execute("PRAGMA table_info(equipment)").fetchall()}
     for col, col_type, default in [
         ("calibration_date", "TEXT", "''"),
@@ -442,8 +454,53 @@ def _migrate_v8(conn: apsw.Connection) -> None:
             conn.execute(
                 f"ALTER TABLE equipment ADD COLUMN {col} {col_type} NOT NULL DEFAULT {default}"
             )
+    # Sample test_hours
+    sample_cols = {r[1] for r in conn.execute("PRAGMA table_info(samples)").fetchall()}
+    if "test_hours" not in sample_cols:
+        conn.execute(
+            "ALTER TABLE samples ADD COLUMN test_hours REAL NOT NULL DEFAULT 0.0"
+        )
+    for col in ("supplier", "scrapped_reason"):
+        if col not in sample_cols:
+            conn.execute(
+                f"ALTER TABLE samples ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+    # test_results measured_value
+    result_cols = {r[1] for r in conn.execute("PRAGMA table_info(test_results)").fetchall()}
+    if "measured_value" not in result_cols:
+        conn.execute(
+            "ALTER TABLE test_results ADD COLUMN measured_value TEXT NOT NULL DEFAULT ''"
+        )
+    # test_plans: apqp_phase
+    plan_cols = {r[1] for r in conn.execute("PRAGMA table_info(test_plans)").fetchall()}
+    if "apqp_phase" not in plan_cols:
+        conn.execute(
+            "ALTER TABLE test_plans ADD COLUMN apqp_phase TEXT NOT NULL DEFAULT ''"
+        )
+    # issues: failure_code, occurrence_count
+    issue_cols = {r[1] for r in conn.execute("PRAGMA table_info(issues)").fetchall()}
+    if "failure_code" not in issue_cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN failure_code TEXT NOT NULL DEFAULT ''"
+        )
+    if "occurrence_count" not in issue_cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN occurrence_count INTEGER NOT NULL DEFAULT 1"
+        )
     conn.execute(
         "INSERT INTO schema_version (version) VALUES (8)"
+    )
+
+
+def _migrate_v9(conn: apsw.Connection) -> None:
+    """v8→v9: fa_records 增加 failure_mechanism 失效机理分类。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(fa_records)").fetchall()}
+    if "failure_mechanism" not in cols:
+        conn.execute(
+            "ALTER TABLE fa_records ADD COLUMN failure_mechanism TEXT NOT NULL DEFAULT ''"
+        )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (9)"
     )
 
 
@@ -469,7 +526,7 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    needs_migration = current < 8  # 更新此值当新增迁移版本
+    needs_migration = current < 9  # 更新此值当新增迁移版本
 
     if not needs_migration:
         return current
@@ -500,6 +557,9 @@ def init_schema(conn: apsw.Connection) -> int:
 
         if current < 8:
             _migrate_v8(conn)
+
+        if current < 9:
+            _migrate_v9(conn)
 
         conn.execute("COMMIT")
     except Exception:

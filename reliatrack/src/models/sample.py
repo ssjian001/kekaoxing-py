@@ -42,8 +42,11 @@ class Sample:
     project_id: Optional[int] = None
     status: str = SampleStatus.IN_STOCK.value
     location: str = ""
+    test_hours: float = 0.0   # 累计测试小时数
     qr_code: str = ""         # 本地二维码路径（可选）
     notes: str = ""            # 备注
+    supplier: str = ""        # 供应商
+    scrapped_reason: str = ""  # 报废原因
     created_at: str = ""
     updated_at: str = ""
 

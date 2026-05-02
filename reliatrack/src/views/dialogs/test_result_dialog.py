@@ -106,6 +106,15 @@ class _ResultRow(QFrame):
             self._notes_edit.setText(existing_result.notes)
         layout.addWidget(self._notes_edit)
 
+        # 实测值
+        self._measured_edit = QLineEdit()
+        self._measured_edit.setPlaceholderText("实测值")
+        self._measured_edit.setFixedWidth(100)
+        self._measured_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        if existing_result and existing_result.measured_value:
+            self._measured_edit.setText(existing_result.measured_value)
+        layout.addWidget(self._measured_edit)
+
         # 环境参数（温度/湿度）
         self._temp_edit = QLineEdit()
         self._temp_edit.setPlaceholderText("温度°C")
@@ -164,6 +173,7 @@ class _ResultRow(QFrame):
             "result": self._combo.currentData() or TestResultStatus.PENDING.value,
             "test_date": self._date_edit.date().toString("yyyy-MM-dd"),
             "notes": self._notes_edit.text().strip(),
+            "measured_value": self._measured_edit.text().strip(),
             "environment": json.dumps(env, ensure_ascii=False),
         }
 

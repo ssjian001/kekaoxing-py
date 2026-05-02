@@ -17,7 +17,7 @@ class ExportDialog(_BaseDialog):
 
         self._content_combo = self._add_combo_field(
             "导出内容",
-            items=["测试任务 (当前计划)", "Issue 列表", "样品台账", "综合测试报告", "DVP&R 报告"],
+            items=["测试任务 (当前计划)", "Issue 列表", "样品台账", "综合测试报告", "DVP&R 报告", "8D 报告"],
         )
         self._format_combo = self._add_combo_field(
             "格式",

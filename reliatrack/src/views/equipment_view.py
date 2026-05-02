@@ -43,9 +43,12 @@ class EquipmentView(QWidget):
     # 表格列：(显示名, 对应 Equipment 属性)
     _COLUMNS = [
         ("ID", "id"),
+        ("资产编号", "asset_no"),
         ("型号", "model"),
         ("名称", "name"),
         ("类型", "type"),
+        ("制造商", "manufacturer"),
+        ("精度/不确定度", "accuracy"),
         ("校准日期", "calibration_date"),
         ("下次校准", "next_calibration_date"),
         ("间隔(月)", "calibration_interval_months"),
@@ -122,13 +125,16 @@ class EquipmentView(QWidget):
         # 列宽
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 型号
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)            # 名称
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 类型
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 校准日期
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 下次校准
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # 间隔
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)  # 状态
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 资产编号
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 型号
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)            # 名称
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 类型
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 制造商
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # 精度/不确定度
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)  # 校准日期
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)  # 下次校准
+        header.setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents)  # 间隔
+        header.setSectionResizeMode(10, QHeaderView.ResizeMode.ResizeToContents) # 状态
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)
@@ -227,6 +233,8 @@ class EquipmentView(QWidget):
             if keyword in (eq.name or "").lower()
             or keyword in (eq.model or "").lower()
             or keyword in (eq.type or "").lower()
+            or keyword in (eq.asset_no or "").lower()
+            or keyword in (eq.manufacturer or "").lower()
         ]
         self._populate_table(filtered)
 

@@ -171,6 +171,10 @@ class RefreshHandlers:
 
         # 注入任务列表和样品列表给 Issue 弹窗
         self._win._issue_view._sample_list = all_samples
+
+        # 注入知识库条目给 Issue 弹窗（失效模式自动推荐）
+        if ctrl.knowledge_service:
+            self._win._issue_view._knowledge_list = ctrl.knowledge_service.list_all()
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             all_tasks = ctrl.test_tasks.list_all()
 

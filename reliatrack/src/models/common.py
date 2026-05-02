@@ -47,6 +47,9 @@ class Equipment:
     calibration_date: str = ""
     next_calibration_date: str = ""
     calibration_interval_months: int = 12
+    asset_no: str = ""       # 资产编号
+    manufacturer: str = ""   # 制造商
+    accuracy: str = ""       # 精度/不确定度
     created_at: str = ""
 
 
