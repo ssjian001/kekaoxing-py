@@ -22,6 +22,7 @@ from src.models.sample import Sample
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 from src.views.dialogs.base_dialog import _BaseDialog
+from src.configs.test_type_templates import get_template_names, get_template_by_name
 
 
 class TaskEditDialog(_BaseDialog):
@@ -70,6 +71,14 @@ class TaskEditDialog(_BaseDialog):
                     self._selected_sample_ids = []
             except (json.JSONDecodeError, TypeError):
                 self._selected_sample_ids = []
+
+        # ── 测试类型模板（自动填充） ──
+        self._test_type_combo = self._add_combo_field(
+            "测试类型",
+            items=get_template_names(),
+            default="（自定义）",
+        )
+        self._test_type_combo.currentTextChanged.connect(self._on_test_type_changed)
 
         # ── 基本信息 ──
         self._name_edit = self._add_text_field(
@@ -220,6 +229,57 @@ class TaskEditDialog(_BaseDialog):
             "备注",
             default=task.notes if task else "",
         )
+
+    # ── 测试类型自动填充 ─────────────────────────────────────────
+
+    def _on_test_type_changed(self, text: str) -> None:
+        """选择测试类型后自动填充相关字段。"""
+        if text == "（自定义）":
+            return
+        tpl = get_template_by_name(text)
+        if tpl is None:
+            return
+
+        # 编辑模式下，如果用户已手动填写过则不覆盖（除非内容为空）
+        is_edit = self._task is not None
+
+        # 名称：用模板名填充（仅在新建或名称为空时）
+        if not is_edit or not self._name_edit.text().strip():
+            self._name_edit.setText(tpl.name)
+
+        # 类别
+        idx = self._category_combo.findText(tpl.category)
+        if idx >= 0:
+            self._category_combo.setCurrentIndex(idx)
+
+        # 测试标准
+        if not is_edit or not self._standard_edit.text().strip():
+            self._standard_edit.setText(tpl.test_standard)
+
+        # 工期
+        if not is_edit or self._duration_spin.value() == 1:
+            self._duration_spin.setValue(tpl.duration)
+
+        # 温度
+        if not is_edit or not self._temp_edit.text().strip():
+            self._temp_edit.setText(tpl.temperature)
+
+        # 湿度
+        if not is_edit or not self._humidity_edit.text().strip():
+            self._humidity_edit.setText(tpl.humidity)
+
+        # 备注：追加模板信息（不覆盖已有备注）
+        notes = self._notes_edit.toPlainText().strip()
+        tpl_note_parts = []
+        if tpl.accept_criteria:
+            tpl_note_parts.append(f"判定准则: {tpl.accept_criteria}")
+        if tpl.suggested_samples:
+            tpl_note_parts.append(f"建议样品数: {tpl.suggested_samples}")
+        if tpl.notes:
+            tpl_note_parts.append(tpl.notes)
+        tpl_note = " | ".join(tpl_note_parts)
+        if tpl_note and not notes:
+            self._notes_edit.setPlainText(tpl_note)
 
     # ── 环境参数分组框 ─────────────────────────────────────────
 
