@@ -46,6 +46,7 @@ class Equipment:
     status: str = EquipmentStatus.AVAILABLE.value
     calibration_date: str = ""
     next_calibration_date: str = ""
+    calibration_interval_months: int = 12
     created_at: str = ""
 
 

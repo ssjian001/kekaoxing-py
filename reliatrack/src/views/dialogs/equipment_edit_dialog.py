@@ -81,6 +81,13 @@ class EquipmentEditDialog(_BaseDialog):
             else:
                 self._next_calibration_edit.clear()
 
+        self._interval_spin = self._add_spin_field(
+            "校准间隔(月)",
+            min_val=1,
+            max_val=60,
+            default=equipment.calibration_interval_months if equipment else 12,
+        )
+
         self._add_separator()
 
         # ── 状态 ──
@@ -105,6 +112,13 @@ class EquipmentEditDialog(_BaseDialog):
         if self._next_calibration_edit.date().isValid():
             next_cal_date = self._next_calibration_edit.date().toString("yyyy-MM-dd")
 
+        # 自动计算下次校准：如果没手动填，则用校准日期 + 间隔
+        interval = self._interval_spin.value()
+        if not next_cal_date and cal_date:
+            cal_qdate = self._calibration_edit.date()
+            next_qdate = cal_qdate.addMonths(interval)
+            next_cal_date = next_qdate.toString("yyyy-MM-dd")
+
         status_label = self._status_combo.currentText()
         return {
             "name": self._name_edit.text().strip(),
@@ -112,6 +126,7 @@ class EquipmentEditDialog(_BaseDialog):
             "type": self._type_combo.currentText(),
             "calibration_date": cal_date,
             "next_calibration_date": next_cal_date,
+            "calibration_interval_months": interval,
             "status": self._STATUS_MAP.get(status_label, "available"),
         }
 

@@ -48,6 +48,7 @@ class EquipmentView(QWidget):
         ("类型", "type"),
         ("校准日期", "calibration_date"),
         ("下次校准", "next_calibration_date"),
+        ("间隔(月)", "calibration_interval_months"),
         ("状态", "status"),
     ]
 
@@ -126,7 +127,8 @@ class EquipmentView(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 类型
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 校准日期
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 下次校准
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # 状态
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # 间隔
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)  # 状态
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)
@@ -180,6 +182,19 @@ class EquipmentView(QWidget):
                 if attr == "status":
                     color = EQUIPMENT_STATUS_COLORS.get(str(value) if value else "", TEXT)
                     item.setForeground(QColor(color))
+                # 下次校准列：30天内到期黄色预警，已过期红色
+                if attr == "next_calibration_date" and value:
+                    from datetime import date, timedelta
+                    try:
+                        next_cal = date.fromisoformat(str(value))
+                        today = date.today()
+                        if next_cal < today:
+                            item.setForeground(QColor(RED))
+                            item.setText(f"{value} (过期)")
+                        elif next_cal <= today + timedelta(days=30):
+                            item.setForeground(QColor(YELLOW))
+                    except ValueError:
+                        pass
                 self._table.setItem(row, col, item)
         header.blockSignals(False)
 

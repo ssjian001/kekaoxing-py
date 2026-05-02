@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -208,6 +209,37 @@ class RefreshHandlers:
             severity_counter = Counter(i.severity for i in issues_list)
             issue_severity_data = dict(severity_counter)
 
+            # ── 专业 KPI 计算 ──
+            # 1. 测试通过率
+            pass_rate: float | None = None
+            task_ids = [t.id for t in filtered_tasks if t.id is not None]
+            if task_ids and ctrl.test_plan_service:
+                rm = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
+                total_pass = sum(v[0] for v in rm.values())
+                total_result = sum(v[1] for v in rm.values())
+                if total_result > 0:
+                    pass_rate = total_pass / total_result * 100
+
+            # 2. Issue 闭环率
+            issue_close_rate: float | None = None
+            if issues_list:
+                closed_count = sum(1 for i in issues_list if i.status == "closed")
+                issue_close_rate = closed_count / len(issues_list) * 100
+
+            # 3. 校准预警（30天内到期）
+            cal_warning = 0
+            if ctrl.equipment:
+                today = date.today()
+                threshold = today + timedelta(days=30)
+                for eq in ctrl.equipment.list_all():
+                    if eq.next_calibration_date:
+                        try:
+                            next_cal = date.fromisoformat(eq.next_calibration_date)
+                            if next_cal <= threshold:
+                                cal_warning += 1
+                        except ValueError:
+                            pass
+
             self._win._dashboard.refresh(
                 task_total=total,
                 task_completed=completed,
@@ -220,6 +252,9 @@ class RefreshHandlers:
                 task_status_data=task_status_data,
                 sample_status_data=sample_status_data,
                 issue_severity_data=issue_severity_data,
+                pass_rate=pass_rate,
+                issue_close_rate=issue_close_rate,
+                calibration_warning_count=cal_warning,
             )
 
     def _refresh_samples(self) -> None:
@@ -288,13 +323,24 @@ class RefreshHandlers:
 
             # 批量获取通过率映射 {task_id: (pass_count, total)}
             result_map: dict[int, tuple[int, int]] = {}
+            matrix_results: list = []
             task_ids = [t.id for t in tasks if t.id is not None]
             if task_ids and ctrl.test_plan_service:
                 result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
+                matrix_results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids)
+
+            # 样品映射 {sample_id: sn}
+            sample_map: dict[int, str] = {}
+            if ctrl.sample_service:
+                for s in ctrl.sample_service.list_all():
+                    if s.id is not None:
+                        sample_map[s.id] = s.sn
 
             self._win._test_plan_view.refresh(
                 tasks, max_day, technician_map, result_map,
                 start_date=all_plans[restore_idx].start_date,
+                matrix_results=matrix_results,
+                sample_map=sample_map,
             )
 
     def _refresh_issues(self) -> None:

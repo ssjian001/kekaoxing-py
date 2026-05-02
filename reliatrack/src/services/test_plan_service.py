@@ -93,6 +93,10 @@ class TestPlanService:
         """批量获取多个任务的通过率 {task_id: (pass_count, total)}。"""
         return self._result_repo.get_pass_counts_by_tasks(task_ids)
 
+    def get_all_results_by_tasks(self, task_ids: list[int]) -> list[TestResult]:
+        """批量获取多个任务的全部测试结果（含 sample_id）。"""
+        return self._result_repo.get_all_by_tasks(task_ids)
+
     def save_result(
         self,
         task_id: int,
@@ -101,6 +105,7 @@ class TestPlanService:
         test_date: str = "",
         notes: str = "",
         tester_id: int | None = None,
+        environment: str = "{}",
     ) -> int:
         """保存/更新测试结果，返回 id。"""
         return self._result_repo.upsert(
@@ -110,6 +115,7 @@ class TestPlanService:
             test_date=test_date,
             notes=notes,
             tester_id=tester_id,
+            environment=environment,
         )
 
     def delete_result(self, result_id: int) -> None:

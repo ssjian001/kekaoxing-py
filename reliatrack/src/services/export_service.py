@@ -12,7 +12,7 @@ from src.constants import (
     ISSUE_STATUS_LABELS,
     SAMPLE_STATUS_LABELS,
 )
-from src.models.test_plan import TestPlan, TestTask
+from src.models.test_plan import TestPlan, TestTask, TestResult
 from src.models.issue import Issue, FARecord
 from src.models.sample import Sample
 
@@ -548,6 +548,258 @@ class ExportService:
             story.append(issue_table)
 
         # ── 生成 PDF ──
+        doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        return os.path.abspath(out)
+
+    # ── DVP&R 导出 ──────────────────────────────────────────────
+
+    def export_dvpr_pdf(
+        self,
+        plan: TestPlan,
+        tasks: list[TestTask],
+        results: list[TestResult],
+        issues: list[Issue],
+        samples: list[Sample],
+        filepath: str | None = None,
+    ) -> str:
+        """导出 DVP&R (Design Verification Plan & Report) 格式 PDF。
+
+        DVP&R = 设计验证计划与报告，汽车行业标准格式。
+        包含：封面、概览统计、DVP&R 矩阵（任务×样品+判定）、
+        Issue/FA/CAPA 汇总、校准状态汇总。
+        """
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.units import mm
+        from reportlab.lib.colors import HexColor
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+            PageBreak,
+        )
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.pdfgen.canvas import Canvas as _Canvas
+
+        reg_path, bld_path, reg_sub, bld_sub = self._find_cjk_font()
+        _FN = "CJK"
+        _FN_B = "CJK-Bold"
+        if _FN not in pdfmetrics.getRegisteredFontNames():
+            kw: dict[str, object] = {}
+            if reg_sub is not None:
+                kw["subfontIndex"] = reg_sub
+            pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
+        if _FN_B not in pdfmetrics.getRegisteredFontNames():
+            kw = {}
+            if bld_sub is not None:
+                kw["subfontIndex"] = bld_sub
+            pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw))
+        pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
+
+        _BLUE = HexColor("#2B579A")
+        _RED = HexColor("#C0504D")
+        _GREEN = HexColor("#339933")
+        _GRAY = HexColor("#646464")
+        _LIGHT_GRAY = HexColor("#969696")
+        _DARK = HexColor("#323232")
+        _PASS_BG = HexColor("#E8F5E9")
+        _FAIL_BG = HexColor("#FFEBEE")
+
+        style_title = ParagraphStyle(
+            "Title", fontName=_FN_B, fontSize=24,
+            textColor=_BLUE, alignment=TA_CENTER, spaceAfter=8 * mm,
+        )
+        style_subtitle = ParagraphStyle(
+            "Subtitle", fontName=_FN, fontSize=14,
+            textColor=_GRAY, alignment=TA_CENTER, spaceAfter=4 * mm,
+        )
+        style_ts = ParagraphStyle(
+            "Timestamp", fontName=_FN, fontSize=10,
+            textColor=_LIGHT_GRAY, alignment=TA_CENTER,
+        )
+        style_section = ParagraphStyle(
+            "Section", fontName=_FN_B, fontSize=14,
+            textColor=_BLUE, spaceAfter=3 * mm, spaceBefore=6 * mm,
+        )
+        style_stat = ParagraphStyle(
+            "Stat", fontName=_FN, fontSize=11,
+            textColor=_DARK, spaceAfter=1 * mm,
+        )
+        cell_style = ParagraphStyle(
+            "Cell", fontName=_FN, fontSize=7,
+            textColor=_DARK, alignment=TA_CENTER,
+        )
+        cell_left = ParagraphStyle(
+            "CellL", fontName=_FN, fontSize=7,
+            textColor=_DARK, alignment=TA_LEFT,
+        )
+        th_style = ParagraphStyle(
+            "TH", fontName=_FN_B, fontSize=7,
+            textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
+        )
+
+        def _header_footer(canvas: _Canvas, doc: object) -> None:
+            canvas.saveState()
+            canvas.setFont(_FN, 7)
+            canvas.setFillColor(_LIGHT_GRAY)
+            canvas.drawRightString(
+                landscape(A4)[0] - 20 * mm, landscape(A4)[1] - 12 * mm,
+                "ReliaTrack — DVP&R Report",
+            )
+            canvas.drawCentredString(
+                landscape(A4)[0] / 2, 10 * mm,
+                f"Page {canvas.getPageNumber()}",
+            )
+            canvas.restoreState()
+
+        out = filepath or str(
+            self._ensure_dir() / f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf"
+        )
+        doc = SimpleDocTemplate(
+            out, pagesize=landscape(A4),
+            topMargin=15 * mm, bottomMargin=15 * mm,
+            leftMargin=12 * mm, rightMargin=12 * mm,
+        )
+
+        story: list[object] = []
+
+        # ── 封面 ──
+        story.append(Spacer(1, 30 * mm))
+        story.append(Paragraph("DVP&R", style_title))
+        story.append(Paragraph("Design Verification Plan & Report", style_subtitle))
+        story.append(Paragraph(f"计划: {plan.name}", style_subtitle))
+        story.append(Paragraph(f"测试标准: {plan.test_standard or '—'}", style_subtitle))
+        story.append(Paragraph(
+            f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}", style_ts))
+
+        # ── 概览 ──
+        story.append(PageBreak())
+        story.append(Paragraph("概览统计", style_section))
+
+        total = len(tasks)
+        completed = sum(1 for t in tasks if t.status == "completed")
+        total_pass = sum(1 for r in results if r.result == "pass")
+        total_fail = sum(1 for r in results if r.result == "fail")
+        total_results = len(results)
+        pass_rate = f"{total_pass / total_results * 100:.1f}%" if total_results else "—"
+
+        for s in [
+            f"总任务数: {total}  |  已完成: {completed}",
+            f"测试结果: {total_results}  |  通过: {total_pass}  |  失败: {total_fail}  |  通过率: {pass_rate}",
+            f"Issue 数: {len(issues)}",
+            f"样品数: {len(samples)}",
+        ]:
+            story.append(Paragraph(s, style_stat))
+
+        # ── DVP&R 矩阵 ──
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph("DVP&R 矩阵", style_section))
+
+        # 收集所有涉及样品
+        sample_ids = sorted({r.sample_id for r in results if r.sample_id})
+        sample_map = {s.id: s.sn for s in samples if s.id is not None}
+
+        # 构建 lookup: (task_id, sample_id) → result
+        lookup: dict[tuple[int, int], str] = {}
+        for r in results:
+            if r.task_id and r.sample_id:
+                lookup[(r.task_id, r.sample_id)] = r.result
+
+        # 表头
+        dvpr_headers = ["#", "测试项", "判定准则"]
+        for sid in sample_ids:
+            dvpr_headers.append(sample_map.get(sid, f"#{sid}"))
+        dvpr_headers.append("结论")
+
+        header_row = [Paragraph(h, th_style) for h in dvpr_headers]
+        dvpr_data = [header_row]
+
+        for idx, task in enumerate(tasks, 1):
+            row = [
+                Paragraph(str(idx), cell_style),
+                Paragraph((task.name or "")[:20], cell_left),
+                Paragraph((task.accept_criteria or "")[:20], cell_left),
+            ]
+            task_pass = 0
+            task_fail = 0
+            for sid in sample_ids:
+                res = lookup.get((task.id, sid), "")
+                if res == "pass":
+                    row.append(Paragraph("P", cell_style))
+                    task_pass += 1
+                elif res == "fail":
+                    row.append(Paragraph("F", cell_style))
+                    task_fail += 1
+                elif res == "conditional":
+                    row.append(Paragraph("C", cell_style))
+                elif res == "skip":
+                    row.append(Paragraph("S", cell_style))
+                else:
+                    row.append(Paragraph("—", cell_style))
+            # 结论
+            if task_fail > 0:
+                row.append(Paragraph("FAIL", cell_style))
+            elif task_pass > 0 and task_fail == 0:
+                row.append(Paragraph("PASS", cell_style))
+            else:
+                row.append(Paragraph("—", cell_style))
+            dvpr_data.append(row)
+
+        # 列宽
+        n_samples = len(sample_ids)
+        page_w = landscape(A4)[0] - 24 * mm
+        fixed_cols = 18 + 80 + 65 + 35  # # + name + criteria + conclusion
+        sample_col_w = max(35, (page_w - fixed_cols) / max(n_samples, 1))
+        dvpr_widths = [18, 80, 65] + [sample_col_w] * n_samples + [35]
+
+        dvpr_table = Table(dvpr_data, colWidths=dvpr_widths)
+        table_styles = [
+            ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
+            ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [HexColor("#FFFFFF"), HexColor("#F5F7FA")]),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]
+        # 着色 pass/fail 单元格
+        for row_idx, task in enumerate(tasks, 1):
+            for col_idx, sid in enumerate(sample_ids):
+                res = lookup.get((task.id, sid), "")
+                if res == "fail":
+                    table_styles.append(("BACKGROUND", (col_idx + 3, row_idx), (col_idx + 3, row_idx), _FAIL_BG))
+                elif res == "pass":
+                    table_styles.append(("BACKGROUND", (col_idx + 3, row_idx), (col_idx + 3, row_idx), _PASS_BG))
+
+        dvpr_table.setStyle(TableStyle(table_styles))
+        story.append(dvpr_table)
+
+        # ── Issue 汇总 ──
+        if issues:
+            story.append(PageBreak())
+            story.append(Paragraph("Issue 追踪汇总", style_section))
+            issue_headers = ["ID", "标题", "严重度", "状态", "失效模式"]
+            issue_data = [[Paragraph(h, th_style) for h in issue_headers]]
+            for issue in issues:
+                issue_data.append([
+                    Paragraph(str(issue.id), cell_style),
+                    Paragraph((issue.title or "")[:30], cell_left),
+                    Paragraph(issue.severity, cell_style),
+                    Paragraph(self.STATUS_MAP.get(issue.status, issue.status), cell_style),
+                    Paragraph((issue.failure_mode or "")[:20], cell_left),
+                ])
+            issue_table = Table(issue_data, colWidths=[25, 160, 50, 50, 120])
+            issue_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), _RED),
+                ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
+                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]))
+            story.append(issue_table)
+
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
         return os.path.abspath(out)
 

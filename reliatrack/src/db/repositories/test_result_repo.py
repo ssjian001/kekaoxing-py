@@ -61,6 +61,17 @@ class TestResultRepository(BaseRepository):
         """统计任务的测试结果数量。"""
         return self.count(task_id=task_id)
 
+    def get_all_by_tasks(self, task_ids: list[int]) -> list[TestResult]:
+        """批量获取多个任务的全部测试结果。"""
+        if not task_ids:
+            return []
+        placeholders = ",".join("?" * len(task_ids))
+        rows = self._conn.execute(
+            f"SELECT * FROM [test_results] WHERE task_id IN ({placeholders}) ORDER BY task_id, sample_id",
+            task_ids,
+        ).fetchall()
+        return self._rows_to_models(rows)
+
     def get_pass_counts_by_tasks(self, task_ids: list[int]) -> dict[int, tuple[int, int]]:
         """批量获取多个任务的通过率统计。
 

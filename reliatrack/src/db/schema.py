@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import apsw
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -41,6 +41,9 @@ _DDL_TABLES: list[str] = [
         model       TEXT    NOT NULL DEFAULT '',
         location    TEXT    NOT NULL DEFAULT '',
         status      TEXT    NOT NULL DEFAULT 'available',
+        calibration_date TEXT NOT NULL DEFAULT '',
+        next_calibration_date TEXT NOT NULL DEFAULT '',
+        calibration_interval_months INTEGER NOT NULL DEFAULT 12,
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
@@ -427,6 +430,23 @@ def _get_current_version(conn: apsw.Connection) -> int:
         return 0
 
 
+def _migrate_v8(conn: apsw.Connection) -> None:
+    """v7→v8: equipment 增加校准间隔字段。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(equipment)").fetchall()}
+    for col, col_type, default in [
+        ("calibration_date", "TEXT", "''"),
+        ("next_calibration_date", "TEXT", "''"),
+        ("calibration_interval_months", "INTEGER", "12"),
+    ]:
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE equipment ADD COLUMN {col} {col_type} NOT NULL DEFAULT {default}"
+            )
+    conn.execute(
+        "INSERT INTO schema_version (version) VALUES (8)"
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  公开 API
 # ═══════════════════════════════════════════════════════════════════
@@ -449,7 +469,7 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    needs_migration = current < 7  # 更新此值当新增迁移版本
+    needs_migration = current < 8  # 更新此值当新增迁移版本
 
     if not needs_migration:
         return current
@@ -477,6 +497,9 @@ def init_schema(conn: apsw.Connection) -> int:
 
         if current < 7:
             _migrate_v7(conn)
+
+        if current < 8:
+            _migrate_v8(conn)
 
         conn.execute("COMMIT")
     except Exception:

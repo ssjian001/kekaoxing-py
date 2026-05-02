@@ -130,6 +130,23 @@ class ExportHandlers:
                     )
                 self._win.toast(f"已导出: {path}", "success")
 
+            elif "DVP&R" in content:
+                plan_id = self._win._test_plan_view.get_selected_plan_id()
+                if plan_id is None:
+                    self._win.toast("没有选中测试计划", "info")
+                    return
+                plan = ctrl.test_plan_service.get_plan(plan_id)
+                tasks = ctrl.test_plan_service.get_tasks(plan_id)
+                if not plan or not tasks:
+                    self._win.toast("当前计划没有任务", "info")
+                    return
+                task_ids = [t.id for t in tasks if t.id is not None]
+                results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
+                issues = ctrl.issue_service.list_all()
+                samples = ctrl.sample_service.list_all()
+                path = svc.export_dvpr_pdf(plan, tasks, results, issues, samples)
+                self._win.toast(f"DVP&R 已导出: {path}", "success")
+
         except Exception as e:
             import traceback
 

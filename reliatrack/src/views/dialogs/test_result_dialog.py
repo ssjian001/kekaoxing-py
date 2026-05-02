@@ -106,6 +106,31 @@ class _ResultRow(QFrame):
             self._notes_edit.setText(existing_result.notes)
         layout.addWidget(self._notes_edit)
 
+        # 环境参数（温度/湿度）
+        self._temp_edit = QLineEdit()
+        self._temp_edit.setPlaceholderText("温度°C")
+        self._temp_edit.setFixedWidth(72)
+        self._temp_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        self._humidity_edit = QLineEdit()
+        self._humidity_edit.setPlaceholderText("湿度%RH")
+        self._humidity_edit.setFixedWidth(72)
+        self._humidity_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+
+        # 解析已有的 environment JSON
+        if existing_result and existing_result.environment:
+            import json
+            try:
+                env = json.loads(existing_result.environment)
+                if env.get("temperature"):
+                    self._temp_edit.setText(str(env["temperature"]))
+                if env.get("humidity"):
+                    self._humidity_edit.setText(str(env["humidity"]))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        layout.addWidget(self._temp_edit)
+        layout.addWidget(self._humidity_edit)
+
         layout.addStretch()
 
         # 状态色块指示
@@ -126,11 +151,20 @@ class _ResultRow(QFrame):
 
     def get_data(self) -> dict:
         """返回录入数据。"""
+        import json
+        env: dict[str, str] = {}
+        temp = self._temp_edit.text().strip()
+        humidity = self._humidity_edit.text().strip()
+        if temp:
+            env["temperature"] = temp
+        if humidity:
+            env["humidity"] = humidity
         return {
             "sample_id": self._sample.id,
             "result": self._combo.currentData() or TestResultStatus.PENDING.value,
             "test_date": self._date_edit.date().toString("yyyy-MM-dd"),
             "notes": self._notes_edit.text().strip(),
+            "environment": json.dumps(env, ensure_ascii=False),
         }
 
     @property

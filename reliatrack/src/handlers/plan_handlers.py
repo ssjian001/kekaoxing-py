@@ -448,6 +448,7 @@ class PlanHandlers:
                         result=item["result"],
                         test_date=item["test_date"],
                         notes=item.get("notes", ""),
+                        environment=item.get("environment", "{}"),
                     )
                     saved += 1
             self._win.toast(f"已保存 {saved} 条测试结果（任务: {task.name}）", "success")

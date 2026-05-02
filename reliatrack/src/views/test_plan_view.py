@@ -655,6 +655,14 @@ class TestPlanView(QWidget):
         tab_gantt_layout.addWidget(self._gantt)
         self._sub_tabs.addTab(tab_gantt, "甘特图")
 
+        # Tab 3: 结果矩阵（任务×样品 pass/fail 矩阵）
+        tab_matrix = QWidget()
+        tab_matrix_layout = QVBoxLayout(tab_matrix)
+        tab_matrix_layout.setContentsMargins(0, 0, 0, 0)
+        self._result_matrix = _ResultMatrixWidget()
+        tab_matrix_layout.addWidget(self._result_matrix)
+        self._sub_tabs.addTab(tab_matrix, "结果矩阵")
+
         layout.addWidget(self._sub_tabs, stretch=1)
 
         # 全量任务缓存（用于搜索过滤）
@@ -685,6 +693,8 @@ class TestPlanView(QWidget):
         technician_map: dict[int, str] | None = None,
         result_map: dict[int, tuple[int, int]] | None = None,
         start_date: str = "",
+        matrix_results: list | None = None,
+        sample_map: dict[int, str] | None = None,
     ) -> None:
         self._all_tasks_for_filter = tasks
         self._last_technician_map = technician_map or {}
@@ -693,6 +703,8 @@ class TestPlanView(QWidget):
         self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days, start_date)
         self._gantt.setMinimumHeight(max(150, len(tasks) * 28 + 24))
+        # 结果矩阵
+        self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
 
     def set_plans(self, plan_names: list[str], plan_ids: list[int] | None = None) -> None:
         """设置计划下拉选项。"""
@@ -816,3 +828,182 @@ class TestPlanView(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes and self._on_delete_task:
             self._on_delete_task(task)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  结果矩阵（任务×样品 pass/fail 矩阵）
+# ═══════════════════════════════════════════════════════════════════
+
+class _ResultMatrixWidget(QWidget):
+    """任务×样品 的 pass/fail 结果矩阵。
+
+    行 = 测试任务（task），列 = 样品（sample）。
+    单元格显示 pass/fail/conditional/pending/skip，着色区分。
+    """
+
+    _RESULT_COLORS: dict[str, str] = {
+        "pass": GREEN,
+        "fail": RED,
+        "conditional": YELLOW,
+        "pending": SURFACE2,
+        "skip": SUBTEXT0,
+    }
+
+    _RESULT_LABELS: dict[str, str] = {
+        "pass": "P",
+        "fail": "F",
+        "conditional": "C",
+        "pending": "—",
+        "skip": "S",
+    }
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+
+        self._table = QTableWidget()
+        self._table.setStyleSheet(TABLE_QSS.format(
+            bg=BASE, text=TEXT, gridline=SURFACE1,
+            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=12,
+        ))
+        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
+        self._table.setAlternatingRowColors(False)
+        self._table.verticalHeader().setVisible(True)
+        self._table.horizontalHeader().setStretchLastSection(False)
+        self._table.setStyleSheet(self._table.styleSheet() + f"""
+            QTableWidget::item {{
+                padding: 0px;
+            }}
+        """)
+        self._layout.addWidget(self._table)
+
+        # 统计摘要行
+        self._summary_label = QLabel("选择测试计划后显示结果矩阵")
+        self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
+        self._layout.addWidget(self._summary_label)
+
+    def refresh(
+        self,
+        tasks: list[TestTask],
+        results: list,
+        sample_map: dict[int, str],
+    ) -> None:
+        """根据任务和结果重建矩阵。
+
+        Args:
+            tasks: 任务列表
+            results: TestResult 列表
+            sample_map: {sample_id: sn}
+        """
+        if not tasks:
+            self._table.setRowCount(0)
+            self._table.setColumnCount(0)
+            self._summary_label.setText("当前计划无测试任务")
+            return
+
+        # 收集所有涉及到的 sample_id（按 id 排序）
+        sample_ids_set: set[int] = set()
+        for r in results:
+            if r.sample_id is not None:
+                sample_ids_set.add(r.sample_id)
+        # 如果有结果但无 sample，或任务还没结果，用 sample_map 中的 key 补全
+        # 这里只显示有实际结果的样品列
+        sample_ids = sorted(sample_ids_set)
+
+        # 构建 (task_id, sample_id) → result 的映射
+        lookup: dict[tuple[int, int], str] = {}
+        for r in results:
+            if r.task_id and r.sample_id is not None:
+                lookup[(r.task_id, r.sample_id)] = r.result
+
+        # 建立行映射 task_id → row
+        task_id_to_row: dict[int, int] = {}
+        for i, t in enumerate(tasks):
+            if t.id is not None:
+                task_id_to_row[t.id] = i
+
+        # 设置表格
+        rows = len(tasks)
+        cols = len(sample_ids) + 1  # 第一列是任务名
+
+        self._table.setRowCount(rows)
+        self._table.setColumnCount(cols)
+
+        # 表头
+        headers = ["任务"]
+        for sid in sample_ids:
+            sn = sample_map.get(sid, f"#{sid}")
+            headers.append(sn)
+        self._table.setHorizontalHeaderLabels(headers)
+
+        header = self._table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        for c in range(1, cols):
+            header.setSectionResizeMode(c, QHeaderView.ResizeMode.Fixed)
+            self._table.setColumnWidth(c, 50)
+
+        # 填充数据
+        total_pass = 0
+        total_fail = 0
+        total_cells = 0
+
+        for row, task in enumerate(tasks):
+            # 任务名称
+            name_item = QTableWidgetItem(task.name or f"Task#{task.id}")
+            name_item.setData(Qt.ItemDataRole.UserRole, task.id)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            self._table.setVerticalHeaderItem(row, QTableWidgetItem(f"#{row + 1}"))
+            self._table.setItem(row, 0, name_item)
+
+            for col_idx, sid in enumerate(sample_ids):
+                col = col_idx + 1
+                tid = task.id
+                result_str = lookup.get((tid, sid), "") if tid else ""
+                label = self._RESULT_LABELS.get(result_str, "")
+                color = self._RESULT_COLORS.get(result_str, SURFACE2)
+
+                item = QTableWidgetItem(label)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setData(Qt.ItemDataRole.UserRole, (tid, sid))
+                # 着色
+                bg_color = QColor(color)
+                bg_color.setAlpha(60)
+                item.setBackground(bg_color)
+                if result_str == "pass":
+                    item.setForeground(QColor(GREEN))
+                elif result_str == "fail":
+                    item.setForeground(QColor(RED))
+                else:
+                    item.setForeground(QColor(SUBTEXT0))
+                self._table.setItem(row, col, item)
+
+                if result_str:
+                    total_cells += 1
+                    if result_str == "pass":
+                        total_pass += 1
+                    elif result_str == "fail":
+                        total_fail += 1
+
+        # 摘要
+        if total_cells > 0:
+            rate = total_pass / total_cells * 100
+            self._summary_label.setText(
+                f"共 {len(tasks)} 项任务 × {len(sample_ids)} 个样品 | "
+                f"通过 {total_pass}/{total_cells} ({rate:.0f}%) | "
+                f"失败 {total_fail}"
+            )
+            self._summary_label.setStyleSheet(
+                f"color: {GREEN if rate >= 80 else YELLOW if rate >= 50 else RED}; "
+                f"font-size: 11px; padding: 4px 8px; font-weight: bold;"
+            )
+        elif sample_ids:
+            self._summary_label.setText(
+                f"共 {len(tasks)} 项任务 × {len(sample_ids)} 个样品 — 暂无录入结果"
+            )
+            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
+        else:
+            self._summary_label.setText("暂无测试结果数据")
+            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
