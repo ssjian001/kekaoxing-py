@@ -31,24 +31,27 @@ class SampleRepository(BaseRepository):
         )
 
     def get_by_sn(self, sn: str) -> Optional[Sample]:
+        cols = "id, sn, batch_no, spec, project_id, status, location, test_hours, qr_code, notes, supplier, scrapped_reason, created_at, updated_at"
         rows = self._conn.execute(
-            "SELECT * FROM [samples] WHERE sn = ?", (sn,)
+            f"SELECT {cols} FROM [samples] WHERE sn = ?", (sn,)
         ).fetchall()
         return self._rows_to_models(rows)[0] if rows else None
 
     def get_by_status(self, status: str) -> list[Sample]:
         return self.list_all(status=status)
 
+    _TXN_COLS = "id, sample_id, type, operator_id, purpose, related_task_id, expected_return, actual_return, notes, created_at"
+
     def get_transactions(self, sample_id: int) -> list[SampleTransaction]:
         """获取样品的出入库记录。"""
-        pragma = self._conn.execute("PRAGMA table_info([sample_transactions])").fetchall()
-        col_names = [c[1] for c in pragma]
-        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            f"SELECT {cols_sql} FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
+            f"SELECT {self._TXN_COLS} FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
             (sample_id,),
         ).fetchall()
-        return [SampleTransaction(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
+        return [SampleTransaction(**cast(dict[str, Any], dict(
+            zip(("id", "sample_id", "type", "operator_id", "purpose", "related_task_id",
+                 "expected_return", "actual_return", "notes", "created_at"), r)
+        ))) for r in rows]
 
     def update_status(self, id: int, status: str) -> None:
         """更新样品状态。"""

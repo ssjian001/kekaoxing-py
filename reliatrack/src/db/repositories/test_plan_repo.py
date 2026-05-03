@@ -21,8 +21,13 @@ class TestPlanRepository(BaseRepository):
 
     def get_tasks(self, plan_id: int) -> list[TestTask]:
         """获取计划下所有测试任务。"""
-        col_names = [c[1] for c in
-            self._conn.execute("PRAGMA table_info([test_tasks])").fetchall()]
+        col_names = (
+            "id", "plan_id", "name", "category", "test_standard", "technician_id",
+            "equipment_id", "sample_ids", "duration", "start_day", "progress",
+            "status", "priority", "environment", "log_file", "dependencies",
+            "notes", "temperature", "humidity", "accept_criteria", "sort_order",
+            "created_at", "updated_at",
+        )
         cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
             f"SELECT {cols_sql} FROM [test_tasks] WHERE plan_id = ? ORDER BY sort_order, id",

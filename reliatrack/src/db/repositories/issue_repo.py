@@ -88,16 +88,18 @@ class IssueRepository(BaseRepository):
 
     # ── FA 记录 ──
 
+    _FA_COLS = "id, issue_id, step_no, step_title, description, method, findings, possible_cause, cause_category, failure_mechanism"
+
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         """获取 Issue 的 FA 分析记录。"""
-        pragma = self._conn.execute("PRAGMA table_info([fa_records])").fetchall()
-        col_names = [c[1] for c in pragma]
-        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            f"SELECT {cols_sql} FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
+            f"SELECT {self._FA_COLS} FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
             (issue_id,),
         ).fetchall()
-        return [FARecord(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
+        return [FARecord(**cast(dict[str, Any], dict(
+            zip(("id", "issue_id", "step_no", "step_title", "description", "method",
+                 "findings", "possible_cause", "cause_category", "failure_mechanism"), r)
+        ))) for r in rows]
 
     def add_fa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 FA 分析步骤。"""
@@ -113,16 +115,17 @@ class IssueRepository(BaseRepository):
 
     # ── 附件 ──
 
+    _ATTACH_COLS = "id, issue_id, file_path, file_type, description, created_at"
+
     def get_attachments(self, issue_id: int) -> list[IssueAttachment]:
         """获取 Issue 附件。"""
-        pragma = self._conn.execute("PRAGMA table_info([issue_attachments])").fetchall()
-        col_names = [c[1] for c in pragma]
-        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            f"SELECT {cols_sql} FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {self._ATTACH_COLS} FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
-        return [IssueAttachment(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
+        return [IssueAttachment(**cast(dict[str, Any], dict(
+            zip(("id", "issue_id", "file_path", "file_type", "description", "created_at"), r)
+        ))) for r in rows]
 
     def add_attachment(self, issue_id: int, **kwargs: object) -> int:
         """添加 Issue 附件。"""
@@ -178,16 +181,18 @@ class IssueRepository(BaseRepository):
 
     # ── CAPA 记录 ──
 
+    _CAPA_COLS = "id, issue_id, action, assignee_id, due_date, status, verification_result, verified_by, created_at, updated_at"
+
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         """获取 Issue 的 CAPA 记录。"""
-        pragma = self._conn.execute("PRAGMA table_info([capa_records])").fetchall()
-        col_names = [c[1] for c in pragma]
-        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            f"SELECT {cols_sql} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {self._CAPA_COLS} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
-        return [CAPARecord(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
+        return [CAPARecord(**cast(dict[str, Any], dict(
+            zip(("id", "issue_id", "action", "assignee_id", "due_date", "status",
+                 "verification_result", "verified_by", "created_at", "updated_at"), r)
+        ))) for r in rows]
 
     def add_capa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 CAPA 记录。"""

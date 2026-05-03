@@ -60,7 +60,8 @@ class KnowledgeRepository(BaseRepository):
 
     def _list(self) -> list[KnowledgeEntry]:
         """查询所有条目，按 id DESC 排序。"""
+        cols = "id, category, failure_mode, cause_analysis, improvement, reference_standard, keywords, summary, root_cause, resolution, created_at, updated_at"
         rows = self._conn.execute(
-            f"SELECT * FROM [{self._table}] ORDER BY id DESC"
+            f"SELECT {cols} FROM [{self._table}] ORDER BY id DESC"
         ).fetchall()
         return self._rows_to_models(rows)

@@ -22,7 +22,8 @@ class ProjectRepository(BaseRepository):
 
     def get_by_name(self, name: str) -> Optional[Project]:
         """按名称查找项目。"""
+        cols = "id, name, product, customer, description, status, created_at, updated_at"
         rows = self._conn.execute(
-            "SELECT * FROM [projects] WHERE name = ?", (name,)
+            f"SELECT {cols} FROM [projects] WHERE name = ?", (name,)
         ).fetchall()
         return self._rows_to_models(rows)[0] if rows else None
