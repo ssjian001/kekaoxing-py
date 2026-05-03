@@ -32,6 +32,38 @@ class IssueRepository(BaseRepository):
         ).fetchone()
         return row[0] if row else 0
 
+    def count_by_severity(self, project_id: int | None = None) -> dict[str, int]:
+        """按严重度分组计数，可选按 project_id 过滤。"""
+        if project_id:
+            sql = (
+                "SELECT severity, COUNT(*) FROM [issues] "
+                "WHERE task_id IN (SELECT id FROM [test_tasks] "
+                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?)) "
+                "GROUP BY severity"
+            )
+            return dict(self._conn.execute(sql, (project_id,)).fetchall())
+        return dict(
+            self._conn.execute(
+                "SELECT severity, COUNT(*) FROM [issues] GROUP BY severity"
+            ).fetchall()
+        )
+
+    def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
+        """按状态分组计数，可选按 project_id 过滤。"""
+        if project_id:
+            sql = (
+                "SELECT status, COUNT(*) FROM [issues] "
+                "WHERE task_id IN (SELECT id FROM [test_tasks] "
+                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?)) "
+                "GROUP BY status"
+            )
+            return dict(self._conn.execute(sql, (project_id,)).fetchall())
+        return dict(
+            self._conn.execute(
+                "SELECT status, COUNT(*) FROM [issues] GROUP BY status"
+            ).fetchall()
+        )
+
     def get_by_project(self, project_id: int) -> list[Issue]:
         return self.list_all(project_id=project_id)
 

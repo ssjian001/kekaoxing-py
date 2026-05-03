@@ -19,6 +19,17 @@ class SampleRepository(BaseRepository):
     def get_by_project(self, project_id: int) -> list[Sample]:
         return self.list_all(project_id=project_id)
 
+    def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
+        """按状态分组计数，可选按 project_id 过滤。"""
+        if project_id:
+            sql = "SELECT status, COUNT(*) FROM [samples] WHERE project_id = ? GROUP BY status"
+            return dict(self._conn.execute(sql, (project_id,)).fetchall())
+        return dict(
+            self._conn.execute(
+                "SELECT status, COUNT(*) FROM [samples] GROUP BY status"
+            ).fetchall()
+        )
+
     def get_by_sn(self, sn: str) -> Optional[Sample]:
         rows = self._conn.execute(
             "SELECT * FROM [samples] WHERE sn = ?", (sn,)

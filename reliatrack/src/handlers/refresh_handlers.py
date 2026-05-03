@@ -164,8 +164,13 @@ class RefreshHandlers:
             else:
                 all_samples = ctrl.sample_service.list_all()
             sample_count = len(all_samples)
-            sample_counter = Counter(s.status for s in all_samples)
-            sample_status_data = dict(sample_counter)
+            # SQL 聚合替代 Counter
+            if ctrl.sample_service._repo:
+                sample_status_data = ctrl.sample_service._repo.count_by_status(
+                    project_id=filter_project_id
+                )
+            else:
+                sample_status_data = dict(Counter(s.status for s in all_samples))
         else:
             all_samples = []
 
@@ -207,9 +212,10 @@ class RefreshHandlers:
             issues = len(issues_list)
             equipment = len(ctrl.equipment.list_all())
 
-            # Issue 严重度分布
-            severity_counter = Counter(i.severity for i in issues_list)
-            issue_severity_data = dict(severity_counter)
+            # Issue 严重度分布 — SQL 聚合替代 Counter
+            issue_severity_data = ctrl.issues.count_by_severity(
+                project_id=filter_project_id
+            )
 
             # ── 专业 KPI 计算 ──
             # 1. 测试通过率
@@ -222,11 +228,14 @@ class RefreshHandlers:
                 if total_result > 0:
                     pass_rate = total_pass / total_result * 100
 
-            # 2. Issue 闭环率
+            # 2. Issue 闭环率 — SQL 聚合替代 sum(1 for ...)
             issue_close_rate: float | None = None
-            if issues_list:
-                closed_count = sum(1 for i in issues_list if i.status == "closed")
-                issue_close_rate = closed_count / len(issues_list) * 100
+            if issues > 0:
+                status_counts = ctrl.issues.count_by_status(
+                    project_id=filter_project_id
+                )
+                closed_count = status_counts.get("closed", 0)
+                issue_close_rate = closed_count / issues * 100
 
             # 3. 校准预警（30天内到期）— SQL 聚合
             cal_warning = 0
