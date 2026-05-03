@@ -340,9 +340,17 @@ class BatchImportDialog(_BaseDialog):
         self._btn_import.setText("⏳ 导入中…")
 
         # 调用导入回调
+        errors_detail: list[str] = []
         if self._on_import:
             try:
-                success_count, skip_count = self._on_import(parsed_list)
+                raw = self._on_import(parsed_list)
+                # 兼容 ImportResult 和 tuple[int, int]
+                if hasattr(raw, "success"):
+                    success_count = raw.success
+                    skip_count = raw.skipped
+                    errors_detail = getattr(raw, "errors", [])
+                else:
+                    success_count, skip_count = raw
             except Exception as e:
                 QMessageBox.critical(self, "导入失败", f"导入过程中出错：\n{e}")
                 self._btn_import.setEnabled(True)
@@ -358,12 +366,21 @@ class BatchImportDialog(_BaseDialog):
         self._btn_close.setText("关闭")
 
         # 显示结果统计
+        detail_lines = []
+        if errors_detail:
+            # 最多显示前 8 条错误详情
+            for err in errors_detail[:8]:
+                detail_lines.append(f"  ⚠️ {err}")
+            if len(errors_detail) > 8:
+                detail_lines.append(f"  ... 还有 {len(errors_detail) - 8} 条")
+
         self._lbl_result.setVisible(True)
         self._lbl_result.setText(
             f"📊 导入完成！\n"
             f"  ✅ {self._result_msg_labels[0]}：{success_count} 条\n"
             f"  ⏭️ {self._result_msg_labels[1]}：{skip_count} 条\n"
             f"  📋 总计解析：{len(parsed_list)} 条"
+            + ("\n" + "\n".join(detail_lines) if detail_lines else "")
         )
         if skip_count > 0:
             self._lbl_result.setStyleSheet(

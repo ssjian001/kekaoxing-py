@@ -1,16 +1,29 @@
-"""导入服务 — 设备、技术员 Excel 批量导入逻辑。"""
+"""导入服务 — 设备、技术员 Excel 批量导入逻辑。
+
+返回 ImportResult 命名元组，包含成功数、跳过数和跳过原因详情。
+"""
 
 from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 from src.models.common import Equipment, Technician
 from src.services.equipment_service import EquipmentService
 from src.services.technician_service import TechnicianService
 
 
+@dataclass
+class ImportResult:
+    """批量导入结果。"""
+    success: int = 0
+    skipped: int = 0
+    errors: list[str] = field(default_factory=list)
+
+
 def import_equipment(
     rows: list[dict],
     service: EquipmentService,
-) -> tuple[int, int]:
+) -> ImportResult:
     """批量导入设备。
 
     Args:
@@ -18,16 +31,24 @@ def import_equipment(
         service: EquipmentService 实例
 
     Returns:
-        (成功数, 跳过数) — 跳过包括名称为空、与已有/本次已导入设备重名
+        ImportResult — 含成功数、跳过数和每条跳过的原因。
     """
     existing = {eq.name for eq in service.list_all()}
     seen_this_batch: set[str] = set()
-    success = 0
-    skipped = 0
-    for row in rows:
+    result = ImportResult()
+    for idx, row in enumerate(rows, 1):
         name = row.get("name", "").strip()
-        if not name or name in existing or name in seen_this_batch:
-            skipped += 1
+        if not name:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 设备名称为空")
+            continue
+        if name in existing:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 设备「{name}」已存在")
+            continue
+        if name in seen_this_batch:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 设备「{name}」与本批次重复")
             continue
         try:
             service.create(
@@ -40,16 +61,17 @@ def import_equipment(
                 next_calibration_date=row.get("next_calibration_date", "").strip(),
             )
             seen_this_batch.add(name)
-            success += 1
-        except Exception:
-            skipped += 1
-    return success, skipped
+            result.success += 1
+        except Exception as e:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 设备「{name}」导入失败 — {e}")
+    return result
 
 
 def import_technicians(
     rows: list[dict],
     service: TechnicianService,
-) -> tuple[int, int]:
+) -> ImportResult:
     """批量导入技术员。
 
     Args:
@@ -57,21 +79,26 @@ def import_technicians(
         service: TechnicianService 实例
 
     Returns:
-        (成功数, 跳过数) — 跳过包括名称为空、与已有/本次已导入技术员重名
+        ImportResult — 含成功数、跳过数和每条跳过的原因。
     """
     existing = {(t.name, t.employee_id) for t in service.list_all()}
     seen_this_batch: set[tuple[str, str]] = set()
-    success = 0
-    skipped = 0
-    for row in rows:
+    result = ImportResult()
+    for idx, row in enumerate(rows, 1):
         name = row.get("name", "").strip()
         if not name:
-            skipped += 1
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 技术员名称为空")
             continue
         emp_id = row.get("employee_id", "").strip()
         key = (name, emp_id)
-        if key in existing or key in seen_this_batch:
-            skipped += 1
+        if key in existing:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 技术员「{name}({emp_id})」已存在")
+            continue
+        if key in seen_this_batch:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 技术员「{name}({emp_id})」与本批次重复")
             continue
         try:
             service.create(
@@ -83,7 +110,8 @@ def import_technicians(
                 email=row.get("email", "").strip(),
             )
             seen_this_batch.add(key)
-            success += 1
-        except Exception:
-            skipped += 1
-    return success, skipped
+            result.success += 1
+        except Exception as e:
+            result.skipped += 1
+            result.errors.append(f"第 {idx} 行: 技术员「{name}」导入失败 — {e}")
+    return result
