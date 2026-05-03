@@ -90,12 +90,11 @@ class IssueRepository(BaseRepository):
 
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         """获取 Issue 的 FA 分析记录。"""
-        cols = self._conn.execute(
-            "PRAGMA table_info([fa_records])"
-        ).fetchall()
-        col_names = [c[1] for c in cols]
+        pragma = self._conn.execute("PRAGMA table_info([fa_records])").fetchall()
+        col_names = [c[1] for c in pragma]
+        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            "SELECT * FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
+            f"SELECT {cols_sql} FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
             (issue_id,),
         ).fetchall()
         return [FARecord(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
@@ -116,12 +115,11 @@ class IssueRepository(BaseRepository):
 
     def get_attachments(self, issue_id: int) -> list[IssueAttachment]:
         """获取 Issue 附件。"""
-        cols = self._conn.execute(
-            "PRAGMA table_info([issue_attachments])"
-        ).fetchall()
-        col_names = [c[1] for c in cols]
+        pragma = self._conn.execute("PRAGMA table_info([issue_attachments])").fetchall()
+        col_names = [c[1] for c in pragma]
+        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            "SELECT * FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {cols_sql} FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
         return [IssueAttachment(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
@@ -182,12 +180,11 @@ class IssueRepository(BaseRepository):
 
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         """获取 Issue 的 CAPA 记录。"""
-        cols = self._conn.execute(
-            "PRAGMA table_info([capa_records])"
-        ).fetchall()
-        col_names = [c[1] for c in cols]
+        pragma = self._conn.execute("PRAGMA table_info([capa_records])").fetchall()
+        col_names = [c[1] for c in pragma]
+        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            "SELECT * FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {cols_sql} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
         return [CAPARecord(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
@@ -225,28 +222,22 @@ class IssueRepository(BaseRepository):
         )
 
     def delete_by_project(self, project_id: int) -> int:
-        """删除项目关联的所有 issue（含 FA/CAPA/附件 + 磁盘文件），返回删除行数。"""
-        # 先删子表
-        self._conn.execute(
-            "DELETE FROM [fa_records] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
-        )
-        # 收集附件文件路径并清理磁盘
+        """删除项目关联的所有 issue（含附件磁盘清理），返回删除行数。
+
+        子表（fa_records / issue_attachments / capa_records）依赖 FK CASCADE。
+        附件磁盘文件需手动清理。
+        """
+        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件）
         attachment_paths = self._conn.execute(
-            "SELECT file_path FROM [issue_attachments] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
+            "SELECT file_path FROM [issue_attachments] ia "
+            "JOIN [issues] i ON ia.issue_id = i.id "
+            "WHERE i.project_id = ?",
+            (project_id,),
         ).fetchall()
         for (fp,) in attachment_paths:
             self._remove_disk_file(fp)
-        self._conn.execute(
-            "DELETE FROM [issue_attachments] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
-        )
-        self._conn.execute(
-            "DELETE FROM [capa_records] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
-        )
+        # projects.project_id 有 ON DELETE CASCADE，删 projects 时自动级联删除 issues 及子表
         cursor = self._conn.execute(
-            "DELETE FROM [issues] WHERE project_id = ?", (project_id,)
+            "DELETE FROM [projects] WHERE id = ?", (project_id,),
         )
         return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

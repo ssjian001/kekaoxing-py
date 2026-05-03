@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import EquipmentRepository
 from src.models.common import Equipment
+
+logger = logging.getLogger(__name__)
 
 
 class EquipmentService:

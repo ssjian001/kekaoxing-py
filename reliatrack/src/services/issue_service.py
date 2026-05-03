@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import IssueRepository
 from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
+
+logger = logging.getLogger(__name__)
 
 
 class IssueService:

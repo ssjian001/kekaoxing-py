@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import TechnicianRepository
 from src.db.repositories.test_task_repo import TestTaskRepository
 from src.db.repositories.issue_repo import IssueRepository
 from src.models.common import Technician
+
+logger = logging.getLogger(__name__)
 
 
 class TechnicianService:

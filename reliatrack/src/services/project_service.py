@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import (
     ProjectRepository, TestPlanRepository, SampleRepository,
     IssueRepository, TestTaskRepository,
 )
 from src.models.project import Project
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectService:

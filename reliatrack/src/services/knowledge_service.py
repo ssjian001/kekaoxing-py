@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories.knowledge_repo import KnowledgeRepository
 from src.models.knowledge import KnowledgeEntry
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeService:

@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
-from src.models.common import Equipment, Technician
 from src.services.equipment_service import EquipmentService
 from src.services.technician_service import TechnicianService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

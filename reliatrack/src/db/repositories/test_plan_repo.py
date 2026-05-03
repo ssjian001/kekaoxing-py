@@ -21,12 +21,11 @@ class TestPlanRepository(BaseRepository):
 
     def get_tasks(self, plan_id: int) -> list[TestTask]:
         """获取计划下所有测试任务。"""
-        cols = self._conn.execute(
-            "PRAGMA table_info([test_tasks])"
-        ).fetchall()
-        col_names = [c[1] for c in cols]
+        col_names = [c[1] for c in
+            self._conn.execute("PRAGMA table_info([test_tasks])").fetchall()]
+        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            "SELECT * FROM [test_tasks] WHERE plan_id = ? ORDER BY sort_order, id",
+            f"SELECT {cols_sql} FROM [test_tasks] WHERE plan_id = ? ORDER BY sort_order, id",
             (plan_id,),
         ).fetchall()
         return [TestTask(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]

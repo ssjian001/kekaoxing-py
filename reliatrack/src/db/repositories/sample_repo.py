@@ -41,12 +41,11 @@ class SampleRepository(BaseRepository):
 
     def get_transactions(self, sample_id: int) -> list[SampleTransaction]:
         """获取样品的出入库记录。"""
-        cols = self._conn.execute(
-            "PRAGMA table_info([sample_transactions])"
-        ).fetchall()
-        col_names = [c[1] for c in cols]
+        pragma = self._conn.execute("PRAGMA table_info([sample_transactions])").fetchall()
+        col_names = [c[1] for c in pragma]
+        cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
-            "SELECT * FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
+            f"SELECT {cols_sql} FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
             (sample_id,),
         ).fetchall()
         return [SampleTransaction(**cast(dict[str, Any], dict(zip(col_names, r)))) for r in rows]
@@ -79,8 +78,9 @@ class SampleRepository(BaseRepository):
         Returns:
             包含完整关联信息的字典列表。
         """
-        sql = """
-            SELECT st.*, s.sn as sample_sn, s.batch_no,
+        st_cols = "id, sample_id, type, operator_id, purpose, related_task_id, expected_return, actual_return, notes, created_at"
+        sql = f"""
+            SELECT {st_cols}, s.sn as sample_sn, s.batch_no,
                    t.name as operator_name
             FROM sample_transactions st
             LEFT JOIN samples s ON st.sample_id = s.id
@@ -117,11 +117,10 @@ class SampleRepository(BaseRepository):
         )
 
     def delete_by_project(self, project_id: int) -> int:
-        """删除项目关联的所有样品（含 transactions），返回删除行数。"""
-        self._conn.execute(
-            "DELETE FROM [sample_transactions] WHERE sample_id IN "
-            "(SELECT id FROM [samples] WHERE project_id = ?)", (project_id,)
-        )
+        """删除项目关联的所有样品，返回删除行数。
+
+        sample_transactions 依赖 FK CASCADE（sample_transactions.sample_id → samples(id) ON DELETE CASCADE）。
+        """
         cursor = self._conn.execute(
             "DELETE FROM [samples] WHERE project_id = ?", (project_id,)
         )

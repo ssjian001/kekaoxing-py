@@ -58,8 +58,9 @@ class TestTaskRepository(BaseRepository):
         except (json.JSONDecodeError, TypeError):
             return []
         placeholders = ", ".join(["?"] * len(dep_ids))
+        cols = "id, plan_id, name, category, test_standard, technician_id, equipment_id, sample_ids, duration, start_day, progress, status, priority, environment, log_file, dependencies, notes, temperature, humidity, accept_criteria, sort_order, created_at, updated_at"
         rows = self._conn.execute(
-            f"SELECT * FROM [test_tasks] WHERE id IN ({placeholders})", dep_ids
+            f"SELECT {cols} FROM [test_tasks] WHERE id IN ({placeholders})", dep_ids
         ).fetchall()
         return self._rows_to_models(rows)
 
@@ -102,23 +103,17 @@ class TestTaskRepository(BaseRepository):
             raise
 
     def delete_by_plan(self, plan_id: int) -> int:
-        """删除计划关联的所有测试任务（含 test_results / issues 子表），返回删除行数。"""
-        # 先删 test_results
-        self._conn.execute(
-            "DELETE FROM [test_results] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?)", (plan_id,)
-        )
-        # 删 issues 子表 (fa_records / issue_attachments / capa_records)
-        self._conn.execute(
-            "DELETE FROM [fa_records] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
-        )
-        # 先收集附件文件路径，再删 DB 记录
+        """删除计划关联的所有测试任务，返回删除行数。
+
+        附件文件清理（磁盘 .unlink）需手动执行，其余子表依赖 FK CASCADE。
+        """
+        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件）
         attachment_paths = self._conn.execute(
-            "SELECT file_path FROM [issue_attachments] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
+            "SELECT file_path FROM [issue_attachments] ia "
+            "JOIN [issues] i ON ia.issue_id = i.id "
+            "JOIN [test_tasks] tt ON i.task_id = tt.id "
+            "WHERE tt.plan_id = ?",
+            (plan_id,),
         ).fetchall()
         from pathlib import Path
         for (fp,) in attachment_paths:
@@ -128,23 +123,13 @@ class TestTaskRepository(BaseRepository):
                     p.unlink()
             except OSError:
                 logger.warning("批量删除附件文件失败: %s", fp)
-        self._conn.execute(
-            "DELETE FROM [issue_attachments] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
-        )
-        self._conn.execute(
-            "DELETE FROM [capa_records] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
-        )
-        # 删 issues
+        # issues.task_id 有 FK 但无 CASCADE，需手动删除（触发级联清理子表）
         self._conn.execute(
             "DELETE FROM [issues] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?)", (plan_id,)
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?)", (plan_id,),
         )
-        # 删 tasks
+        # tasks 依赖 CASCADE 从 test_plans 级联，此处不需显式删除
         cursor = self._conn.execute(
-            "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,)
+            "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,),
         )
         return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

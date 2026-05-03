@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import TestPlanRepository, TestTaskRepository, TestResultRepository
 from src.models.test_plan import TestPlan, TestTask, TestResult
+
+logger = logging.getLogger(__name__)
 
 
 class TestPlanService:

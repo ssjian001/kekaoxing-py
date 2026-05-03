@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import SampleRepository
 from src.db.repositories.test_result_repo import TestResultRepository
 from src.db.repositories.issue_repo import IssueRepository
 from src.models.sample import Sample, SampleTransaction
+
+logger = logging.getLogger(__name__)
 
 
 class SampleService:
