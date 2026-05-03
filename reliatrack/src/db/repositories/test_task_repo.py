@@ -114,6 +114,20 @@ class TestTaskRepository(BaseRepository):
             "(SELECT id FROM [issues] WHERE task_id IN "
             "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
         )
+        # 先收集附件文件路径，再删 DB 记录
+        attachment_paths = self._conn.execute(
+            "SELECT file_path FROM [issue_attachments] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE task_id IN "
+            "(SELECT id FROM [test_tasks] WHERE plan_id = ?))", (plan_id,)
+        ).fetchall()
+        from pathlib import Path
+        for (fp,) in attachment_paths:
+            try:
+                p = Path(fp)
+                if p.exists():
+                    p.unlink()
+            except OSError:
+                logger.warning("批量删除附件文件失败: %s", fp)
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id IN "
             "(SELECT id FROM [issues] WHERE task_id IN "

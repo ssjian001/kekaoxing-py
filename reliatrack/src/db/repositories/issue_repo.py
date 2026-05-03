@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import logging
+import os
+
 import apsw
 
 from typing import Any, cast
+from pathlib import Path
 
 from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
 from src.db.repositories.base import BaseRepository
+
+logger = logging.getLogger(__name__)
 
 
 class IssueRepository(BaseRepository):
@@ -138,14 +144,36 @@ class IssueRepository(BaseRepository):
             "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
         )
 
+    @staticmethod
+    def _remove_disk_file(file_path: str) -> None:
+        """安全删除附件磁盘文件，忽略不存在或无权限的文件。"""
+        try:
+            p = Path(file_path)
+            if p.exists():
+                p.unlink()
+        except OSError:
+            logger.warning("附件磁盘文件删除失败: %s", file_path)
+
     def delete_attachments(self, issue_id: int) -> None:
-        """删除 Issue 的所有附件（级联删除子表）。"""
+        """删除 Issue 的所有附件（DB 记录 + 磁盘文件）。"""
+        rows = self._conn.execute(
+            "SELECT file_path FROM [issue_attachments] WHERE issue_id = ?",
+            (issue_id,),
+        ).fetchall()
+        for (fp,) in rows:
+            self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
         )
 
-    def delete_attachment(self, attachment_id: int) -> None:  # attachment management
-        """删除单条附件。"""
+    def delete_attachment(self, attachment_id: int) -> None:
+        """删除单条附件（DB 记录 + 磁盘文件）。"""
+        row = self._conn.execute(
+            "SELECT file_path FROM [issue_attachments] WHERE id = ?",
+            (attachment_id,),
+        ).fetchone()
+        if row:
+            self._remove_disk_file(row[0])
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
         )
@@ -197,12 +225,19 @@ class IssueRepository(BaseRepository):
         )
 
     def delete_by_project(self, project_id: int) -> int:
-        """删除项目关联的所有 issue（含 FA/CAPA/附件），返回删除行数。"""
+        """删除项目关联的所有 issue（含 FA/CAPA/附件 + 磁盘文件），返回删除行数。"""
         # 先删子表
         self._conn.execute(
             "DELETE FROM [fa_records] WHERE issue_id IN "
             "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
         )
+        # 收集附件文件路径并清理磁盘
+        attachment_paths = self._conn.execute(
+            "SELECT file_path FROM [issue_attachments] WHERE issue_id IN "
+            "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
+        ).fetchall()
+        for (fp,) in attachment_paths:
+            self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id IN "
             "(SELECT id FROM [issues] WHERE project_id = ?)", (project_id,)
