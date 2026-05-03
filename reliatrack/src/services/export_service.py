@@ -84,6 +84,74 @@ class ExportService:
         self._output_dir.mkdir(parents=True, exist_ok=True)
         return self._output_dir
 
+    # ── Excel 共享辅助 ──
+
+    def _excel_styles(self, fill_color: str = "2B579A"):
+        """返回 Excel 通用样式字典（字体、填充、对齐、边框）。"""
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        _f = self.get_cjk_font()
+        return {
+            "header_font": Font(name=_f, size=11, bold=True, color="FFFFFF"),
+            "header_fill": PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid"),
+            "cell_font": Font(name=_f, size=10),
+            "title_font": lambda c: Font(name=_f, size=14, bold=True, color=c),
+            "sub_font": Font(name=_f, size=9, color="666666"),
+            "center": Alignment(horizontal="center", vertical="center"),
+            "thin_border": Border(
+                left=Side(style="thin"), right=Side(style="thin"),
+                top=Side(style="thin"), bottom=Side(style="thin"),
+            ),
+        }
+
+    def _excel_write_title_block(
+        self, ws, title: str, merge_range: str, subtitle: str, sub_range: str,
+        title_color: str, styles: dict,
+    ) -> None:
+        """写入 Excel 标题行 + 副标题行。"""
+        from openpyxl.styles import Alignment
+
+        ws.merge_cells(merge_range)
+        title_cell = ws[merge_range.split(":")[0]]
+        title_cell.value = title
+        title_cell.font = styles["title_font"](title_color)
+        title_cell.alignment = Alignment(horizontal="center")
+        ws.row_dimensions[1].height = 30
+
+        ws.merge_cells(sub_range)
+        sub = ws[sub_range.split(":")[0]]
+        sub.value = subtitle
+        sub.font = styles["sub_font"]
+        sub.alignment = Alignment(horizontal="center")
+
+    def _excel_write_headers(
+        self, ws, row: int, headers: list[str], styles: dict,
+    ) -> None:
+        """写入 Excel 表头行。"""
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=row, column=col, value=h)
+            cell.font = styles["header_font"]
+            cell.fill = styles["header_fill"]
+            cell.alignment = styles["center"]
+            cell.border = styles["thin_border"]
+
+    def _excel_write_row(
+        self, ws, row: int, values: list, styles: dict, alignment=None,
+    ) -> None:
+        """写入 Excel 单行数据。"""
+        align = alignment or styles["center"]
+        for col, val in enumerate(values, 1):
+            cell = ws.cell(row=row, column=col, value=val)
+            cell.font = styles["cell_font"]
+            cell.alignment = align
+            cell.border = styles["thin_border"]
+
+    def _excel_save(self, wb, filepath: str | None, filename: str) -> str:
+        """保存 Excel 工作簿，返回绝对路径。"""
+        out = filepath or str(self._ensure_dir() / filename)
+        wb.save(out)
+        return os.path.abspath(out)
+
     # ── Excel 导出 ──────────────────────────────────────────────
 
     def export_tasks_excel(
@@ -98,51 +166,21 @@ class ExportService:
             导出文件的绝对路径。
         """
         from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-        _f = self.get_cjk_font()
-
+        s = self._excel_styles("2B579A")
         wb = Workbook()
         ws = wb.active
         ws.title = "测试任务"
 
-        # 样式
-        header_font = Font(name=_f, size=11, bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="2B579A", end_color="2B579A", fill_type="solid")
-        cell_font = Font(name=_f, size=10)
-        center = Alignment(horizontal="center", vertical="center")
-        thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
+        self._excel_write_title_block(
+            ws, f"测试计划: {plan.name}", "A1:I1",
+            f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  测试标准: {plan.test_standard or '—'}",
+            "A2:I2", "2B579A", s,
         )
 
-        # 标题行
-        ws.merge_cells("A1:I1")
-        title_cell = ws["A1"]
-        title_cell.value = f"测试计划: {plan.name}"
-        title_cell.font = Font(name=_f, size=14, bold=True, color="2B579A")
-        title_cell.alignment = Alignment(horizontal="center")
-        ws.row_dimensions[1].height = 30
-
-        # 副标题
-        ws.merge_cells("A2:I2")
-        sub = ws["A2"]
-        sub.value = f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  测试标准: {plan.test_standard or '—'}"
-        sub.font = Font(name=_f, size=9, color="666666")
-        sub.alignment = Alignment(horizontal="center")
-
-        # 表头
         headers = ["#", "名称", "类别", "工期(天)", "开始天", "进度", "状态", "优先级", "环境条件"]
-        for col, h in enumerate(headers, 1):
-            cell = ws.cell(row=4, column=col, value=h)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center
-            cell.border = thin_border
+        self._excel_write_headers(ws, 4, headers, s)
 
-        # 数据行
         for row_idx, task in enumerate(tasks, 5):
             values = [
                 row_idx - 4,
@@ -155,21 +193,13 @@ class ExportService:
                 task.priority,
                 task.environment,
             ]
-            for col, val in enumerate(values, 1):
-                cell = ws.cell(row=row_idx, column=col, value=val)
-                cell.font = cell_font
-                cell.alignment = center
-                cell.border = thin_border
+            self._excel_write_row(ws, row_idx, values, s)
 
-        # 列宽
         widths = [5, 30, 10, 10, 10, 8, 10, 8, 25]
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[chr(64 + i)].width = w
 
-        # 保存
-        out = filepath or str(self._ensure_dir() / f"测试任务_{plan.name}_{datetime.now():%Y%m%d_%H%M}.xlsx")
-        wb.save(out)
-        return os.path.abspath(out)
+        return self._excel_save(wb, filepath, f"测试任务_{plan.name}_{datetime.now():%Y%m%d_%H%M}.xlsx")
 
     def export_issues_excel(
         self,
@@ -183,47 +213,23 @@ class ExportService:
             fa_map: {issue_id: [FARecord, ...]} 可选。
         """
         from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.styles import Alignment
 
-        _f = self.get_cjk_font()
+        s = self._excel_styles("C0504D")
+        wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
         wb = Workbook()
         ws = wb.active
         ws.title = "Issue 追踪"
 
-        header_font = Font(name=_f, size=11, bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="C0504D", end_color="C0504D", fill_type="solid")
-        cell_font = Font(name=_f, size=10)
-        center = Alignment(horizontal="center", vertical="center")
-        wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
-        thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
+        self._excel_write_title_block(
+            ws, "Issue 追踪报告", "A1:H1",
+            f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(issues)} 个 Issue",
+            "A2:H2", "C0504D", s,
         )
 
-        # 标题
-        ws.merge_cells("A1:H1")
-        title_cell = ws["A1"]
-        title_cell.value = "Issue 追踪报告"
-        title_cell.font = Font(name=_f, size=14, bold=True, color="C0504D")
-        title_cell.alignment = Alignment(horizontal="center")
-        ws.row_dimensions[1].height = 30
-
-        ws.merge_cells("A2:H2")
-        sub = ws["A2"]
-        sub.value = f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(issues)} 个 Issue"
-        sub.font = Font(name=_f, size=9, color="666666")
-        sub.alignment = Alignment(horizontal="center")
-
         headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式", "根因分析", "FA 步骤数"]
-        for col, h in enumerate(headers, 1):
-            cell = ws.cell(row=4, column=col, value=h)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center
-            cell.border = thin_border
+        self._excel_write_headers(ws, 4, headers, s)
 
         for row_idx, issue in enumerate(issues, 5):
             fa_count = len(fa_map.get(issue.id, [])) if fa_map and issue.id is not None else 0
@@ -239,17 +245,15 @@ class ExportService:
             ]
             for col, val in enumerate(values, 1):
                 cell = ws.cell(row=row_idx, column=col, value=val)
-                cell.font = cell_font
-                cell.alignment = wrap if col in (2, 6, 7) else center
-                cell.border = thin_border
+                cell.font = s["cell_font"]
+                cell.alignment = wrap if col in (2, 6, 7) else s["center"]
+                cell.border = s["thin_border"]
 
         widths = [5, 25, 10, 10, 8, 15, 35, 10]
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[chr(64 + i)].width = w
 
-        out = filepath or str(self._ensure_dir() / f"Issue追踪_{datetime.now():%Y%m%d_%H%M}.xlsx")
-        wb.save(out)
-        return os.path.abspath(out)
+        return self._excel_save(wb, filepath, f"Issue追踪_{datetime.now():%Y%m%d_%H%M}.xlsx")
 
     def export_samples_excel(
         self,
@@ -258,61 +262,38 @@ class ExportService:
     ) -> str:
         """导出样品台账为 Excel。"""
         from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-        _f = self.get_cjk_font()
+        s = self._excel_styles("4F81BD")
 
         wb = Workbook()
         ws = wb.active
         ws.title = "样品台账"
 
-        header_font = Font(name=_f, size=11, bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-        cell_font = Font(name=_f, size=10)
-        center = Alignment(horizontal="center", vertical="center")
-        thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
+        self._excel_write_title_block(
+            ws, "样品台账", "A1:F1",
+            f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(samples)} 个样品",
+            "A2:F2", "4F81BD", s,
         )
 
-        ws.merge_cells("A1:F1")
-        title_cell = ws["A1"]
-        title_cell.value = "样品台账"
-        title_cell.font = Font(name=_f, size=14, bold=True, color="4F81BD")
-        title_cell.alignment = Alignment(horizontal="center")
-        ws.row_dimensions[1].height = 30
-
-        ws.merge_cells("A2:F2")
-        sub = ws["A2"]
-        sub.value = f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(samples)} 个样品"
-        sub.font = Font(name=_f, size=9, color="666666")
-        sub.alignment = Alignment(horizontal="center")
-
         headers = ["ID", "SN", "批次号", "规格型号", "状态", "存放位置"]
-        for col, h in enumerate(headers, 1):
-            cell = ws.cell(row=4, column=col, value=h)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center
-            cell.border = thin_border
+        self._excel_write_headers(ws, 4, headers, s)
 
-        for row_idx, s in enumerate(samples, 5):
-            values = [s.id, s.sn, s.batch_no, s.spec or "", self.STATUS_MAP.get(s.status, s.status), s.location or ""]
-            for col, val in enumerate(values, 1):
-                cell = ws.cell(row=row_idx, column=col, value=val)
-                cell.font = cell_font
-                cell.alignment = center
-                cell.border = thin_border
+        for row_idx, sample in enumerate(samples, 5):
+            values = [
+                sample.id,
+                sample.sn,
+                sample.batch_no or "",
+                sample.spec or "",
+                self.STATUS_MAP.get(sample.status, sample.status),
+                sample.location or "",
+            ]
+            self._excel_write_row(ws, row_idx, values, s)
 
-        widths = [5, 20, 15, 20, 10, 15]
+        widths = [5, 20, 15, 20, 10, 20]
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[chr(64 + i)].width = w
 
-        out = filepath or str(self._ensure_dir() / f"样品台账_{datetime.now():%Y%m%d_%H%M}.xlsx")
-        wb.save(out)
-        return os.path.abspath(out)
+        return self._excel_save(wb, filepath, f"样品台账_{datetime.now():%Y%m%d_%H%M}.xlsx")
 
     # ── PDF 导出 ──────────────────────────────────────────────
 
