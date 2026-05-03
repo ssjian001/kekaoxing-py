@@ -44,6 +44,7 @@ from src.services import (
     KnowledgeService,
     TechnicianService,
 )
+from src.services.holiday_service import HolidayService
 from src.services.undo_manager import UndoManager
 
 logger = logging.getLogger(__name__)
@@ -116,8 +117,10 @@ class AppController:
         self.test_plan_service = TestPlanService(self.test_plans, self.test_tasks, self.test_results)
         self.issue_service = IssueService(self.issues)
         self.settings_service = SettingsService(self.settings)
+        self.holiday_service = HolidayService(self._conn)
         self.scheduler_service = SchedulerService(
             self.test_tasks, self.equipment, self.test_plans,
+            holiday_service=self.holiday_service,
         )
         self.knowledge_service = KnowledgeService(self.knowledge)
         self.technician_service = TechnicianService(self.technicians, self.test_tasks, self.issues)

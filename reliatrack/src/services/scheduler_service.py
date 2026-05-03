@@ -13,7 +13,6 @@ from src.models.common import Equipment
 from src.services.scheduler import (
     ScheduleConfig,
     run_auto_schedule,
-    DEFAULT_HOLIDAYS,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,10 +26,12 @@ class SchedulerService:
         task_repo: TestTaskRepository,
         equipment_repo: EquipmentRepository,
         plan_repo: TestPlanRepository,
+        holiday_service: object | None = None,
     ) -> None:
         self._task_repo = task_repo
         self._equipment_repo = equipment_repo
         self._plan_repo = plan_repo
+        self._holiday_service = holiday_service
 
     def auto_schedule(
         self,
@@ -77,13 +78,16 @@ class SchedulerService:
         equipment = self._equipment_repo.list_all()
 
         # 构建配置
+        holidays: set[str] = set()
+        if self._holiday_service:
+            holidays = self._holiday_service.get_holidays_set()
         config = ScheduleConfig(
             start_date=start_date,
             skip_weekends=skip_weekends,
             lock_existing=lock_existing,
             deadline=deadline,
             equipment_capacity=equipment_capacity or {},
-            holidays=DEFAULT_HOLIDAYS,
+            holidays=holidays,
         )
 
         # 记录排程前的 start_day 用于对比

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import apsw
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -236,6 +236,12 @@ _DDL_TABLES: list[str] = [
         key         TEXT    UNIQUE PRIMARY KEY,
         value       TEXT    NOT NULL,
         updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )""",
+    """CREATE TABLE IF NOT EXISTS holidays (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        date        TEXT    NOT NULL UNIQUE,
+        name        TEXT    NOT NULL DEFAULT '',
+        source      TEXT    NOT NULL DEFAULT 'builtin'
     )""",
 ]
 
@@ -504,6 +510,59 @@ def _migrate_v9(conn: apsw.Connection) -> None:
     )
 
 
+def _SEED_HOLIDAYS_2025() -> list[tuple[str, str]]:
+    """2025 中国法定节假日种子数据。"""
+    return [
+        ("2025-01-01", "元旦"),
+        ("2025-01-28", "春节"), ("2025-01-29", "春节"), ("2025-01-30", "春节"),
+        ("2025-01-31", "春节"), ("2025-02-01", "春节"), ("2025-02-02", "春节"),
+        ("2025-02-03", "春节"), ("2025-02-04", "春节"),
+        ("2025-04-04", "清明"), ("2025-04-05", "清明"), ("2025-04-06", "清明"),
+        ("2025-05-01", "劳动节"), ("2025-05-02", "劳动节"), ("2025-05-03", "劳动节"),
+        ("2025-05-04", "劳动节"), ("2025-05-05", "劳动节"),
+        ("2025-05-31", "端午"), ("2025-06-01", "端午"), ("2025-06-02", "端午"),
+        ("2025-10-01", "国庆"), ("2025-10-02", "国庆"), ("2025-10-03", "国庆"),
+        ("2025-10-04", "国庆"), ("2025-10-05", "国庆"), ("2025-10-06", "国庆"),
+        ("2025-10-07", "国庆"), ("2025-10-08", "国庆"),
+    ]
+
+
+def _SEED_HOLIDAYS_2026() -> list[tuple[str, str]]:
+    """2026 中国法定节假日种子数据。"""
+    return [
+        ("2026-01-01", "元旦"), ("2026-01-02", "元旦"), ("2026-01-03", "元旦"),
+        ("2026-02-17", "春节"), ("2026-02-18", "春节"), ("2026-02-19", "春节"),
+        ("2026-02-20", "春节"), ("2026-02-21", "春节"), ("2026-02-22", "春节"),
+        ("2026-02-23", "春节"),
+        ("2026-04-04", "清明"), ("2026-04-05", "清明"), ("2026-04-06", "清明"),
+        ("2026-05-01", "劳动节"), ("2026-05-02", "劳动节"), ("2026-05-03", "劳动节"),
+        ("2026-05-04", "劳动节"), ("2026-05-05", "劳动节"),
+        ("2026-05-30", "端午"), ("2026-05-31", "端午"), ("2026-06-01", "端午"),
+        ("2026-10-01", "国庆"), ("2026-10-02", "国庆"), ("2026-10-03", "国庆"),
+        ("2026-10-04", "国庆"), ("2026-10-05", "国庆"), ("2026-10-06", "国庆"),
+        ("2026-10-07", "国庆"),
+    ]
+
+
+def _migrate_v10(conn: apsw.Connection) -> None:
+    """v9→v10: 新建 holidays 表 + 种子数据。"""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS holidays (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            date        TEXT    NOT NULL UNIQUE,
+            name        TEXT    NOT NULL DEFAULT '',
+            source      TEXT    NOT NULL DEFAULT 'builtin'
+        )"""
+    )
+    # 插入种子数据（INSERT OR IGNORE 防重复）
+    for date_str, name in _SEED_HOLIDAYS_2025() + _SEED_HOLIDAYS_2026():
+        conn.execute(
+            "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, 'builtin')",
+            (date_str, name),
+        )
+    conn.execute("INSERT INTO schema_version (version) VALUES (10)")
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  公开 API
 # ═══════════════════════════════════════════════════════════════════
@@ -526,7 +585,7 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    SCHEMA_VERSION = 9  # 更新此值当新增迁移版本
+    SCHEMA_VERSION = 10  # 更新此值当新增迁移版本
     needs_migration = current < SCHEMA_VERSION
 
     if not needs_migration:
@@ -561,6 +620,9 @@ def init_schema(conn: apsw.Connection) -> int:
 
         if current < 9:
             _migrate_v9(conn)
+
+        if current < 10:
+            _migrate_v10(conn)
 
         conn.execute("COMMIT")
     except Exception:

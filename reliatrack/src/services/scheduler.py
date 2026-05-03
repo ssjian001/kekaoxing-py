@@ -45,7 +45,7 @@ class ScheduleConfig:
 #  Helpers – weekend / calendar / holiday arithmetic
 # ═══════════════════════════════════════════════════════════════════
 
-# 2025-2026 中国法定节假日（可扩展）
+# ── Deprecated: 保留兼容旧测试，生产环境使用 HolidayService ──
 _CHINA_HOLIDAYS_2025: set[str] = {
     "2025-01-01",  # 元旦
     "2025-01-28", "2025-01-29", "2025-01-30", "2025-01-31",  # 春节
@@ -68,6 +68,7 @@ _CHINA_HOLIDAYS_2026: set[str] = {
     "2026-10-05", "2026-10-06", "2026-10-07",
 }
 
+# Deprecated — 使用 HolidayService.get_holidays_set() 替代
 DEFAULT_HOLIDAYS = _CHINA_HOLIDAYS_2025 | _CHINA_HOLIDAYS_2026
 
 
