@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import apsw
 
 from src.models.test_plan import TestTask
 from src.db.repositories.base import BaseRepository
+
+logger = logging.getLogger(__name__)
 
 
 class TestTaskRepository(BaseRepository):
@@ -95,6 +98,7 @@ class TestTaskRepository(BaseRepository):
             self.commit()
         except Exception:
             self.rollback()
+            logger.exception("bulk_update_start_day failed for %d tasks", len(updates))
             raise
 
     def delete_by_plan(self, plan_id: int) -> int:

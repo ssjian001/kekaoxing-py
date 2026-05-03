@@ -565,6 +565,7 @@ def init_schema(conn: apsw.Connection) -> int:
         conn.execute("COMMIT")
     except Exception:
         conn.execute("ROLLBACK")
+        logger.exception("Schema migration failed at version %d", current)
         raise
 
     return _get_current_version(conn)

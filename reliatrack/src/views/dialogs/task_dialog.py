@@ -173,8 +173,12 @@ class TaskEditDialog(_BaseDialog):
                 d = _QDate.fromString(task.actual_start_date, "yyyy-MM-dd")
                 if d.isValid():
                     self._actual_start_edit.setDate(d)
-            except Exception:
-                pass
+            except (ValueError, RuntimeError) as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Invalid actual_start_date '%s' for task %s: %s",
+                    task.actual_start_date, task.id, e
+                )
 
         self._actual_end_edit = self._add_date_field(
             "实际完成日期",
@@ -184,8 +188,12 @@ class TaskEditDialog(_BaseDialog):
                 d = _QDate.fromString(task.actual_end_date, "yyyy-MM-dd")
                 if d.isValid():
                     self._actual_end_edit.setDate(d)
-            except Exception:
-                pass
+            except (ValueError, RuntimeError) as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Invalid actual_end_date '%s' for task %s: %s",
+                    task.actual_end_date, task.id, e
+                )
 
         self._add_separator()
 

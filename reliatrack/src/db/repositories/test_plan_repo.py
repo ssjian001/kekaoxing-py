@@ -48,33 +48,15 @@ class TestPlanRepository(BaseRepository):
         )
 
     def delete_by_project(self, project_id: int) -> int:
-        """删除项目关联的所有测试计划（含孤立 issues），返回删除行数。"""
-        # 删除直接关联 plan_id 但无 task_id 的孤立 issue 子表
-        self._conn.execute(
-            "DELETE FROM [fa_records] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE plan_id IN "
-            "(SELECT id FROM [test_plans] WHERE project_id = ?) AND task_id IS NULL)",
-            (project_id,)
-        )
-        self._conn.execute(
-            "DELETE FROM [issue_attachments] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE plan_id IN "
-            "(SELECT id FROM [test_plans] WHERE project_id = ?) AND task_id IS NULL)",
-            (project_id,)
-        )
-        self._conn.execute(
-            "DELETE FROM [capa_records] WHERE issue_id IN "
-            "(SELECT id FROM [issues] WHERE plan_id IN "
-            "(SELECT id FROM [test_plans] WHERE project_id = ?) AND task_id IS NULL)",
-            (project_id,)
-        )
-        # 删孤立 issues
-        self._conn.execute(
-            "DELETE FROM [issues] WHERE plan_id IN "
-            "(SELECT id FROM [test_plans] WHERE project_id = ?) AND task_id IS NULL",
-            (project_id,)
-        )
-        # 删 plans
+        """删除项目关联的所有测试计划，CASCADE 自动清理下游数据。
+
+        自动级联清理（PRAGMA foreign_keys=ON 时）：
+          - test_plans → test_tasks → test_results
+          - issues → fa_records / issue_attachments / capa_records
+          - 直接引用 plan_id 但无 task_id 的孤立 issues
+
+        返回删除的测试计划数量。
+        """
         cursor = self._conn.execute(
             "DELETE FROM [test_plans] WHERE project_id = ?", (project_id,)
         )

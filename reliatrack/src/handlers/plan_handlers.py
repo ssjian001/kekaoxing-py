@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import (
@@ -22,6 +23,8 @@ from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand
 
 if TYPE_CHECKING:
     from main import MainWindow
+
+logger = logging.getLogger(__name__)
 
 
 class PlanHandlers:
@@ -163,10 +166,10 @@ class PlanHandlers:
                 if not name:
                     continue
                 try:
-                    svc.create_task(
+                    ctrl.test_plan_service.create_task(
                         plan_id=plan_id,
-                        name=name,
-                        category=data.get("category") or "",
+                        name=data.get("name", "").strip(),
+                        category=data.get("category", "").strip(),
                         test_standard=data.get("test_standard") or "",
                         duration=int(data.get("duration") or 1),
                         priority=int(data.get("priority") or 3),
@@ -176,6 +179,8 @@ class PlanHandlers:
                     )
                     success += 1
                 except Exception:
+                    task_name = data.get("name", "?")
+                    logger.exception("Failed to import task name=%s: data=%s", task_name, data)
                     skip += 1
             return success, skip
 

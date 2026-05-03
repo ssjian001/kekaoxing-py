@@ -11,7 +11,10 @@ UI 层通过 AppController 访问所有业务逻辑。
 
 from __future__ import annotations
 
+import datetime
 import logging
+import shutil
+from pathlib import Path
 from typing import Callable
 
 import apsw
@@ -122,23 +125,21 @@ class AppController:
         logger.info("All services initialized")
 
     def _startup_backup(self) -> None:
-        """启动时自动备份数据库。"""
-        import datetime
-        from pathlib import Path
-
-        backup_dir = Path(self._db_path).parent / 'backups'
+        """启动时自动备份数据库（每日一次）。"""
+        db_path = Path(self._db_path)
+        backup_dir = db_path.parent / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
-        date_str = datetime.date.today().strftime('%Y%m%d')
-        backup_path = backup_dir / f'reliatrack_{date_str}.db'
+        date_str = datetime.date.today().strftime("%Y%m%d")
+        backup_path = backup_dir / f"reliatrack_{date_str}.db"
         # 同一天只备份一次
         if not backup_path.exists():
             try:
-                self._conn.execute(f"VACUUM INTO '{backup_path}'")
+                shutil.copy2(db_path, backup_path)
                 logger.info("Backup created: %s", backup_path)
             except Exception:
                 logger.exception("Backup failed")
         # 清理超过30天的旧备份
-        for old in sorted(backup_dir.glob('reliatrack_*.db'))[:-30]:
+        for old in sorted(backup_dir.glob("reliatrack_*.db"))[:-30]:
             old.unlink(missing_ok=True)
 
     # ── 变更通知 ──

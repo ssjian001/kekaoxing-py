@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtWidgets import QMessageBox
+
+logger = logging.getLogger(__name__)
 
 from src.views.dialogs.sample_checkin_dialog import SampleCheckInDialog
 from src.views.dialogs.sample_checkout_dialog import SampleCheckoutDialog
@@ -154,6 +157,7 @@ class SampleHandlers:
                     )
                     success += 1
                 except Exception:
+                    logger.exception("Failed to import sample SN=%s: data=%s", sn, data)
                     skip += 1
             return success, skip
 
