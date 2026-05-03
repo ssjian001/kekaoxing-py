@@ -371,7 +371,12 @@ class MainWindow(QMainWindow):
 
 def main() -> int:
     """应用程序入口。"""
+    # HiDPI 支持（Qt6 默认启用，显式声明确保一致性）
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "1")
+    os.environ.setdefault("QT_SCALE_FACTOR_ROUNDING_POLICY", "RoundPreferFloor")
+    # 避免 Wayland 下 Qt 的部分渲染问题，优先使用 XCB
+    if sys.platform == "linux" and not os.environ.get("QT_QPA_PLATFORM"):
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
 
     import logging
     logging.basicConfig(
