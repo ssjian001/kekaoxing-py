@@ -119,7 +119,7 @@ class PlanHandlers:
             self._win.statusBar().showMessage(msg, 10000)
             if report.get("suggestions"):
                 for s in report["suggestions"][:2]:
-                    print(f"[Schedule] {s}")
+                    logger.debug("Schedule suggestion: %s", s)
         except Exception as e:
             self._win.statusBar().showMessage(f"排程失败: {e}", 10000)
 

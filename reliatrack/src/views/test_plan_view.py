@@ -29,7 +29,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
@@ -410,7 +410,7 @@ class _GanttWidget(QWidget):
         if not self._tasks:
             p = QPainter(self)
             p.setPen(QColor(SUBTEXT0))
-            p.setFont(QFont("sans-serif", 12))
+            p.setFont(QFont(FONT_FAMILY, 12))
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "暂无任务数据")
             p.end()
             return
@@ -425,7 +425,7 @@ class _GanttWidget(QWidget):
         # ── 表头（天数标尺）──
         p.fillRect(0, 0, w, self._header_height, QColor(SURFACE0))
         p.setPen(QColor(SUBTEXT1))
-        p.setFont(QFont("sans-serif", 9))
+        p.setFont(QFont(FONT_FAMILY, 9))
         step = max(1, self._total_days // 15)
 
         # 周末列背景 — 计算哪些天是周末
@@ -475,12 +475,12 @@ class _GanttWidget(QWidget):
                 p.drawLine(int(tx), self._header_height, int(tx), self.height())
                 # "今天" 标签
                 p.setPen(QColor(PEACH))
-                p.setFont(QFont("sans-serif", 8))
+                p.setFont(QFont(FONT_FAMILY, 8))
                 p.drawText(int(tx) - 20, 0, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, "今天")
 
         # ── 任务条 ──
-        p.setFont(QFont("sans-serif", 10))
+        p.setFont(QFont(FONT_FAMILY, 10))
         for i, task in enumerate(self._tasks):
             y = self._header_height + i * self._row_height
 
@@ -490,7 +490,7 @@ class _GanttWidget(QWidget):
 
             # 任务名称标签 — 根据可用宽度自动省略
             p.setPen(QColor(TEXT))
-            p.setFont(QFont("sans-serif", 10))
+            p.setFont(QFont(FONT_FAMILY, 10))
             fm = p.fontMetrics()
             name = fm.elidedText(task.name, Qt.TextElideMode.ElideRight, label_w - 16)
             p.drawText(8, y, label_w - 16, self._row_height,

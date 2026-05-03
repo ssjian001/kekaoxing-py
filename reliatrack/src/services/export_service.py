@@ -20,6 +20,42 @@ from src.models.sample import Sample
 class ExportService:
     """导出服务 — 将数据导出为 Excel / PDF / Word 文件。"""
 
+    # ── 跨平台 CJK 字体名（供 openpyxl / python-docx 使用）──
+    _CJK_FONT: str | None = None
+
+    @classmethod
+    def get_cjk_font(cls) -> str:
+        """返回当前平台可用的 CJK 字体名（单个字体，非 fallback 链）。
+
+        优先级：Microsoft YaHei > PingFang SC > Noto Sans CJK SC > sans-serif。
+        缓存到类变量，只检测一次。
+        """
+        if cls._CJK_FONT is not None:
+            return cls._CJK_FONT
+        import platform
+        system = platform.system()
+        if system == "Windows":
+            cls._CJK_FONT = "Microsoft YaHei"
+        elif system == "Darwin":
+            cls._CJK_FONT = "PingFang SC"
+        else:
+            # Linux: 尝试检测已安装的 CJK 字体
+            import subprocess
+            for candidate in ("Noto Sans CJK SC", "WenQuanYi Micro Hei", "Droid Sans Fallback"):
+                try:
+                    r = subprocess.run(
+                        ["fc-match", "-f", "%{family}", candidate],
+                        capture_output=True, text=True, timeout=3,
+                    )
+                    if r.returncode == 0 and r.stdout.strip():
+                        cls._CJK_FONT = candidate
+                        break
+                except Exception:
+                    continue
+            if cls._CJK_FONT is None:
+                cls._CJK_FONT = "Noto Sans CJK SC"  # 合理的默认值
+        return cls._CJK_FONT
+
     # ── 类别中文映射 ──
     CATEGORY_MAP = {
         "环境试验": "env",
@@ -64,14 +100,16 @@ class ExportService:
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+        _f = self.get_cjk_font()
+
         wb = Workbook()
         ws = wb.active
         ws.title = "测试任务"
 
         # 样式
-        header_font = Font(name="微软雅黑", size=11, bold=True, color="FFFFFF")
+        header_font = Font(name=_f, size=11, bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="2B579A", end_color="2B579A", fill_type="solid")
-        cell_font = Font(name="微软雅黑", size=10)
+        cell_font = Font(name=_f, size=10)
         center = Alignment(horizontal="center", vertical="center")
         thin_border = Border(
             left=Side(style="thin"),
@@ -84,7 +122,7 @@ class ExportService:
         ws.merge_cells("A1:I1")
         title_cell = ws["A1"]
         title_cell.value = f"测试计划: {plan.name}"
-        title_cell.font = Font(name="微软雅黑", size=14, bold=True, color="2B579A")
+        title_cell.font = Font(name=_f, size=14, bold=True, color="2B579A")
         title_cell.alignment = Alignment(horizontal="center")
         ws.row_dimensions[1].height = 30
 
@@ -92,7 +130,7 @@ class ExportService:
         ws.merge_cells("A2:I2")
         sub = ws["A2"]
         sub.value = f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  测试标准: {plan.test_standard or '—'}"
-        sub.font = Font(name="微软雅黑", size=9, color="666666")
+        sub.font = Font(name=_f, size=9, color="666666")
         sub.alignment = Alignment(horizontal="center")
 
         # 表头
@@ -147,13 +185,15 @@ class ExportService:
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+        _f = self.get_cjk_font()
+
         wb = Workbook()
         ws = wb.active
         ws.title = "Issue 追踪"
 
-        header_font = Font(name="微软雅黑", size=11, bold=True, color="FFFFFF")
+        header_font = Font(name=_f, size=11, bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="C0504D", end_color="C0504D", fill_type="solid")
-        cell_font = Font(name="微软雅黑", size=10)
+        cell_font = Font(name=_f, size=10)
         center = Alignment(horizontal="center", vertical="center")
         wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
         thin_border = Border(
@@ -167,14 +207,14 @@ class ExportService:
         ws.merge_cells("A1:H1")
         title_cell = ws["A1"]
         title_cell.value = "Issue 追踪报告"
-        title_cell.font = Font(name="微软雅黑", size=14, bold=True, color="C0504D")
+        title_cell.font = Font(name=_f, size=14, bold=True, color="C0504D")
         title_cell.alignment = Alignment(horizontal="center")
         ws.row_dimensions[1].height = 30
 
         ws.merge_cells("A2:H2")
         sub = ws["A2"]
         sub.value = f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(issues)} 个 Issue"
-        sub.font = Font(name="微软雅黑", size=9, color="666666")
+        sub.font = Font(name=_f, size=9, color="666666")
         sub.alignment = Alignment(horizontal="center")
 
         headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式", "根因分析", "FA 步骤数"]
@@ -220,13 +260,15 @@ class ExportService:
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+        _f = self.get_cjk_font()
+
         wb = Workbook()
         ws = wb.active
         ws.title = "样品台账"
 
-        header_font = Font(name="微软雅黑", size=11, bold=True, color="FFFFFF")
+        header_font = Font(name=_f, size=11, bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-        cell_font = Font(name="微软雅黑", size=10)
+        cell_font = Font(name=_f, size=10)
         center = Alignment(horizontal="center", vertical="center")
         thin_border = Border(
             left=Side(style="thin"),
@@ -238,14 +280,14 @@ class ExportService:
         ws.merge_cells("A1:F1")
         title_cell = ws["A1"]
         title_cell.value = "样品台账"
-        title_cell.font = Font(name="微软雅黑", size=14, bold=True, color="4F81BD")
+        title_cell.font = Font(name=_f, size=14, bold=True, color="4F81BD")
         title_cell.alignment = Alignment(horizontal="center")
         ws.row_dimensions[1].height = 30
 
         ws.merge_cells("A2:F2")
         sub = ws["A2"]
         sub.value = f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(samples)} 个样品"
-        sub.font = Font(name="微软雅黑", size=9, color="666666")
+        sub.font = Font(name=_f, size=9, color="666666")
         sub.alignment = Alignment(horizontal="center")
 
         headers = ["ID", "SN", "批次号", "规格型号", "状态", "存放位置"]
@@ -1164,15 +1206,17 @@ class ExportService:
         from docx.oxml.ns import qn, nsdecls
         from docx.oxml import parse_xml
 
+        _f = self.get_cjk_font()
+
         doc = Document()
 
         # ── 样式设置（全局一次，子元素自动继承） ──
         style = doc.styles["Normal"]
         font = style.font
-        font.name = "微软雅黑"
+        font.name = _f
         font.size = Pt(10)
         font.color.rgb = RGBColor(0x33, 0x33, 0x33)
-        style.element.rPr.rFonts.set(qn("w:eastAsia"), "微软雅黑")
+        style.element.rPr.rFonts.set(qn("w:eastAsia"), _f)
         pf = style.paragraph_format
         pf.space_after = Pt(4)
         pf.space_before = Pt(2)
@@ -1201,9 +1245,9 @@ class ExportService:
             r = etree.SubElement(p, f"{{{_ns}}}r")
             rPr = etree.SubElement(r, f"{{{_ns}}}rPr")
             rFonts = etree.SubElement(rPr, f"{{{_ns}}}rFonts")
-            rFonts.set(f"{{{_ns}}}ascii", "微软雅黑")
-            rFonts.set(f"{{{_ns}}}eastAsia", "微软雅黑")
-            rFonts.set(f"{{{_ns}}}hAnsi", "微软雅黑")
+            rFonts.set(f"{{{_ns}}}ascii", _f)
+            rFonts.set(f"{{{_ns}}}eastAsia", _f)
+            rFonts.set(f"{{{_ns}}}hAnsi", _f)
             rPr.append(_make("sz", val=str(size * 2)))
             if bold:
                 rPr.append(_make("b"))

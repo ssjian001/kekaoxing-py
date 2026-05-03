@@ -27,7 +27,7 @@ from src.styles.theme import (
     TEAL, LAVENDER, PINK, SKY, OVERLAY0,
 )
 
-from src.styles.constants import VIEW_MARGINS, CHART_COLORS
+from src.styles.constants import VIEW_MARGINS, CHART_COLORS, FONT_FAMILY
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -138,7 +138,7 @@ class _BarChartWidget(QWidget):
         painter.fillRect(0, 0, w, h, QColor(SURFACE0))
 
         # 标题
-        title_font = QFont()
+        title_font = QFont(FONT_FAMILY)
         title_font.setPointSize(11)
         title_font.setBold(True)
         painter.setFont(title_font)
@@ -162,7 +162,7 @@ class _BarChartWidget(QWidget):
         bar_area_w = max(w - bar_area_x - self._value_width - self._h_margin, 20)
 
         # 条形字体
-        bar_font = QFont()
+        bar_font = QFont(FONT_FAMILY)
         bar_font.setPointSize(11)
         painter.setFont(bar_font)
 
@@ -216,7 +216,7 @@ class _BarChartWidget(QWidget):
     def _paint_empty(self, painter: QPainter, w: int, h: int) -> None:
         """无数据时绘制占位提示。"""
         painter.setPen(QColor(SUBTEXT0))
-        font = QFont()
+        font = QFont(FONT_FAMILY)
         font.setPointSize(12)
         painter.setFont(font)
         painter.drawText(

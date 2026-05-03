@@ -1,7 +1,13 @@
-"""数据库连接管理器 — 单例模式，线程安全。
+"""数据库连接管理器 — 单例模式。
 
 使用 apsw (Another Python SQLite Wrapper) 提供高性能 SQLite 访问。
 默认启用 WAL 模式和外键约束。
+
+⚠️ 线程安全说明：
+  - 连接的 *创建* 由 threading.Lock 保护，线程安全。
+  - 返回的 apsw.Connection 本身 **不是线程安全的**，禁止跨线程并发写入。
+  - 当前架构为 Qt 单线程事件循环，所有 DB 操作在主线程执行，安全。
+  - 如果将来引入 QThread 做后台导出/同步，需为子线程创建独立连接。
 """
 
 from __future__ import annotations

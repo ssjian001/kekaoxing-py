@@ -373,6 +373,13 @@ def main() -> int:
     """应用程序入口。"""
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "1")
 
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     app = QApplication(sys.argv)
     app.setApplicationName("ReliaTrack")
     app.setApplicationVersion("2.0.0")

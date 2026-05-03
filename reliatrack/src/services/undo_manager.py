@@ -149,7 +149,10 @@ class BatchScheduleCommand(Command):
 
 
 class DeleteEntityCommand(Command):
-    """删除实体并保存数据用于恢复。"""
+    """删除实体并保存数据用于恢复。
+
+    撤销时恢复原始 ID，保持关联数据（如 issues.task_id）的引用完整性。
+    """
 
     def __init__(self, repo: Any, entity_id: int, entity_name: str = "实体"):
         self._repo = repo
@@ -159,8 +162,9 @@ class DeleteEntityCommand(Command):
         entity = repo.get_by_id(entity_id)
         self._saved_data: dict[str, Any] = {}
         if entity:
+            # 保留 id 用于恢复时显式插入，保证关联数据不断裂
             self._saved_data = {
-                k: v for k, v in entity.__dict__.items() if k != "id"
+                k: v for k, v in entity.__dict__.items()
             }
         self.description = f"删除{entity_name}"
 
@@ -168,7 +172,8 @@ class DeleteEntityCommand(Command):
         self._repo.delete(self._entity_id)
 
     def undo(self) -> None:
-        if self._saved_data:
+        if self._saved_data and self._saved_data.get("id") is not None:
+            # 显式插入原始 ID，保持外键引用完整性
             self._repo.insert(**self._saved_data)
 
 
