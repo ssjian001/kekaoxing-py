@@ -6,9 +6,13 @@
 
 from __future__ import annotations
 
+import logging
+
 import apsw
 
-SCHEMA_VERSION = 10
+logger = logging.getLogger(__name__)
+
+SCHEMA_VERSION = 11
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -131,6 +135,8 @@ _DDL_TABLES: list[str] = [
         humidity        TEXT    NOT NULL DEFAULT '',
         accept_criteria TEXT    NOT NULL DEFAULT '',
         sort_order      INTEGER NOT NULL DEFAULT 0,
+        actual_start_date TEXT  NOT NULL DEFAULT '',
+        actual_end_date   TEXT  NOT NULL DEFAULT '',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -563,6 +569,186 @@ def _migrate_v10(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (10)")
 
 
+def _migrate_v11(conn: apsw.Connection) -> None:
+    """v10→v11: 为所有外键列补充 ON DELETE SET NULL 策略。
+
+    SQLite 不支持 ALTER TABLE ADD CONSTRAINT，迁移通过表重建实现。
+    使用安全策略避免 RENAME TABLE 导致子表 FK 引用被破坏：
+    1. CREATE TABLE {name}_new (含正确 FK 约束)
+    2. INSERT INTO {name}_new SELECT * FROM {name}
+    3. DROP TABLE {name}
+    4. ALTER TABLE {name}_new RENAME TO {name}
+
+    受影响列（均指向 technicians / equipment / samples / test_tasks）：
+    - sample_transactions.operator_id / related_task_id
+    - test_tasks.technician_id / equipment_id
+    - test_results.sample_id / tester_id
+    - issues.assignee_id
+    - fa_records.analyst_id
+    - capa_records.assignee_id / verified_by
+    - issue_attachments (需重建以更新 FK 引用 issues)
+    """
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        # ── 重建顺序：先子表后父表 ──
+        # issue_attachments (→ issues) 必须在 issues 之前重建
+
+        # ── issue_attachments ──
+        conn.execute("DROP TABLE IF EXISTS issue_attachments_new")
+        conn.execute("""CREATE TABLE issue_attachments_new (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            file_path   TEXT    NOT NULL,
+            file_type   TEXT    NOT NULL DEFAULT 'image',
+            description TEXT    NOT NULL DEFAULT '',
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO issue_attachments_new SELECT * FROM issue_attachments")
+        conn.execute("DROP TABLE issue_attachments")
+        conn.execute("ALTER TABLE issue_attachments_new RENAME TO issue_attachments")
+
+        # ── fa_records ──
+        conn.execute("DROP TABLE IF EXISTS fa_records_new")
+        conn.execute("""CREATE TABLE fa_records_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id        INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            step_no         INTEGER NOT NULL DEFAULT 1,
+            step_title      TEXT    NOT NULL DEFAULT '',
+            description     TEXT    NOT NULL DEFAULT '',
+            method          TEXT    NOT NULL DEFAULT '',
+            findings        TEXT    NOT NULL DEFAULT '',
+            possible_cause  TEXT    NOT NULL DEFAULT '',
+            cause_category  TEXT    NOT NULL DEFAULT '',
+            failure_mechanism TEXT  NOT NULL DEFAULT '',
+            confirmed       INTEGER NOT NULL DEFAULT 0,
+            analyst_id      INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            attachments     TEXT    NOT NULL DEFAULT '[]',
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO fa_records_new SELECT * FROM fa_records")
+        conn.execute("DROP TABLE fa_records")
+        conn.execute("ALTER TABLE fa_records_new RENAME TO fa_records")
+
+        # ── capa_records ──
+        conn.execute("DROP TABLE IF EXISTS capa_records_new")
+        conn.execute("""CREATE TABLE capa_records_new (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            action              TEXT    NOT NULL,
+            assignee_id         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            due_date            TEXT    NOT NULL DEFAULT '',
+            status              TEXT    NOT NULL DEFAULT 'pending',
+            verification_result TEXT    NOT NULL DEFAULT '',
+            verified_by         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO capa_records_new SELECT * FROM capa_records")
+        conn.execute("DROP TABLE capa_records")
+        conn.execute("ALTER TABLE capa_records_new RENAME TO capa_records")
+
+        # ── sample_transactions ──
+        conn.execute("DROP TABLE IF EXISTS sample_transactions_new")
+        conn.execute("""CREATE TABLE sample_transactions_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            sample_id       INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
+            type            TEXT    NOT NULL,
+            operator_id     INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            purpose         TEXT    NOT NULL DEFAULT '',
+            related_task_id INTEGER REFERENCES test_tasks(id) ON DELETE SET NULL,
+            expected_return TEXT    DEFAULT '',
+            actual_return   TEXT    DEFAULT '',
+            notes           TEXT    NOT NULL DEFAULT '',
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO sample_transactions_new SELECT * FROM sample_transactions")
+        conn.execute("DROP TABLE sample_transactions")
+        conn.execute("ALTER TABLE sample_transactions_new RENAME TO sample_transactions")
+
+        # ── test_results ──
+        conn.execute("DROP TABLE IF EXISTS test_results_new")
+        conn.execute("""CREATE TABLE test_results_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id         INTEGER NOT NULL REFERENCES test_tasks(id) ON DELETE CASCADE,
+            sample_id       INTEGER REFERENCES samples(id) ON DELETE SET NULL,
+            result          TEXT    NOT NULL DEFAULT 'pending',
+            test_date       TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            tester_id       INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            environment     TEXT    NOT NULL DEFAULT '{}',
+            notes           TEXT    NOT NULL DEFAULT '',
+            attachments     TEXT    NOT NULL DEFAULT '[]',
+            measured_value  TEXT    NOT NULL DEFAULT '',
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO test_results_new SELECT * FROM test_results")
+        conn.execute("DROP TABLE test_results")
+        conn.execute("ALTER TABLE test_results_new RENAME TO test_results")
+
+        # ── issues ──
+        conn.execute("DROP TABLE IF EXISTS issues_new")
+        conn.execute("""CREATE TABLE issues_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id      INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+            plan_id         INTEGER REFERENCES test_plans(id) ON DELETE CASCADE,
+            task_id         INTEGER REFERENCES test_tasks(id) ON DELETE CASCADE,
+            sample_id       INTEGER REFERENCES samples(id) ON DELETE CASCADE,
+            title           TEXT    NOT NULL,
+            failure_mode    TEXT    NOT NULL DEFAULT '',
+            failure_stage   TEXT    NOT NULL DEFAULT '',
+            description     TEXT    NOT NULL DEFAULT '',
+            severity        TEXT    NOT NULL DEFAULT 'major',
+            status          TEXT    NOT NULL DEFAULT 'open',
+            priority        INTEGER NOT NULL DEFAULT 3,
+            assignee_id     INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            root_cause      TEXT    NOT NULL DEFAULT '',
+            resolution      TEXT    NOT NULL DEFAULT '',
+            failure_code    TEXT    NOT NULL DEFAULT '',
+            occurrence_count INTEGER NOT NULL DEFAULT 1,
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO issues_new SELECT * FROM issues")
+        conn.execute("DROP TABLE issues")
+        conn.execute("ALTER TABLE issues_new RENAME TO issues")
+
+        # ── test_tasks (被子表引用，最后重建) ──
+        conn.execute("DROP TABLE IF EXISTS test_tasks_new")
+        conn.execute("""CREATE TABLE test_tasks_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id         INTEGER NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
+            name            TEXT    NOT NULL,
+            category        TEXT    NOT NULL DEFAULT '',
+            test_standard   TEXT    NOT NULL DEFAULT '',
+            technician_id   INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            equipment_id    INTEGER REFERENCES equipment(id) ON DELETE SET NULL,
+            sample_ids      TEXT    NOT NULL DEFAULT '[]',
+            duration        INTEGER NOT NULL DEFAULT 1,
+            start_day       INTEGER NOT NULL DEFAULT 0,
+            progress        REAL    NOT NULL DEFAULT 0.0,
+            status          TEXT    NOT NULL DEFAULT 'pending',
+            priority        INTEGER NOT NULL DEFAULT 3,
+            environment     TEXT    NOT NULL DEFAULT '{}',
+            log_file        TEXT    NOT NULL DEFAULT '',
+            dependencies    TEXT    NOT NULL DEFAULT '[]',
+            notes           TEXT    NOT NULL DEFAULT '',
+            temperature     TEXT    NOT NULL DEFAULT '',
+            humidity        TEXT    NOT NULL DEFAULT '',
+            accept_criteria TEXT    NOT NULL DEFAULT '',
+            sort_order      INTEGER NOT NULL DEFAULT 0,
+            actual_start_date TEXT  NOT NULL DEFAULT '',
+            actual_end_date   TEXT  NOT NULL DEFAULT '',
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("INSERT INTO test_tasks_new SELECT * FROM test_tasks")
+        conn.execute("DROP TABLE test_tasks")
+        conn.execute("ALTER TABLE test_tasks_new RENAME TO test_tasks")
+
+        conn.execute("INSERT INTO schema_version (version) VALUES (11)")
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  公开 API
 # ═══════════════════════════════════════════════════════════════════
@@ -585,49 +771,43 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    SCHEMA_VERSION = 10  # 更新此值当新增迁移版本
     needs_migration = current < SCHEMA_VERSION
 
     if not needs_migration:
         return current
 
-    # 整体迁移包裹事务，防止中途失败导致半迁移状态
-    conn.execute("BEGIN")
-    try:
-        if current < 1:
-            _migrate_v1(conn)
+    # v1→v10 迁移包裹在事务内
+    if current < 10:
+        conn.execute("BEGIN")
+        try:
+            if current < 1:
+                _migrate_v1(conn)
+            if current < 2:
+                _migrate_v2(conn)
+            if current < 3:
+                _migrate_v3(conn)
+            if current < 4:
+                _migrate_v4(conn)
+            if current < 5:
+                _migrate_v5(conn)
+            if current < 6:
+                _migrate_v6(conn)
+            if current < 7:
+                _migrate_v7(conn)
+            if current < 8:
+                _migrate_v8(conn)
+            if current < 9:
+                _migrate_v9(conn)
+            if current < 10:
+                _migrate_v10(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration (v1-v10) failed at version %d", current)
+            raise
 
-        if current < 2:
-            _migrate_v2(conn)
-
-        if current < 3:
-            _migrate_v3(conn)
-
-        if current < 4:
-            _migrate_v4(conn)
-
-        if current < 5:
-            _migrate_v5(conn)
-
-        if current < 6:
-            _migrate_v6(conn)
-
-        if current < 7:
-            _migrate_v7(conn)
-
-        if current < 8:
-            _migrate_v8(conn)
-
-        if current < 9:
-            _migrate_v9(conn)
-
-        if current < 10:
-            _migrate_v10(conn)
-
-        conn.execute("COMMIT")
-    except Exception:
-        conn.execute("ROLLBACK")
-        logger.exception("Schema migration failed at version %d", current)
-        raise
+    # v11 需关闭 FK 约束后重建表，不能在事务内执行 PRAGMA foreign_keys
+    if current < 11:
+        _migrate_v11(conn)
 
     return _get_current_version(conn)

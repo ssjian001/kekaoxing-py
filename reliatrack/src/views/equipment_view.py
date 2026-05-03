@@ -179,14 +179,15 @@ class EquipmentView(QWidget):
                         "maintenance": "维修中",
                         "offline": "停用",
                     }
-                    value = status_map.get(str(value), str(value))
+                    raw_status = str(value)
+                    value = status_map.get(raw_status, raw_status)
                 item = QTableWidgetItem(str(value) if value is not None else "")
                 item.setData(Qt.ItemDataRole.UserRole, eq.id)
                 # 居中对齐
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # 状态列着色
+                # 状态列着色（用原始英文值匹配）
                 if attr == "status":
-                    color = EQUIPMENT_STATUS_COLORS.get(str(value) if value else "", TEXT)
+                    color = EQUIPMENT_STATUS_COLORS.get(raw_status, TEXT)
                     item.setForeground(QColor(color))
                 # 下次校准列：30天内到期黄色预警，已过期红色
                 if attr == "next_calibration_date" and value:

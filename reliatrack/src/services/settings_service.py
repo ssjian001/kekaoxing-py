@@ -11,7 +11,7 @@ class SettingsService:
     def __init__(self, repo: SettingsRepository) -> None:
         self._repo = repo
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         return self._repo.get(key)
 
     def set(self, key: str, value: str) -> None:
