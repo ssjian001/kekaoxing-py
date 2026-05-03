@@ -59,8 +59,12 @@ def import_equipment(
                 model=row.get("model", "").strip(),
                 location=row.get("location", "").strip(),
                 status=row.get("status", "available").strip(),
+                asset_no=row.get("asset_no", "").strip(),
+                manufacturer=row.get("manufacturer", "").strip(),
+                accuracy=row.get("accuracy", "").strip(),
                 calibration_date=row.get("calibration_date", "").strip(),
                 next_calibration_date=row.get("next_calibration_date", "").strip(),
+                calibration_interval_months=int(row.get("calibration_interval_months", 12) or 12),
             )
             seen_this_batch.add(name)
             result.success += 1

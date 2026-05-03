@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -771,7 +771,6 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
-    SCHEMA_VERSION = 11  # 更新此值当新增迁移版本
     needs_migration = current < SCHEMA_VERSION
 
     if not needs_migration:

@@ -69,12 +69,15 @@ class HolidayService:
         ]
 
     def add_holiday(self, date_str: str, name: str, source: str = "custom") -> int:
-        """添加自定义节假日。返回新记录 ID。"""
+        """添加自定义节假日。返回记录 ID（已存在时返回已有 ID）。"""
         self._conn.execute(
             "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
             (date_str, name, source),
         )
-        row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
+        # INSERT OR IGNORE 重复时 last_insert_rowid 不可靠，直接查 ID
+        row = self._conn.execute(
+            "SELECT id FROM [holidays] WHERE date = ?", (date_str,)
+        ).fetchone()
         return row[0] if row else 0
 
     def delete_holiday(self, holiday_id: int) -> None:

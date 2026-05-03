@@ -88,7 +88,7 @@ class IssueRepository(BaseRepository):
 
     # ── FA 记录 ──
 
-    _FA_COLS = "id, issue_id, step_no, step_title, description, method, findings, possible_cause, cause_category, failure_mechanism"
+    _FA_COLS = "id, issue_id, step_no, step_title, description, method, findings, possible_cause, cause_category, failure_mechanism, confirmed, analyst_id, attachments, created_at"
 
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         """获取 Issue 的 FA 分析记录。"""
@@ -98,7 +98,8 @@ class IssueRepository(BaseRepository):
         ).fetchall()
         return [FARecord(**cast(dict[str, Any], dict(
             zip(("id", "issue_id", "step_no", "step_title", "description", "method",
-                 "findings", "possible_cause", "cause_category", "failure_mechanism"), r)
+                 "findings", "possible_cause", "cause_category", "failure_mechanism",
+                 "confirmed", "analyst_id", "attachments", "created_at"), r)
         ))) for r in rows]
 
     def add_fa_record(self, issue_id: int, **kwargs: object) -> int:
@@ -230,9 +231,9 @@ class IssueRepository(BaseRepository):
         """删除项目关联的所有 issue（含附件磁盘清理），返回删除行数。
 
         子表（fa_records / issue_attachments / capa_records）依赖 FK CASCADE。
-        附件磁盘文件需手动清理。
+        附件磁盘文件需手动清理。不删除 projects 本身——由 ProjectService 负责。
         """
-        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件）
+        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件系统）
         attachment_paths = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] ia "
             "JOIN [issues] i ON ia.issue_id = i.id "
@@ -241,8 +242,8 @@ class IssueRepository(BaseRepository):
         ).fetchall()
         for (fp,) in attachment_paths:
             self._remove_disk_file(fp)
-        # projects.project_id 有 ON DELETE CASCADE，删 projects 时自动级联删除 issues 及子表
+        # FK CASCADE 自动清理 fa_records / issue_attachments / capa_records
         cursor = self._conn.execute(
-            "DELETE FROM [projects] WHERE id = ?", (project_id,),
+            "DELETE FROM [issues] WHERE project_id = ?", (project_id,),
         )
         return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

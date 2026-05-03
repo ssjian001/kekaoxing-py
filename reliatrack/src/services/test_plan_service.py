@@ -38,14 +38,14 @@ class TestPlanService:
         self._plan_repo.update(plan_id, **kwargs)
 
     def delete_plan(self, plan_id: int) -> None:
+        """删除计划及其所有关联数据。
+
+        利用 FK CASCADE：test_tasks → test_results / issues → 子表。
+        仅需手动清理磁盘附件文件。
+        """
         with self._plan_repo.transaction():
-            # 先删任务及其子表（test_results/issues），再删计划
-            for task in self._task_repo.get_by_plan(plan_id):
-                if task.id is None:
-                    raise ValueError("Task id is None during plan deletion")
-                self._task_repo.delete_test_results(task.id)
-                self._task_repo.delete_issues_by_task(task.id)
-                self._task_repo.delete(task.id)
+            # delete_by_plan 清理附件 + 删除 tasks（CASCADE 自动清理子表）
+            self._task_repo.delete_by_plan(plan_id)
             # 清理直接引用 plan_id 但无 task_id 的孤立 issue
             self._plan_repo.delete_orphan_issues_by_plan(plan_id)
             self._plan_repo.delete(plan_id)

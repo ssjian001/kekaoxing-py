@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -426,7 +427,6 @@ class _SampleUsageTab(QWidget):
 
 def _color_fg(hex_color: str):
     """将 hex 颜色字符串转为 QBrush/ QColor 用于前景色。"""
-    from PySide6.QtGui import QColor, QBrush
     return QBrush(QColor(hex_color))
 
 

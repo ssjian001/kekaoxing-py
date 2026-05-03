@@ -142,7 +142,7 @@ class BaseRepository:
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)
-        rows = self._conn.execute(sql, params).fetchall()
+        rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
         return self._rows_to_models(rows)
 
     def search(self, keyword: str, columns: list[str] | None = None) -> list[Any]:

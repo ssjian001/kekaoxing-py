@@ -106,8 +106,10 @@ class TestTaskRepository(BaseRepository):
         """删除计划关联的所有测试任务，返回删除行数。
 
         附件文件清理（磁盘 .unlink）需手动执行，其余子表依赖 FK CASCADE。
+        issues 及其子表（fa_records, capa_records, issue_attachments）由
+        FK ON DELETE CASCADE 自动级联清理。
         """
-        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件）
+        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件系统）
         attachment_paths = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] ia "
             "JOIN [issues] i ON ia.issue_id = i.id "
@@ -123,12 +125,7 @@ class TestTaskRepository(BaseRepository):
                     p.unlink()
             except OSError:
                 logger.warning("批量删除附件文件失败: %s", fp)
-        # issues.task_id 有 FK 但无 CASCADE，需手动删除（触发级联清理子表）
-        self._conn.execute(
-            "DELETE FROM [issues] WHERE task_id IN "
-            "(SELECT id FROM [test_tasks] WHERE plan_id = ?)", (plan_id,),
-        )
-        # tasks 依赖 CASCADE 从 test_plans 级联，此处不需显式删除
+        # FK CASCADE: test_tasks → issues → fa_records/capa_records/issue_attachments
         cursor = self._conn.execute(
             "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,),
         )
