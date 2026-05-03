@@ -30,6 +30,25 @@ from src.styles.theme import (
 from src.styles.constants import VIEW_MARGINS, CHART_COLORS, FONT_FAMILY
 
 
+class DashboardData:
+    """Dashboard 刷新数据封装 — 替代 16 个独立参数。"""
+
+    __slots__ = (
+        "task_total", "task_completed", "task_in_progress", "task_pending",
+        "issue_count", "equipment_count", "sample_count",
+        "project_name",
+        "task_status_data", "sample_status_data", "issue_severity_data",
+        "pass_rate", "issue_close_rate", "calibration_warning_count",
+        "failure_rate", "capa_completion_rate",
+    )
+
+    def __init__(self, **kwargs: object) -> None:
+        for slot in self.__slots__:
+            setattr(self, slot, kwargs.get(slot, 0 if "count" in slot or "total" in slot
+                                           else {} if "data" in slot
+                                           else None))
+
+
 # ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 #  图表配色（来自 constants.py）
 # ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -311,41 +330,32 @@ class DashboardView(QWidget):
 
         layout.addStretch()
 
-    def refresh(
-        self,
-        task_total: int = 0,
-        task_completed: int = 0,
-        task_in_progress: int = 0,
-        task_pending: int = 0,
-        issue_count: int = 0,
-        equipment_count: int = 0,
-        sample_count: int = 0,
-        project_name: str | None = None,
-        task_status_data: dict[str, int] | None = None,
-        sample_status_data: dict[str, int] | None = None,
-        issue_severity_data: dict[str, int] | None = None,
-        pass_rate: float | None = None,
-        issue_close_rate: float | None = None,
-        calibration_warning_count: int = 0,
-        failure_rate: float | None = None,
-        capa_completion_rate: float | None = None,
-    ) -> None:
+    def refresh(self, data: DashboardData | None = None, **kwargs: object) -> None:
         """刷新 KPI 数据 + 图表数据。
 
         Args:
-            task_total / task_completed / task_in_progress / task_pending / issue_count / equipment_count:
-                KPI 卡片数值。
-            sample_count: 样品总数。
-            project_name: 当前筛选的项目名称（None 表示全部项目）。
-            task_status_data:    {"pending": n, "in_progress": n, "completed": n, "skipped": n}
-            sample_status_data:  {"in_stock": n, "checked_out": n, "in_test": n, ...}
-            issue_severity_data: {"critical": n, "major": n, "minor": n, "cosmetic": n}
-            pass_rate: 测试通过率 (0-100)，None 表示无数据。
-            issue_close_rate: Issue 闭环率 (0-100)，None 表示无数据。
-            calibration_warning_count: 校准预警设备数。
-            failure_rate: 失效率 (0-100)，None 表示无数据。
-            capa_completion_rate: CAPA 完成率 (0-100)，None 表示无数据。
+            data: DashboardData 封装对象（推荐）。
+            **kwargs: 向后兼容，可直接传 16 个参数。
         """
+        if data is None:
+            data = DashboardData(**kwargs)
+        # 解构到局部变量，保持后续代码可读
+        task_total = data.task_total
+        task_completed = data.task_completed
+        task_in_progress = data.task_in_progress
+        task_pending = data.task_pending
+        issue_count = data.issue_count
+        equipment_count = data.equipment_count
+        sample_count = data.sample_count
+        project_name = data.project_name
+        task_status_data = data.task_status_data or {}
+        sample_status_data = data.sample_status_data or {}
+        issue_severity_data = data.issue_severity_data or {}
+        pass_rate = data.pass_rate
+        issue_close_rate = data.issue_close_rate
+        calibration_warning_count = data.calibration_warning_count
+        failure_rate = data.failure_rate
+        capa_completion_rate = data.capa_completion_rate
         # 项目筛选指示器
         if project_name:
             self._filter_label.setText(f"📁 {project_name}")
