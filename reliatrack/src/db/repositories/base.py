@@ -62,6 +62,10 @@ class BaseRepository:
         self._columns_cache = [str(r[1]) for r in rows]
         return self._columns_cache
 
+    def _columns_sql(self) -> str:
+        """返回显式列名列表字符串，如 '[id], [name], [status]'。"""
+        return ", ".join(f"[{c}]" for c in self._columns())
+
     def invalidate_columns_cache(self) -> None:
         """清除列名缓存（Schema 迁移后调用）。"""
         self._columns_cache = None
@@ -121,14 +125,16 @@ class BaseRepository:
 
     def get_by_id(self, id: int) -> Optional[Any]:
         """按 ID 查询单条。"""
+        cols = self._columns_sql()
         row = self._conn.execute(
-            f"SELECT * FROM [{self._table}] WHERE id = ?", (id,)
+            f"SELECT {cols} FROM [{self._table}] WHERE id = ?", (id,)
         ).fetchone()
         return self._row_to_model(row) if row else None
 
     def list_all(self, **filters: Any) -> list[Any]:
         """查询所有，支持可选过滤条件。"""
-        sql = f"SELECT * FROM [{self._table}]"
+        cols = self._columns_sql()
+        sql = f"SELECT {cols} FROM [{self._table}]"
         params: list[Any] = []
         if filters:
             clauses = []
@@ -147,7 +153,8 @@ class BaseRepository:
         escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
         params = [pattern] * len(clauses)
-        sql = f"SELECT * FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\'"
+        cols = self._columns_sql()
+        sql = f"SELECT {cols} FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\\\'"
         rows = self._conn.execute(sql, params).fetchall()
         return self._rows_to_models(rows)
 
