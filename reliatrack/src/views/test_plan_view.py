@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QLineEdit,
+    QScrollArea,
 )
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QPoint
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, QWheelEvent
@@ -316,6 +317,8 @@ class _GanttWidget(QWidget):
         self._tasks = tasks
         self._total_days = max(total_days, 1)
         self._start_date = start_date
+        self.setMinimumHeight(max(150, len(tasks) * self._row_height + self._header_height + 20))
+        self.updateGeometry()
         self.update()
 
     def _chart_w(self) -> int:
@@ -645,14 +648,19 @@ class TestPlanView(QWidget):
         tab_table_layout.addWidget(self._task_table)
         self._sub_tabs.addTab(tab_table, "测试项")
 
-        # Tab 2: 甘特图
+        # Tab 2: 甘特图（QScrollArea 包裹，支持大量任务纵向滚动）
         tab_gantt = QWidget()
         tab_gantt_layout = QVBoxLayout(tab_gantt)
         tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
         self._gantt = _GanttWidget()
         self._gantt.setStyleSheet(f"background-color: {BASE}; border: 1px solid {SURFACE1}; border-radius: 6px;")
         self._gantt.task_moved.connect(self.task_moved.emit)
-        tab_gantt_layout.addWidget(self._gantt)
+        self._gantt_scroll = QScrollArea()
+        self._gantt_scroll.setWidget(self._gantt)
+        self._gantt_scroll.setWidgetResizable(True)
+        self._gantt_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._gantt_scroll.setStyleSheet(f"background-color: {BASE}; border: none;")
+        tab_gantt_layout.addWidget(self._gantt_scroll)
         self._sub_tabs.addTab(tab_gantt, "甘特图")
 
         # Tab 3: 结果矩阵（任务×样品 pass/fail 矩阵）
@@ -702,7 +710,6 @@ class TestPlanView(QWidget):
         self._last_start_date = start_date
         self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days, start_date)
-        self._gantt.setMinimumHeight(max(150, len(tasks) * 28 + 24))
         # 结果矩阵
         self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
 
