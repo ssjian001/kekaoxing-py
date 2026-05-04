@@ -52,18 +52,55 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+.venv/bin/python3 main.py           # 启动应用
+.venv/bin/python3 -m pytest tests/ -v  # 运行测试
+.venv/bin/python3 -m mypy src/       # 类型检查
 ```
 
-## Architecture Overview
+### 数据库
 
-_Add a brief overview of your project architecture_
+```bash
+.venv/bin/python3 migrate.py     # 手动运行 pending migrations（通常启动应用时自动执行）
+```
 
-## Conventions & Patterns
+### 项目结构
 
-_Add your project-specific conventions here_
+```
+src/
+├── configs/       # 页面配置（configs.yaml 等）
+├── constants.py   # 全局常量
+├── controllers/   # 页面控制器
+├── db/
+│   ├── connection.py
+│   ├── repositories/   # 数据访问层（repo 模式）
+│   └── schema.py        # SQLite schema 初始化
+├── handlers/      # 全局信号处理器
+├── models/        # Pydantic 请求/响应模型
+├── services/      # 业务逻辑层
+├── styles/        # QSS 样式
+└── views/          # Qt 视图（.ui + 绑定逻辑）
+```
+
+## 架构说明（2026-05 recent）
+
+### Schema（2026-05-04）
+
+- **v12**：修补迁移链遗漏列（samples.notes、equipment.asset_no/manufacturer/accuracy）
+- **v11**：FK ON DELETE SET NULL + CASCADE 完善，表重建方式迁移
+- **v8-v10**：设备校准、样品字段、测试结果、假期表等增量迁移
+- **SELECT \***：全部消除，所有查询使用显式列名
+- **base.py**：空字符串→0 int 防御，避免 type mismatch warning
+- **Dashboard refresh**：16参数封装为 `DashboardData` 数据类
+
+### 数据库路径
+
+- 生产 DB: `data/reliatrack.db`（由 `app_controller.py` 指定）
+- 备份: `data/backups/reliatrack_YYYYMMDD.db`
+- 连接: apsw，WAL 模式，FK 约束启用
+
+### 测试覆盖
+
+- `tests/` 目录下按模块分，测试 repo 层和 service 层
+- 使用 `pytest` + `pytest-xvfb`（CI 无头环境）
+- 70 个测试通过（排除 e2e/boundary/performance 需 GUI 环境）
