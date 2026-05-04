@@ -16,6 +16,17 @@ logger = logging.getLogger(__name__)
 class TestTaskRepository(BaseRepository):
     """测试任务数据访问。"""
 
+    # 显式列名列表（与 schema 顺序一致，用于 SELECT 和映射）。
+    # 始终传入 _rows_to_models(rows, cols=_TASK_COLS) 以保证列序一致；
+    # 不能依赖 PRAGMA table_info 序——ALTER TABLE ADD COLUMN 会将新列加到物理末尾。
+    _TASK_COLS = [
+        "id", "plan_id", "name", "category", "test_standard", "technician_id",
+        "equipment_id", "sample_ids", "duration", "start_day", "progress", "status",
+        "priority", "environment", "log_file", "dependencies", "notes", "temperature",
+        "humidity", "accept_criteria", "actual_start_date", "actual_end_date",
+        "sort_order", "created_at", "updated_at",
+    ]
+
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "test_tasks", TestTask)
 
@@ -58,11 +69,10 @@ class TestTaskRepository(BaseRepository):
         except (json.JSONDecodeError, TypeError):
             return []
         placeholders = ", ".join(["?"] * len(dep_ids))
-        cols = "id, plan_id, name, category, test_standard, technician_id, equipment_id, sample_ids, duration, start_day, progress, status, priority, environment, log_file, dependencies, notes, temperature, humidity, accept_criteria, sort_order, created_at, updated_at"
         rows = self._conn.execute(
-            f"SELECT {cols} FROM [test_tasks] WHERE id IN ({placeholders})", dep_ids
+            f"SELECT {', '.join(self._TASK_COLS)} FROM [test_tasks] WHERE id IN ({placeholders})", dep_ids
         ).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=self._TASK_COLS)
 
     def count_by_status(self, **filters) -> dict[str, int]:
         """按状态分组计数。"""

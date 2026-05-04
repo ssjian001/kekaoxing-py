@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
-    QMessageBox,
     QFrame,
 )
 from PySide6.QtCore import QEvent, Signal, Qt
@@ -21,12 +20,10 @@ from PySide6.QtGui import QColor
 
 from src.models.common import Equipment
 from src.styles.theme import (
-    CRUST,
     OVERLAY0,
     SURFACE0,
     SURFACE1,
     TEXT,
-    SUBTEXT0,
     GREEN,
     RED,
     BLUE,

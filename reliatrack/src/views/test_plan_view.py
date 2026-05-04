@@ -27,7 +27,7 @@ from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, Q
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1,
+    TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY
@@ -101,6 +101,13 @@ class _TaskTable(QTableWidget):
         self.horizontalHeader().sectionResized.connect(
             lambda *_: save_column_widths_debounced(self, "task_table")
         )
+        # 空状态提示
+        self._empty_label = QLabel("暂无测试任务")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self)
+        self._empty_label.hide()
 
     def set_reference_data(
         self,
@@ -252,6 +259,21 @@ class _TaskTable(QTableWidget):
                         item.setForeground(QColor(RED))
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
+        self._update_empty_state()
+
+    def _update_empty_state(self) -> None:
+        """控制空状态提示的显示/隐藏。"""
+        if self.rowCount() == 0:
+            self._empty_label.setGeometry(self.viewport().rect())
+            self._empty_label.show()
+            self._empty_label.raise_()
+        else:
+            self._empty_label.hide()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._empty_label.isVisible():
+            self._empty_label.setGeometry(self.viewport().rect())
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
         """获取指定视觉行对应的任务对象（排序安全）。"""

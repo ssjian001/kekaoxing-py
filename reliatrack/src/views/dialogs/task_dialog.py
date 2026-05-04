@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QLineEdit
 
+from src.styles.theme import SUBTEXT0
+
 from PySide6.QtWidgets import (
     QFileDialog,
     QGroupBox,
@@ -121,7 +123,7 @@ class TaskEditDialog(_BaseDialog):
         self._sample_count_label = QLabel(
             self._format_sample_count()
         )
-        self._sample_count_label.setStyleSheet("color: #6c6f85;")
+        self._sample_count_label.setStyleSheet(f"color: {SUBTEXT0};")
 
         sample_layout.addWidget(self._sample_select_btn)
         sample_layout.addWidget(self._sample_count_label, stretch=1)

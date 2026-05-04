@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from src.styles.theme import RED
 from src.views.dialogs.base_dialog import _BaseDialog
 
 

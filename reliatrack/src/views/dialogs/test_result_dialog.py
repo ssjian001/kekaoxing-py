@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QComboBox,
@@ -15,11 +13,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QColor
 
 from src.constants import RESULT_OPTIONS
-from src.models.test_plan import TestResult, TestResultStatus, TestTask
 from src.models.sample import Sample
+from src.models.test_plan import TestResult, TestResultStatus, TestTask
 from src.styles.theme import (
     BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,

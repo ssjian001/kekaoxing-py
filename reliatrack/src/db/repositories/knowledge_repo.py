@@ -33,17 +33,23 @@ class KnowledgeRepository(BaseRepository):
         super().delete(entry_id)
 
     def list_all(self, **filters: Any) -> list[KnowledgeEntry]:
-        """查询所有条目，按 id DESC 排序。"""
-        cols = self._columns_sql()
+        """查询所有条目，按 id DESC 排序。支持 **filters 透传（当前表无过滤字段，忽略）。"""
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
         rows = self._conn.execute(
-            f"SELECT {cols} FROM [{self._table}] ORDER BY id DESC"
+            f"SELECT {cols_sql} FROM [{self._table}] ORDER BY id DESC"
         ).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=cols_list)
 
     def search(self, keyword: str, columns: list[str] | None = None) -> list[KnowledgeEntry]:
         """按关键词在 category、failure_mode、cause_analysis、improvement 字段上模糊搜索。"""
-        cols = self._columns()
+        if columns is None:
+            cols = self._columns()
+        else:
+            cols = columns
         search_columns = [c for c in ("category", "failure_mode", "cause_analysis", "improvement") if c in cols]
         if not search_columns:
             search_columns = cols
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
         return super().search(keyword, columns=search_columns)  # type: ignore[return-value]

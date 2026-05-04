@@ -25,7 +25,8 @@ class TestPlanRepository(BaseRepository):
             "id", "plan_id", "name", "category", "test_standard", "technician_id",
             "equipment_id", "sample_ids", "duration", "start_day", "progress",
             "status", "priority", "environment", "log_file", "dependencies",
-            "notes", "temperature", "humidity", "accept_criteria", "sort_order",
+            "notes", "temperature", "humidity", "accept_criteria",
+            "actual_start_date", "actual_end_date", "sort_order",
             "created_at", "updated_at",
         )
         cols_sql = ", ".join(col_names)

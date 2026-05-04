@@ -103,24 +103,36 @@ class _IssueTable(QTableWidget):
             ]):
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                if col == 2:  # severity
+                if col == 0:
+                    item.setData(Qt.ItemDataRole.UserRole, issue.id)
+                elif col == 2:  # severity
                     item.setForeground(QColor(ISSUE_SEVERITY_COLORS.get(issue.severity, TEXT)))
                 elif col == 3:  # status
                     item.setForeground(QColor(ISSUE_STATUS_COLORS.get(issue.status, TEXT)))
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
 
-    def get_selected_issue_id(self) -> Optional[int]:
-        row = self.currentRow()
-        if 0 <= row < len(self._issues):
-            return self._issues[row].id
+    def _get_issue_id_at_row(self, row: int) -> Optional[int]:
+        """通过 UserRole 安全获取 issue ID（排序安全）。"""
+        if 0 <= row < self.rowCount():
+            item = self.item(row, 0)
+            if item is not None:
+                uid = item.data(Qt.ItemDataRole.UserRole)
+                if uid is not None:
+                    return int(uid)
         return None
 
+    def get_selected_issue_id(self) -> Optional[int]:
+        return self._get_issue_id_at_row(self.currentRow())
+
     def get_selected_issue(self) -> Issue | None:
-        """返回当前选中的 Issue 对象。"""
-        row = self.currentRow()
-        if 0 <= row < len(self._issues):
-            return self._issues[row]
+        """返回当前选中的 Issue 对象（排序安全）。"""
+        issue_id = self.get_selected_issue_id()
+        if issue_id is None:
+            return None
+        for issue in self._issues:
+            if issue.id == issue_id:
+                return issue
         return None
 
     # ── 右键菜单 ──────────────────────────────────────────────

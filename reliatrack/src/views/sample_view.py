@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QMenu,
     QAbstractItemView,
-    QMessageBox,
 )
 from PySide6.QtCore import QEvent, Qt
 

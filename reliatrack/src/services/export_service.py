@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from datetime import datetime
@@ -15,6 +16,8 @@ from src.constants import (
 from src.models.test_plan import TestPlan, TestTask, TestResult
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.models.sample import Sample
+
+logger = logging.getLogger(__name__)
 
 
 class ExportService:

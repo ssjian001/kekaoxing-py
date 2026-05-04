@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.db.repositories import SettingsRepository
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsService:

@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
-    QMessageBox,
     QFrame,
 )
 from PySide6.QtCore import QEvent, Signal, Qt
