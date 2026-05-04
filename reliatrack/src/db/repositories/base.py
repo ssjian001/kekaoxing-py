@@ -70,15 +70,56 @@ class BaseRepository:
         """清除列名缓存（Schema 迁移后调用）。"""
         self._columns_cache = None
 
-    def _rows_to_models(self, rows: list[tuple]) -> list[Any]:
-        """将查询结果转为 dataclass 列表。"""
-        cols = self._columns()
-        return [self._model_class(**dict(zip(cols, row))) for row in rows]
+    def _rows_to_models(
+        self, rows: list[tuple], cols: list[str] | None = None
+    ) -> list[Any]:
+        """将查询结果转为 dataclass 列表。
 
-    def _row_to_model(self, row: tuple) -> Any:
+        防御性实现：列数与行值数不一致时截断到较短者，避免字段串位。
+        优先使用调用方传入的显式列名列表（与 SELECT 顺序一致），
+        而非 PRAGMA 序（可能与物理表列序不一致）。
+        """
+        if cols is None:
+            cols = self._columns()
+        result = []
+        for row in rows:
+            # 截断到较短者，防止列数与行值数不一致（如 SELECT * 与 PRAGMA 顺序差异）
+            data = dict(zip(cols, row))
+            # 验证非 None 数值字段类型，报告静默类型错误
+            for col, val in data.items():
+                if val is not None:
+                    model_fields = getattr(self._model_class, "__annotations__", {})
+                    expected = model_fields.get(col)
+                    if expected in (int, "int", "Integer") and isinstance(val, str):
+                        if val == "":
+                            data[col] = 0
+                        elif val.lstrip("-").isdigit():
+                            data[col] = int(val)
+                        else:
+                            logger.warning(
+                                "Type mismatch: %s.%s expected int, got %r; keeping as-is",
+                                self._table, col, val,
+                            )
+            result.append(self._model_class(**data))
+        return result
+
+    def _row_to_model(
+        self, row: tuple, cols: list[str] | None = None
+    ) -> Any:
         """将单条查询结果转为 dataclass。"""
-        cols = self._columns()
-        return self._model_class(**dict(zip(cols, row)))
+        if cols is None:
+            cols = self._columns()
+        data = dict(zip(cols, row))
+        for col, val in data.items():
+            if val is not None:
+                model_fields = getattr(self._model_class, "__annotations__", {})
+                expected = model_fields.get(col)
+                if expected in (int, "int", "Integer") and isinstance(val, str):
+                    if val == "":
+                        data[col] = 0
+                    elif val.lstrip("-").isdigit():
+                        data[col] = int(val)
+        return self._model_class(**data)
 
     # ── 通用 CRUD ──
 
@@ -125,16 +166,18 @@ class BaseRepository:
 
     def get_by_id(self, id: int) -> Optional[Any]:
         """按 ID 查询单条。"""
-        cols = self._columns_sql()
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
         row = self._conn.execute(
-            f"SELECT {cols} FROM [{self._table}] WHERE id = ?", (id,)
+            f"SELECT {cols_sql} FROM [{self._table}] WHERE id = ?", (id,)
         ).fetchone()
-        return self._row_to_model(row) if row else None
+        return self._row_to_model(row, cols=cols_list) if row else None
 
     def list_all(self, **filters: Any) -> list[Any]:
         """查询所有，支持可选过滤条件。"""
-        cols = self._columns_sql()
-        sql = f"SELECT {cols} FROM [{self._table}]"
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        sql = f"SELECT {cols_sql} FROM [{self._table}]"
         params: list[Any] = []
         if filters:
             clauses = []
@@ -143,7 +186,7 @@ class BaseRepository:
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)
         rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=cols_list)
 
     def search(self, keyword: str, columns: list[str] | None = None) -> list[Any]:
         """按关键词模糊搜索。"""
@@ -153,10 +196,11 @@ class BaseRepository:
         escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
         params = [pattern] * len(clauses)
-        cols = self._columns_sql()
-        sql = f"SELECT {cols} FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\\\'"
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        sql = f"SELECT {cols_sql} FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\\\'"
         rows = self._conn.execute(sql, params).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=cols_list)
 
     def count(self, **filters: Any) -> int:
         """计数，支持可选过滤。"""

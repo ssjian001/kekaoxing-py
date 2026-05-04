@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -753,6 +753,33 @@ def _migrate_v11(conn: apsw.Connection) -> None:
 #  公开 API
 # ═══════════════════════════════════════════════════════════════════
 
+def _migrate_v12(conn: apsw.Connection) -> None:
+    """v11→v12: 修补 DDL 有但迁移链遗漏的列。
+
+    samples.notes       — CREATE TABLE 有，但 migrate_v8 只加了 test_hours/
+                          supplier/scrapped_reason，漏掉 notes。
+    equipment.asset_no / manufacturer / accuracy — 同理，CREATE TABLE 有
+                          但从未通过 ALTER TABLE 添加到旧库。
+    新建数据库走 CREATE TABLE 不受此影响；本次迁移仅修复已存在的旧库。
+    """
+    # samples.notes
+    s_cols = {r[1] for r in conn.execute("PRAGMA table_info(samples)").fetchall()}
+    if "notes" not in s_cols:
+        conn.execute(
+            "ALTER TABLE samples ADD COLUMN notes TEXT NOT NULL DEFAULT ''"
+        )
+
+    # equipment.asset_no, manufacturer, accuracy
+    e_cols = {r[1] for r in conn.execute("PRAGMA table_info(equipment)").fetchall()}
+    for col in ("asset_no", "manufacturer", "accuracy"):
+        if col not in e_cols:
+            conn.execute(
+                f"ALTER TABLE equipment ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+            )
+
+    conn.execute("INSERT INTO schema_version (version) VALUES (12)")
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -809,5 +836,9 @@ def init_schema(conn: apsw.Connection) -> int:
     # v11 需关闭 FK 约束后重建表，不能在事务内执行 PRAGMA foreign_keys
     if current < 11:
         _migrate_v11(conn)
+
+    # v12 修补 samples.notes 列（CREATE TABLE 有但历史迁移链漏掉）
+    if current < 12:
+        _migrate_v12(conn)
 
     return _get_current_version(conn)
