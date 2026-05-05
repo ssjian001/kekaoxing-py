@@ -84,13 +84,15 @@ src/
 
 ## 架构说明（2026-05 recent）
 
-### Schema（2026-05-04）
+### Schema（2026-05-05）
 
+- **v13**：修复 v11 迁移丢失的 20 个索引，schema_version 加 UNIQUE，v12 迁移加事务包裹
 - **v12**：修补迁移链遗漏列（samples.notes、equipment.asset_no/manufacturer/accuracy）
-- **v11**：FK ON DELETE SET NULL + CASCADE 完善，表重建方式迁移
+- **v11**：FK ON DELETE SET NULL + CASCADE 完善，表重建方式迁移（`_rebuild_table` 辅助函数）
 - **v8-v10**：设备校准、样品字段、测试结果、假期表等增量迁移
 - **SELECT \***：全部消除，所有查询使用显式列名
-- **base.py**：空字符串→0 int 防御，避免 type mismatch warning
+- **base.py**：空字符串→0 int 防御 + ESCAPE 子句修复 + search() 模糊搜索修复
+- **issue.py**：priority/occurrence_count 防御性类型转换（str→int）
 - **Dashboard refresh**：16参数封装为 `DashboardData` 数据类
 
 ### 数据库路径
