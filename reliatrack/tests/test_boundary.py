@@ -32,7 +32,7 @@ e1 = ctrl.equipment_service.create(name='温箱-01', type='温度箱')
 s1 = ctrl.sample_service.create(sn='SMP-D01', batch_no='B001', spec='TypeC')
 tp1 = ctrl.test_plan_service.create_plan(p1, '计划V1')
 tk1 = ctrl.test_plan_service.create_task(tp1, name='高温老化', start_day=1, duration=5)
-i1 = ctrl.issue_service.create(title='引脚断裂', priority='critical', plan_id=tp1)
+i1 = ctrl.issue_service.create(title='引脚断裂', severity='critical', priority=1, plan_id=tp1)
 k1 = ctrl.knowledge_service.create(category='机械', failure_mode='断裂', cause_analysis='热应力', improvement='缓冲垫')
 
 from main import MainWindow

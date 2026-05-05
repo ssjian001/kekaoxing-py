@@ -198,7 +198,7 @@ class BaseRepository:
         params = [pattern] * len(clauses)
         cols_sql = self._columns_sql()
         cols_list = self._columns()
-        sql = f"SELECT {cols_sql} FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\\\'"
+        sql = f"SELECT {cols_sql} FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\'  "
         rows = self._conn.execute(sql, params).fetchall()
         return self._rows_to_models(rows, cols=cols_list)
 

@@ -63,9 +63,20 @@ class Issue:
     updated_at: str = ""
 
     def __post_init__(self):
+        # 防御性类型转换：从 DB 或调用方可能传入 str
+        if isinstance(self.priority, str):
+            try:
+                self.priority = int(self.priority)
+            except (ValueError, TypeError):
+                self.priority = 3  # 回退到默认值
+        if isinstance(self.occurrence_count, str):
+            try:
+                self.occurrence_count = int(self.occurrence_count)
+            except (ValueError, TypeError):
+                self.occurrence_count = 1
         if self.occurrence_count < 1:
             raise ValueError(f"发生次数必须≥1: {self.occurrence_count}")
-        if self.priority < 1 or self.priority > 5:
+        if not isinstance(self.priority, int) or self.priority < 1 or self.priority > 5:
             raise ValueError(f"优先级必须在 1-5 之间: {self.priority}")
 
 

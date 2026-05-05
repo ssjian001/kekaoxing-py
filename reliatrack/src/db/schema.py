@@ -239,7 +239,7 @@ _DDL_TABLES: list[str] = [
 
     # ── 系统设置 ──
     """CREATE TABLE IF NOT EXISTS settings (
-        key         TEXT    UNIQUE PRIMARY KEY,
+        key         TEXT    PRIMARY KEY,
         value       TEXT    NOT NULL,
         updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -316,7 +316,11 @@ def _migrate_v1(conn: apsw.Connection) -> None:
 
 
 def _migrate_v2(conn: apsw.Connection) -> None:
-    """v2: 设备表新增校准日期字段（如果 CREATE TABLE 已包含则跳过）。"""
+    """v2: 设备表新增校准日期字段（如果 CREATE TABLE 已包含则跳过）。
+
+    注意：v8 也会添加 calibration_date / next_calibration_date，
+    因为早期 v1→v8 升级路径可能跳过 v2。v2 是首次引入这些字段的版本。
+    """
     cols = {
         r[1] for r in conn.execute("PRAGMA table_info(equipment)").fetchall()
     }
@@ -452,7 +456,11 @@ def _get_current_version(conn: apsw.Connection) -> int:
 
 
 def _migrate_v8(conn: apsw.Connection) -> None:
-    """v7→v8: equipment 校准字段 + samples test_hours + test_results measured_value。"""
+    """v7→v8: equipment 校准字段 + samples test_hours + test_results measured_value。
+
+    注意：calibration_date / next_calibration_date 首次在 v2 引入，
+    v8 追加了 calibration_interval_months 并确保前两列在旧库中存在（幂等）。
+    """
     # Equipment calibration fields
     cols = {r[1] for r in conn.execute("PRAGMA table_info(equipment)").fetchall()}
     for col, col_type, default in [
@@ -514,38 +522,34 @@ def _migrate_v9(conn: apsw.Connection) -> None:
     )
 
 
-def _SEED_HOLIDAYS_2025() -> list[tuple[str, str]]:
-    """2025 中国法定节假日种子数据。"""
-    return [
-        ("2025-01-01", "元旦"),
-        ("2025-01-28", "春节"), ("2025-01-29", "春节"), ("2025-01-30", "春节"),
-        ("2025-01-31", "春节"), ("2025-02-01", "春节"), ("2025-02-02", "春节"),
-        ("2025-02-03", "春节"), ("2025-02-04", "春节"),
-        ("2025-04-04", "清明"), ("2025-04-05", "清明"), ("2025-04-06", "清明"),
-        ("2025-05-01", "劳动节"), ("2025-05-02", "劳动节"), ("2025-05-03", "劳动节"),
-        ("2025-05-04", "劳动节"), ("2025-05-05", "劳动节"),
-        ("2025-05-31", "端午"), ("2025-06-01", "端午"), ("2025-06-02", "端午"),
-        ("2025-10-01", "国庆"), ("2025-10-02", "国庆"), ("2025-10-03", "国庆"),
-        ("2025-10-04", "国庆"), ("2025-10-05", "国庆"), ("2025-10-06", "国庆"),
-        ("2025-10-07", "国庆"), ("2025-10-08", "国庆"),
-    ]
+_SEED_HOLIDAYS_2025: tuple[tuple[str, str], ...] = (
+    ("2025-01-01", "元旦"),
+    ("2025-01-28", "春节"), ("2025-01-29", "春节"), ("2025-01-30", "春节"),
+    ("2025-01-31", "春节"), ("2025-02-01", "春节"), ("2025-02-02", "春节"),
+    ("2025-02-03", "春节"), ("2025-02-04", "春节"),
+    ("2025-04-04", "清明"), ("2025-04-05", "清明"), ("2025-04-06", "清明"),
+    ("2025-05-01", "劳动节"), ("2025-05-02", "劳动节"), ("2025-05-03", "劳动节"),
+    ("2025-05-04", "劳动节"), ("2025-05-05", "劳动节"),
+    ("2025-05-31", "端午"), ("2025-06-01", "端午"), ("2025-06-02", "端午"),
+    ("2025-10-01", "国庆"), ("2025-10-02", "国庆"), ("2025-10-03", "国庆"),
+    ("2025-10-04", "国庆"), ("2025-10-05", "国庆"), ("2025-10-06", "国庆"),
+    ("2025-10-07", "国庆"), ("2025-10-08", "国庆"),
+)
 
 
-def _SEED_HOLIDAYS_2026() -> list[tuple[str, str]]:
-    """2026 中国法定节假日种子数据。"""
-    return [
-        ("2026-01-01", "元旦"), ("2026-01-02", "元旦"), ("2026-01-03", "元旦"),
-        ("2026-02-17", "春节"), ("2026-02-18", "春节"), ("2026-02-19", "春节"),
-        ("2026-02-20", "春节"), ("2026-02-21", "春节"), ("2026-02-22", "春节"),
-        ("2026-02-23", "春节"),
-        ("2026-04-04", "清明"), ("2026-04-05", "清明"), ("2026-04-06", "清明"),
-        ("2026-05-01", "劳动节"), ("2026-05-02", "劳动节"), ("2026-05-03", "劳动节"),
-        ("2026-05-04", "劳动节"), ("2026-05-05", "劳动节"),
-        ("2026-05-30", "端午"), ("2026-05-31", "端午"), ("2026-06-01", "端午"),
-        ("2026-10-01", "国庆"), ("2026-10-02", "国庆"), ("2026-10-03", "国庆"),
-        ("2026-10-04", "国庆"), ("2026-10-05", "国庆"), ("2026-10-06", "国庆"),
-        ("2026-10-07", "国庆"),
-    ]
+_SEED_HOLIDAYS_2026: tuple[tuple[str, str], ...] = (
+    ("2026-01-01", "元旦"), ("2026-01-02", "元旦"), ("2026-01-03", "元旦"),
+    ("2026-02-17", "春节"), ("2026-02-18", "春节"), ("2026-02-19", "春节"),
+    ("2026-02-20", "春节"), ("2026-02-21", "春节"), ("2026-02-22", "春节"),
+    ("2026-02-23", "春节"),
+    ("2026-04-04", "清明"), ("2026-04-05", "清明"), ("2026-04-06", "清明"),
+    ("2026-05-01", "劳动节"), ("2026-05-02", "劳动节"), ("2026-05-03", "劳动节"),
+    ("2026-05-04", "劳动节"), ("2026-05-05", "劳动节"),
+    ("2026-05-30", "端午"), ("2026-05-31", "端午"), ("2026-06-01", "端午"),
+    ("2026-10-01", "国庆"), ("2026-10-02", "国庆"), ("2026-10-03", "国庆"),
+    ("2026-10-04", "国庆"), ("2026-10-05", "国庆"), ("2026-10-06", "国庆"),
+    ("2026-10-07", "国庆"),
+)
 
 
 def _migrate_v10(conn: apsw.Connection) -> None:
@@ -559,7 +563,7 @@ def _migrate_v10(conn: apsw.Connection) -> None:
         )"""
     )
     # 插入种子数据（INSERT OR IGNORE 防重复）
-    for date_str, name in _SEED_HOLIDAYS_2025() + _SEED_HOLIDAYS_2026():
+    for date_str, name in _SEED_HOLIDAYS_2025 + _SEED_HOLIDAYS_2026:
         conn.execute(
             "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, 'builtin')",
             (date_str, name),
@@ -567,16 +571,24 @@ def _migrate_v10(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (10)")
 
 
+def _rebuild_table(conn: apsw.Connection, name: str, new_ddl: str) -> None:
+    """通过 DROP TABLE + RENAME 重建表（用于 SQLite 不支持的 ALTER CONSTRAINT）。
+
+    步骤：CREATE name_new → INSERT SELECT * → DROP name → RENAME name_new → name
+    需在 PRAGMA foreign_keys = OFF 环境下调用。
+    """
+    conn.execute(f"DROP TABLE IF EXISTS {name}_new")
+    conn.execute(new_ddl)
+    conn.execute(f"INSERT INTO {name}_new SELECT * FROM {name}")
+    conn.execute(f"DROP TABLE {name}")
+    conn.execute(f"ALTER TABLE {name}_new RENAME TO {name}")
+
+
 def _migrate_v11(conn: apsw.Connection) -> None:
     """v10→v11: 为所有外键列补充 ON DELETE SET NULL 策略。
 
     SQLite 不支持 ALTER TABLE ADD CONSTRAINT，迁移通过表重建实现。
-    使用安全策略避免 RENAME TABLE 导致子表 FK 引用被破坏：
-    1. CREATE TABLE {name}_new (含正确 FK 约束)
-    2. INSERT INTO {name}_new SELECT * FROM {name}
-    3. DROP TABLE {name}
-    4. ALTER TABLE {name}_new RENAME TO {name}
-
+    使用 _rebuild_table 辅助函数避免重复代码。
     受影响列（均指向 technicians / equipment / samples / test_tasks）：
     - sample_transactions.operator_id / related_task_id
     - test_tasks.technician_id / equipment_id
@@ -589,11 +601,7 @@ def _migrate_v11(conn: apsw.Connection) -> None:
     conn.execute("PRAGMA foreign_keys = OFF")
     try:
         # ── 重建顺序：先子表后父表 ──
-        # issue_attachments (→ issues) 必须在 issues 之前重建
-
-        # ── issue_attachments ──
-        conn.execute("DROP TABLE IF EXISTS issue_attachments_new")
-        conn.execute("""CREATE TABLE issue_attachments_new (
+        _rebuild_table(conn, "issue_attachments", """CREATE TABLE issue_attachments_new (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
             file_path   TEXT    NOT NULL,
@@ -601,13 +609,8 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             description TEXT    NOT NULL DEFAULT '',
             created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO issue_attachments_new SELECT * FROM issue_attachments")
-        conn.execute("DROP TABLE issue_attachments")
-        conn.execute("ALTER TABLE issue_attachments_new RENAME TO issue_attachments")
 
-        # ── fa_records ──
-        conn.execute("DROP TABLE IF EXISTS fa_records_new")
-        conn.execute("""CREATE TABLE fa_records_new (
+        _rebuild_table(conn, "fa_records", """CREATE TABLE fa_records_new (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             issue_id        INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
             step_no         INTEGER NOT NULL DEFAULT 1,
@@ -623,13 +626,8 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             attachments     TEXT    NOT NULL DEFAULT '[]',
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO fa_records_new SELECT * FROM fa_records")
-        conn.execute("DROP TABLE fa_records")
-        conn.execute("ALTER TABLE fa_records_new RENAME TO fa_records")
 
-        # ── capa_records ──
-        conn.execute("DROP TABLE IF EXISTS capa_records_new")
-        conn.execute("""CREATE TABLE capa_records_new (
+        _rebuild_table(conn, "capa_records", """CREATE TABLE capa_records_new (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
             action              TEXT    NOT NULL,
@@ -641,13 +639,8 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO capa_records_new SELECT * FROM capa_records")
-        conn.execute("DROP TABLE capa_records")
-        conn.execute("ALTER TABLE capa_records_new RENAME TO capa_records")
 
-        # ── sample_transactions ──
-        conn.execute("DROP TABLE IF EXISTS sample_transactions_new")
-        conn.execute("""CREATE TABLE sample_transactions_new (
+        _rebuild_table(conn, "sample_transactions", """CREATE TABLE sample_transactions_new (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             sample_id       INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
             type            TEXT    NOT NULL,
@@ -659,13 +652,8 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             notes           TEXT    NOT NULL DEFAULT '',
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO sample_transactions_new SELECT * FROM sample_transactions")
-        conn.execute("DROP TABLE sample_transactions")
-        conn.execute("ALTER TABLE sample_transactions_new RENAME TO sample_transactions")
 
-        # ── test_results ──
-        conn.execute("DROP TABLE IF EXISTS test_results_new")
-        conn.execute("""CREATE TABLE test_results_new (
+        _rebuild_table(conn, "test_results", """CREATE TABLE test_results_new (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             task_id         INTEGER NOT NULL REFERENCES test_tasks(id) ON DELETE CASCADE,
             sample_id       INTEGER REFERENCES samples(id) ON DELETE SET NULL,
@@ -678,13 +666,8 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             measured_value  TEXT    NOT NULL DEFAULT '',
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO test_results_new SELECT * FROM test_results")
-        conn.execute("DROP TABLE test_results")
-        conn.execute("ALTER TABLE test_results_new RENAME TO test_results")
 
-        # ── issues ──
-        conn.execute("DROP TABLE IF EXISTS issues_new")
-        conn.execute("""CREATE TABLE issues_new (
+        _rebuild_table(conn, "issues", """CREATE TABLE issues_new (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id      INTEGER REFERENCES projects(id) ON DELETE CASCADE,
             plan_id         INTEGER REFERENCES test_plans(id) ON DELETE CASCADE,
@@ -705,13 +688,9 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO issues_new SELECT * FROM issues")
-        conn.execute("DROP TABLE issues")
-        conn.execute("ALTER TABLE issues_new RENAME TO issues")
 
-        # ── test_tasks (被子表引用，最后重建) ──
-        conn.execute("DROP TABLE IF EXISTS test_tasks_new")
-        conn.execute("""CREATE TABLE test_tasks_new (
+        # test_tasks (被子表引用，最后重建)
+        _rebuild_table(conn, "test_tasks", """CREATE TABLE test_tasks_new (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             plan_id         INTEGER NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
             name            TEXT    NOT NULL,
@@ -738,11 +717,13 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
-        conn.execute("INSERT INTO test_tasks_new SELECT * FROM test_tasks")
-        conn.execute("DROP TABLE test_tasks")
-        conn.execute("ALTER TABLE test_tasks_new RENAME TO test_tasks")
 
         conn.execute("INSERT INTO schema_version (version) VALUES (11)")
+    except Exception:
+        # 中途失败时恢复 FK 并重新抛出，让调用方处理
+        conn.execute("PRAGMA foreign_keys = ON")
+        logger.exception("Schema migration v11 failed during table rebuild")
+        raise
     finally:
         conn.execute("PRAGMA foreign_keys = ON")
 
