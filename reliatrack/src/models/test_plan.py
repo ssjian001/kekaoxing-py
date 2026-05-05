@@ -89,6 +89,9 @@ class TestTask:
             raise ValueError(f"工期不能为负数: {self.duration}")
         if not 0 <= self.progress <= 100:
             raise ValueError(f"进度必须在 0-100 之间: {self.progress}")
+        # 0 = legacy invalid value (DB prior to schema default), treat as 3
+        if self.priority == 0:
+            self.priority = 3
         if self.priority < 1 or self.priority > 5:
             raise ValueError(f"优先级必须在 1-5 之间: {self.priority}")
 

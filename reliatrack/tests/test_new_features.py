@@ -173,8 +173,11 @@ class TestModelPostInitValidation:
             TestTask(progress=150)
 
     def test_task_priority_out_of_range(self):
+        # priority=0 静默修正为 3（兼容旧数据），仅 invalid range 抛异常
+        task = TestTask(priority=0)
+        assert task.priority == 3
         with pytest.raises(ValueError, match="优先级必须在 1-5 之间"):
-            TestTask(priority=0)
+            TestTask(priority=6)
 
     def test_sample_negative_test_hours(self):
         with pytest.raises(ValueError, match="测试小时数不能为负数"):

@@ -9,11 +9,14 @@ import apsw
 from src.models.test_plan import TestResult
 from src.db.repositories.base import BaseRepository
 
-# 显式列名（与 schema 顺序一致，替代 SELECT *）
-_COLS = (
-    "id, task_id, sample_id, result, test_date, tester_id, "
-    "environment, notes, attachments, measured_value, created_at"
-)
+# 显式列名列表（与 schema 顺序一致，用于 SELECT 和映射）。
+# 始终传入 _rows_to_models(rows, cols=_COLS) 以保证列序一致；
+# 不能依赖 PRAGMA table_info 序——ALTER TABLE ADD COLUMN 会将新列加到物理末尾，
+# 导致 PRAGMA 序与 SELECT 物理序不一致。
+_COLS = [
+    "id", "task_id", "sample_id", "result", "test_date", "tester_id",
+    "environment", "notes", "attachments", "measured_value", "created_at",
+]
 
 
 class TestResultRepository(BaseRepository):
@@ -25,26 +28,26 @@ class TestResultRepository(BaseRepository):
     def get_by_task(self, task_id: int) -> list[TestResult]:
         """获取任务的所有测试结果。"""
         rows = self._conn.execute(
-            f"SELECT {_COLS} FROM [test_results] WHERE task_id = ? ORDER BY id",
+            f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE task_id = ? ORDER BY id",
             (task_id,),
         ).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=_COLS)
 
     def get_by_sample(self, sample_id: int) -> list[TestResult]:
         """获取样品的所有测试结果。"""
         rows = self._conn.execute(
-            f"SELECT {_COLS} FROM [test_results] WHERE sample_id = ? ORDER BY test_date DESC",
+            f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE sample_id = ? ORDER BY test_date DESC",
             (sample_id,),
         ).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=_COLS)
 
     def get_task_result_for_sample(self, task_id: int, sample_id: int) -> Optional[TestResult]:
         """获取某任务+样品的测试结果（一对一）。"""
         row = self._conn.execute(
-            f"SELECT {_COLS} FROM [test_results] WHERE task_id = ? AND sample_id = ?",
+            f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE task_id = ? AND sample_id = ?",
             (task_id, sample_id),
         ).fetchone()
-        return self._row_to_model(row) if row else None
+        return self._row_to_model(row, cols=_COLS) if row else None
 
     def upsert(self, task_id: int, sample_id: int, **kwargs: object) -> int:
         """插入或更新某任务+样品的测试结果，返回 id。"""
@@ -77,10 +80,10 @@ class TestResultRepository(BaseRepository):
             return []
         placeholders = ",".join("?" * len(task_ids))
         rows = self._conn.execute(
-            f"SELECT {_COLS} FROM [test_results] WHERE task_id IN ({placeholders}) ORDER BY task_id, sample_id",
+            f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE task_id IN ({placeholders}) ORDER BY task_id, sample_id",
             task_ids,
         ).fetchall()
-        return self._rows_to_models(rows)
+        return self._rows_to_models(rows, cols=_COLS)
 
     def get_pass_counts_by_tasks(self, task_ids: list[int]) -> dict[int, tuple[int, int]]:
         """批量获取多个任务的通过率统计。

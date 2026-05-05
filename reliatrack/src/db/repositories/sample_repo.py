@@ -31,11 +31,13 @@ class SampleRepository(BaseRepository):
         )
 
     def get_by_sn(self, sn: str) -> Optional[Sample]:
-        cols = "id, sn, batch_no, spec, project_id, status, location, test_hours, qr_code, notes, supplier, scrapped_reason, created_at, updated_at"
+        _COLS = ["id", "sn", "batch_no", "spec", "project_id", "status", "location",
+                "test_hours", "qr_code", "notes", "supplier", "scrapped_reason",
+                "created_at", "updated_at"]
         rows = self._conn.execute(
-            f"SELECT {cols} FROM [samples] WHERE sn = ?", (sn,)
+            f"SELECT {', '.join(_COLS)} FROM [samples] WHERE sn = ?", (sn,)
         ).fetchall()
-        return self._rows_to_models(rows)[0] if rows else None
+        return self._rows_to_models(rows, cols=_COLS)[0] if rows else None
 
     def get_by_status(self, status: str) -> list[Sample]:
         return self.list_all(status=status)
@@ -81,7 +83,7 @@ class SampleRepository(BaseRepository):
         Returns:
             包含完整关联信息的字典列表。
         """
-        st_cols = "id, sample_id, type, operator_id, purpose, related_task_id, expected_return, actual_return, notes, created_at"
+        st_cols = "st.id, st.sample_id, st.type, st.operator_id, st.purpose, st.related_task_id, st.expected_return, st.actual_return, st.notes, st.created_at"
         sql = f"""
             SELECT {st_cols}, s.sn as sample_sn, s.batch_no,
                    t.name as operator_name
