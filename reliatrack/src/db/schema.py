@@ -1,6 +1,6 @@
 """数据库 Schema 定义与版本管理。
 
-包含所有 12 张表的 DDL，通过 schema_version 表追踪版本，
+包含所有 16 张表的 DDL，通过 schema_version 表追踪版本，
 支持增量迁移。
 """
 
@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -21,7 +21,7 @@ SCHEMA_VERSION = 12
 _DDL_TABLES: list[str] = [
     # ── schema_version（迁移追踪）──
     """CREATE TABLE IF NOT EXISTS schema_version (
-        version     INTEGER NOT NULL,
+        version     INTEGER NOT NULL UNIQUE,
         applied_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
@@ -256,8 +256,7 @@ _DDL_TABLES: list[str] = [
 # ═══════════════════════════════════════════════════════════════════
 
 _DDL_INDEXES: list[str] = [
-    # samples
-    "CREATE INDEX IF NOT EXISTS idx_samples_sn ON samples(sn)",
+    # samples (sn 已有 UNIQUE 隐式索引，无需显式创建)
     "CREATE INDEX IF NOT EXISTS idx_samples_batch ON samples(batch_no)",
     "CREATE INDEX IF NOT EXISTS idx_samples_project ON samples(project_id)",
     "CREATE INDEX IF NOT EXISTS idx_samples_status ON samples(status)",
@@ -312,8 +311,7 @@ def _migrate_v1(conn: apsw.Connection) -> None:
         conn.execute(ddl)
     # 记录版本
     conn.execute(
-        "INSERT INTO schema_version (version) VALUES (?)",
-        (SCHEMA_VERSION,),
+        "INSERT INTO schema_version (version) VALUES (1)",
     )
 
 
@@ -780,6 +778,40 @@ def _migrate_v12(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (12)")
 
 
+def _migrate_v13(conn: apsw.Connection) -> None:
+    """v12→v13: 修复 v11 迁移丢失的索引 + schema_version 加 UNIQUE 约束。
+
+    v11 通过 DROP TABLE + RENAME 重建了 7 张表，导致这些表上的索引全部丢失。
+    本次迁移：
+    1. 重建 schema_version 表，添加 UNIQUE 约束防止重复版本记录
+    2. 重新执行所有索引 DDL（CREATE INDEX IF NOT EXISTS，已存在的会跳过）
+    """
+    # 1. 重建 schema_version 表，添加 UNIQUE 约束
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.execute("DROP TABLE IF EXISTS schema_version_new")
+        conn.execute("""CREATE TABLE schema_version_new (
+            version     INTEGER NOT NULL UNIQUE,
+            applied_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        # 只保留最新版本号，丢弃可能的重复记录
+        conn.execute("""
+            INSERT INTO schema_version_new (version, applied_at)
+            SELECT version, applied_at FROM schema_version
+            WHERE version = (SELECT MAX(version) FROM schema_version)
+        """)
+        conn.execute("DROP TABLE schema_version")
+        conn.execute("ALTER TABLE schema_version_new RENAME TO schema_version")
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+    # 2. 重建所有索引（已存在的会跳过，只补 v11 丢失的）
+    for ddl in _DDL_INDEXES:
+        conn.execute(ddl)
+
+    conn.execute("INSERT INTO schema_version (version) VALUES (13)")
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -839,6 +871,17 @@ def init_schema(conn: apsw.Connection) -> int:
 
     # v12 修补 samples.notes 列（CREATE TABLE 有但历史迁移链漏掉）
     if current < 12:
-        _migrate_v12(conn)
+        conn.execute("BEGIN")
+        try:
+            _migrate_v12(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v12 failed")
+            raise
+
+    # v13 修复 v11 丢失的索引 + schema_version 加 UNIQUE 约束
+    if current < 13:
+        _migrate_v13(conn)
 
     return _get_current_version(conn)
