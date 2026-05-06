@@ -101,8 +101,11 @@ class EquipmentHandlers:
 
         field_map = [
             ("设备名称（必填）", "name"),
+            ("资产编号", "asset_no"),
             ("设备类型", "type"),
             ("型号", "model"),
+            ("制造商", "manufacturer"),
+            ("精度/不确定度", "accuracy"),
             ("存放位置", "location"),
             ("状态", "status"),
             ("校准日期", "calibration_date"),
@@ -111,8 +114,11 @@ class EquipmentHandlers:
         required = ["name"]
         guess_keywords = {
             "name": ["名称", "设备名称", "设备名", "name", "设备"],
+            "asset_no": ["资产编号", "asset", "asset_no", "资产号", "编号"],
             "type": ["类型", "设备类型", "type", "类别"],
             "model": ["型号", "model", "规格"],
+            "manufacturer": ["制造商", "厂家", "manufacturer", "生产厂", "供应商"],
+            "accuracy": ["精度", "不确定度", "accuracy", "准确度"],
             "location": ["位置", "存放位置", "库位", "location"],
             "status": ["状态", "status", "设备状态"],
             "calibration_date": ["校准日期", "校准", "calibration", "calibration_date"],
