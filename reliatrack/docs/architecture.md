@@ -13,7 +13,9 @@ Project ──< TestPlan ──< TestTask >── Sample
    │                          │
    ├──< Equipment             └──< TestResult
    ├──< Technician
-   ├──< Issue
+   ├──< Issue ──< FARecord
+   │         ──< CAPARecord
+   │         ──< IssueAttachment
    └──< Knowledge
 ```
 
@@ -26,21 +28,43 @@ Project ──< TestPlan ──< TestTask >── Sample
 ## 分层架构
 
 ```
-Views (Qt UI)
-  ↓ 信号/槽
-Controllers (页面协调)
+View (Qt UI)
+  ↓ Signal
+Handler (信号处理器, 9个类)
   ↓ 调用
-Services (业务逻辑)
+Service (业务逻辑)
   ↓ 调用
-Repositories (数据访问)
+Repository (数据访问)
   ↓ SQL
 SQLite (apsw)
 ```
 
 - **Views**：纯 UI 绑定，不做业务判断
-- **Controllers**：页面级协调，处理信号流转
+- **Handlers**：连接 View 信号到 Service 调用，处理用户交互反馈
 - **Services**：业务规则（调度、导入导出、统计计算）
 - **Repositories**：单表 CRUD，封装 SQL 细节
+
+## 7 个 Tab
+
+| 索引 | Tab | 核心组件 |
+|-----|-----|---------|
+| 0 | 📊 仪表盘 | 12 KPI 卡片 + 3 图表 + 校准预警列表 |
+| 1 | 📁 项目管理 | 项目 CRUD + 搜索过滤 |
+| 2 | 📦 样品管理 | 样品池 + 出入库记录 + Excel 批量导入 |
+| 3 | 📋 测试计划 | 任务表 + 甘特图（设备颜色编码）+ 自动排程 + 结果矩阵 |
+| 4 | 🐛 Issue 追踪 | Issue CRUD + FA 分析 + CAPA 措施 + 8D 导出 + 状态/严重度筛选 |
+| 5 | 🔧 设备管理 | 设备 CRUD + 校准管理 + 技术员管理（内部子 Tab） |
+| 6 | 📚 知识库 | 失效模式 CRUD + 关键词搜索 |
+
+## 排程引擎
+
+3 阶段自动排程（`scheduler.py`）：
+
+1. **Greedy Placement** — 按拓扑序+优先级贪心放置，锁任务优先
+2. **Left-Shift Compression** — 尝试把任务左移填补空闲
+3. **Report Generation** — 计算总工期、设备利用率、瓶颈、建议
+
+支持：跳过周末/节假日、设备并行数约束、锁定已有排期、循环依赖检测。
 
 ## 关键设计决策
 
@@ -49,4 +73,5 @@ SQLite (apsw)
 | Repo 模式而非 ORM | SQLite 单文件场景，ORM 过重；repo 提供足够抽象同时保持 SQL 可控性 |
 | apsw 而非 sqlite3 | 支持 WAL 模式、更好的并发控制 |
 | FK ON DELETE SET NULL | 防止级联删除误伤关联数据，由 service 层决定是否级联 |
+| Handler 层分离 | 解耦 View 和 Service，信号处理可独立测试 |
 | QSS 样式独立 | 主题切换需求（Catppuccin Latte 明亮主题） |

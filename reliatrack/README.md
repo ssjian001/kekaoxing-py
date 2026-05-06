@@ -15,24 +15,33 @@ python3 -m venv .venv
 
 ## 功能
 
+- **仪表盘** — 12 个 KPI 卡片 + 设备利用率/状态/严重度图表 + 校准到期预警
 - **项目管理** — 创建/管理可靠性测试项目
-- **测试计划** — 定义测试任务、分配样品
-- **样品追踪** — 全生命周期样品状态跟踪
-- **设备管理** — 测试设备台账（资产编号、校准信息）
-- **人员管理** — 技术员分配与工作量
-- **甘特图** — 测试任务时间线可视化
-- **Issue 跟踪** — bd (beads) 图谱化 issue 管理
-- **知识库** — 经验教训沉淀
-- **Dashboard** — 项目概览与统计
+- **样品追踪** — 全生命周期样品状态跟踪 + Excel 批量导入
+- **测试计划** — 定义测试任务、自动排程（3阶段算法）、甘特图可视化（设备颜色编码）
+- **Issue 跟踪** — FA 分析步骤 + CAPA 纠正预防 + 8D 报告导出 + 状态/严重度筛选
+- **设备管理** — 测试设备台账（资产编号、制造商、精度、校准信息）+ 技术员管理
+- **知识库** — 失效模式经验沉淀
+
+## 7 个 Tab
+
+| 索引 | Tab | 核心功能 |
+|-----|-----|---------|
+| 0 | 仪表盘 | KPI 卡片 + 图表 + 校准预警列表 |
+| 1 | 项目管理 | 项目 CRUD + 搜索 |
+| 2 | 样品管理 | 样品池 + 出入库 + 批量导入 |
+| 3 | 测试计划 | 任务 CRUD + 自动排程 + 甘特图 + 结果矩阵 |
+| 4 | Issue 追踪 | Issue + FA + CAPA + 8D 导出 + 筛选 |
+| 5 | 设备管理 | 设备 + 校准 + 技术员（子 Tab） |
+| 6 | 知识库 | 失效模式 CRUD |
 
 ## 架构
 
 ```
-main.py              # 入口
+main.py              # 入口（MainWindow, 7个Tab, 快捷键分发）
 src/
-├── configs/         # 页面配置
 ├── constants.py     # 全局常量
-├── controllers/     # 页面控制器
+├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
 │   ├── schema.py        # SQLite schema（v13）
@@ -48,24 +57,37 @@ src/
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
 │       └── settings_repo.py
-├── handlers/        # 全局信号处理
-├── models/          # Pydantic 模型
+├── handlers/        # 信号处理（9个Handler类）
+│   ├── project_handlers.py
+│   ├── sample_handlers.py
+│   ├── plan_handlers.py
+│   ├── issue_handlers.py
+│   ├── equipment_handlers.py
+│   ├── knowledge_handlers.py
+│   ├── refresh_handlers.py
+│   └── technician_handlers.py
+├── models/          # 数据模型
 ├── services/        # 业务逻辑层
-│   ├── project_service.py
-│   ├── sample_service.py
-│   ├── scheduler_service.py
-│   ├── export_service.py
-│   ├── import_service.py
+│   ├── scheduler.py          # 3阶段排程引擎（546行）
+│   ├── scheduler_service.py  # 排程服务（DB 读写）
+│   ├── export_service.py     # 8D/计划导出（reportlab）
+│   ├── import_service.py     # Excel 批量导入
+│   ├── issue_service.py      # Issue + FA + CAPA
 │   └── ...
 ├── styles/          # QSS 样式（Catppuccin Latte 明亮主题）
 └── views/           # Qt 视图
-    ├── dashboard_view.py
+    ├── dashboard_view.py      # 12 KPI + 3 图表 + 校准预警
     ├── project_view.py
     ├── sample_view.py
-    ├── equipment_view.py
-    ├── issue_view.py
-    ├── dialogs/     # 对话框
-    └── ...
+    ├── test_plan_view.py      # 任务表 + 甘特图（设备颜色）
+    ├── issue_view.py          # Issue + FA + CAPA + 筛选
+    ├── equipment_view.py      # 设备 + 技术员子Tab
+    ├── knowledge_view.py
+    └── dialogs/
+        ├── schedule_config_dialog.py  # 排程参数配置
+        ├── schedule_report_dialog.py  # 排程报告（利用率图表）
+        ├── fa_record_dialog.py        # FA 分析步骤
+        └── ...
 ```
 
 ## 测试
@@ -74,12 +96,12 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-70 个测试覆盖 repo 层和 service 层。
+E2E 测试 56 项全通过（`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`）。
 
 ## 技术栈
 
 - Python 3.11 + PySide6 + apsw (SQLite)
-- Repo 模式：数据访问经由 `src/db/repositories/`，禁止在 services/controllers 直接操作 cursor
+- 分层架构：View → Handler → Service → Repo
 - Schema v13：FK ON DELETE SET NULL，显式列名（无 SELECT *）
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
