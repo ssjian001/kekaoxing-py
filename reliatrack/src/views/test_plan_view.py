@@ -28,7 +28,7 @@ from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, Q
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
+    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
 )
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
@@ -335,10 +335,25 @@ class _GanttWidget(QWidget):
         self._drag_preview_offset: int = 0  # 拖拽预览偏移（不直接改 model）
         self._hover_task_idx: int | None = None
 
-    def set_tasks(self, tasks: list[TestTask], total_days: int = 30, start_date: str = "") -> None:
+        # 设备颜色映射：equipment_id → 颜色
+        self._equipment_map: dict[int, str] = {}  # {equipment_id: equipment_name}
+        self._equipment_colors: dict[int, str] = {}  # {equipment_id: color_hex}
+        self._palette = [BLUE, GREEN, PEACH, MAUVE, LAVENDER, YELLOW, TEAL]
+
+    def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
+                  start_date: str = "",
+                  equipment_map: dict[int, str] | None = None) -> None:
         self._tasks = tasks
         self._total_days = max(total_days, 1)
         self._start_date = start_date
+        if equipment_map is not None:
+            self._equipment_map = equipment_map
+            # 按 equipment_id 分配颜色
+            unique_ids = sorted(set(equipment_map.keys()))
+            self._equipment_colors = {
+                eid: self._palette[i % len(self._palette)]
+                for i, eid in enumerate(unique_ids)
+            }
         self.setMinimumHeight(max(150, len(tasks) * self._row_height + self._header_height + 20))
         self.updateGeometry()
         self.update()
@@ -527,7 +542,11 @@ class _GanttWidget(QWidget):
             bar_w = task.duration * self._day_w
             bar_y = y + (self._row_height - self._bar_height) / 2
 
-            color = QColor(self.CATEGORY_COLORS.get(task.category, LAVENDER))
+            # 颜色：优先按设备着色，无设备时按类别
+            if task.equipment_id and task.equipment_id in self._equipment_colors:
+                color = QColor(self._equipment_colors[task.equipment_id])
+            else:
+                color = QColor(self.CATEGORY_COLORS.get(task.category, LAVENDER))
 
             # 背景（总条）
             p.setPen(Qt.PenStyle.NoPen)
@@ -714,7 +733,8 @@ class TestPlanView(QWidget):
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
         )
-        self._gantt.set_tasks(filtered, start_date=self._last_start_date)
+        self._gantt.set_tasks(filtered, start_date=self._last_start_date,
+                              equipment_map=self._last_equipment_map)
 
     def refresh(
         self,
@@ -725,13 +745,16 @@ class TestPlanView(QWidget):
         start_date: str = "",
         matrix_results: list | None = None,
         sample_map: dict[int, str] | None = None,
+        equipment_map: dict[int, str] | None = None,
     ) -> None:
         self._all_tasks_for_filter = tasks
         self._last_technician_map = technician_map or {}
         self._last_result_map = result_map or {}
         self._last_start_date = start_date
+        self._last_equipment_map = equipment_map or {}
         self._on_task_search(self._search_edit.text())
-        self._gantt.set_tasks(tasks, total_days, start_date)
+        self._gantt.set_tasks(tasks, total_days, start_date,
+                              equipment_map=equipment_map)
         # 结果矩阵
         self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
 

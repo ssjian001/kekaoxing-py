@@ -357,11 +357,19 @@ class RefreshHandlers:
                     if s.id is not None:
                         sample_map[s.id] = s.sn
 
+            # 设备映射 {equipment_id: name} — 甘特图按设备着色
+            equipment_map: dict[int, str] = {}
+            if ctrl.equipment:
+                for eq in ctrl.equipment.list_all():
+                    if eq.id is not None:
+                        equipment_map[eq.id] = eq.name
+
             self._win._test_plan_view.refresh(
                 tasks, max_day, technician_map, result_map,
                 start_date=all_plans[restore_idx].start_date,
                 matrix_results=matrix_results,
                 sample_map=sample_map,
+                equipment_map=equipment_map,
             )
 
     def _refresh_issues(self) -> None:

@@ -117,9 +117,11 @@ class PlanHandlers:
                 f"更新 {report['updated_count']} 个任务"
             )
             self._win.statusBar().showMessage(msg, 10000)
-            if report.get("suggestions"):
-                for s in report["suggestions"][:2]:
-                    logger.debug("Schedule suggestion: %s", s)
+
+            # 弹出排程报告对话框
+            from src.views.dialogs.schedule_report_dialog import ScheduleReportDialog
+            dlg = ScheduleReportDialog(report, parent=self._win)
+            dlg.exec()
         except Exception as e:
             self._win.statusBar().showMessage(f"排程失败: {e}", 10000)
 
