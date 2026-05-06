@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,8 @@ from src.views.dialogs.attachment_dialog import AttachmentDialog
 
 if TYPE_CHECKING:
     from main import MainWindow
+
+logger = logging.getLogger(__name__)
 
 
 class IssueHandlers:
@@ -196,4 +199,5 @@ class IssueHandlers:
             filepath = ctrl.export_service.export_8d_pdf(issue, fa_records, capa_records)
             self._win.toast(f"8D 报告已导出: {os.path.basename(filepath)}", "success")
         except Exception as e:
+            logger.exception("8D report export failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "导出失败", f"8D 报告导出失败: {e}")
