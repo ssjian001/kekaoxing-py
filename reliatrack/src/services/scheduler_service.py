@@ -37,6 +37,7 @@ class SchedulerService:
         self,
         plan_id: int,
         skip_weekends: bool = True,
+        skip_holidays: bool = True,
         lock_existing: bool = False,
         deadline: str = "",
         equipment_capacity: dict[int, int] | None = None,
@@ -49,6 +50,8 @@ class SchedulerService:
             测试计划 ID。
         skip_weekends : bool
             是否跳过周末。
+        skip_holidays : bool
+            是否跳过法定节假日。
         lock_existing : bool
             是否锁定已有排期的任务。
         deadline : str
@@ -84,6 +87,7 @@ class SchedulerService:
         config = ScheduleConfig(
             start_date=start_date,
             skip_weekends=skip_weekends,
+            skip_holidays=skip_holidays,
             lock_existing=lock_existing,
             deadline=deadline,
             equipment_capacity=equipment_capacity or {},

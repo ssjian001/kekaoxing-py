@@ -533,7 +533,8 @@ class IssueView(QWidget):
             return
         # 收集已有 step_no 用于自动递增
         existing_nos = [rec.step_no for rec in self._current_fa_records()]
-        dlg = FARecordDialog(existing_step_nos=existing_nos, parent=self)
+        dlg = FARecordDialog(existing_step_nos=existing_nos,
+                             technician_list=self._technician_list, parent=self)
         if dlg.exec():
             data = dlg.get_data()
             data["issue_id"] = issue_id

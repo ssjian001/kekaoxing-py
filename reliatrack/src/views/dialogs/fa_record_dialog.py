@@ -29,11 +29,13 @@ class FARecordDialog(_BaseDialog):
     def __init__(
         self,
         existing_step_nos: list[int] | None = None,
+        technician_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__("新建 FA 分析步骤", parent, width=500)
         step_nos = existing_step_nos or []
         next_step = max(step_nos, default=0) + 1
+        self._technician_list = technician_list or []
 
         self._step_spin = self._add_spin_field(
             "步骤号", default=next_step, min_val=1, max_val=999,
@@ -68,6 +70,11 @@ class FARecordDialog(_BaseDialog):
             "确认状态",
             items=["待定", "确认", "排除"],
         )
+        tech_names = ["（无）"] + [t.name for t in self._technician_list if t.id is not None]
+        self._analyst_combo = self._add_combo_field(
+            "分析人",
+            items=tech_names,
+        )
 
     # ── 公开 API ───────────────────────────────────────────────
 
@@ -76,6 +83,13 @@ class FARecordDialog(_BaseDialog):
         confirmed_map = {"待定": 0, "确认": 1, "排除": 2}
         category_text = self._cause_category_combo.currentText()
         fm_text = self._failure_mechanism_combo.currentText()
+        analyst_name = self._analyst_combo.currentText()
+        analyst_id: int | None = None
+        if analyst_name != "（无）":
+            for t in self._technician_list:
+                if t.name == analyst_name and t.id is not None:
+                    analyst_id = t.id
+                    break
         return {
             "step_no": self._step_spin.value(),
             "step_title": self._title_edit.text().strip(),
@@ -86,6 +100,7 @@ class FARecordDialog(_BaseDialog):
             "cause_category": category_text if category_text != "（无）" else "",
             "failure_mechanism": fm_text if fm_text != "（无）" else "",
             "confirmed": confirmed_map.get(self._confirmed_combo.currentText(), 0),
+            "analyst_id": analyst_id,
         }
 
     def accept(self) -> None:

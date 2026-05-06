@@ -88,7 +88,12 @@ def _work_day_end(
     _holidays = holidays or set()
     day = start_day
     remaining = duration
+    iterations = 0
     while remaining > 0:
+        iterations += 1
+        if iterations > 3650:
+            logger.warning("_work_day_end exceeded 3650 iterations, breaking")
+            break
         if _is_non_working(day, start_date_str, skip_weekends, skip_holidays, _holidays):
             day += 1
             continue
@@ -107,7 +112,12 @@ def _iterate_work_days(
     days: list[int] = []
     day = start_day
     placed = 0
+    iterations = 0
     while placed < duration:
+        iterations += 1
+        if iterations > 3650:
+            logger.warning("_iterate_work_days exceeded 3650 iterations, breaking")
+            break
         if _is_non_working(day, start_date_str, skip_weekends, skip_holidays, _holidays):
             day += 1
             continue
@@ -396,17 +406,24 @@ def run_auto_schedule(
     topo = topological_order(valid_tasks, dep_map)
     id_to_task: dict[int, TestTask] = {t.id: t for t in valid_tasks if t.id is not None}
 
+    # 检测循环依赖被丢弃的任务
+    topo_ids = {t.id for t in topo if t.id is not None}
+    cycle_task_ids = [t.id for t in valid_tasks if t.id is not None and t.id not in topo_ids]
+
     # ── Identify locked tasks ───────────────────────────────────
     locked_ids: set[int] = set()
     if config.lock_existing:
         for t in valid_tasks:
+            # start_day > 0 表示已排期（默认值 0 表示未排）
             if t.start_day > 0 and t.status != "completed" and t.id is not None:
                 locked_ids.add(t.id)
 
     # ── Record original schedule length ─────────────────────────
-    active = [t for t in valid_tasks if t.start_day > 0 and t.status != "completed"]
+    active = [t for t in valid_tasks if t.start_day >= 0 and t.status != "completed"]
     original_days = max(
-        (t.start_day + t.duration for t in active),
+        (_work_day_end(t.start_day, t.duration, config.skip_weekends,
+                       config.start_date, config.skip_holidays, config.holidays)
+         for t in active),
         default=0,
     )
 
@@ -453,8 +470,8 @@ def run_auto_schedule(
     # ════════════════════════════════════════════════════════════
     compress_order = sorted(
         [t for t in valid_tasks
-         if t.status != "completed" and t.id not in locked_ids and t.start_day > 0],
-        key=lambda t: t.start_day,
+         if t.status != "completed" and t.id not in locked_ids and t.start_day >= 0],
+        key=lambda t: (t.start_day, topo_index.get(t.id or 0, 999), t.priority),
     )
     compress_schedule(
         compress_order, timeline, config, dep_map, locked_ids,
@@ -464,11 +481,13 @@ def run_auto_schedule(
     # ════════════════════════════════════════════════════════════
     # Phase 3 – Report generation
     # ════════════════════════════════════════════════════════════
-    active_after = [t for t in valid_tasks if t.status != "completed" and t.start_day > 0]
+    active_after = [t for t in valid_tasks if t.status != "completed" and t.start_day >= 0]
     new_days = max(
-        (t.start_day + t.duration for t in active_after),
+        (_work_day_end(t.start_day, t.duration, config.skip_weekends,
+                       config.start_date, config.skip_holidays, config.holidays)
+         for t in active_after),
         default=0,
-    ) if active_after else 0
+    )
 
     improvement: float = 0.0
     if original_days > 0 and new_days > 0:
@@ -504,6 +523,11 @@ def run_auto_schedule(
 
     # ── Suggestions ─────────────────────────────────────────────
     suggestions: list[str] = []
+
+    if cycle_task_ids:
+        suggestions.append(
+            f"⚠️ {len(cycle_task_ids)} 个任务因循环依赖被跳过（ID: {cycle_task_ids[:5]}）"
+        )
 
     for b in bottlenecks:
         suggestions.append(
@@ -541,6 +565,7 @@ def run_auto_schedule(
             "equipment_utilization": equipment_utilization,
             "bottlenecks": bottlenecks,
             "suggestions": suggestions,
+            "skipped_cycle_tasks": cycle_task_ids,
         },
         "timeline": timeline,
     }
