@@ -159,11 +159,14 @@ class _BaseDialog(QDialog):
         self,
         label: str,
         default: str = "",
+        placeholder: str = "",
     ) -> QTextEdit:
         """添加 QTextEdit 多行文本字段并返回控件。"""
         edit = QTextEdit(default)
         edit.setMinimumHeight(40)
         edit.setMaximumHeight(80)
+        if placeholder:
+            edit.setPlaceholderText(placeholder)
         self._form.addRow(label, edit)
         return edit
 

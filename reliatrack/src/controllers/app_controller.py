@@ -43,6 +43,7 @@ from src.services import (
     SchedulerService,
     KnowledgeService,
     TechnicianService,
+    ExportService,
 )
 from src.services.holiday_service import HolidayService
 from src.services.undo_manager import UndoManager
@@ -79,6 +80,7 @@ class AppController:
         self.scheduler_service: SchedulerService | None = None
         self.knowledge_service: KnowledgeService | None = None
         self.technician_service: TechnicianService | None = None
+        self.export_service: ExportService | None = None
 
         # Undo/Redo
         self.undo_manager = UndoManager(max_history=50)
@@ -124,6 +126,7 @@ class AppController:
         )
         self.knowledge_service = KnowledgeService(self.knowledge)
         self.technician_service = TechnicianService(self.technicians, self.test_tasks, self.issues)
+        self.export_service = ExportService()
 
         logger.info("All services initialized")
 
