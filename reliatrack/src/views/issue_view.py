@@ -7,6 +7,7 @@ from typing import Optional
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -299,6 +300,8 @@ class IssueView(QWidget):
         self._knowledge_list: list = []  # 知识库条目，由 refresh_handlers 注入
         self._default_task_id: int | None = None
         self._default_sample_id: int | None = None
+        self._technician_list: list = []  # 技术员列表，由 refresh_handlers 注入
+        self._all_issues: list[Issue] = []  # 筛选前的完整列表缓存
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -311,6 +314,20 @@ class IssueView(QWidget):
         self._search_input.setPlaceholderText("搜索 Issue 标题 / 根因…")
         self._search_input.setMinimumWidth(160)
         toolbar.addWidget(self._search_input)
+
+        # 状态筛选
+        self._status_filter = QComboBox()
+        self._status_filter.addItems(["全部状态", "待处理", "分析中", "已验证", "已关闭"])
+        self._status_filter.setFixedWidth(100)
+        self._status_filter.setToolTip("按状态筛选")
+        toolbar.addWidget(self._status_filter)
+
+        # 严重度筛选
+        self._severity_filter = QComboBox()
+        self._severity_filter.addItems(["全部严重度", "严重", "主要", "次要", "外观"])
+        self._severity_filter.setFixedWidth(110)
+        self._severity_filter.setToolTip("按严重度筛选")
+        toolbar.addWidget(self._severity_filter)
 
         self._btn_add = QPushButton("新建 Issue")
         self._btn_add.setProperty("class", "primary")
@@ -379,14 +396,46 @@ class IssueView(QWidget):
         self._btn_export_8d.clicked.connect(self._on_export_8d)
         # 选中 Issue 时自动加载 FA 记录
         self._issue_table.itemSelectionChanged.connect(self._on_issue_selection_changed)
+        # 筛选联动
+        self._search_input.textChanged.connect(self._apply_filters)
+        self._status_filter.currentIndexChanged.connect(self._apply_filters)
+        self._severity_filter.currentIndexChanged.connect(self._apply_filters)
 
     # ── 数据刷新 ──────────────────────────────────────────────
 
     def refresh(self, issues: list[Issue]) -> None:
-        self._issue_table.set_issues(issues)
-        open_count = sum(1 for i in issues if i.status == "open")
-        analyzing = sum(1 for i in issues if i.status == "analyzing")
-        self._stats_label.setText(f"{len(issues)} 个 Issue（{open_count} 待处理，{analyzing} 分析中）")
+        self._all_issues = issues
+        self._apply_filters()
+
+    def _apply_filters(self) -> None:
+        """根据搜索文本 + 状态 + 严重度筛选 Issue 列表。"""
+        # 状态映射
+        _STATUS_MAP = {"待处理": "open", "分析中": "analyzing", "已验证": "verified", "已关闭": "closed"}
+        _SEVERITY_MAP = {"严重": "critical", "主要": "major", "次要": "minor", "外观": "cosmetic"}
+
+        status_val = _STATUS_MAP.get(self._status_filter.currentText())
+        severity_val = _SEVERITY_MAP.get(self._severity_filter.currentText())
+        search_text = self._search_input.text().strip().lower()
+
+        filtered = self._all_issues
+        if status_val:
+            filtered = [i for i in filtered if i.status == status_val]
+        if severity_val:
+            filtered = [i for i in filtered if i.severity == severity_val]
+        if search_text:
+            filtered = [i for i in filtered
+                        if search_text in (i.title or "").lower()
+                        or search_text in (i.root_cause or "").lower()]
+
+        self._issue_table.set_issues(filtered)
+        open_count = sum(1 for i in filtered if i.status == "open")
+        analyzing = sum(1 for i in filtered if i.status == "analyzing")
+        total = len(self._all_issues)
+        shown = len(filtered)
+        if total == shown:
+            self._stats_label.setText(f"{total} 个 Issue（{open_count} 待处理，{analyzing} 分析中）")
+        else:
+            self._stats_label.setText(f"{shown}/{total} 个 Issue（{open_count} 待处理，{analyzing} 分析中）")
         self._update_empty_state()
 
     def refresh_fa(self, records: list[FARecord]) -> None:
@@ -496,7 +545,7 @@ class IssueView(QWidget):
         if issue_id is None:
             QMessageBox.information(self, "提示", "请先在左侧列表中选中一个 Issue。")
             return
-        dlg = _CAPADialog(parent=self)
+        dlg = _CAPADialog(technician_list=self._technician_list, parent=self)
         if dlg.exec():
             data = dlg.get_data()
             data["issue_id"] = issue_id
@@ -638,14 +687,20 @@ class _CAPADialog(_BaseDialog):
         ("已验证", "verified"),
     ]
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, technician_list: list | None = None, parent: QWidget | None = None):
         super().__init__("新建 CAPA 纠正预防措施", parent, width=480)
 
+        self._technician_list = technician_list or []
         self._action_edit = self._add_text_area(
             "措施描述",
             placeholder="描述纠正或预防措施",
         )
         self._due_date_edit = self._add_date_field("截止日期")
+
+        # 负责人下拉
+        tech_names = ["（无）"] + [t.name for t in self._technician_list if t.id is not None]
+        self._assignee_combo = self._add_combo_field("负责人", items=tech_names)
+
         status_labels = [label for label, _ in self._STATUS_OPTIONS]
         self._status_combo = self._add_combo_field(
             "状态",
@@ -654,11 +709,20 @@ class _CAPADialog(_BaseDialog):
 
     def get_data(self) -> dict:
         status_map = {label: val for label, val in self._STATUS_OPTIONS}
+        # 解析负责人 ID
+        assignee_name = self._assignee_combo.currentText()
+        assignee_id: int | None = None
+        if assignee_name != "（无）":
+            for t in self._technician_list:
+                if t.name == assignee_name and t.id is not None:
+                    assignee_id = t.id
+                    break
         return {
             "action": self._action_edit.toPlainText().strip(),
             "due_date": self._due_date_edit.date().toString("yyyy-MM-dd")
                 if self._due_date_edit.date().isValid() and self._due_date_edit.date().year() >= 2020
                 else "",
+            "assignee_id": assignee_id,
             "status": status_map.get(self._status_combo.currentText(), "pending"),
         }
 

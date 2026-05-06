@@ -1,7 +1,8 @@
-"""Issue tracking handlers — attachments, CRUD callbacks, FA records."""
+"""Issue tracking handlers — attachments, CRUD callbacks, FA records, 8D export."""
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
@@ -28,6 +29,7 @@ class IssueHandlers:
         v.issue_selected.connect(self._handle_issue_selected)
         v.fa_record_added.connect(self._handle_fa_record_added)
         v.capa_record_added.connect(self._handle_capa_record_added)
+        v.export_8d_requested.connect(self._handle_export_8d)
         v.btn_attachments.clicked.connect(self._on_issue_attachments)
 
     def _on_issue_attachments(self) -> None:
@@ -178,3 +180,20 @@ class IssueHandlers:
             self._win.toast("CAPA 措施已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
+
+    def _handle_export_8d(self, issue_id: int) -> None:
+        """导出 8D 报告。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service or not ctrl.export_service:
+            return
+        try:
+            issue = ctrl.issue_service.get(issue_id)
+            if issue is None:
+                QMessageBox.warning(self._win, "导出失败", f"Issue #{issue_id} 不存在。")
+                return
+            fa_records = ctrl.issue_service.get_fa_records(issue_id)
+            capa_records = ctrl.issue_service.get_capa_records(issue_id)
+            filepath = ctrl.export_service.export_8d_pdf(issue, fa_records, capa_records)
+            self._win.toast(f"8D 报告已导出: {os.path.basename(filepath)}", "success")
+        except Exception as e:
+            QMessageBox.critical(self._win, "导出失败", f"8D 报告导出失败: {e}")

@@ -356,6 +356,9 @@ class RefreshHandlers:
             all_issues = ctrl.issue_service.get_by_project(filter_project_id)
         else:
             all_issues = ctrl.issue_service.list_all()
+        # 注入技术员列表供 CAPA 弹窗使用
+        if ctrl.technician_service:
+            self._win._issue_view._technician_list = ctrl.technician_service.list_all()
         self._win._issue_view.refresh(all_issues)
 
     def _refresh_equipment(self) -> None:
