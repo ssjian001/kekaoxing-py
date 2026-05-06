@@ -229,7 +229,7 @@ class IssueRepository(BaseRepository):
 
     def count_capa_all(self, project_id: int | None = None) -> int:
         """统计 CAPA 记录总数（可按项目筛选）。"""
-        if project_id:
+        if project_id is not None:
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "
@@ -242,7 +242,7 @@ class IssueRepository(BaseRepository):
 
     def count_capa_done(self, project_id: int | None = None) -> int:
         """统计已完成/已验证的 CAPA 记录数。"""
-        if project_id:
+        if project_id is not None:
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "

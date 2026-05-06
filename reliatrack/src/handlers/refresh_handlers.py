@@ -253,9 +253,9 @@ class RefreshHandlers:
             # 5. CAPA 完成率 — SQL 聚合
             capa_completion_rate: float | None = None
             if ctrl.issue_service:
-                total_capa = ctrl.issue_service._count_capa_all(project_id=filter_project_id)
+                total_capa = ctrl.issue_service.count_capa_all(project_id=filter_project_id)
                 if total_capa and total_capa > 0:
-                    done_capa = ctrl.issue_service._count_capa_done(project_id=filter_project_id)
+                    done_capa = ctrl.issue_service.count_capa_done(project_id=filter_project_id)
                     capa_completion_rate = done_capa / total_capa * 100
 
             self._win._dashboard.refresh(

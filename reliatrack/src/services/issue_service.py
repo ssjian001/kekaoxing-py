@@ -78,10 +78,10 @@ class IssueService:
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         return self._repo.get_capa_records(issue_id)
 
-    def _count_capa_all(self, project_id: int | None = None) -> int:
+    def count_capa_all(self, project_id: int | None = None) -> int:
         """CAPA 记录总数（可按项目筛选）。"""
         return self._repo.count_capa_all(project_id)
 
-    def _count_capa_done(self, project_id: int | None = None) -> int:
+    def count_capa_done(self, project_id: int | None = None) -> int:
         """已完成/已验证的 CAPA 记录数。"""
         return self._repo.count_capa_done(project_id)
