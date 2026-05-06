@@ -99,6 +99,12 @@ src/
 
 project/sample/plan/issue/equipment/knowledge/technician/refresh + 全局快捷键在 main.py
 
+### 导出服务
+
+- `export_service.py`（AppController.export_service）：8D 报告 PDF 导出（reportlab + CJK 字体）
+- 信号链：issue_view `_on_export_8d` → `export_8d_requested` signal → `issue_handlers._handle_export_8d`
+- CAPA 写入：`issue_view capa_record_added` → `issue_handlers._handle_capa_record_added` → `issue_service.add_capa_record`（列名白名单校验）
+
 ### 排程引擎
 
 - `scheduler.py`（546行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
