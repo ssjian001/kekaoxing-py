@@ -195,13 +195,20 @@ class IssueRepository(BaseRepository):
                  "verification_result", "verified_by", "created_at", "updated_at"), r)
         ))) for r in rows]
 
+    _CAPA_COLS = frozenset({
+        "issue_id", "action", "assignee_id", "due_date",
+        "status", "verification_result", "verified_by",
+    })
+
     def add_capa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 CAPA 记录。"""
         kwargs["issue_id"] = issue_id
-        cols = list(kwargs.keys())
-        vals = list(kwargs.values())
+        # 白名单过滤，防止任意列名注入
+        safe = {k: v for k, v in kwargs.items() if k in self._CAPA_COLS}
+        cols = list(safe.keys())
+        vals = list(safe.values())
         placeholders = ", ".join(["?"] * len(cols))
-        col_str = ", ".join([f"[{c}]" for c in cols])
+        col_str = ", ".join(f"[{c}]" for c in cols)
         sql = f"INSERT INTO [capa_records] ({col_str}) VALUES ({placeholders})"
         self._conn.execute(sql, vals)
         row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
@@ -209,8 +216,9 @@ class IssueRepository(BaseRepository):
 
     def update_capa_record(self, capa_id: int, **kwargs: object) -> None:
         """更新 CAPA 记录。"""
-        sets = ", ".join(f"[{k}] = ?" for k in kwargs)
-        vals = list(kwargs.values()) + [capa_id]
+        safe = {k: v for k, v in kwargs.items() if k in self._CAPA_COLS}
+        sets = ", ".join(f"[{k}] = ?" for k in safe)
+        vals = list(safe.values()) + [capa_id]
         self._conn.execute(
             f"UPDATE [capa_records] SET {sets} WHERE id = ?", vals
         )

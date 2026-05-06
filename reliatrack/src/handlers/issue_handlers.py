@@ -172,11 +172,12 @@ class IssueHandlers:
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
-        issue_id = data.pop("issue_id", None)
+        issue_id = data.get("issue_id")
         if issue_id is None:
             return
         try:
-            ctrl.issue_service.add_capa_record(issue_id, **data)
+            record_data = {k: v for k, v in data.items() if k != "issue_id"}
+            ctrl.issue_service.add_capa_record(issue_id, **record_data)
             # 刷新 CAPA 面板
             self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
             self._win._issue_view.refresh_capa(self._current_capa_records)
