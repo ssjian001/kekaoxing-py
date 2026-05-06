@@ -182,12 +182,16 @@ class IssueRepository(BaseRepository):
 
     # ── CAPA 记录 ──
 
-    _CAPA_COLS = "id, issue_id, action, assignee_id, due_date, status, verification_result, verified_by, created_at, updated_at"
+    _CAPA_SELECT_COLS = "id, issue_id, action, assignee_id, due_date, status, verification_result, verified_by, created_at, updated_at"
+    _CAPA_SAFE_COLS = frozenset({
+        "issue_id", "action", "assignee_id", "due_date",
+        "status", "verification_result", "verified_by",
+    })
 
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         """获取 Issue 的 CAPA 记录。"""
         rows = self._conn.execute(
-            f"SELECT {self._CAPA_COLS} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {self._CAPA_SELECT_COLS} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
         return [CAPARecord(**cast(dict[str, Any], dict(
@@ -195,16 +199,11 @@ class IssueRepository(BaseRepository):
                  "verification_result", "verified_by", "created_at", "updated_at"), r)
         ))) for r in rows]
 
-    _CAPA_COLS = frozenset({
-        "issue_id", "action", "assignee_id", "due_date",
-        "status", "verification_result", "verified_by",
-    })
-
     def add_capa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 CAPA 记录。"""
         kwargs["issue_id"] = issue_id
         # 白名单过滤，防止任意列名注入
-        safe = {k: v for k, v in kwargs.items() if k in self._CAPA_COLS}
+        safe = {k: v for k, v in kwargs.items() if k in self._CAPA_SAFE_COLS}
         cols = list(safe.keys())
         vals = list(safe.values())
         placeholders = ", ".join(["?"] * len(cols))
@@ -216,7 +215,7 @@ class IssueRepository(BaseRepository):
 
     def update_capa_record(self, capa_id: int, **kwargs: object) -> None:
         """更新 CAPA 记录。"""
-        safe = {k: v for k, v in kwargs.items() if k in self._CAPA_COLS}
+        safe = {k: v for k, v in kwargs.items() if k in self._CAPA_SAFE_COLS}
         sets = ", ".join(f"[{k}] = ?" for k in safe)
         vals = list(safe.values()) + [capa_id]
         self._conn.execute(
