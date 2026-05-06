@@ -30,6 +30,16 @@ class EquipmentRepository(BaseRepository):
         ).fetchone()
         return row[0] if row else 0
 
+    def list_calibration_due(self, threshold_date: str) -> list[dict]:
+        """返回校准到期/即将到期的设备列表（名称+到期日）。"""
+        rows = self._conn.execute(
+            "SELECT name, next_calibration_date FROM [equipment] "
+            "WHERE next_calibration_date != '' AND next_calibration_date <= ? "
+            "ORDER BY next_calibration_date ASC",
+            (threshold_date,),
+        ).fetchall()
+        return [{"name": r[0], "next_calibration_date": r[1]} for r in rows]
+
     def count_task_references(self, equipment_id: int) -> int:
         """统计设备被测试任务引用的次数。"""
         row = self._conn.execute(

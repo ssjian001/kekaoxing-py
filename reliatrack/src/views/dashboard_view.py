@@ -40,6 +40,7 @@ class DashboardData:
         "task_status_data", "sample_status_data", "issue_severity_data",
         "pass_rate", "issue_close_rate", "calibration_warning_count",
         "failure_rate", "capa_completion_rate",
+        "cal_warning_list",
     )
 
     def __init__(self, **kwargs: object) -> None:
@@ -321,6 +322,21 @@ class DashboardView(QWidget):
 
         layout.addLayout(chart_grid)
 
+        # 校准到期预警列表
+        self._cal_warning_header = QLabel("校准到期预警")
+        self._cal_warning_header.setStyleSheet(
+            f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        self._cal_warning_header.hide()
+        layout.addWidget(self._cal_warning_header)
+
+        self._cal_warning_list_widget = QWidget()
+        self._cal_warning_layout = QVBoxLayout(self._cal_warning_list_widget)
+        self._cal_warning_layout.setContentsMargins(0, 0, 0, 0)
+        self._cal_warning_layout.setSpacing(2)
+        self._cal_warning_list_widget.hide()
+        layout.addWidget(self._cal_warning_list_widget)
+
         # 空状态提示 — 当所有计数器为 0 时显示
         self._empty_label = QLabel("暂无数据，请先创建项目和测试计划")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -356,6 +372,7 @@ class DashboardView(QWidget):
         calibration_warning_count = data.calibration_warning_count
         failure_rate = data.failure_rate
         capa_completion_rate = data.capa_completion_rate
+        cal_warning_list = data.cal_warning_list or []
         # 项目筛选指示器
         if project_name:
             self._filter_label.setText(f"📁 {project_name}")
@@ -398,6 +415,9 @@ class DashboardView(QWidget):
             sample_status_data or {},
             issue_severity_data or {},
         )
+
+        # 校准到期预警列表
+        self._refresh_cal_warnings(cal_warning_list)
 
         # 空状态判断 — 所有计数器为 0 时显示占位提示
         total = task_total + issue_count + equipment_count + sample_count
@@ -449,3 +469,39 @@ class DashboardView(QWidget):
         self._chart_issue_severity.set_data(
             {severity_labels.get(k, k): v for k, v in issue_severity.items() if v > 0}
         )
+
+    def _refresh_cal_warnings(self, warnings: list[dict]) -> None:
+        """刷新校准到期预警列表。"""
+        # 清空旧内容
+        while self._cal_warning_layout.count():
+            child = self._cal_warning_layout.takeAt(0)
+            if child is not None:
+                w = child.widget()
+                if w is not None:
+                    w.deleteLater()
+
+        if not warnings:
+            self._cal_warning_header.hide()
+            self._cal_warning_list_widget.hide()
+            return
+
+        self._cal_warning_header.show()
+        self._cal_warning_list_widget.show()
+
+        for item in warnings[:5]:  # 最多显示 5 条
+            name = item.get("name", "?")
+            next_cal = item.get("next_calibration_date", "")
+            row = QHBoxLayout()
+            name_lbl = QLabel(f"  {name}")
+            name_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+            row.addWidget(name_lbl)
+            row.addStretch()
+            date_lbl = QLabel(next_cal)
+            date_lbl.setStyleSheet(f"color: {YELLOW}; font-size: 11px;")
+            row.addWidget(date_lbl)
+            container = QWidget()
+            container.setLayout(row)
+            container.setStyleSheet(
+                f"background-color: {SURFACE0}; border-radius: 4px; padding: 2px 4px;"
+            )
+            self._cal_warning_layout.addWidget(container)

@@ -239,9 +239,24 @@ class RefreshHandlers:
 
             # 3. 校准预警（30天内到期）— SQL 聚合
             cal_warning = 0
+            cal_warning_list: list[dict] = []
             if ctrl.equipment:
                 threshold = (date.today() + timedelta(days=30)).isoformat()
                 cal_warning = ctrl.equipment.count_calibration_due(threshold)
+                cal_warning_list = ctrl.equipment.list_calibration_due(threshold)
+
+            # 4. 失效率 = Issue 数 / 样品总数
+            failure_rate: float | None = None
+            if sample_count > 0 and issues > 0:
+                failure_rate = issues / sample_count * 100
+
+            # 5. CAPA 完成率 — SQL 聚合
+            capa_completion_rate: float | None = None
+            if ctrl.issue_service:
+                total_capa = ctrl.issue_service._count_capa_all(project_id=filter_project_id)
+                if total_capa and total_capa > 0:
+                    done_capa = ctrl.issue_service._count_capa_done(project_id=filter_project_id)
+                    capa_completion_rate = done_capa / total_capa * 100
 
             self._win._dashboard.refresh(
                 task_total=total,
@@ -258,6 +273,9 @@ class RefreshHandlers:
                 pass_rate=pass_rate,
                 issue_close_rate=issue_close_rate,
                 calibration_warning_count=cal_warning,
+                failure_rate=failure_rate,
+                capa_completion_rate=capa_completion_rate,
+                cal_warning_list=cal_warning_list,
             )
 
     def _refresh_samples(self) -> None:

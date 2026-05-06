@@ -227,6 +227,34 @@ class IssueRepository(BaseRepository):
             "DELETE FROM [capa_records] WHERE issue_id = ?", (issue_id,)
         )
 
+    def count_capa_all(self, project_id: int | None = None) -> int:
+        """统计 CAPA 记录总数（可按项目筛选）。"""
+        if project_id:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM [capa_records] cr "
+                "JOIN [issues] i ON cr.issue_id = i.id "
+                "WHERE i.project_id = ?",
+                (project_id,),
+            ).fetchone()
+        else:
+            row = self._conn.execute("SELECT COUNT(*) FROM [capa_records]").fetchone()
+        return row[0] if row else 0
+
+    def count_capa_done(self, project_id: int | None = None) -> int:
+        """统计已完成/已验证的 CAPA 记录数。"""
+        if project_id:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM [capa_records] cr "
+                "JOIN [issues] i ON cr.issue_id = i.id "
+                "WHERE i.project_id = ? AND cr.status IN ('done', 'verified')",
+                (project_id,),
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM [capa_records] WHERE status IN ('done', 'verified')"
+            ).fetchone()
+        return row[0] if row else 0
+
     def delete_by_project(self, project_id: int) -> int:
         """删除项目关联的所有 issue（含附件磁盘清理），返回删除行数。
 
