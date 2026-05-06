@@ -113,14 +113,14 @@ class MainWindow(QMainWindow):
 
         self._tab_widget = QTabWidget()
 
-        # Tab 0: 项目管理
-        self._project_view = ProjectView()
-        self._tab_widget.addTab(self._project_view, "📁 项目管理")
-
-        # Tab 1: 仪表盘
+        # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
         self._tab_widget.addTab(self._dashboard, "📊 仪表盘")
         self._dashboard.card_clicked.connect(self._tab_widget.setCurrentIndex)
+
+        # Tab 1: 项目管理
+        self._project_view = ProjectView()
+        self._tab_widget.addTab(self._project_view, "📁 项目管理")
 
         # Tab 2: 样品管理
         self._sample_view = SampleView()
@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
     def _on_shortcut_new(self) -> None:
         """Ctrl+N: 根据当前 Tab 新建。"""
         idx = self._tab_widget.currentIndex()
-        if idx == 0:
+        if idx == 1:
             self._project_handlers._on_project_add()
         elif idx == 2:
             self._sample_handlers._on_sample_checkin()
@@ -266,48 +266,41 @@ class MainWindow(QMainWindow):
         elif idx == 5:
             self._equipment_view.btn_add.click()
         elif idx == 6:
-            self._technician_view.btn_add.click()
-        elif idx == 7:
             self._knowledge_view.btn_add.click()
 
     def _on_shortcut_delete(self) -> None:
         """Delete: 删除当前 Tab 的选中项。"""
         idx = self._tab_widget.currentIndex()
-        if idx == 0:
+        if idx == 1:
             self._project_handlers._on_project_delete()
         elif idx == 3:
             self._test_plan_view._btn_delete_task.click()
         elif idx == 5:
             self._equipment_handlers._on_equipment_delete()
         elif idx == 6:
-            self._technician_handlers._on_technician_delete()
-        elif idx == 7:
             self._knowledge_handlers._on_knowledge_delete()
 
     def _on_shortcut_edit(self) -> None:
         """F2: 编辑当前 Tab 的选中项。"""
         idx = self._tab_widget.currentIndex()
-        if idx == 0:
+        if idx == 1:
             self._project_handlers._on_project_edit()
         elif idx == 3:
             self._test_plan_view._btn_edit_task.click()
         elif idx == 5:
             self._equipment_handlers._on_equipment_edit()
         elif idx == 6:
-            self._technician_handlers._on_technician_edit()
-        elif idx == 7:
             self._knowledge_handlers._on_knowledge_edit()
 
     def _on_shortcut_find(self) -> None:
         """Ctrl+F: 聚焦当前 Tab 的搜索框。"""
         search_map = {
-            0: lambda: self._project_view.search_input,
+            1: lambda: self._project_view.search_input,
             2: lambda: self._sample_view.pool_tab.search_input,
             3: lambda: self._test_plan_view._search_edit,
             4: lambda: self._issue_view._search_input,
             5: lambda: self._equipment_view._search_edit,
-            6: lambda: self._technician_view._search_edit,
-            7: lambda: self._knowledge_view._search_edit,
+            6: lambda: self._knowledge_view._search_edit,
         }
         idx = self._tab_widget.currentIndex()
         getter = search_map.get(idx)

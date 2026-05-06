@@ -271,7 +271,7 @@ class DashboardView(QWidget):
         )
         layout.addWidget(self._filter_label)
 
-        # KPI 卡片网格 — tab_index 映射: 1=Dashboard, 2=样品, 3=测试计划, 4=Issue, 5=未知, 6=设备
+        # KPI 卡片网格 — tab_index 映射: 0=仪表盘, 1=项目, 2=样品, 3=测试计划, 4=Issue, 5=设备, 6=知识库
         grid = QGridLayout()
         grid.setSpacing(8)
 
@@ -280,13 +280,13 @@ class DashboardView(QWidget):
         self._card_in_progress = _KPICard("进行中", "0", YELLOW, tab_index=3)
         self._card_pending = _KPICard("待开始", "0", SUBTEXT1, tab_index=3)
         self._card_issues = _KPICard("Issue 数", "0", PEACH, tab_index=4)
-        self._card_equipment = _KPICard("设备数", "0", MAUVE, tab_index=6)
+        self._card_equipment = _KPICard("设备数", "0", MAUVE, tab_index=5)
         self._card_samples = _KPICard("样品数", "0", TEAL, tab_index=2)
 
         # 专业 KPI
         self._card_pass_rate = _KPICard("测试通过率", "—%", GREEN, tab_index=3)
         self._card_issue_close_rate = _KPICard("Issue 闭环率", "—%", BLUE, tab_index=4)
-        self._card_cal_warning = _KPICard("校准预警", "0", YELLOW, tab_index=6)
+        self._card_cal_warning = _KPICard("校准预警", "0", YELLOW, tab_index=5)
 
         # 可靠性 KPI
         self._card_failure_rate = _KPICard("失效率", "—%", RED, tab_index=4)
