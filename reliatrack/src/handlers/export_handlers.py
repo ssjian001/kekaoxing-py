@@ -62,10 +62,10 @@ class ExportHandlers:
         fmt = data["format"]
         project_id = data.get("project_id")  # None = 全部
 
-        # 综合报告默认 PDF，但用户可选 Word
-        # word export: 综合报告不再强制 PDF
+        # 综合报告暂不支持 Excel，降级为 PDF 并提示
         if "综合" in content and "Excel" in fmt:
             fmt = "PDF (.pdf)"
+            self._win.toast("综合报告暂不支持 Excel，已自动切换为 PDF", "info")
 
         # 确保导出目录
         export_dir = os.path.join(_PROJECT_ROOT, "exports")
@@ -87,7 +87,14 @@ class ExportHandlers:
                     self._win.toast("当前计划没有任务", "info")
                     return
                 if "Excel" in fmt:
-                    path = svc.export_tasks_excel(plan, tasks)
+                    task_ids = [t.id for t in tasks if t.id is not None]
+                    results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
+                    tech_names = {}
+                    if ctrl.equipment:
+                        for tech in (ctrl.technician.list_all() if ctrl.technician else []):
+                            if tech.id is not None:
+                                tech_names[tech.id] = tech.name
+                    path = svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
                 # word export: 测试任务也支持 Word 格式（综合报告）
                 elif "Word" in fmt:
                     path = svc.export_to_word(
@@ -110,6 +117,8 @@ class ExportHandlers:
                 if not issues:
                     self._win.toast("没有 Issue 数据", "info")
                     return
+                if "Excel" not in fmt:
+                    self._win.toast("Issue 导出暂只支持 Excel 格式", "info")
                 # Build fa_map and capa_map
                 fa_map = {}
                 capa_map = {}
@@ -125,6 +134,8 @@ class ExportHandlers:
                 if not samples:
                     self._win.toast("没有样品数据", "info")
                     return
+                if "Excel" not in fmt:
+                    self._win.toast("样品导出暂只支持 Excel 格式", "info")
                 path = svc.export_samples_excel(samples)
                 self._win.toast(f"已导出: {path}", "success")
 
@@ -186,22 +197,15 @@ class ExportHandlers:
                     self._win.toast("未找到该 Issue", "info")
                     return
 
-                # 格式选择
-                fmt = QMessageBox.question(
-                    self._win, "导出格式",
-                    "选择导出格式：\n\n"
-                    "「是」= PDF\n「否」= Word (.docx)\n「取消」= 放弃",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
-                )
-                if fmt == QMessageBox.StandardButton.Cancel:
-                    return
-
                 fa_records = ctrl.issue_service.get_fa_records(issue_id)
                 capa_records = ctrl.issue_service.get_capa_records(issue_id)
-                if fmt == QMessageBox.StandardButton.Yes:
-                    path = svc.export_8d_pdf(issue, fa_records, capa_records)
-                else:
+                if "Excel" in fmt:
+                    self._win.toast("8D 报告暂不支持 Excel 格式，请选 PDF 或 Word", "info")
+                    return
+                elif "Word" in fmt:
                     path = svc.export_8d_docx(issue, fa_records, capa_records)
+                else:
+                    path = svc.export_8d_pdf(issue, fa_records, capa_records)
                 self._win.toast(f"8D 报告已导出: {path}", "success")
 
         except Exception as e:

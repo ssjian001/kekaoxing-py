@@ -161,46 +161,86 @@ class ExportService:
         self,
         plan: TestPlan,
         tasks: list[TestTask],
+        results: list[TestResult] | None = None,
+        technician_names: dict[int, str] | None = None,
         filepath: str | None = None,
     ) -> str:
         """导出测试任务列表为 Excel。
 
-        Returns:
-            导出文件的绝对路径。
+        Args:
+            results: 用于计算通过率，可选。
+            technician_names: {technician_id: name}，可选。
         """
         from openpyxl import Workbook
+        from openpyxl.utils import get_column_letter
 
         s = self._excel_styles("2B579A")
         wb = Workbook()
         ws = wb.active
         ws.title = "测试任务"
 
+        from datetime import date, timedelta
+        plan_start = None
+        if plan.start_date:
+            try:
+                plan_start = date.fromisoformat(plan.start_date)
+            except ValueError:
+                pass
+
+        # 通过率 lookup: task_id → (pass, total)
+        res_map: dict[int, tuple[int, int]] = {}
+        if results:
+            for r in results:
+                if r.task_id:
+                    p, t = res_map.get(r.task_id, (0, 0))
+                    if r.result == "pass":
+                        p += 1
+                    res_map[r.task_id] = (p, t + 1)
+
         self._excel_write_title_block(
-            ws, f"测试计划: {plan.name}", "A1:I1",
+            ws, f"测试计划: {plan.name}", "A1:M1",
             f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  测试标准: {plan.test_standard or '—'}",
-            "A2:I2", "2B579A", s,
+            "A2:M2", "2B579A", s,
         )
 
-        headers = ["#", "名称", "类别", "工期(天)", "开始天", "进度", "状态", "优先级", "环境条件"]
+        # 对齐 UI 13 列: #, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
+        headers = ["#", "名称", "类别", "天数", "预计开始", "预计结束", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
         self._excel_write_headers(ws, 4, headers, s)
 
         for row_idx, task in enumerate(tasks, 5):
+            # 预计日期
+            if plan_start and task.start_day is not None:
+                planned_start = (plan_start + timedelta(days=task.start_day)).isoformat()
+                planned_end = (plan_start + timedelta(days=task.start_day + task.duration - 1)).isoformat()
+            else:
+                planned_start = str(task.start_day) if task.start_day else "—"
+                planned_end = "—"
+            # 通过率
+            pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
+            rate_text = f"{pass_count}/{total}" if total > 0 else "—"
+            # 技术员
+            tech_name = (technician_names or {}).get(task.technician_id, "") if task.technician_id else ""
+
             values = [
-                row_idx - 4,
+                task.id or (row_idx - 4),
                 task.name,
                 self.CATEGORY_MAP.get(task.category, task.category),
                 task.duration,
-                task.start_day,
+                planned_start,
+                planned_end,
                 f"{task.progress:.0f}%",
-                self.STATUS_MAP.get(task.status, task.status),
                 task.priority,
-                task.environment,
+                self.STATUS_MAP.get(task.status, task.status),
+                tech_name,
+                rate_text,
+                task.actual_start_date or "—",
+                task.actual_end_date or "—",
             ]
             self._excel_write_row(ws, row_idx, values, s)
 
-        widths = [5, 30, 10, 10, 10, 8, 10, 8, 25]
+        widths = [5, 25, 10, 8, 12, 12, 8, 8, 10, 12, 10, 12, 12]
         for i, w in enumerate(widths, 1):
-            ws.column_dimensions[chr(64 + i)].width = w
+            ws.column_dimensions[get_column_letter(i)].width = w
 
         return self._excel_save(wb, filepath, f"测试任务_{plan.name}_{datetime.now():%Y%m%d_%H%M}.xlsx")
 
@@ -261,8 +301,9 @@ class ExportService:
                 cell.border = s["thin_border"]
 
         widths = [5, 25, 10, 10, 8, 15, 35, 10, 35, 15]
+        from openpyxl.utils import get_column_letter as _gcl
         for i, w in enumerate(widths, 1):
-            ws.column_dimensions[chr(64 + i)].width = w
+            ws.column_dimensions[_gcl(i)].width = w
 
         return self._excel_save(wb, filepath, f"Issue追踪_{datetime.now():%Y%m%d_%H%M}.xlsx")
 
@@ -301,8 +342,9 @@ class ExportService:
             self._excel_write_row(ws, row_idx, values, s)
 
         widths = [5, 20, 15, 20, 10, 20]
+        from openpyxl.utils import get_column_letter as _gcl2
         for i, w in enumerate(widths, 1):
-            ws.column_dimensions[chr(64 + i)].width = w
+            ws.column_dimensions[_gcl2(i)].width = w
 
         return self._excel_save(wb, filepath, f"样品台账_{datetime.now():%Y%m%d_%H%M}.xlsx")
 
