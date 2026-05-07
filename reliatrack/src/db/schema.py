@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -213,6 +213,7 @@ _DDL_TABLES: list[str] = [
         issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
         action              TEXT    NOT NULL,
         assignee_id         INTEGER REFERENCES technicians(id),
+        assignee_name       TEXT    NOT NULL DEFAULT '',
         due_date            TEXT    NOT NULL DEFAULT '',
         status              TEXT    NOT NULL DEFAULT 'pending',
         verification_result TEXT    NOT NULL DEFAULT '',
@@ -793,6 +794,40 @@ def _migrate_v13(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (13)")
 
 
+def _migrate_v14(conn: apsw.Connection) -> None:
+    """v13→v14: capa_records 加 assignee_name；test_tasks 安全补列。
+
+    - capa_records.assignee_name: 责任人自由文本（与 assignee_id 并存）
+    - test_tasks: 安全补 dependencies/accept_criteria/sample_ids 等列（防旧库缺失）
+    """
+    # capa_records.assignee_name
+    c_cols = {r[1] for r in conn.execute("PRAGMA table_info(capa_records)").fetchall()}
+    if "assignee_name" not in c_cols:
+        conn.execute(
+            "ALTER TABLE capa_records ADD COLUMN assignee_name TEXT NOT NULL DEFAULT ''"
+        )
+
+    # test_tasks 安全补列（dependencies, accept_criteria, sample_ids 等）
+    tt_cols = {r[1] for r in conn.execute("PRAGMA table_info(test_tasks)").fetchall()}
+    for col, col_type, default in [
+        ("dependencies", "TEXT", "'[]'"),
+        ("accept_criteria", "TEXT", "''"),
+        ("sample_ids", "TEXT", "'[]'"),
+        ("notes", "TEXT", "''"),
+        ("temperature", "TEXT", "''"),
+        ("humidity", "TEXT", "''"),
+        ("log_file", "TEXT", "''"),
+        ("actual_start_date", "TEXT", "''"),
+        ("actual_end_date", "TEXT", "''"),
+    ]:
+        if col not in tt_cols:
+            conn.execute(
+                f"ALTER TABLE test_tasks ADD COLUMN {col} {col_type} NOT NULL DEFAULT {default}"
+            )
+
+    conn.execute("INSERT INTO schema_version (version) VALUES (14)")
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -864,5 +899,16 @@ def init_schema(conn: apsw.Connection) -> int:
     # v13 修复 v11 丢失的索引 + schema_version 加 UNIQUE 约束
     if current < 13:
         _migrate_v13(conn)
+
+    # v14: capa_records 加 assignee_name 列；test_tasks 安全补列
+    if current < 14:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v14(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v14 failed")
+            raise
 
     return _get_current_version(conn)

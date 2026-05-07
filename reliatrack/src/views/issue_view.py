@@ -668,6 +668,13 @@ class _CAPAPanel(QScrollArea):
             action_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
             card_layout.addWidget(action_lbl)
 
+            # 负责人
+            assignee_name = getattr(rec, 'assignee_name', '') or ''
+            if assignee_name:
+                assignee_lbl = QLabel(f"负责人: {assignee_name}")
+                assignee_lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+                card_layout.addWidget(assignee_lbl)
+
             # 验证结果
             if rec.verification_result:
                 v_lbl = QLabel(f"验证: {rec.verification_result}")
@@ -698,9 +705,11 @@ class _CAPADialog(_BaseDialog):
         )
         self._due_date_edit = self._add_date_field("截止日期")
 
-        # 负责人下拉
-        tech_names = ["（无）"] + [t.name for t in self._technician_list if t.id is not None]
-        self._assignee_combo = self._add_combo_field("负责人", items=tech_names)
+        # 负责人（自由输入）
+        self._assignee_edit = self._add_text_field(
+            "负责人",
+            placeholder="输入负责人姓名",
+        )
 
         status_labels = [label for label, _ in self._STATUS_OPTIONS]
         self._status_combo = self._add_combo_field(
@@ -710,20 +719,14 @@ class _CAPADialog(_BaseDialog):
 
     def get_data(self) -> dict:
         status_map = {label: val for label, val in self._STATUS_OPTIONS}
-        # 解析负责人 ID
-        assignee_name = self._assignee_combo.currentText()
-        assignee_id: int | None = None
-        if assignee_name != "（无）":
-            for t in self._technician_list:
-                if t.name == assignee_name and t.id is not None:
-                    assignee_id = t.id
-                    break
+        assignee_name = self._assignee_edit.text().strip()
         return {
             "action": self._action_edit.toPlainText().strip(),
             "due_date": self._due_date_edit.date().toString("yyyy-MM-dd")
                 if self._due_date_edit.date().isValid() and self._due_date_edit.date().year() >= 2020
                 else "",
-            "assignee_id": assignee_id,
+            "assignee_id": None,
+            "assignee_name": assignee_name,
             "status": status_map.get(self._status_combo.currentText(), "pending"),
         }
 

@@ -1164,10 +1164,243 @@ class ExportService:
             }
             status = status_labels.get(rec.status, rec.status)
             parts.append(f"措施: {rec.action}")
+            assignee_name = getattr(rec, 'assignee_name', '') or ''
+            if assignee_name:
+                parts.append(f"  负责人: {assignee_name}")
             parts.append(f"  状态: {status}")
             if rec.verification_result:
                 parts.append(f"  验证结果: {rec.verification_result}")
         return "\n".join(parts)
+
+    def export_8d_docx(
+        self,
+        issue: Issue,
+        fa_records: list[FARecord] | None = None,
+        capa_records: list[CAPARecord] | None = None,
+        filepath: str | None = None,
+    ) -> str:
+        """导出 8D Problem Solving Report 为 Word (.docx)。
+
+        结构与 export_8d_pdf 一致：基本信息表、D1-D8 八个章节、底部签字栏。
+        """
+        from docx import Document
+        from docx.shared import Pt, Cm, RGBColor, Inches, Emu
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.oxml.ns import qn
+
+        _BLUE = RGBColor(0x1E, 0x66, 0xA5)
+        _GRAY = RGBColor(0x99, 0x99, 0x99)
+        _DARK = RGBColor(0x33, 0x33, 0x33)
+        _WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+
+        out = filepath or str(
+            self._ensure_dir() / f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.docx"
+        )
+
+        doc = Document()
+
+        # ── 页面设置 A4 ──
+        section = doc.sections[0]
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
+        section.top_margin = Cm(1.8)
+        section.bottom_margin = Cm(1.8)
+        section.left_margin = Cm(1.5)
+        section.right_margin = Cm(1.5)
+
+        # ── 默认字体 ──
+        style = doc.styles["Normal"]
+        font = style.font
+        font.name = "Microsoft YaHei"
+        font.size = Pt(9)
+        style.element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")
+
+        # ── 标题 ──
+        title = doc.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = title.add_run("8D Problem Solving Report")
+        run.bold = True
+        run.font.size = Pt(22)
+        run.font.color.rgb = _BLUE
+
+        subtitle = doc.add_paragraph()
+        subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = subtitle.add_run(f"Issue #{issue.id} — {issue.title}")
+        run.font.size = Pt(12)
+        run.font.color.rgb = _GRAY
+
+        date_para = doc.add_paragraph()
+        date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = date_para.add_run(f"报告日期: {datetime.now().strftime('%Y-%m-%d')}")
+        run.font.size = Pt(12)
+        run.font.color.rgb = _GRAY
+
+        # ── 基本信息表 ──
+        severity_labels = {
+            "critical": "Critical (致命)",
+            "major": "Major (严重)",
+            "minor": "Minor (一般)",
+            "cosmetic": "Cosmetic (外观)",
+        }
+        sev_text = severity_labels.get(issue.severity, issue.severity)
+        status_text = self.STATUS_MAP.get(issue.status, issue.status)
+
+        info = doc.add_table(rows=3, cols=4)
+        info.alignment = WD_TABLE_ALIGNMENT.CENTER
+        info_data = [
+            ["Issue 编号", str(issue.id), "严重度", sev_text],
+            ["标题", issue.title, "状态", status_text],
+            ["报告日期", datetime.now().strftime("%Y-%m-%d"), "优先级", str(issue.priority)],
+        ]
+        for ri, row_data in enumerate(info_data):
+            for ci, cell_text in enumerate(row_data):
+                cell = info.cell(ri, ci)
+                cell.text = ""
+                p = cell.paragraphs[0]
+                run = p.add_run(cell_text)
+                run.font.size = Pt(9)
+                if ci in (0, 2):
+                    run.bold = True
+                    run.font.color.rgb = _BLUE
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # 蓝色背景通过 shading
+                    from docx.oxml import OxmlElement
+                    shading = OxmlElement("w:shd")
+                    shading.set(qn("w:fill"), "E8F0FE")
+                    shading.set(qn("w:val"), "clear")
+                    cell._tc.get_or_add_tcPr().append(shading)
+                else:
+                    run.font.color.rgb = _DARK
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # 设置表格外框
+        self._set_table_border(info)
+
+        # ── D1-D8 章节 ──
+        d_sections: list[tuple[str, str, str]] = [
+            ("D1", "团队组建 (Establish the Team)", "(手写区)"),
+            ("D2", "问题描述 (Describe the Problem)", issue.description or ""),
+            ("D3", "临时遏制措施 (Interim Containment Actions)", "(手写区)"),
+            ("D4", "根因分析 (Root Cause Analysis)", self._build_d4_content(issue, fa_records)),
+            ("D5", "纠正措施 (Corrective Actions)", issue.resolution or ""),
+            ("D6", "实施验证 (Implement & Validate)", self._build_d6_content(capa_records)),
+            ("D7", "预防再发 (Prevent Recurrence)", "(手写区)"),
+            ("D8", "结论与签字 (Congratulate the Team)", "(签字区)"),
+        ]
+
+        for d_label, d_title, d_content in d_sections:
+            doc.add_paragraph()  # 间距
+
+            # D 章节标题行 — 蓝底白字表格
+            header_tbl = doc.add_table(rows=1, cols=2)
+            header_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+            # D 标签
+            d_cell = header_tbl.cell(0, 0)
+            d_cell.width = Cm(2.0)
+            p = d_cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.add_run(d_label)
+            run.bold = True
+            run.font.size = Pt(10)
+            run.font.color.rgb = _WHITE
+
+            # D 标题
+            t_cell = header_tbl.cell(0, 1)
+            p = t_cell.paragraphs[0]
+            run = p.add_run(d_title)
+            run.bold = True
+            run.font.size = Pt(10)
+            run.font.color.rgb = _WHITE
+
+            # 蓝底
+            from docx.oxml import OxmlElement
+            for cell in [d_cell, t_cell]:
+                shading = OxmlElement("w:shd")
+                shading.set(qn("w:fill"), "1E66A5")
+                shading.set(qn("w:val"), "clear")
+                cell._tc.get_or_add_tcPr().append(shading)
+
+            # D 内容行
+            content_tbl = doc.add_table(rows=1, cols=2)
+            content_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+            left_cell = content_tbl.cell(0, 0)
+            left_cell.width = Cm(2.0)
+            # 左侧留白
+            right_cell = content_tbl.cell(0, 1)
+            p = right_cell.paragraphs[0]
+            content_text = d_content or ""
+            if content_text.startswith("("):
+                run = p.add_run(content_text)
+                run.font.color.rgb = _GRAY
+                run.font.size = Pt(9)
+            else:
+                for line_idx, line in enumerate(content_text.split("\n")):
+                    if line_idx > 0:
+                        p = right_cell.add_paragraph()
+                    run = p.add_run(line)
+                    run.font.size = Pt(9)
+                    run.font.color.rgb = _DARK
+
+            self._set_table_border(content_tbl)
+            self._set_table_border(header_tbl)
+
+        # ── 底部签字栏 ──
+        doc.add_paragraph()
+        sig_roles = ["编制 (Prepared)", "审核 (Reviewed)", "批准 (Approved)"]
+        sig_tbl = doc.add_table(rows=2, cols=3)
+        sig_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+        for ci, role in enumerate(sig_roles):
+            # 角色标签
+            cell = sig_tbl.cell(0, ci)
+            p = cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.add_run(role)
+            run.bold = True
+            run.font.size = Pt(9)
+            run.font.color.rgb = _DARK
+
+            # 签字线
+            cell2 = sig_tbl.cell(1, ci)
+            p2 = cell2.paragraphs[0]
+            p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run2 = p2.add_run("________________________")
+            run2.font.color.rgb = _GRAY
+            run2.font.size = Pt(9)
+
+        self._set_table_border(sig_tbl)
+
+        # ── 页脚 ──
+        footer = section.footer
+        footer.is_linked_to_previous = False
+        fp = footer.paragraphs[0]
+        fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = fp.add_run("ReliaTrack — 8D Problem Solving Report")
+        run.font.size = Pt(8)
+        run.font.color.rgb = _GRAY
+
+        doc.save(out)
+        return os.path.abspath(out)
+
+    @staticmethod
+    def _set_table_border(table: object) -> None:
+        """给 python-docx Table 设置简单边框。"""
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+
+        tbl = table._tbl
+        tblPr = tbl.tblPr if tbl.tblPr is not None else OxmlElement("w:tblPr")
+        borders = OxmlElement("w:tblBorders")
+        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            el = OxmlElement(f"w:{edge}")
+            el.set(qn("w:val"), "single")
+            el.set(qn("w:sz"), "4")
+            el.set(qn("w:space"), "0")
+            el.set(qn("w:color"), "999999")
+            borders.append(el)
+        tblPr.append(borders)
 
     # ── Word 导出 ──────────────────────────────────────────────
 

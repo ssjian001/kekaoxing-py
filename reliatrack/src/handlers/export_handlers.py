@@ -156,9 +156,23 @@ class ExportHandlers:
                 if not issue:
                     self._win.toast("未找到该 Issue", "info")
                     return
+
+                # 格式选择
+                fmt = QMessageBox.question(
+                    self._win, "导出格式",
+                    "选择导出格式：\n\n"
+                    "「是」= PDF\n「否」= Word (.docx)\n「取消」= 放弃",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
+                )
+                if fmt == QMessageBox.StandardButton.Cancel:
+                    return
+
                 fa_records = ctrl.issue_service.get_fa_records(issue_id)
                 capa_records = ctrl.issue_service.get_capa_records(issue_id)
-                path = svc.export_8d_pdf(issue, fa_records, capa_records)
+                if fmt == QMessageBox.StandardButton.Yes:
+                    path = svc.export_8d_pdf(issue, fa_records, capa_records)
+                else:
+                    path = svc.export_8d_docx(issue, fa_records, capa_records)
                 self._win.toast(f"8D 报告已导出: {path}", "success")
 
         except Exception as e:

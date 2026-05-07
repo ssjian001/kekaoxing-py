@@ -186,7 +186,7 @@ class IssueHandlers:
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
 
     def _handle_export_8d(self, issue_id: int) -> None:
-        """导出 8D 报告。"""
+        """导出 8D 报告（PDF / Word 格式选择）。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service or not ctrl.export_service:
             return
@@ -195,9 +195,23 @@ class IssueHandlers:
             if issue is None:
                 QMessageBox.warning(self._win, "导出失败", f"Issue #{issue_id} 不存在。")
                 return
+
+            # 格式选择
+            fmt = QMessageBox.question(
+                self._win, "导出格式",
+                "选择导出格式：\n\n"
+                "「是」= PDF\n「否」= Word (.docx)\n「取消」= 放弃",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
+            )
+            if fmt == QMessageBox.StandardButton.Cancel:
+                return
+
             fa_records = ctrl.issue_service.get_fa_records(issue_id)
             capa_records = ctrl.issue_service.get_capa_records(issue_id)
-            filepath = ctrl.export_service.export_8d_pdf(issue, fa_records, capa_records)
+            if fmt == QMessageBox.StandardButton.Yes:
+                filepath = ctrl.export_service.export_8d_pdf(issue, fa_records, capa_records)
+            else:
+                filepath = ctrl.export_service.export_8d_docx(issue, fa_records, capa_records)
             self._win.toast(f"8D 报告已导出: {os.path.basename(filepath)}", "success")
         except Exception as e:
             logger.exception("8D report export failed for issue_id=%s", issue_id)

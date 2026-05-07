@@ -126,14 +126,13 @@ class PlanHandlers:
                             if task.id is not None:
                                 old_start_days[task.id] = task.start_day
 
-                    ctrl.scheduler_service.apply_schedule(plan_id, changes)
-
-                    # 注册 undo
+                    # undo_changes: (task_id, old_start_day, new_start_day)
                     undo_changes = [
-                        (tid, new_day, old_start_days.get(tid, 0))
+                        (tid, old_start_days.get(tid, 0), new_day)
                         for tid, new_day in changes
                     ]
                     if undo_changes and ctrl.test_tasks:
+                        # Command.do() 统一写入 DB，不再调 apply_schedule
                         ctrl.undo_manager.execute(
                             BatchScheduleCommand(ctrl.test_tasks, undo_changes)
                         )

@@ -125,6 +125,7 @@ class CAPARecord:
     issue_id: int = 0
     action: str = ""           # 纠正/预防措施描述
     assignee_id: Optional[int] = None
+    assignee_name: str = ""       # 责任人自由文本
     due_date: str = ""         # 截止日期
     status: str = CAPAStatus.PENDING.value
     verification_result: str = ""  # 验证结果
