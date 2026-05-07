@@ -89,6 +89,11 @@ class IssueRepository(BaseRepository):
     # ── FA 记录 ──
 
     _FA_COLS = "id, issue_id, step_no, step_title, description, method, findings, possible_cause, cause_category, failure_mechanism, confirmed, analyst_id, attachments, created_at"
+    _FA_SAFE_COLS = frozenset({
+        "issue_id", "step_no", "step_title", "description", "method",
+        "findings", "possible_cause", "cause_category", "failure_mechanism",
+        "confirmed", "analyst_id", "attachments",
+    })
 
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         """获取 Issue 的 FA 分析记录。"""
@@ -105,8 +110,9 @@ class IssueRepository(BaseRepository):
     def add_fa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 FA 分析步骤。"""
         kwargs["issue_id"] = issue_id
-        cols = list(kwargs.keys())
-        vals = list(kwargs.values())
+        safe = {k: v for k, v in kwargs.items() if k in self._FA_SAFE_COLS}
+        cols = list(safe.keys())
+        vals = list(safe.values())
         placeholders = ", ".join(["?"] * len(cols))
         col_str = ", ".join([f"[{c}]" for c in cols])
         sql = f"INSERT INTO [fa_records] ({col_str}) VALUES ({placeholders})"
@@ -117,6 +123,9 @@ class IssueRepository(BaseRepository):
     # ── 附件 ──
 
     _ATTACH_COLS = "id, issue_id, file_path, file_type, description, created_at"
+    _ATTACH_SAFE_COLS = frozenset({
+        "issue_id", "file_path", "file_type", "description",
+    })
 
     def get_attachments(self, issue_id: int) -> list[IssueAttachment]:
         """获取 Issue 附件。"""
@@ -131,8 +140,9 @@ class IssueRepository(BaseRepository):
     def add_attachment(self, issue_id: int, **kwargs: object) -> int:
         """添加 Issue 附件。"""
         kwargs["issue_id"] = issue_id
-        cols = list(kwargs.keys())
-        vals = list(kwargs.values())
+        safe = {k: v for k, v in kwargs.items() if k in self._ATTACH_SAFE_COLS}
+        cols = list(safe.keys())
+        vals = list(safe.values())
         placeholders = ", ".join(["?"] * len(cols))
         col_str = ", ".join([f"[{c}]" for c in cols])
         sql = f"INSERT INTO [issue_attachments] ({col_str}) VALUES ({placeholders})"

@@ -910,7 +910,19 @@ class TestPlanView(QWidget):
         self._on_edit_task = on_edit
         self._on_delete_task = on_delete
 
-        # 工具栏按钮
+        # 工具栏按钮 — 先 disconnect 防止重复调用
+        try:
+            self._btn_add_task.clicked.disconnect()
+        except RuntimeError:
+            pass
+        try:
+            self._btn_edit_task.clicked.disconnect()
+        except RuntimeError:
+            pass
+        try:
+            self._btn_delete_task.clicked.disconnect()
+        except RuntimeError:
+            pass
         self._btn_add_task.clicked.connect(lambda: on_add() if on_add else None)
         self._btn_edit_task.clicked.connect(self._handle_toolbar_edit)
         self._btn_delete_task.clicked.connect(self._handle_toolbar_delete)

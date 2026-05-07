@@ -59,11 +59,17 @@ class SampleRepository(BaseRepository):
         """更新样品状态。"""
         self.update(id, status=status)
 
+    _TXN_SAFE_COLS = frozenset({
+        "sample_id", "type", "operator_id", "purpose",
+        "related_task_id", "expected_return", "actual_return", "notes",
+    })
+
     def add_transaction(self, sample_id: int, txn_type: str, **kwargs: object) -> int:
         """添加出入库记录到 sample_transactions 表。"""
-        data = {"sample_id": sample_id, "type": txn_type, **kwargs}
-        cols = list(data.keys())
-        vals = list(data.values())
+        merged = {"sample_id": sample_id, "type": txn_type, **kwargs}
+        safe = {k: v for k, v in merged.items() if k in self._TXN_SAFE_COLS}
+        cols = list(safe.keys())
+        vals = list(safe.values())
         placeholders = ", ".join(["?"] * len(cols))
         col_str = ", ".join([f"[{c}]" for c in cols])
         sql = f"INSERT INTO [sample_transactions] ({col_str}) VALUES ({placeholders})"

@@ -176,11 +176,12 @@ class IssueHandlers:
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
-        issue_id = data.pop("issue_id", None)
+        issue_id = data.get("issue_id")
         if issue_id is None:
             return
+        fa_data = {k: v for k, v in data.items() if k != "issue_id"}
         try:
-            ctrl.issue_service.add_fa_record(issue_id, **data)
+            ctrl.issue_service.add_fa_record(issue_id, **fa_data)
             # 刷新 FA 面板
             self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
             self._win._issue_view.refresh_fa(self._current_fa_records)

@@ -123,10 +123,18 @@ class BaseRepository:
 
     # ── 通用 CRUD ──
 
+    def _safe_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """过滤 kwargs，只保留表中实际存在的列名（防 SQL 列名注入）。"""
+        valid = set(self._columns())
+        return {k: v for k, v in kwargs.items() if k in valid}
+
     def insert(self, **kwargs: Any) -> int:
         """插入一行，返回 lastrowid。"""
-        cols = list(kwargs.keys())
-        vals = list(kwargs.values())
+        safe = self._safe_kwargs(kwargs)
+        if not safe:
+            raise ValueError(f"insert(): no valid columns for {self._table}")
+        cols = list(safe.keys())
+        vals = list(safe.values())
         placeholders = ", ".join(["?"] * len(cols))
         col_str = ", ".join([f"[{c}]" for c in cols])
         sql = f"INSERT INTO [{self._table}] ({col_str}) VALUES ({placeholders})"
@@ -135,24 +143,27 @@ class BaseRepository:
             row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
             return row[0] if row else 0
         except Exception:
-            logger.exception("Insert failed: table=%s, data=%s", self._table, kwargs)
+            logger.exception("Insert failed: table=%s, data=%s", self._table, safe)
             raise
 
     def update(self, id: int, **kwargs: Any) -> None:
         """按 ID 更新指定字段。自动刷新 updated_at。"""
         if not kwargs:
             return
+        safe = self._safe_kwargs(kwargs)
+        if not safe:
+            return
         # 自动维护 updated_at（如果表有此列且调用方未显式传入）
         auto_ts = (
-            "updated_at" not in kwargs
+            "updated_at" not in safe
             and "updated_at" in self._columns()
         )
         if auto_ts:
-            set_clause = ", ".join([f"[{k}] = ?" for k in kwargs])
+            set_clause = ", ".join([f"[{k}] = ?" for k in safe])
             set_clause += ", [updated_at] = datetime('now','localtime')"
         else:
-            set_clause = ", ".join([f"[{k}] = ?" for k in kwargs])
-        vals = list(kwargs.values()) + [id]
+            set_clause = ", ".join([f"[{k}] = ?" for k in safe])
+        vals = list(safe.values()) + [id]
         sql = f"UPDATE [{self._table}] SET {set_clause} WHERE id = ?"
         try:
             self._conn.execute(sql, vals)

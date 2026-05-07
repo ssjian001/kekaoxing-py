@@ -301,11 +301,12 @@ class PlanHandlers:
         )
         if dlg.exec():
             data = dlg.get_data()
-            plan_id_from_data = data.pop("id", None)
+            plan_id_from_data = data.get("id")
             if plan_id_from_data is None:
                 return
+            update_data = {k: v for k, v in data.items() if k != "id"}
             try:
-                ctrl.test_plan_service.update_plan(plan_id_from_data, **data)
+                ctrl.test_plan_service.update_plan(plan_id_from_data, **update_data)
                 self._win.toast(f"计划「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("plan")
             except Exception as e:

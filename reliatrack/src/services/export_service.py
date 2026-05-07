@@ -2195,9 +2195,13 @@ class ExportService:
     @staticmethod
     def _set_cell_shading(cell, hex_color: str) -> None:
         """设置 Word 单元格背景色。"""
+        import re
         from docx.oxml.ns import qn, nsdecls
         from docx.oxml import parse_xml
 
+        # 防止 XML 注入：只接受 6 位 hex
+        if not re.fullmatch(r"[0-9A-Fa-f]{6}", hex_color):
+            return
         shading = parse_xml(
             f'<w:shd {nsdecls("w")} w:fill="{hex_color}" w:val="clear"/>'
         )

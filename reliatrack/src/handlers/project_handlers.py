@@ -51,11 +51,12 @@ class ProjectHandlers:
         dlg = ProjectEditDialog(project=proj, parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
-            proj_id = data.pop("id", None)
+            proj_id = data.get("id")
             if proj_id is None:
                 return
+            update_data = {k: v for k, v in data.items() if k != "id"}
             try:
-                ctrl.project_service.update(proj_id, **data)
+                ctrl.project_service.update(proj_id, **update_data)
                 self._win.toast(f"项目「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("project")
             except Exception as e:
