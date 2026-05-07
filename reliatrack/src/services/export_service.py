@@ -995,18 +995,15 @@ class ExportService:
                     cell.fill = _pass_fill
 
         # 列宽
+        from openpyxl.utils import get_column_letter
         ws2.column_dimensions["A"].width = 5
         ws2.column_dimensions["B"].width = 25
         ws2.column_dimensions["C"].width = 20
         ws2.column_dimensions["D"].width = 20
         for i in range(len(sample_ids)):
-            col_letter = chr(65 + 4 + i) if 4 + i < 26 else None
-            if col_letter:
-                ws2.column_dimensions[col_letter].width = 10
+            ws2.column_dimensions[get_column_letter(5 + i)].width = 10
         # 结论列
-        last_col = 4 + len(sample_ids) + 1
-        if last_col < 26:
-            ws2.column_dimensions[chr(64 + last_col)].width = 10
+        ws2.column_dimensions[get_column_letter(5 + len(sample_ids))].width = 10
 
         # ── Sheet 3: Issue 汇总 ──
         if issues:
@@ -1026,6 +1023,22 @@ class ExportService:
             ws3.column_dimensions["C"].width = 10
             ws3.column_dimensions["D"].width = 10
             ws3.column_dimensions["E"].width = 20
+
+        # ── Sheet 4: 签字栏 ──
+        ws4 = wb.create_sheet("签字栏")
+        ws4.merge_cells("A1:C1")
+        ws4["A1"].value = "签字确认"
+        ws4["A1"].font = s["title_font"]("2B579A")
+        ws4["A1"].alignment = Alignment(horizontal="center")
+        self._excel_write_headers(ws4, 3, ["编制", "审核", "批准"], s)
+        # 留空行供打印后手签
+        for ri in range(4, 10):
+            for ci in range(1, 4):
+                cell = ws4.cell(row=ri, column=ci, value="")
+                cell.border = s["thin_border"]
+        ws4.column_dimensions["A"].width = 25
+        ws4.column_dimensions["B"].width = 25
+        ws4.column_dimensions["C"].width = 25
 
         return self._excel_save(
             wb, filepath,
@@ -1068,22 +1081,27 @@ class ExportService:
             if align == "center":
                 pPr = etree.SubElement(p, f"{{{_ns}}}pPr")
                 etree.SubElement(pPr, f"{{{_ns}}}jc", attrib={f"{{{_ns}}}val": "center"})
-            r = etree.SubElement(p, f"{{{_ns}}}r")
-            rPr = etree.SubElement(r, f"{{{_ns}}}rPr")
-            rFonts = etree.SubElement(rPr, f"{{{_ns}}}rFonts")
-            rFonts.set(f"{{{_ns}}}ascii", _f)
-            rFonts.set(f"{{{_ns}}}eastAsia", _f)
-            rFonts.set(f"{{{_ns}}}hAnsi", _f)
-            sz = etree.SubElement(rPr, f"{{{_ns}}}sz")
-            sz.set(f"{{{_ns}}}val", str(size * 2))
-            if bold:
-                etree.SubElement(rPr, f"{{{_ns}}}b")
-            if color:
-                c = etree.SubElement(rPr, f"{{{_ns}}}color")
-                c.set(f"{{{_ns}}}val", color)
-            t = etree.SubElement(r, f"{{{_ns}}}t")
-            t.text = text
-            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+            # 支持换行：每个 \n 产生独立 run + w:br
+            segments = text.split("\n") if "\n" in text else [text]
+            for seg_idx, seg in enumerate(segments):
+                r = etree.SubElement(p, f"{{{_ns}}}r")
+                rPr = etree.SubElement(r, f"{{{_ns}}}rPr")
+                rFonts = etree.SubElement(rPr, f"{{{_ns}}}rFonts")
+                rFonts.set(f"{{{_ns}}}ascii", _f)
+                rFonts.set(f"{{{_ns}}}eastAsia", _f)
+                rFonts.set(f"{{{_ns}}}hAnsi", _f)
+                sz = etree.SubElement(rPr, f"{{{_ns}}}sz")
+                sz.set(f"{{{_ns}}}val", str(size * 2))
+                if bold:
+                    etree.SubElement(rPr, f"{{{_ns}}}b")
+                if color:
+                    c = etree.SubElement(rPr, f"{{{_ns}}}color")
+                    c.set(f"{{{_ns}}}val", color)
+                t = etree.SubElement(r, f"{{{_ns}}}t")
+                t.text = seg
+                t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+                if seg_idx < len(segments) - 1:
+                    etree.SubElement(r, f"{{{_ns}}}br")
             if shade:
                 tcPr = ct_tc.get_or_add_tcPr()
                 shd = etree.SubElement(tcPr, f"{{{_ns}}}shd")
@@ -1096,7 +1114,7 @@ class ExportService:
                 tc = tc_elems[j] if j < len(tc_elems) else None
                 if tc:
                     _fill_cell(tc, str(val), bold=bold, color=color,
-                               shade=shade if shade and j == 0 else None,
+                               shade=shade,
                                align="center")
 
         # ── 标题 ──
