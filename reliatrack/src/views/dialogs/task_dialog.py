@@ -501,13 +501,32 @@ class TaskEditDialog(_BaseDialog):
         layout.addWidget(hint)
 
         lst = QListWidget()
-        id_to_name: dict[int, str] = {
-            t.id: t.name for t in self._all_tasks if t.id is not None
-        }
-        for t in self._all_tasks:
+        # 按 start_day 排序
+        sorted_tasks = sorted(self._all_tasks, key=lambda t: (t.start_day or 0, t.id or 0))
+        # 如果是编辑模式，插入当前任务作为分隔参照
+        if self._task and self._task.id is not None:
+            from PySide6.QtGui import QColor as _QColor
+            cur = self._task
+            cur_label = f"▶ #{cur.id} {cur.name}  (D{cur.start_day}~D{cur.start_day + cur.duration}) — 当前任务"
+            cur_item = QListWidgetItem(cur_label)
+            cur_item.setFlags(Qt.ItemFlag.NoItemFlags)  # 不可选、不可勾选
+            cur_item.setForeground(_QColor(BLUE))
+            # 找到插入位置（按 start_day 排序）
+            insert_pos = 0
+            for i, t in enumerate(sorted_tasks):
+                if (t.start_day or 0) < (cur.start_day or 0) or (
+                    (t.start_day or 0) == (cur.start_day or 0) and (t.id or 0) < (cur.id or 0)
+                ):
+                    insert_pos = i + 1
+            sorted_tasks.insert(insert_pos, ("__current__", cur_item))
+        for t in sorted_tasks:
+            if isinstance(t, tuple) and t[0] == "__current__":
+                lst.addItem(t[1])
+                continue
             if t.id is None:
                 continue
-            item = QListWidgetItem(f"#{t.id} {t.name}")
+            label = f"#{t.id} {t.name}  (D{t.start_day}~D{t.start_day + t.duration})"
+            item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, t.id)
             item.setCheckState(
                 Qt.CheckState.Checked if t.id in self._selected_dep_ids
