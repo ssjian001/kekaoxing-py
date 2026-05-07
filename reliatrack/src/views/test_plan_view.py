@@ -55,26 +55,29 @@ class _TaskTable(QTableWidget):
         header = self.horizontalHeader()
         # 默认全部 Interactive
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        # Fixed 列（序号/优先级/技术员/通过率/日期）
+        # Fixed 列
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)   # #
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)   # 优先级
-        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)   # 技术员
-        header.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)   # 通过率
-        header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 实际开始
-        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际完成
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)   # 天数
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)   # 进度
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)   # 优先级
+        header.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)   # 技术员
+        header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 通过率
+        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际开始
+        header.setSectionResizeMode(12, QHeaderView.ResizeMode.Fixed)  # 实际完成
         # 初始宽度
-        self.setColumnWidth(0, 48)    # #
+        self.setColumnWidth(0, 40)    # #
         self.setColumnWidth(1, 200)   # 名称
         self.setColumnWidth(2, 80)    # 类别
         self.setColumnWidth(3, 50)    # 天数
-        self.setColumnWidth(4, 70)    # 开始
-        self.setColumnWidth(5, 80)    # 进度
-        self.setColumnWidth(6, 50)    # 优先级
-        self.setColumnWidth(7, 70)    # 状态
-        self.setColumnWidth(8, 70)    # 技术员
-        self.setColumnWidth(9, 60)    # 通过率
-        self.setColumnWidth(10, 90)   # 实际开始
-        self.setColumnWidth(11, 90)   # 实际完成
+        self.setColumnWidth(4, 90)    # 预计开始
+        self.setColumnWidth(5, 90)    # 预计结束
+        self.setColumnWidth(6, 55)    # 进度
+        self.setColumnWidth(7, 50)    # 优先级
+        self.setColumnWidth(8, 70)    # 状态
+        self.setColumnWidth(9, 70)    # 技术员
+        self.setColumnWidth(10, 60)   # 通过率
+        self.setColumnWidth(11, 90)   # 实际开始
+        self.setColumnWidth(12, 90)   # 实际完成
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -454,11 +457,13 @@ class _GanttWidget(QWidget):
             if idx is not None:
                 self.setCursor(Qt.CursorShape.OpenHandCursor)
                 task = self._tasks[idx]
+                s_day, dur = self._task_day_range(task)
+                mode_prefix = "实际" if self._show_actual else "预计"
                 tooltip = (
                     f"{task.name}\n"
                     f"类别: {task.category or '-'}\n"
-                    f"工期: {task.duration} 天\n"
-                    f"开始: D{task.start_day} → D{task.start_day + task.duration}\n"
+                    f"工期: {dur} 天\n"
+                    f"{mode_prefix}开始: D{s_day} → D{s_day + dur}\n"
                     f"进度: {task.progress:.0f}%\n"
                     f"状态: {task.status}"
                 )
@@ -468,6 +473,8 @@ class _GanttWidget(QWidget):
                 self.setToolTip("")
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
+        if self._show_actual:
+            return  # 实际模式下禁止拖拽
         if event.button() == Qt.MouseButton.LeftButton:
             idx = self._hit_test(event.position().toPoint())
             if idx is not None:
@@ -585,8 +592,9 @@ class _GanttWidget(QWidget):
                        name)
 
             # 甘特条
-            bar_x = label_w + task.start_day * self._day_w
-            bar_w = task.duration * self._day_w
+            s_day, dur = self._task_day_range(task)
+            bar_x = label_w + s_day * self._day_w
+            bar_w = dur * self._day_w
             bar_y = y + (self._row_height - self._bar_height) / 2
 
             # 颜色：优先按设备着色，无设备时按类别
