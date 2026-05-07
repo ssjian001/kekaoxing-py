@@ -15,8 +15,6 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QWidget,
@@ -219,11 +217,7 @@ class TaskEditDialog(_BaseDialog):
         self._add_separator()
 
         # ── 依赖 & 环境 ──
-        dep_label = QLabel("依赖任务")
-        dep_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; margin-top: 4px;")
-        self._form.addRow(dep_label)
-        self._dep_list = QListWidget()
-        self._dep_list.setMaximumHeight(120)
+        # 解析已有依赖
         existing_dep_ids: list[int] = []
         if task and task.dependencies:
             try:
@@ -232,21 +226,20 @@ class TaskEditDialog(_BaseDialog):
                     existing_dep_ids = []
             except (json.JSONDecodeError, TypeError):
                 existing_dep_ids = []
-        for t in self._all_tasks:
-            if t.id is None:
-                continue
-            item = QListWidgetItem(f"#{t.id} {t.name}")
-            item.setData(Qt.ItemDataRole.UserRole, t.id)
-            item.setCheckState(
-                Qt.CheckState.Checked if t.id in existing_dep_ids
-                else Qt.CheckState.Unchecked
-            )
-            self._dep_list.addItem(item)
-        if self._dep_list.count() == 0:
-            empty_item = QListWidgetItem("（当前计划无其他任务）")
-            empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-            self._dep_list.addItem(empty_item)
-        self._form.addRow(self._dep_list)
+        self._selected_dep_ids: list[int] = existing_dep_ids
+
+        dep_row = QHBoxLayout()
+        dep_row.setSpacing(6)
+        self._dep_summary = QLabel(self._format_dep_summary())
+        self._dep_summary.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        self._dep_summary.setWordWrap(True)
+        dep_btn = QPushButton("选择...")
+        dep_btn.setProperty("class", "action")
+        dep_btn.setFixedHeight(26)
+        dep_btn.clicked.connect(self._open_dep_selector)
+        dep_row.addWidget(self._dep_summary, stretch=1)
+        dep_row.addWidget(dep_btn)
+        self._form.addRow("依赖任务", dep_row)
         self._env_edit = self._add_text_field(
             "环境条件 (JSON)",
             default=task.environment if task else "",
@@ -474,18 +467,89 @@ class TaskEditDialog(_BaseDialog):
         }
         return status_map.get(task.status, "待开始")
 
+    # ── 依赖选择 ──────────────────────────────────────────────
+
+    def _format_dep_summary(self) -> str:
+        """格式化已选依赖摘要。"""
+        if not self._selected_dep_ids:
+            return "（无）"
+        id_to_name: dict[int, str] = {
+            t.id: t.name for t in self._all_tasks if t.id is not None
+        }
+        parts = [f"#{did} {id_to_name.get(did, '?')}" for did in self._selected_dep_ids]
+        return ", ".join(parts)
+
+    def _open_dep_selector(self) -> None:
+        """弹出依赖任务多选对话框。"""
+        from PySide6.QtWidgets import (
+            QDialog, QVBoxLayout, QListWidget, QListWidgetItem,
+            QHBoxLayout, QPushButton, QLabel,
+        )
+        from src.styles.theme import BASE, TEXT, SURFACE0, SURFACE1, SUBTEXT0, BLUE
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("选择依赖任务")
+        dlg.setMinimumWidth(360)
+        dlg.setMinimumHeight(300)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(8)
+
+        hint = QLabel("勾选当前任务所依赖的前置任务：")
+        hint.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        layout.addWidget(hint)
+
+        lst = QListWidget()
+        id_to_name: dict[int, str] = {
+            t.id: t.name for t in self._all_tasks if t.id is not None
+        }
+        for t in self._all_tasks:
+            if t.id is None:
+                continue
+            item = QListWidgetItem(f"#{t.id} {t.name}")
+            item.setData(Qt.ItemDataRole.UserRole, t.id)
+            item.setCheckState(
+                Qt.CheckState.Checked if t.id in self._selected_dep_ids
+                else Qt.CheckState.Unchecked
+            )
+            lst.addItem(item)
+        if lst.count() == 0:
+            empty_item = QListWidgetItem("（当前计划无其他任务）")
+            empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            lst.addItem(empty_item)
+        layout.addWidget(lst, stretch=1)
+
+        # 按钮
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_cancel = QPushButton("取消")
+        btn_cancel.setProperty("class", "action")
+        btn_cancel.clicked.connect(dlg.reject)
+        btn_ok = QPushButton("确定")
+        btn_ok.setProperty("class", "primary")
+        btn_ok.clicked.connect(dlg.accept)
+        btn_row.addWidget(btn_cancel)
+        btn_row.addWidget(btn_ok)
+        layout.addLayout(btn_row)
+
+        if dlg.exec():
+            selected: list[int] = []
+            for i in range(lst.count()):
+                item = lst.item(i)
+                if item.checkState() == Qt.CheckState.Checked:
+                    dep_id = item.data(Qt.ItemDataRole.UserRole)
+                    if isinstance(dep_id, int):
+                        selected.append(dep_id)
+            self._selected_dep_ids = selected
+            self._dep_summary.setText(self._format_dep_summary())
+
     # ── 公开 API ───────────────────────────────────────────────
 
     def get_data(self) -> dict:
         """返回表单数据字典。"""
-        # 从多选列表读取依赖 ID
-        dep_ids: list[int] = []
-        for i in range(self._dep_list.count()):
-            item = self._dep_list.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                dep_id = item.data(Qt.ItemDataRole.UserRole)
-                if isinstance(dep_id, int):
-                    dep_ids.append(dep_id)
+        # 直接使用已选依赖 ID
+        dep_ids = self._selected_dep_ids
 
         # 解析设备/技术员 ID
         equip_text = self._equipment_combo.currentText()
