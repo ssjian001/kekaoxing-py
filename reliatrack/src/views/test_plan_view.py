@@ -381,7 +381,7 @@ class _GanttWidget(QWidget):
         try:
             base = date.fromisoformat(self._start_date)
             a_start = date.fromisoformat(task.actual_start_date)
-            start_day = (a_start - base).days
+            start_day = max((a_start - base).days, 0)  # 不允许负数偏移
             if task.actual_end_date:
                 a_end = date.fromisoformat(task.actual_end_date)
                 duration = max((a_end - a_start).days + 1, 1)
@@ -792,6 +792,7 @@ class TestPlanView(QWidget):
         self._last_technician_map: dict[int, str] = {}
         self._last_result_map: dict[int, tuple[int, int]] = {}
         self._last_start_date: str = ""
+        self._last_equipment_map: dict[int, str] = {}
 
     def _on_gantt_mode_toggled(self, btn_id: int, checked: bool) -> None:
         """甘特图预计/实际模式切换。"""

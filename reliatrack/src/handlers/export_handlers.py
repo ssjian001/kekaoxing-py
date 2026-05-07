@@ -23,14 +23,14 @@ class ExportHandlers:
         self._win = win
 
     def _get_issues(self, ctrl, project_id: int | None):
-        """按项目获取 Issue，None 则返回全部。"""
-        if project_id is not None:
+        """按项目获取 Issue，None 或 0 则返回全部。"""
+        if project_id:
             return ctrl.issue_service.get_by_project(project_id)
         return ctrl.issue_service.list_all()
 
     def _get_samples(self, ctrl, project_id: int | None):
-        """按项目获取样品，None 则返回全部。"""
-        if project_id is not None:
+        """按项目获取样品，None 或 0 则返回全部。"""
+        if project_id:
             return ctrl.sample_service.get_by_project(project_id)
         return ctrl.sample_service.list_all()
 
