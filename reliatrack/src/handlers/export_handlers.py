@@ -110,12 +110,14 @@ class ExportHandlers:
                 if not issues:
                     self._win.toast("没有 Issue 数据", "info")
                     return
-                # Build fa_map
+                # Build fa_map and capa_map
                 fa_map = {}
+                capa_map = {}
                 for issue in issues:
                     if issue.id is not None:
                         fa_map[issue.id] = ctrl.issue_service.get_fa_records(issue.id)
-                path = svc.export_issues_excel(issues, fa_map=fa_map)
+                        capa_map[issue.id] = ctrl.issue_service.get_capa_records(issue.id)
+                path = svc.export_issues_excel(issues, fa_map=fa_map, capa_map=capa_map)
                 self._win.toast(f"已导出: {path}", "success")
 
             elif "样品" in content:

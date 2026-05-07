@@ -208,12 +208,14 @@ class ExportService:
         self,
         issues: list[Issue],
         fa_map: dict[int, list[FARecord]] | None = None,
+        capa_map: dict[int, list[CAPARecord]] | None = None,
         filepath: str | None = None,
     ) -> str:
         """导出 Issue 列表为 Excel。
 
         Args:
             fa_map: {issue_id: [FARecord, ...]} 可选。
+            capa_map: {issue_id: [CAPARecord, ...]} 可选。
         """
         from openpyxl import Workbook
         from openpyxl.styles import Alignment
@@ -226,16 +228,20 @@ class ExportService:
         ws.title = "Issue 追踪"
 
         self._excel_write_title_block(
-            ws, "Issue 追踪报告", "A1:H1",
+            ws, "Issue 追踪报告", "A1:J1",
             f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(issues)} 个 Issue",
-            "A2:H2", "C0504D", s,
+            "A2:J2", "C0504D", s,
         )
 
-        headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式", "根因分析", "FA 步骤数"]
+        headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式", "根因分析", "FA 步骤数", "改善对策", "CAPA 状态"]
         self._excel_write_headers(ws, 4, headers, s)
 
         for row_idx, issue in enumerate(issues, 5):
             fa_count = len(fa_map.get(issue.id, [])) if fa_map and issue.id is not None else 0
+            # CAPA 汇总
+            capas = capa_map.get(issue.id, []) if capa_map and issue.id is not None else []
+            capa_actions = "; ".join(c.action for c in capas if c.action) or ""
+            capa_statuses = "; ".join(c.status for c in capas) or ""
             values = [
                 issue.id,
                 issue.title,
@@ -245,14 +251,16 @@ class ExportService:
                 issue.failure_mode or "",
                 (issue.root_cause or "")[:100],
                 fa_count,
+                capa_actions,
+                capa_statuses,
             ]
             for col, val in enumerate(values, 1):
                 cell = ws.cell(row=row_idx, column=col, value=val)
                 cell.font = s["cell_font"]
-                cell.alignment = wrap if col in (2, 6, 7) else s["center"]
+                cell.alignment = wrap if col in (2, 6, 7, 9, 10) else s["center"]
                 cell.border = s["thin_border"]
 
-        widths = [5, 25, 10, 10, 8, 15, 35, 10]
+        widths = [5, 25, 10, 10, 8, 15, 35, 10, 35, 15]
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[chr(64 + i)].width = w
 
