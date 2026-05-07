@@ -101,9 +101,11 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh + 全局快捷�
 
 ### 导出服务
 
-- `export_service.py`（AppController.export_service）：8D 报告 PDF 导出（reportlab + CJK 字体）
-- 信号链：issue_view `_on_export_8d` → `export_8d_requested` signal → `issue_handlers._handle_export_8d`
+- `export_service.py`（AppController.export_service）：8D 报告 PDF/Word 导出（reportlab + python-docx）
+- 8D Word：`export_8d_docx()` — 结构与 PDF 一致（基本信息表、D1-D8 章节、签字栏），格式选择对话框
+- 信号链：issue_view `_on_export_8d` → `export_8d_requested` signal → `issue_handlers._handle_export_8d`（弹出 PDF/Word 选择）
 - CAPA 写入：`issue_view capa_record_added` → `issue_handlers._handle_capa_record_added` → `issue_service.add_capa_record`（列名白名单校验）
+- CAPA 负责人：自由文本输入（`assignee_name`），非下拉选择
 
 ### 排程引擎
 
@@ -118,8 +120,9 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh + 全局快捷�
 - 校准到期预警列表（最多 5 条，30 天内到期设备）
 - DashboardData 封装 17 个参数
 
-### Schema（v13）
+### Schema（v14）
 
+- **v14**：capa_records 加 assignee_name（责任人自由文本）；test_tasks 安全补列（dependencies/accept_criteria 等 9 列，防旧库缺失）
 - **v13**：修复 v11 迁移丢失的 20 个索引，schema_version 加 UNIQUE，v12 迁移加事务包裹
 - **v12**：修补迁移链遗漏列（samples.notes、equipment.asset_no/manufacturer/accuracy）
 - **v11**：FK ON DELETE SET NULL + CASCADE 完善，表重建方式迁移（`_rebuild_table` 辅助函数）

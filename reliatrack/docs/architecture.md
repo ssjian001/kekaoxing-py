@@ -19,8 +19,9 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v13
+### Schema 版本：v14
 
+- **v14**：capa_records 加 assignee_name（责任人自由文本，与 assignee_id 并存）；test_tasks 安全补列
 - **FK 策略**：所有外键 `ON DELETE SET NULL`，级联删除由业务逻辑手动处理
 - **显式列名**：所有 SELECT 使用具体列名，禁止 `SELECT *`
 - **迁移**：通过 `migrate.py` 管理，schema 版本记录在 `schema_meta` 表
@@ -52,7 +53,7 @@ SQLite (apsw)
 | 1 | 📁 项目管理 | 项目 CRUD + 搜索过滤 |
 | 2 | 📦 样品管理 | 样品池 + 出入库记录 + Excel 批量导入 |
 | 3 | 📋 测试计划 | 任务表 + 甘特图（设备颜色编码）+ 自动排程 + 结果矩阵 |
-| 4 | 🐛 Issue 追踪 | Issue CRUD + FA 分析 + CAPA 措施 + 8D 导出 + 状态/严重度筛选 |
+| 4 | 🐛 Issue 追踪 | Issue CRUD + FA 分析 + CAPA 措施（自由文本负责人）+ 8D PDF/Word 导出 + 状态/严重度筛选 |
 | 5 | 🔧 设备管理 | 设备 CRUD + 校准管理 + 技术员管理（内部子 Tab） |
 | 6 | 📚 知识库 | 失效模式 CRUD + 关键词搜索 |
 

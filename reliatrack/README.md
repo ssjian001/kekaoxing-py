@@ -19,7 +19,7 @@ python3 -m venv .venv
 - **项目管理** — 创建/管理可靠性测试项目
 - **样品追踪** — 全生命周期样品状态跟踪 + Excel 批量导入
 - **测试计划** — 定义测试任务、自动排程（3阶段算法）、甘特图可视化（设备颜色编码）
-- **Issue 跟踪** — FA 分析步骤 + CAPA 纠正预防 + 8D 报告导出 + 状态/严重度筛选
+- **Issue 跟踪** — FA 分析步骤 + CAPA 纠正预防（自由文本负责人）+ 8D PDF/Word 报告导出 + 状态/严重度筛选
 - **设备管理** — 测试设备台账（资产编号、制造商、精度、校准信息）+ 技术员管理
 - **知识库** — 失效模式经验沉淀
 
@@ -44,7 +44,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   ├── schema.py        # SQLite schema（v13）
+│   ├── schema.py        # SQLite schema（v14）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -71,7 +71,7 @@ src/
 ├── services/        # 业务逻辑层
 │   ├── scheduler.py          # 3阶段排程引擎（571行）
 │   ├── scheduler_service.py  # 排程服务（DB 读写）
-│   ├── export_service.py     # 8D/计划导出（reportlab）
+│   ├── export_service.py     # 8D/计划导出（reportlab + python-docx）
 │   ├── import_service.py     # Excel 批量导入
 │   ├── holiday_service.py    # 节假日管理
 │   ├── issue_service.py      # Issue + FA + CAPA
@@ -105,7 +105,7 @@ E2E 测试 53 项全通过（`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/t
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v13：FK ON DELETE SET NULL，显式列名（无 SELECT *）
+- Schema v14：FK ON DELETE SET NULL，显式列名（无 SELECT *），CAPA assignee_name
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可
