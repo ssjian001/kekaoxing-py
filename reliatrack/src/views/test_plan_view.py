@@ -244,7 +244,7 @@ class _TaskTable(QTableWidget):
                 planned_start = str(task.start_day) if task.start_day else "—"
                 planned_end = "—"
             values = [
-                row + 1,
+                task.id or (row + 1),
                 task.name,
                 task.category,
                 task.duration,
