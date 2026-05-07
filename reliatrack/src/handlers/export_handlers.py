@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
 
 from src.views.dialogs.export_dialog import ExportDialog
 
@@ -72,9 +76,13 @@ class ExportHandlers:
         os.makedirs(export_dir, exist_ok=True)
 
         try:
-            from src.services.export_service import ExportService
-
-            svc = ExportService(output_dir=export_dir)
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            svc = ctrl.export_service
+            if svc is None:
+                from src.services.export_service import ExportService
+                svc = ExportService(output_dir=export_dir)
+            else:
+                svc._output_dir = Path(export_dir)
 
             if "测试任务" in content:
                 plan_id = self._win._test_plan_view.get_selected_plan_id()
@@ -236,4 +244,7 @@ class ExportHandlers:
             import traceback
 
             traceback.print_exc()
+            logger.exception("Export failed")
             QMessageBox.critical(self._win, "导出失败", f"导出时发生错误:\n{e}")
+        finally:
+            QApplication.restoreOverrideCursor()

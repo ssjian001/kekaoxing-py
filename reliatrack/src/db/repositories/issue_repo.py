@@ -156,11 +156,21 @@ class IssueRepository(BaseRepository):
             "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
         )
 
+    # 附件磁盘存储允许的基础目录
+    _ALLOWED_ATTACH_DIRS: tuple[str, ...] = (
+        str(Path.home() / ".reliatrack"),
+    )
+
     @staticmethod
     def _remove_disk_file(file_path: str) -> None:
         """安全删除附件磁盘文件，忽略不存在或无权限的文件。"""
         try:
-            p = Path(file_path)
+            p = Path(file_path).resolve()
+            # 路径前缀校验：只删除允许目录下的文件
+            allowed = IssueRepository._ALLOWED_ATTACH_DIRS
+            if not any(str(p).startswith(d) for d in allowed):
+                logger.warning("附件路径超出允许范围，跳过删除: %s", p)
+                return
             if p.exists():
                 p.unlink()
         except OSError:

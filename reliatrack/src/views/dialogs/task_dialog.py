@@ -630,7 +630,10 @@ class TaskEditDialog(_BaseDialog):
             return
 
         # 校验依赖 ID：检查自依赖
-        dep_ids = json.loads(data["dependencies"])
+        try:
+            dep_ids = json.loads(data["dependencies"])
+        except (json.JSONDecodeError, TypeError):
+            dep_ids = []
         valid_task_ids = {t.id for t in self._all_tasks if t.id is not None}
         # 编辑模式下，排除自己
         self_id = self._task.id if self._task and self._task.id else None

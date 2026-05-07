@@ -87,6 +87,17 @@ class ExportService:
         self._output_dir.mkdir(parents=True, exist_ok=True)
         return self._output_dir
 
+    def _validate_output_path(self, path: str | Path) -> Path:
+        """校验输出路径安全性，防止路径遍历。"""
+        resolved = Path(path).resolve()
+        try:
+            resolved.relative_to(self._output_dir.resolve())
+        except ValueError:
+            import tempfile
+            if not str(resolved).startswith(tempfile.gettempdir()):
+                raise ValueError(f"导出路径超出允许范围: {resolved}")
+        return resolved
+
     # ── Excel 共享辅助 ──
 
     def _excel_styles(self, fill_color: str = "2B579A"):
@@ -152,8 +163,13 @@ class ExportService:
     def _excel_save(self, wb, filepath: str | None, filename: str) -> str:
         """保存 Excel 工作簿，返回绝对路径。"""
         out = filepath or str(self._ensure_dir() / filename)
-        wb.save(out)
-        return os.path.abspath(out)
+        resolved = self._validate_output_path(out)
+        try:
+            wb.save(str(resolved))
+        except (OSError, PermissionError) as e:
+            logger.error("Excel save failed: %s → %s", resolved, e)
+            raise
+        return str(resolved)
 
     @staticmethod
     def _judge_conclusion(
@@ -678,7 +694,12 @@ class ExportService:
             story.append(issue_table)
 
         # ── 生成 PDF ──
-        doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        self._validate_output_path(out)
+        try:
+            doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        except (OSError, PermissionError) as e:
+            logger.error("PDF build failed: %s → %s", out, e)
+            raise
         return os.path.abspath(out)
 
     # ── DVP&R 导出 ──────────────────────────────────────────────
@@ -982,7 +1003,12 @@ class ExportService:
         ]))
         story.append(sig_table)
 
-        doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        self._validate_output_path(out)
+        try:
+            doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        except (OSError, PermissionError) as e:
+            logger.error("PDF build failed: %s → %s", out, e)
+            raise
         return os.path.abspath(out)
 
     def export_dvpr_excel(
@@ -1361,7 +1387,12 @@ class ExportService:
         out = filepath or str(
             self._ensure_dir() / f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"
         )
-        doc.save(out)
+        self._validate_output_path(out)
+        try:
+            doc.save(out)
+        except (OSError, PermissionError) as e:
+            logger.error("Word save failed: %s → %s", out, e)
+            raise
         return os.path.abspath(out)
 
     # ── 8D 报告导出 ──────────────────────────────────────────────
@@ -1660,7 +1691,12 @@ class ExportService:
         ]))
         story.append(sig_table)
 
-        doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        self._validate_output_path(out)
+        try:
+            doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
+        except (OSError, PermissionError) as e:
+            logger.error("PDF build failed: %s → %s", out, e)
+            raise
         return os.path.abspath(out)
 
     @staticmethod
@@ -1964,7 +2000,12 @@ class ExportService:
         run.font.size = Pt(8)
         run.font.color.rgb = _GRAY
 
-        doc.save(out)
+        self._validate_output_path(out)
+        try:
+            doc.save(out)
+        except (OSError, PermissionError) as e:
+            logger.error("Word save failed: %s → %s", out, e)
+            raise
         return os.path.abspath(out)
 
     @staticmethod
@@ -2187,7 +2228,12 @@ class ExportService:
         out = filepath or str(
             self._ensure_dir() / f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"
         )
-        doc.save(out)
+        self._validate_output_path(out)
+        try:
+            doc.save(out)
+        except (OSError, PermissionError) as e:
+            logger.error("Word save failed: %s → %s", out, e)
+            raise
         return os.path.abspath(out)
 
     # ── 辅助方法 ──

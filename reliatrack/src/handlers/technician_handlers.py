@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
@@ -12,6 +13,8 @@ from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
 
 if TYPE_CHECKING:
     from main import MainWindow
+
+logger = logging.getLogger(__name__)
 
 
 class TechnicianHandlers:

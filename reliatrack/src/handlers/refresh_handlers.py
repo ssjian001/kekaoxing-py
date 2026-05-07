@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
@@ -10,6 +11,8 @@ if TYPE_CHECKING:
     from main import MainWindow
 
     from src.handlers.sample_handlers import SampleHandlers
+
+logger = logging.getLogger(__name__)
 
 
 class RefreshHandlers:
@@ -172,12 +175,9 @@ class RefreshHandlers:
                 all_samples = ctrl.sample_service.list_all()
             sample_count = len(all_samples)
             # SQL 聚合替代 Counter
-            if ctrl.sample_service._repo:
-                sample_status_data = ctrl.sample_service._repo.count_by_status(
-                    project_id=filter_project_id
-                )
-            else:
-                sample_status_data = dict(Counter(s.status for s in all_samples))
+            sample_status_data = ctrl.sample_service.count_by_status(
+                project_id=filter_project_id
+            )
         else:
             all_samples = []
 

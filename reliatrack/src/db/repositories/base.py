@@ -173,7 +173,11 @@ class BaseRepository:
 
     def delete(self, id: int) -> None:
         """按 ID 删除。"""
-        self._conn.execute(f"DELETE FROM [{self._table}] WHERE id = ?", (id,))
+        try:
+            self._conn.execute(f"DELETE FROM [{self._table}] WHERE id = ?", (id,))
+        except Exception:
+            logger.exception("Delete failed: table=%s, id=%d", self._table, id)
+            raise
 
     def get_by_id(self, id: int) -> Optional[Any]:
         """按 ID 查询单条。"""
@@ -196,8 +200,12 @@ class BaseRepository:
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)
-        rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
-        return self._rows_to_models(rows, cols=cols_list)
+        try:
+            rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
+            return self._rows_to_models(rows, cols=cols_list)
+        except Exception:
+            logger.exception("list_all failed: table=%s, filters=%s", self._table, filters)
+            return []
 
     def search(self, keyword: str, columns: list[str] | None = None) -> list[Any]:
         """按关键词模糊搜索。"""
@@ -223,8 +231,12 @@ class BaseRepository:
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)
-        row = self._conn.execute(sql, params).fetchone()
-        return row[0] if row else 0
+        try:
+            row = self._conn.execute(sql, params).fetchone()
+            return row[0] if row else 0
+        except Exception:
+            logger.exception("count failed: table=%s, filters=%s", self._table, filters)
+            return 0
 
 
 class _Transaction:

@@ -28,6 +28,11 @@ class SampleService:
     def create(self, sn: str, **kwargs: object) -> int:
         return self._repo.insert(sn=sn, **kwargs)
 
+    def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
+        """按状态分组计数（委托给 repo）。"""
+        return self._repo.count_by_status(project_id=project_id)
+
+
     def get(self, sample_id: int) -> Sample | None:
         return self._repo.get_by_id(sample_id)
 
