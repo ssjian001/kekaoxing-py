@@ -240,6 +240,8 @@ class IssueRepository(BaseRepository):
     def update_capa_record(self, capa_id: int, **kwargs: object) -> None:
         """更新 CAPA 记录。"""
         safe = {k: v for k, v in kwargs.items() if k in self._CAPA_SAFE_COLS}
+        if not safe:
+            return
         sets = ", ".join(f"[{k}] = ?" for k in safe)
         vals = list(safe.values()) + [capa_id]
         self._conn.execute(

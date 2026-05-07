@@ -57,7 +57,8 @@ class ExportHandlers:
                     if p.id is not None:
                         project_list.append((p.id, p.name))
             except Exception:
-                pass
+                logger.exception("Failed to load project list for export dialog")
+
         dlg = ExportDialog(parent=self._win, projects=project_list)
         if not dlg.exec():
             return

@@ -383,9 +383,12 @@ class PlanHandlers:
         )
         if dlg.exec():
             data = dlg.get_data()
-            ctrl.test_plan_service.create_task(plan_id, **data)
-            self._win.toast(f"任务「{data['name']}」已创建", "success")
-            self._win._ctrl.notify_data_changed("task")
+            try:
+                ctrl.test_plan_service.create_task(plan_id, **data)
+                self._win.toast(f"任务「{data['name']}」已创建", "success")
+                self._win._ctrl.notify_data_changed("task")
+            except Exception as e:
+                QMessageBox.critical(self._win, "创建失败", f"任务创建失败: {e}")
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""
@@ -503,9 +506,12 @@ class PlanHandlers:
         if not ctrl or not ctrl.test_plan_service:
             return
         name = task.name
-        ctrl.test_plan_service.delete_task(task.id)
-        self._win.toast(f"任务「{name}」已删除", "success")
-        self._win._ctrl.notify_data_changed("task")
+        try:
+            ctrl.test_plan_service.delete_task(task.id)
+            self._win.toast(f"任务「{name}」已删除", "success")
+            self._win._ctrl.notify_data_changed("task")
+        except Exception as e:
+            QMessageBox.critical(self._win, "删除失败", f"任务删除失败: {e}")
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:
         """一键推进任务状态 — 自动填日期和进度。

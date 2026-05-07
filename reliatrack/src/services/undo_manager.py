@@ -11,8 +11,11 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -173,8 +176,20 @@ class DeleteEntityCommand(Command):
 
     def undo(self) -> None:
         if self._saved_data and self._saved_data.get("id") is not None:
-            # 显式插入原始 ID，保持外键引用完整性
-            self._repo.insert(**self._saved_data)
+            # 检查原 ID 是否已被新记录占用
+            existing = self._repo.get_by_id(self._saved_data["id"])
+            if existing is not None:
+                # ID 冲突：不传 id，让 autoincrement 分配新 ID
+                safe_data = {k: v for k, v in self._saved_data.items() if k != "id"}
+                self._repo.insert(**safe_data)
+                logger.warning(
+                    "DeleteEntityCommand.undo: original id=%d already occupied, "
+                    "re-inserted with auto-generated id",
+                    self._saved_data["id"],
+                )
+            else:
+                # 显式插入原始 ID，保持外键引用完整性
+                self._repo.insert(**self._saved_data)
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -111,16 +111,18 @@ class SampleHandlers:
             try:
                 if sample.id is None:
                     raise ValueError("Sample id is None")
-                ctrl.sample_service.add_transaction(
-                    sample_id=sample.id,
-                    txn_type="check_out",
-                    purpose=data.get("purpose"),
-                    related_task_id=data.get("related_task_id"),
-                    expected_return=data.get("expected_return"),
-                    operator_id=data.get("operator_id"),
-                    notes=data.get("notes"),
-                )
-                ctrl.sample_service.update_status(sample.id, "checked_out")
+                # 出库操作包裹在事务中，保证原子性
+                with ctrl.sample_service._repo.transaction():
+                    ctrl.sample_service.add_transaction(
+                        sample_id=sample.id,
+                        txn_type="check_out",
+                        purpose=data.get("purpose"),
+                        related_task_id=data.get("related_task_id"),
+                        expected_return=data.get("expected_return"),
+                        operator_id=data.get("operator_id"),
+                        notes=data.get("notes"),
+                    )
+                    ctrl.sample_service.update_status(sample.id, "checked_out")
                 self._win.toast(f"样品 {sample.sn} 出库成功", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
@@ -169,7 +171,11 @@ class SampleHandlers:
         dlg.exec()
         if dlg.was_imported():
             self._win._ctrl.notify_data_changed("sample")
-            self._win.toast(f"样品批量导入完成", "success")
+            success, skip = dlg.import_result()
+            msg = f"样品批量导入完成: {success} 条成功"
+            if skip:
+                msg += f"，{skip} 条跳过（详见日志）"
+            self._win.toast(msg, "success" if not skip else "warning")
 
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""

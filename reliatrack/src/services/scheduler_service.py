@@ -196,14 +196,18 @@ class SchedulerService:
         # 记录排程前的 start_day 用于对比
         original_start_days = {t.id: t.start_day for t in tasks if t.id is not None}
 
+        # 深拷贝任务列表，防止 run_auto_schedule 污染原始对象
+        import copy
+        tasks_copy = copy.deepcopy(tasks)
+
         # 执行排程
-        result = run_auto_schedule(tasks, equipment, config)
+        result = run_auto_schedule(tasks_copy, equipment, config)
         report = result["report"]
 
-        # 写回 start_day 到数据库
+        # 写回 start_day 到数据库（用拷贝后的结果）
         updates = [
             (t.id, t.start_day)
-            for t in tasks
+            for t in tasks_copy
             if t.id is not None and t.start_day != original_start_days.get(t.id)
         ]
         if updates:
