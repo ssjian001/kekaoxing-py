@@ -166,7 +166,12 @@ class ExportHandlers:
                 results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
                 issues = self._get_issues(ctrl, project_id)
                 samples = self._get_samples(ctrl, project_id)
-                path = svc.export_dvpr_pdf(plan, tasks, results, issues, samples)
+                if "Excel" in fmt:
+                    path = svc.export_dvpr_excel(plan, tasks, results, issues, samples)
+                elif "Word" in fmt:
+                    path = svc.export_dvpr_docx(plan, tasks, results, issues, samples)
+                else:
+                    path = svc.export_dvpr_pdf(plan, tasks, results, issues, samples)
                 self._win.toast(f"DVP&R 已导出: {path}", "success")
 
             elif "8D" in content:

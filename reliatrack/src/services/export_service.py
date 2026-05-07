@@ -880,6 +880,360 @@ class ExportService:
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
         return os.path.abspath(out)
 
+    def export_dvpr_excel(
+        self,
+        plan: TestPlan,
+        tasks: list[TestTask],
+        results: list[TestResult],
+        issues: list[Issue],
+        samples: list[Sample],
+        filepath: str | None = None,
+    ) -> str:
+        """导出 DVP&R 为 Excel (.xlsx)。"""
+        from openpyxl import Workbook
+        from openpyxl.styles import PatternFill, Font, Alignment
+
+        s = self._excel_styles("2B579A")
+        wb = Workbook()
+
+        # ── Sheet 1: 概览 ──
+        ws = wb.active
+        ws.title = "概览"
+
+        total = len(tasks)
+        completed = sum(1 for t in tasks if t.status == "completed")
+        total_pass = sum(1 for r in results if r.result == "pass")
+        total_fail = sum(1 for r in results if r.result == "fail")
+        total_results = len(results)
+        pass_rate = f"{total_pass / total_results * 100:.1f}%" if total_results else "—"
+
+        ws.merge_cells("A1:F1")
+        ws["A1"].value = f"DVP&R — {plan.name}"
+        ws["A1"].font = s["title_font"]("2B579A")
+        ws["A1"].alignment = Alignment(horizontal="center")
+        ws.row_dimensions[1].height = 30
+
+        ws.merge_cells("A2:F2")
+        ws["A2"].value = f"测试标准: {plan.test_standard or '—'}  |  导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        ws["A2"].font = s["sub_font"]
+        ws["A2"].alignment = Alignment(horizontal="center")
+
+        stats = [
+            ("总任务数", total, "已完成", completed),
+            ("测试结果", total_results, "通过率", pass_rate),
+            ("Issue 数", len(issues), "样品数", len(samples)),
+        ]
+        self._excel_write_headers(ws, 4, ["指标", "值", "指标", "值"], s)
+        for ri, (k1, v1, k2, v2) in enumerate(stats, 5):
+            self._excel_write_row(ws, ri, [k1, v1, k2, v2], s)
+
+        # ── Sheet 2: DVP&R 矩阵 ──
+        ws2 = wb.create_sheet("DVP&R 矩阵")
+
+        sample_ids = sorted({r.sample_id for r in results if r.sample_id})
+        sample_map = {s.id: s.sn for s in samples if s.id is not None}
+        lookup: dict[tuple[int, int], str] = {}
+        for r in results:
+            if r.task_id and r.sample_id:
+                lookup[(r.task_id, r.sample_id)] = r.result
+
+        headers = ["#", "测试项", "判定准则", "样品 SN"] + [
+            sample_map.get(sid, f"#{sid}") for sid in sample_ids
+        ] + ["结论"]
+        self._excel_write_headers(ws2, 1, headers, s)
+
+        _pass_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+        _fail_fill = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
+
+        for idx, task in enumerate(tasks, 2):
+            row_data: list = [
+                idx - 1,
+                task.name or "",
+                task.accept_criteria or "",
+            ]
+            task_sample_ids = sorted({
+                r.sample_id for r in results
+                if r.task_id == task.id and r.sample_id
+            })
+            task_sns = ", ".join(sample_map.get(sid, f"#{sid}") for sid in task_sample_ids)
+            row_data.append(task_sns or "—")
+
+            task_pass = 0
+            task_fail = 0
+            for sid in sample_ids:
+                res = lookup.get((task.id, sid), "")
+                if res == "pass":
+                    row_data.append("P")
+                    task_pass += 1
+                elif res == "fail":
+                    row_data.append("F")
+                    task_fail += 1
+                elif res == "conditional":
+                    row_data.append("C")
+                elif res == "skip":
+                    row_data.append("S")
+                else:
+                    row_data.append("—")
+
+            if task_fail > 0:
+                row_data.append("FAIL")
+            elif task_pass > 0:
+                row_data.append("PASS")
+            else:
+                row_data.append("—")
+
+            self._excel_write_row(ws2, idx, row_data, s)
+
+            # 着色 pass/fail 单元格
+            for col_offset, sid in enumerate(sample_ids):
+                res = lookup.get((task.id, sid), "")
+                col_num = col_offset + 5  # 跳过前4列 + 样品SN列
+                cell = ws2.cell(row=idx, column=col_num)
+                if res == "fail":
+                    cell.fill = _fail_fill
+                elif res == "pass":
+                    cell.fill = _pass_fill
+
+        # 列宽
+        ws2.column_dimensions["A"].width = 5
+        ws2.column_dimensions["B"].width = 25
+        ws2.column_dimensions["C"].width = 20
+        ws2.column_dimensions["D"].width = 20
+        for i in range(len(sample_ids)):
+            col_letter = chr(65 + 4 + i) if 4 + i < 26 else None
+            if col_letter:
+                ws2.column_dimensions[col_letter].width = 10
+        # 结论列
+        last_col = 4 + len(sample_ids) + 1
+        if last_col < 26:
+            ws2.column_dimensions[chr(64 + last_col)].width = 10
+
+        # ── Sheet 3: Issue 汇总 ──
+        if issues:
+            ws3 = wb.create_sheet("Issue 汇总")
+            issue_headers = ["ID", "标题", "严重度", "状态", "失效模式"]
+            self._excel_write_headers(ws3, 1, issue_headers, s)
+            for ri, issue in enumerate(issues, 2):
+                self._excel_write_row(ws3, ri, [
+                    issue.id,
+                    (issue.title or "")[:30],
+                    issue.severity,
+                    self.STATUS_MAP.get(issue.status, issue.status),
+                    (issue.failure_mode or "")[:20],
+                ], s)
+            ws3.column_dimensions["A"].width = 6
+            ws3.column_dimensions["B"].width = 30
+            ws3.column_dimensions["C"].width = 10
+            ws3.column_dimensions["D"].width = 10
+            ws3.column_dimensions["E"].width = 20
+
+        return self._excel_save(
+            wb, filepath,
+            f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.xlsx",
+        )
+
+    def export_dvpr_docx(
+        self,
+        plan: TestPlan,
+        tasks: list[TestTask],
+        results: list[TestResult],
+        issues: list[Issue],
+        samples: list[Sample],
+        filepath: str | None = None,
+    ) -> str:
+        """导出 DVP&R 为 Word (.docx)。"""
+        from docx import Document
+        from docx.shared import Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.oxml.ns import qn
+        from lxml import etree
+
+        _f = self.get_cjk_font()
+        _ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+        doc = Document()
+
+        # 全局样式
+        style = doc.styles["Normal"]
+        font = style.font
+        font.name = _f
+        font.size = Pt(10)
+        style.element.rPr.rFonts.set(qn("w:eastAsia"), _f)
+
+        def _fill_cell(ct_tc, text, bold=False, size=9, color=None, shade=None, align=None):
+            for p in ct_tc.findall(qn("w:p")):
+                ct_tc.remove(p)
+            p = etree.SubElement(ct_tc, f"{{{_ns}}}p")
+            if align == "center":
+                pPr = etree.SubElement(p, f"{{{_ns}}}pPr")
+                etree.SubElement(pPr, f"{{{_ns}}}jc", attrib={f"{{{_ns}}}val": "center"})
+            r = etree.SubElement(p, f"{{{_ns}}}r")
+            rPr = etree.SubElement(r, f"{{{_ns}}}rPr")
+            rFonts = etree.SubElement(rPr, f"{{{_ns}}}rFonts")
+            rFonts.set(f"{{{_ns}}}ascii", _f)
+            rFonts.set(f"{{{_ns}}}eastAsia", _f)
+            rFonts.set(f"{{{_ns}}}hAnsi", _f)
+            sz = etree.SubElement(rPr, f"{{{_ns}}}sz")
+            sz.set(f"{{{_ns}}}val", str(size * 2))
+            if bold:
+                etree.SubElement(rPr, f"{{{_ns}}}b")
+            if color:
+                c = etree.SubElement(rPr, f"{{{_ns}}}color")
+                c.set(f"{{{_ns}}}val", color)
+            t = etree.SubElement(r, f"{{{_ns}}}t")
+            t.text = text
+            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+            if shade:
+                tcPr = ct_tc.get_or_add_tcPr()
+                shd = etree.SubElement(tcPr, f"{{{_ns}}}shd")
+                shd.set(f"{{{_ns}}}fill", shade)
+                shd.set(f"{{{_ns}}}val", "clear")
+
+        def _fill_row(tr, values, bold=False, color=None, shade=None):
+            tc_elems = tr.findall(qn("w:tc"))
+            for j, val in enumerate(values):
+                tc = tc_elems[j] if j < len(tc_elems) else None
+                if tc:
+                    _fill_cell(tc, str(val), bold=bold, color=color,
+                               shade=shade if shade and j == 0 else None,
+                               align="center")
+
+        # ── 标题 ──
+        title = doc.add_heading(level=1)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = title.add_run("DVP&R Report")
+        run.font.size = Pt(24)
+        run.font.color.rgb = RGBColor(0x2B, 0x57, 0x9A)
+
+        sub = doc.add_paragraph()
+        sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sr = sub.add_run(f"Design Verification Plan & Report — {plan.name}")
+        sr.font.size = Pt(14)
+        sr.font.color.rgb = RGBColor(0x64, 0x64, 0x64)
+
+        ts = doc.add_paragraph()
+        ts.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        tr = ts.add_run(
+            f"测试标准: {plan.test_standard or '—'}  |  "
+            f"版本: V1.0  |  日期: {datetime.now().strftime('%Y-%m-%d')}"
+        )
+        tr.font.size = Pt(10)
+        tr.font.color.rgb = RGBColor(0x96, 0x96, 0x96)
+
+        # ── 概览统计 ──
+        doc.add_heading("概览统计", level=2)
+        total = len(tasks)
+        completed = sum(1 for t in tasks if t.status == "completed")
+        total_pass = sum(1 for r in results if r.result == "pass")
+        total_fail = sum(1 for r in results if r.result == "fail")
+        total_results = len(results)
+        pass_rate = f"{total_pass / total_results * 100:.1f}%" if total_results else "—"
+
+        for line in [
+            f"总任务数: {total}  |  已完成: {completed}",
+            f"测试结果: {total_results}  |  通过: {total_pass}  |  失败: {total_fail}  |  通过率: {pass_rate}",
+            f"Issue 数: {len(issues)}  |  样品数: {len(samples)}",
+        ]:
+            p = doc.add_paragraph(line)
+            p.paragraph_format.space_after = Pt(2)
+
+        # ── DVP&R 矩阵 ──
+        doc.add_heading("DVP&R 矩阵", level=2)
+
+        sample_ids = sorted({r.sample_id for r in results if r.sample_id})
+        sample_map = {s.id: s.sn for s in samples if s.id is not None}
+        lookup: dict[tuple[int, int], str] = {}
+        for r in results:
+            if r.task_id and r.sample_id:
+                lookup[(r.task_id, r.sample_id)] = r.result
+
+        col_count = 4 + len(sample_ids) + 1  # #, name, criteria, SN, samples..., conclusion
+        dvpr_headers = ["#", "测试项", "判定准则", "样品 SN"] + [
+            sample_map.get(sid, f"#{sid}") for sid in sample_ids
+        ] + ["结论"]
+
+        dvpr_table = doc.add_table(
+            rows=1 + len(tasks), cols=col_count, style="Table Grid"
+        )
+        dvpr_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+        # 表头
+        _fill_row(dvpr_table.rows[0]._tr, dvpr_headers, bold=True, color="FFFFFF", shade="2B579A")
+
+        for idx, task in enumerate(tasks, 1):
+            task_sample_ids = sorted({
+                r.sample_id for r in results
+                if r.task_id == task.id and r.sample_id
+            })
+            task_sns = ", ".join(sample_map.get(sid, f"#{sid}") for sid in task_sample_ids)
+
+            row_vals = [str(idx), (task.name or "")[:20], (task.accept_criteria or "")[:20], task_sns or "—"]
+            task_pass = 0
+            task_fail = 0
+            for sid in sample_ids:
+                res = lookup.get((task.id, sid), "")
+                if res == "pass":
+                    row_vals.append("P")
+                    task_pass += 1
+                elif res == "fail":
+                    row_vals.append("F")
+                    task_fail += 1
+                elif res == "conditional":
+                    row_vals.append("C")
+                elif res == "skip":
+                    row_vals.append("S")
+                else:
+                    row_vals.append("—")
+            row_vals.append("FAIL" if task_fail > 0 else ("PASS" if task_pass > 0 else "—"))
+
+            tr = dvpr_table.rows[idx]._tr
+            tc_elems = tr.findall(qn("w:tc"))
+            for j, val in enumerate(row_vals):
+                if j < len(tc_elems):
+                    shade_cell = None
+                    # pass/fail 着色
+                    if 4 <= j < 4 + len(sample_ids):
+                        sid = sample_ids[j - 4]
+                        res = lookup.get((task.id, sid), "")
+                        if res == "fail":
+                            shade_cell = "FFEBEE"
+                        elif res == "pass":
+                            shade_cell = "E8F5E9"
+                    _fill_cell(tc_elems[j], val, shade=shade_cell, align="center")
+
+        # ── Issue 汇总 ──
+        if issues:
+            doc.add_heading("Issue 追踪汇总", level=2)
+            issue_headers = ["ID", "标题", "严重度", "状态", "失效模式"]
+            issue_table = doc.add_table(
+                rows=1 + len(issues), cols=5, style="Table Grid"
+            )
+            issue_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            _fill_row(issue_table.rows[0]._tr, issue_headers, bold=True, color="FFFFFF", shade="C0504D")
+            for i, issue in enumerate(issues, 1):
+                _fill_row(issue_table.rows[i]._tr, [
+                    str(issue.id),
+                    (issue.title or "")[:30],
+                    issue.severity,
+                    self.STATUS_MAP.get(issue.status, issue.status),
+                    (issue.failure_mode or "")[:20],
+                ])
+
+        # ── 签字栏 ──
+        doc.add_paragraph("")
+        sig_table = doc.add_table(rows=1, cols=3, style="Table Grid")
+        sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        for j, role in enumerate(["编制", "审核", "批准"]):
+            tc = sig_table.rows[0]._tr.findall(qn("w:tc"))[j]
+            _fill_cell(tc, f"{role}\n\n\n________________________", align="center")
+
+        out = filepath or str(
+            self._ensure_dir() / f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"
+        )
+        doc.save(out)
+        return os.path.abspath(out)
+
     # ── 8D 报告导出 ──────────────────────────────────────────────
 
     def export_8d_pdf(

@@ -74,7 +74,7 @@ src/
 │   ├── connection.py
 │   ├── repositories/   # 数据访问层（repo 模式）
 │   └── schema.py        # SQLite schema 初始化
-├── handlers/      # 信号处理器（9个 Handler 类）
+├── handlers/      # 信号处理器（10个 Handler 类，含 export_handlers）
 ├── models/        # 数据模型
 ├── services/      # 业务逻辑层
 ├── styles/        # QSS 样式
@@ -95,17 +95,26 @@ src/
 | 5 | 🔧 设备管理 | equipment_view.py + technician_view.py |
 | 6 | 📚 知识库 | knowledge_view.py |
 
-### Handler 层（9 个 Handler）
+### Handler 层（10 个 Handler）
 
-project/sample/plan/issue/equipment/knowledge/technician/refresh + 全局快捷键在 main.py
+project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局快捷键在 main.py
 
 ### 导出服务
 
 - `export_service.py`（AppController.export_service）：8D 报告 PDF/Word 导出（reportlab + python-docx）
+- `export_handlers.py`：统一导出入口，支持按项目筛选（`_get_issues`/`_get_samples` 按 project_id 过滤）
+- `export_dialog.py`：导出选项对话框（内容类型 + 格式 + 项目筛选下拉）
 - 8D Word：`export_8d_docx()` — 结构与 PDF 一致（基本信息表、D1-D8 章节、签字栏），格式选择对话框
 - 信号链：issue_view `_on_export_8d` → `export_8d_requested` signal → `issue_handlers._handle_export_8d`（弹出 PDF/Word 选择）
 - CAPA 写入：`issue_view capa_record_added` → `issue_handlers._handle_capa_record_added` → `issue_service.add_capa_record`（列名白名单校验）
 - CAPA 负责人：自由文本输入（`assignee_name`），非下拉选择
+
+### 测试计划视图
+
+- `_TaskTable`：13 列（#, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成），# 列显示数据库 ID
+- `_GanttWidget`：支持预计/实际日期切换（`_task_day_range` 方法，RadioButton 切换），实际模式下禁拖拽
+- `_ResultMatrixWidget`：任务×样品矩阵 + 行统计列（通过率）+ 列统计行 + 右下角总计
+- 依赖编辑：弹出式对话框（QListWidget checkbox 多选），按排程排序 + 当前任务参照行，保存时校验自依赖和 ID 有效性
 
 ### 排程引擎
 
