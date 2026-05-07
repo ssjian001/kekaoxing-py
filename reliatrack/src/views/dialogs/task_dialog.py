@@ -221,7 +221,7 @@ class TaskEditDialog(_BaseDialog):
         # ── 依赖 & 环境 ──
         dep_label = QLabel("依赖任务")
         dep_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; margin-top: 4px;")
-        self._form_layout.addRow(dep_label)
+        self._form.addRow(dep_label)
         self._dep_list = QListWidget()
         self._dep_list.setMaximumHeight(120)
         existing_dep_ids: list[int] = []
@@ -246,7 +246,7 @@ class TaskEditDialog(_BaseDialog):
             empty_item = QListWidgetItem("（当前计划无其他任务）")
             empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
             self._dep_list.addItem(empty_item)
-        self._form_layout.addRow(self._dep_list)
+        self._form.addRow(self._dep_list)
         self._env_edit = self._add_text_field(
             "环境条件 (JSON)",
             default=task.environment if task else "",
