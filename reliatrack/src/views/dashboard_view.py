@@ -36,7 +36,7 @@ class DashboardData:
     __slots__ = (
         "task_total", "task_completed", "task_in_progress", "task_pending",
         "issue_count", "equipment_count", "sample_count",
-        "project_name",
+        "project_name", "plan_name",
         "task_status_data", "sample_status_data", "issue_severity_data",
         "pass_rate", "issue_close_rate", "calibration_warning_count",
         "failure_rate", "capa_completion_rate",
@@ -364,6 +364,7 @@ class DashboardView(QWidget):
         equipment_count = data.equipment_count
         sample_count = data.sample_count
         project_name = data.project_name
+        plan_name = getattr(data, 'plan_name', None)
         task_status_data = data.task_status_data or {}
         sample_status_data = data.sample_status_data or {}
         issue_severity_data = data.issue_severity_data or {}
@@ -373,8 +374,16 @@ class DashboardView(QWidget):
         failure_rate = data.failure_rate
         capa_completion_rate = data.capa_completion_rate
         cal_warning_list = data.cal_warning_list or []
-        # 项目筛选指示器
-        if project_name:
+        # 项目/计划筛选指示器
+        if project_name and plan_name:
+            self._filter_label.setText(f"📁 {project_name} / {plan_name}")
+            self._filter_label.setStyleSheet(
+                f"color: {BLUE}; font-size: 13px; font-weight: bold; "
+                f"background-color: {SURFACE1}; border-radius: 6px; "
+                f"border: 1px solid {BLUE}; "
+                f"padding: 4px 12px;"
+            )
+        elif project_name:
             self._filter_label.setText(f"📁 {project_name}")
             self._filter_label.setStyleSheet(
                 f"color: {BLUE}; font-size: 13px; font-weight: bold; "

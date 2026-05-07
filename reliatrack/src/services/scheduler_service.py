@@ -1,11 +1,15 @@
 """排程 Service — 封装 scheduler 引擎，连接 Repository 层。
 
 提供从数据库读取任务/设备 → 执行排程 → 写回数据库的完整流程。
+支持预览模式（不写 DB）和直接应用模式。
 """
 
 from __future__ import annotations
 
+import copy
 import logging
+from dataclasses import replace
+from typing import Optional
 
 from src.db.repositories import TestTaskRepository, EquipmentRepository, TestPlanRepository
 from src.models.test_plan import TestTask, TestPlan
@@ -33,6 +37,125 @@ class SchedulerService:
         self._plan_repo = plan_repo
         self._holiday_service = holiday_service
 
+    # ── 预览排程（不写 DB）──────────────────────────────────
+
+    def preview_schedule(
+        self,
+        plan_id: int,
+        skip_weekends: bool = True,
+        skip_holidays: bool = True,
+        lock_existing: bool = False,
+        deadline: str = "",
+        equipment_capacity: dict[int, int] | None = None,
+        user_locked_days: dict[int, int] | None = None,
+    ) -> dict:
+        """执行排程但不写回 DB，返回预览数据。
+
+        Parameters
+        ----------
+        plan_id : int
+            测试计划 ID。
+        user_locked_days : dict[int, int] | None
+            用户手动锁定的 {task_id: start_day}，这些任务不参与自动排程。
+
+        Returns
+        -------
+        dict with keys:
+            ``original_start_days`` – {task_id: old_start_day}
+            ``tasks`` – list[TestTask] 排程后的任务副本（start_day 已更新）
+            ``report`` – 排程报告 dict
+            ``start_date`` – 计划起始日期
+            ``equipment`` – 设备列表
+        """
+        plan = self._plan_repo.get_by_id(plan_id)
+        start_date = plan.start_date if plan else ""
+
+        tasks = self._task_repo.get_by_plan(plan_id)
+        if not tasks:
+            return self._empty_preview(start_date)
+
+        equipment = self._equipment_repo.list_all()
+
+        holidays: set[str] = set()
+        if self._holiday_service:
+            holidays = self._holiday_service.get_holidays_set()
+
+        # ── 深拷贝任务，不污染 DB 读出的原始对象 ──
+        tasks_copy = [replace(t) for t in tasks]
+
+        # ── 应用用户手动锁定 ──
+        locked_ids: set[int] = set()
+        if user_locked_days:
+            for t in tasks_copy:
+                if t.id in user_locked_days:
+                    t.start_day = user_locked_days[t.id]
+                    locked_ids.add(t.id)  # type: ignore[arg-type]
+
+        config = ScheduleConfig(
+            start_date=start_date,
+            skip_weekends=skip_weekends,
+            skip_holidays=skip_holidays,
+            lock_existing=lock_existing or bool(user_locked_days),
+            deadline=deadline,
+            equipment_capacity=equipment_capacity or {},
+            holidays=holidays,
+        )
+
+        # 记录原始 start_day
+        original_start_days = {t.id: t.start_day for t in tasks if t.id is not None}
+
+        # 执行排程（在副本上）
+        result = run_auto_schedule(tasks_copy, equipment, config)
+        report = result["report"]
+
+        # 附加统计
+        changes = [
+            (t.id, t.start_day)
+            for t in tasks_copy
+            if t.id is not None and t.start_day != original_start_days.get(t.id)
+        ]
+        report["task_count"] = len(tasks_copy)
+        report["updated_count"] = len(changes)
+
+        return {
+            "original_start_days": original_start_days,
+            "tasks": tasks_copy,
+            "report": report,
+            "start_date": start_date,
+            "equipment": equipment,
+        }
+
+    # ── 应用排程（写 DB）──────────────────────────────────
+
+    def apply_schedule(
+        self,
+        plan_id: int,
+        changes: list[tuple[int, int]],
+    ) -> int:
+        """将用户确认后的排程结果写入 DB。
+
+        Parameters
+        ----------
+        plan_id : int
+            测试计划 ID。
+        changes : list[tuple[int, int]]
+            [(task_id, new_start_day), ...]
+
+        Returns
+        -------
+        int : 更新的任务数
+        """
+        if not changes:
+            return 0
+        self._task_repo.bulk_update_start_day(changes)
+        logger.info(
+            "Applied schedule for plan %d: %d tasks updated",
+            plan_id, len(changes),
+        )
+        return len(changes)
+
+    # ── 向后兼容：一键排程（预览+应用）──────────────────────
+
     def auto_schedule(
         self,
         plan_id: int,
@@ -42,45 +165,21 @@ class SchedulerService:
         deadline: str = "",
         equipment_capacity: dict[int, int] | None = None,
     ) -> dict:
-        """对指定测试计划执行自动排程。
+        """对指定测试计划执行自动排程并直接写回 DB（向后兼容）。
 
-        Parameters
-        ----------
-        plan_id : int
-            测试计划 ID。
-        skip_weekends : bool
-            是否跳过周末。
-        skip_holidays : bool
-            是否跳过法定节假日。
-        lock_existing : bool
-            是否锁定已有排期的任务。
-        deadline : str
-            截止日期 "YYYY-MM-DD"（可选，用于报告）。
-        equipment_capacity : dict[int, int]
-            设备并行数覆盖 {equipment_id: max_parallel}。
-
-        Returns
-        -------
-        dict : 排程报告 {
-            "total_days", "original_days", "improvement",
-            "equipment_utilization", "bottlenecks", "suggestions",
-            "task_count", "updated_count"
-        }
+        内部调用 preview_schedule + apply_schedule。
         """
         # 读取计划获取 start_date
         plan = self._plan_repo.get_by_id(plan_id)
         start_date = plan.start_date if plan else ""
 
-        # 读取所有任务
         tasks = self._task_repo.get_by_plan(plan_id)
         if not tasks:
             logger.info("Plan %d has no tasks, skipping schedule", plan_id)
             return self._empty_report()
 
-        # 读取所有设备
         equipment = self._equipment_repo.list_all()
 
-        # 构建配置
         holidays: set[str] = set()
         if self._holiday_service:
             holidays = self._holiday_service.get_holidays_set()
@@ -120,6 +219,8 @@ class SchedulerService:
         )
         return report
 
+    # ── 内部辅助 ──
+
     def _empty_report(self) -> dict:
         return {
             "total_days": 0,
@@ -130,4 +231,13 @@ class SchedulerService:
             "suggestions": ["💡 没有待排程的任务"],
             "task_count": 0,
             "updated_count": 0,
+        }
+
+    def _empty_preview(self, start_date: str = "") -> dict:
+        return {
+            "original_start_days": {},
+            "tasks": [],
+            "report": self._empty_report(),
+            "start_date": start_date,
+            "equipment": [],
         }

@@ -27,6 +27,12 @@ class RefreshHandlers:
         """获取当前筛选的项目 ID（None = 全部）。"""
         return self._win._project_filter_combo.currentData()
 
+    def _get_filter_plan_id(self):
+        """获取当前筛选的测试计划 ID（None = 全部）。"""
+        if not self._win._plan_filter_combo.isEnabled():
+            return None
+        return self._win._plan_filter_combo.currentData()
+
     def _refresh_all(self) -> None:
         """全量刷新（项目筛选切换时调用）。"""
         self._win._pending_entity_types.clear()
@@ -137,6 +143,7 @@ class RefreshHandlers:
             return
 
         filter_project_id = self._get_filter_project_id()
+        filter_plan_id = self._get_filter_plan_id()
 
         # 获取项目列表和名称
         all_projects = self._cached_projects if self._cached_projects is not None else (ctrl.project_service.list_all() if ctrl.project_service else [])
@@ -183,7 +190,8 @@ class RefreshHandlers:
         if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
             # ── 任务状态：SQL 聚合 ──
             task_status_data = ctrl.test_tasks.count_by_status(
-                project_id=filter_project_id
+                project_id=filter_project_id,
+                plan_id=filter_plan_id,
             )
             total = sum(task_status_data.values())
             completed = task_status_data.get("completed", 0)
@@ -192,7 +200,10 @@ class RefreshHandlers:
 
             # 仍需任务列表供 Issue 弹窗 & 通过率计算
             all_tasks = ctrl.test_tasks.list_all()
-            if filter_project_id and ctrl.test_plan_service:
+            if filter_plan_id:
+                # 优先按计划筛选
+                filtered_tasks = [t for t in all_tasks if t.plan_id == filter_plan_id]
+            elif filter_project_id and ctrl.test_plan_service:
                 filtered_plans = ctrl.test_plan_service.get_plans_by_project(
                     filter_project_id
                 )
@@ -258,6 +269,13 @@ class RefreshHandlers:
                     done_capa = ctrl.issue_service.count_capa_done(project_id=filter_project_id)
                     capa_completion_rate = done_capa / total_capa * 100
 
+            # 查找当前计划名
+            current_plan_name: str | None = None
+            if filter_plan_id and ctrl.test_plan_service:
+                plan_obj = ctrl.test_plan_service.get_plan(filter_plan_id)
+                if plan_obj:
+                    current_plan_name = plan_obj.name
+
             self._win._dashboard.refresh(
                 task_total=total,
                 task_completed=completed,
@@ -267,6 +285,7 @@ class RefreshHandlers:
                 equipment_count=equipment,
                 sample_count=sample_count,
                 project_name=current_project_name,
+                plan_name=current_plan_name,
                 task_status_data=task_status_data,
                 sample_status_data=sample_status_data,
                 issue_severity_data=issue_severity_data,

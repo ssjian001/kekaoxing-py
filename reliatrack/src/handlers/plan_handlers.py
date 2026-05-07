@@ -51,7 +51,15 @@ class PlanHandlers:
         )
 
     def _on_auto_schedule(self) -> None:
-        """弹出排程参数配置弹窗，然后执行自动排程。"""
+        """弹出排程参数配置弹窗 → 预览 → 用户确认后写 DB。
+
+        流程：
+        1. ScheduleConfigDialog 配置参数
+        2. preview_schedule 预览（不写 DB）
+        3. SchedulePreviewDialog 展示预览 + 允许手动调整
+        4. 用户确认 → apply_schedule 写 DB + undo
+        5. 用户重新排程 → 带 user_locked_days 重跑预览
+        """
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.scheduler_service:
             return
@@ -75,58 +83,83 @@ class PlanHandlers:
             return
 
         config = dlg.get_config()
+        user_locked_days: dict[int, int] = {}
 
-        self._win.statusBar().showMessage("正在排程...", 0)
+        # -- 预览循环（支持重新排程） --
+        while True:
+            self._win.statusBar().showMessage("正在计算排程...", 0)
 
-        try:
-            # 排程前记录所有任务的 start_day
-            old_start_days: dict[int, int] = {}
-            if ctrl.test_tasks:
-                for task in ctrl.test_tasks.get_by_plan(plan_id):
-                    if task.id is not None:
-                        old_start_days[task.id] = task.start_day
-
-            # 执行排程（内部会写回 DB）
-            report = ctrl.scheduler_service.auto_schedule(
-                plan_id,
-                skip_weekends=config["skip_weekends"],
-                lock_existing=config["lock_existing"],
-                deadline=config["deadline"],
-                equipment_capacity=config["equipment_capacity"],
-            )
-
-            # 排程后重新读取，计算 diff
-            changes: list[tuple[int, int, int]] = []
-            if ctrl.test_tasks:
-                for task in ctrl.test_tasks.get_by_plan(plan_id):
-                    if task.id is not None:
-                        old_day = old_start_days.get(task.id, 0)
-                        new_day = task.start_day
-                        if old_day != new_day:
-                            changes.append((task.id, old_day, new_day))
-
-            # 用 BatchScheduleCommand 包装写回操作（支持撤销/重做）
-            if changes and ctrl.test_tasks:
-                ctrl.undo_manager.execute(
-                    BatchScheduleCommand(ctrl.test_tasks, changes)
+            try:
+                preview_data = ctrl.scheduler_service.preview_schedule(
+                    plan_id,
+                    skip_weekends=config["skip_weekends"],
+                    skip_holidays=config["skip_holidays"],
+                    lock_existing=config["lock_existing"],
+                    deadline=config["deadline"],
+                    equipment_capacity=config["equipment_capacity"],
+                    user_locked_days=user_locked_days or None,
                 )
+            except Exception as e:
+                self._win.statusBar().showMessage(f"排程失败: {e}", 10000)
+                return
 
-            msg = (
-                f"排程完成：{report['task_count']} 个任务，"
-                f"总工期 {report['total_days']} 天，"
-                f"更新 {report['updated_count']} 个任务"
+            report = preview_data.get("report", {})
+            if report.get("task_count", 0) == 0:
+                self._win.statusBar().showMessage("没有待排程的任务", 5000)
+                return
+
+            # 弹出预览对话框
+            from src.views.dialogs.schedule_preview_dialog import SchedulePreviewDialog
+            preview_dlg = SchedulePreviewDialog(
+                preview_data, config, parent=self._win,
             )
-            self._win.statusBar().showMessage(msg, 10000)
+            result = preview_dlg.exec()
 
-            # 弹出排程报告对话框
-            from src.views.dialogs.schedule_report_dialog import ScheduleReportDialog
-            dlg = ScheduleReportDialog(report, parent=self._win)
-            dlg.exec()
-        except Exception as e:
-            self._win.statusBar().showMessage(f"排程失败: {e}", 10000)
+            if result == QDialog.DialogCode.Accepted:
+                # 用户确认应用
+                changes = preview_dlg.get_changes()
+                if changes:
+                    # 记录原始 start_day 用于 undo
+                    old_start_days: dict[int, int] = {}
+                    if ctrl.test_tasks:
+                        for task in ctrl.test_tasks.get_by_plan(plan_id):
+                            if task.id is not None:
+                                old_start_days[task.id] = task.start_day
 
-        # 刷新视图
-        self._win._ctrl.notify_data_changed("task")
+                    ctrl.scheduler_service.apply_schedule(plan_id, changes)
+
+                    # 注册 undo
+                    undo_changes = [
+                        (tid, new_day, old_start_days.get(tid, 0))
+                        for tid, new_day in changes
+                    ]
+                    if undo_changes and ctrl.test_tasks:
+                        ctrl.undo_manager.execute(
+                            BatchScheduleCommand(ctrl.test_tasks, undo_changes)
+                        )
+
+                    msg = (
+                        f"排程完成：{report['task_count']} 个任务，"
+                        f"总工期 {report['total_days']} 天，"
+                        f"更新 {len(changes)} 个任务"
+                    )
+                    self._win.statusBar().showMessage(msg, 10000)
+                else:
+                    self._win.statusBar().showMessage("排程预览：无变更", 5000)
+
+                # 刷新视图
+                self._win._ctrl.notify_data_changed("task")
+                return
+
+            elif result == 2:
+                # 重新排程 — 获取用户手动锁定
+                user_locked_days = preview_dlg.get_user_locked_days()
+                continue
+
+            else:
+                # 取消
+                self._win.statusBar().showMessage("排程已取消", 3000)
+                return
 
     def _on_gantt_task_moved(self, task_id: int, new_start_day: int) -> None:
         """甘特图拖拽移动任务后，写回数据库并注册撤销。"""

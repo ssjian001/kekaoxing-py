@@ -75,10 +75,14 @@ class TestTaskRepository(BaseRepository):
         return self._rows_to_models(rows, cols=self._TASK_COLS)
 
     def count_by_status(self, **filters) -> dict[str, int]:
-        """按状态分组计数。"""
+        """按状态分组计数。支持 project_id 和 plan_id 筛选。"""
         where = ""
         params: list = []
-        if filters.get('project_id'):
+        # plan_id 直接过滤（优先级高于 project_id）
+        if filters.get('plan_id'):
+            where = "WHERE plan_id = ?"
+            params = [filters['plan_id']]
+        elif filters.get('project_id'):
             plan_ids = [r[0] for r in self._conn.execute(
                 "SELECT id FROM test_plans WHERE project_id = ?", (filters['project_id'],)
             ).fetchall()]

@@ -13,13 +13,14 @@
 
 ```bash
 cd reliatrack
-pip install -r requirements.txt
-python main.py
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python3 main.py
 ```
 
 ## 技术栈
 
-- Python 3.10+
+- Python 3.11+
 - PySide6 (Qt)
 - apsw (SQLite)
-- openpyxl / fpdf2 (导出)
+- openpyxl / reportlab (导出)

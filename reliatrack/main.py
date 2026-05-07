@@ -189,14 +189,46 @@ class MainWindow(QMainWindow):
             }}
         """)
         self._project_filter_combo.addItem("📋 全部项目", None)  # data=None means all
+
+        # 计划筛选 combo — 跟随项目联动
+        plan_filter_label = QLabel("📋 计划:")
+        plan_filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+        self._plan_filter_combo = QComboBox()
+        self._plan_filter_combo.setMinimumWidth(180)
+        self._plan_filter_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {SURFACE0};
+                color: {TEXT};
+                border: 1px solid {SURFACE1};
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-height: 26px;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 24px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {SURFACE0};
+                color: {TEXT};
+                selection-background-color: {SURFACE1};
+            }}
+        """)
+        self._plan_filter_combo.addItem("全部计划", None)
+        self._plan_filter_combo.setEnabled(False)  # 默认禁用，选项目后启用
+
         filter_bar.addWidget(filter_label)
         filter_bar.addWidget(self._project_filter_combo)
+        filter_bar.addWidget(plan_filter_label)
+        filter_bar.addWidget(self._plan_filter_combo)
         filter_bar.addStretch()
         filter_layout = QWidget()
         filter_layout.setLayout(filter_bar)
         filter_layout.setStyleSheet(f"background-color: {MANTLE}; padding: 3px 16px;")
         layout.insertWidget(0, filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
+        self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
 
     def _setup_toolbar(self) -> None:
         """创建工具栏。"""
@@ -318,8 +350,38 @@ class MainWindow(QMainWindow):
         self._refresh_handlers._schedule_refresh(entity_type)
 
     def _on_project_filter_changed(self, index: int) -> None:
-        """项目筛选变化时刷新所有视图。"""
+        """项目筛选变化时：更新计划 combo + 刷新所有视图。"""
+        # 更新计划 combo
+        self._refresh_plan_combo()
         self._refresh_all()
+
+    def _on_plan_filter_changed(self, index: int) -> None:
+        """计划筛选变化时刷新仪表盘。"""
+        self._refresh_all()
+
+    def _refresh_plan_combo(self) -> None:
+        """根据当前选中的项目更新计划筛选 combo。"""
+        project_id = self._project_filter_combo.currentData()
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            self._plan_filter_combo.setEnabled(False)
+            return
+
+        self._plan_filter_combo.blockSignals(True)
+        self._plan_filter_combo.clear()
+        self._plan_filter_combo.addItem("全部计划", None)
+
+        if project_id is None:
+            # 全部项目 → 禁用计划筛选
+            self._plan_filter_combo.setEnabled(False)
+        else:
+            # 选了项目 → 填充该项目的计划列表
+            plans = ctrl.test_plan_service.get_plans_by_project(project_id)
+            for p in plans:
+                self._plan_filter_combo.addItem(p.name, p.id)
+            self._plan_filter_combo.setEnabled(True)
+
+        self._plan_filter_combo.blockSignals(False)
 
     def _on_undo(self) -> None:
         um = self._ctrl.undo_manager

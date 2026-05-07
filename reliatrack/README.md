@@ -57,22 +57,25 @@ src/
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
 │       └── settings_repo.py
-├── handlers/        # 信号处理（9个Handler类）
+├── handlers/        # 信号处理（10个Handler类，含export_handlers）
 │   ├── project_handlers.py
 │   ├── sample_handlers.py
 │   ├── plan_handlers.py
 │   ├── issue_handlers.py
 │   ├── equipment_handlers.py
 │   ├── knowledge_handlers.py
+│   ├── export_handlers.py
 │   ├── refresh_handlers.py
 │   └── technician_handlers.py
 ├── models/          # 数据模型
 ├── services/        # 业务逻辑层
-│   ├── scheduler.py          # 3阶段排程引擎（546行）
+│   ├── scheduler.py          # 3阶段排程引擎（571行）
 │   ├── scheduler_service.py  # 排程服务（DB 读写）
 │   ├── export_service.py     # 8D/计划导出（reportlab）
 │   ├── import_service.py     # Excel 批量导入
+│   ├── holiday_service.py    # 节假日管理
 │   ├── issue_service.py      # Issue + FA + CAPA
+│   ├── undo_manager.py       # 撤销操作管理
 │   └── ...
 ├── styles/          # QSS 样式（Catppuccin Latte 明亮主题）
 └── views/           # Qt 视图
@@ -96,7 +99,7 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试 56 项全通过（`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`）。
+E2E 测试 53 项全通过（`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`）。
 
 ## 技术栈
 

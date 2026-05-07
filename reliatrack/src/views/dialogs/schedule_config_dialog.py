@@ -95,6 +95,11 @@ class ScheduleConfigDialog(_BaseDialog):
         self._chk_skip_weekends.setChecked(True)
         self._form.addRow(self._chk_skip_weekends)
 
+        # -- skip_holidays --
+        self._chk_skip_holidays = QCheckBox("跳过法定节假日")
+        self._chk_skip_holidays.setChecked(True)
+        self._form.addRow(self._chk_skip_holidays)
+
         # -- lock_existing --
         self._chk_lock_existing = QCheckBox("锁定已有排期")
         self._chk_lock_existing.setChecked(False)
@@ -151,6 +156,7 @@ class ScheduleConfigDialog(_BaseDialog):
 
         return {
             "skip_weekends": self._chk_skip_weekends.isChecked(),
+            "skip_holidays": self._chk_skip_holidays.isChecked(),
             "lock_existing": self._chk_lock_existing.isChecked(),
             "deadline": self._deadline_edit.text().strip(),
             "equipment_capacity": equipment_capacity,
