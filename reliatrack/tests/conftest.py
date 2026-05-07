@@ -113,3 +113,7 @@ def sample_sample(db_conn: apsw.Connection, sample_project: dict) -> dict:
         "project_id": row[4],
         "status": row[5],
     }
+
+# Script-based test files — exclude from pytest collection
+# (they create their own QApplication / have non-fixture signatures)
+collect_ignore = ["test_e2e_full.py", "test_performance.py"]

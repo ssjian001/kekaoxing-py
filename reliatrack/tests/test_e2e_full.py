@@ -41,6 +41,9 @@ from src.services.undo_manager import (
     UndoManager, MoveTaskCommand, UpdateProgressCommand, AddEntityCommand, DeleteEntityCommand,
 )
 
+import pytest
+pytestmark = pytest.mark.skip(reason="Script-based E2E — run with: python tests/test_e2e_full.py")
+
 
 class TestResult:
     def __init__(self):

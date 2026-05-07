@@ -633,6 +633,7 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
             action              TEXT    NOT NULL,
             assignee_id         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            assignee_name       TEXT    NOT NULL DEFAULT '',
             due_date            TEXT    NOT NULL DEFAULT '',
             status              TEXT    NOT NULL DEFAULT 'pending',
             verification_result TEXT    NOT NULL DEFAULT '',

@@ -2,6 +2,9 @@
 import sys, os, time, tempfile, statistics
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
+import pytest
+pytestmark = pytest.mark.skip(reason="Performance benchmark — run with: python tests/test_performance.py")
+
 from PySide6.QtWidgets import QApplication
 from src.controllers import AppController
 
