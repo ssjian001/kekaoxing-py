@@ -15,10 +15,13 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QWidget,
 )
+from PySide6.QtCore import Qt
 
 from src.models.sample import Sample
 from src.models.test_plan import TestTask
@@ -216,12 +219,34 @@ class TaskEditDialog(_BaseDialog):
         self._add_separator()
 
         # ── 依赖 & 环境 ──
-        dep_hint = self._build_dep_hint()
-        self._dep_edit = self._add_text_field(
-            "依赖任务 ID",
-            default=self._format_deps(task) if task else "",
-            placeholder=dep_hint,
-        )
+        dep_label = QLabel("依赖任务")
+        dep_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; margin-top: 4px;")
+        self._form_layout.addRow(dep_label)
+        self._dep_list = QListWidget()
+        self._dep_list.setMaximumHeight(120)
+        existing_dep_ids: list[int] = []
+        if task and task.dependencies:
+            try:
+                existing_dep_ids = json.loads(task.dependencies)
+                if not isinstance(existing_dep_ids, list):
+                    existing_dep_ids = []
+            except (json.JSONDecodeError, TypeError):
+                existing_dep_ids = []
+        for t in self._all_tasks:
+            if t.id is None:
+                continue
+            item = QListWidgetItem(f"#{t.id} {t.name}")
+            item.setData(Qt.ItemDataRole.UserRole, t.id)
+            item.setCheckState(
+                Qt.CheckState.Checked if t.id in existing_dep_ids
+                else Qt.CheckState.Unchecked
+            )
+            self._dep_list.addItem(item)
+        if self._dep_list.count() == 0:
+            empty_item = QListWidgetItem("（当前计划无其他任务）")
+            empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            self._dep_list.addItem(empty_item)
+        self._form_layout.addRow(self._dep_list)
         self._env_edit = self._add_text_field(
             "环境条件 (JSON)",
             default=task.environment if task else "",
@@ -449,39 +474,18 @@ class TaskEditDialog(_BaseDialog):
         }
         return status_map.get(task.status, "待开始")
 
-    def _format_deps(self, task: TestTask) -> str:
-        """将 JSON 依赖数组转为逗号分隔字符串。"""
-        try:
-            ids = json.loads(task.dependencies)
-            if isinstance(ids, list):
-                return ", ".join(str(i) for i in ids)
-        except (json.JSONDecodeError, TypeError):
-            pass
-        return ""
-
-    def _build_dep_hint(self) -> str:
-        """构建依赖任务的提示文本。"""
-        if not self._all_tasks:
-            return "逗号分隔的 task_id，如：1, 3, 5"
-        names = [f"#{t.id} {t.name}" for t in self._all_tasks[:8]]
-        hint = "可选: " + ", ".join(names)
-        if len(self._all_tasks) > 8:
-            hint += f" … (共{len(self._all_tasks)}项)"
-        return hint
-
     # ── 公开 API ───────────────────────────────────────────────
 
     def get_data(self) -> dict:
         """返回表单数据字典。"""
-        # 解析依赖 ID
-        dep_text = self._dep_edit.text().strip()
-        if dep_text:
-            try:
-                dep_ids = [int(x.strip()) for x in dep_text.split(",") if x.strip()]
-            except ValueError:
-                dep_ids = []
-        else:
-            dep_ids = []
+        # 从多选列表读取依赖 ID
+        dep_ids: list[int] = []
+        for i in range(self._dep_list.count()):
+            item = self._dep_list.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                dep_id = item.data(Qt.ItemDataRole.UserRole)
+                if isinstance(dep_id, int):
+                    dep_ids.append(dep_id)
 
         # 解析设备/技术员 ID
         equip_text = self._equipment_combo.currentText()
@@ -540,6 +544,22 @@ class TaskEditDialog(_BaseDialog):
         if not data["name"]:
             QMessageBox.warning(self, "校验失败", "名称为必填项，请输入。")
             self._name_edit.setFocus()
+            return
+
+        # 校验依赖 ID：检查自依赖
+        dep_ids = json.loads(data["dependencies"])
+        valid_task_ids = {t.id for t in self._all_tasks if t.id is not None}
+        # 编辑模式下，排除自己
+        self_id = self._task.id if self._task and self._task.id else None
+        if self_id and self_id in dep_ids:
+            QMessageBox.warning(self, "校验失败", "任务不能依赖自身。")
+            return
+        invalid_ids = [d for d in dep_ids if d not in valid_task_ids]
+        if invalid_ids:
+            QMessageBox.warning(
+                self, "校验失败",
+                f"依赖任务 ID 无效: {', '.join(str(i) for i in invalid_ids)}",
+            )
             return
 
         # 校验环境条件 JSON 格式

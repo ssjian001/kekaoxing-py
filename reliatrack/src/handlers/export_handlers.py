@@ -22,6 +22,18 @@ class ExportHandlers:
     def __init__(self, win: MainWindow) -> None:
         self._win = win
 
+    def _get_issues(self, ctrl, project_id: int | None):
+        """按项目获取 Issue，None 则返回全部。"""
+        if project_id is not None:
+            return ctrl.issue_service.get_by_project(project_id)
+        return ctrl.issue_service.list_all()
+
+    def _get_samples(self, ctrl, project_id: int | None):
+        """按项目获取样品，None 则返回全部。"""
+        if project_id is not None:
+            return ctrl.sample_service.get_by_project(project_id)
+        return ctrl.sample_service.list_all()
+
     def _on_export(self) -> None:
         """导出数据。"""
         ctrl = self._win._ctrl
@@ -33,12 +45,22 @@ class ExportHandlers:
             return
         if not ctrl.sample_service:
             return
-        dlg = ExportDialog(parent=self._win)
+        # 构建项目列表供筛选
+        project_list: list[tuple[int, str]] = []
+        if ctrl.project_service:
+            try:
+                for p in ctrl.project_service.list_all():
+                    if p.id is not None:
+                        project_list.append((p.id, p.name))
+            except Exception:
+                pass
+        dlg = ExportDialog(parent=self._win, projects=project_list)
         if not dlg.exec():
             return
         data = dlg.get_data()
         content = data["content"]
         fmt = data["format"]
+        project_id = data.get("project_id")  # None = 全部
 
         # 综合报告默认 PDF，但用户可选 Word
         # word export: 综合报告不再强制 PDF
@@ -71,20 +93,20 @@ class ExportHandlers:
                     path = svc.export_to_word(
                         plan,
                         tasks,
-                        ctrl.issue_service.list_all(),
-                        ctrl.sample_service.list_all(),
+                        self._get_issues(ctrl, project_id),
+                        self._get_samples(ctrl, project_id),
                     )
                 else:
                     path = svc.export_report_pdf(
                         plan,
                         tasks,
-                        ctrl.issue_service.list_all(),
-                        ctrl.sample_service.list_all(),
+                        self._get_issues(ctrl, project_id),
+                        self._get_samples(ctrl, project_id),
                     )
                 self._win.toast(f"已导出: {path}", "success")
 
             elif "Issue" in content:
-                issues = ctrl.issue_service.list_all()
+                issues = self._get_issues(ctrl, project_id)
                 if not issues:
                     self._win.toast("没有 Issue 数据", "info")
                     return
@@ -97,7 +119,7 @@ class ExportHandlers:
                 self._win.toast(f"已导出: {path}", "success")
 
             elif "样品" in content:
-                samples = ctrl.sample_service.list_all()
+                samples = self._get_samples(ctrl, project_id)
                 if not samples:
                     self._win.toast("没有样品数据", "info")
                     return
@@ -118,15 +140,15 @@ class ExportHandlers:
                     path = svc.export_to_word(
                         plan,
                         tasks,
-                        ctrl.issue_service.list_all(),
-                        ctrl.sample_service.list_all(),
+                        self._get_issues(ctrl, project_id),
+                        self._get_samples(ctrl, project_id),
                     )
                 else:
                     path = svc.export_report_pdf(
                         plan,
                         tasks,
-                        ctrl.issue_service.list_all(),
-                        ctrl.sample_service.list_all(),
+                        self._get_issues(ctrl, project_id),
+                        self._get_samples(ctrl, project_id),
                     )
                 self._win.toast(f"已导出: {path}", "success")
 
@@ -142,8 +164,8 @@ class ExportHandlers:
                     return
                 task_ids = [t.id for t in tasks if t.id is not None]
                 results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
-                issues = ctrl.issue_service.list_all()
-                samples = ctrl.sample_service.list_all()
+                issues = self._get_issues(ctrl, project_id)
+                samples = self._get_samples(ctrl, project_id)
                 path = svc.export_dvpr_pdf(plan, tasks, results, issues, samples)
                 self._win.toast(f"DVP&R 已导出: {path}", "success")
 

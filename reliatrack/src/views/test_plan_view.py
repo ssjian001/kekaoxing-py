@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QLineEdit,
     QScrollArea,
+    QRadioButton,
+    QButtonGroup,
 )
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QPoint
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, QWheelEvent
@@ -39,7 +41,7 @@ from src.models.common import Equipment, Technician
 class _TaskTable(QTableWidget):
     """测试任务列表表格。"""
 
-    COLUMNS = ["#", "名称", "类别", "天数", "开始", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
+    COLUMNS = ["#", "名称", "类别", "天数", "预计开始", "预计结束", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
 
     _STATUS_LABELS: dict[str, str] = TASK_STATUS_LABELS  # type: ignore[assignment]
     _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
@@ -209,25 +211,42 @@ class _TaskTable(QTableWidget):
         tasks: list[TestTask],
         technician_map: dict[int, str] | None = None,
         result_map: dict[int, tuple[int, int]] | None = None,
+        start_date: str = "",
     ) -> None:
+        from datetime import date, timedelta
         self._tasks = tasks
         tech_map = technician_map or {}
         res_map = result_map or {}
+        # 解析计划开始日期
+        plan_start: date | None = None
+        if start_date:
+            try:
+                plan_start = date.fromisoformat(start_date)
+            except ValueError:
+                plan_start = None
         self.setSortingEnabled(False)
         self.setRowCount(len(tasks))
         for row, task in enumerate(tasks):
-            # 列: #, 名称, 类别, 天数, 开始, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
+            # 列: #, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
             status_text = self._STATUS_LABELS.get(task.status, task.status)
             priority_text = PRIORITY_LABELS.get(task.priority, str(task.priority))
             tech_name = tech_map.get(task.technician_id, "") if task.technician_id else ""
             pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
             rate_text = f"{pass_count}/{total}" if total > 0 else "—"
+            # 计算预计日期
+            if plan_start and task.start_day is not None:
+                planned_start = (plan_start + timedelta(days=task.start_day)).isoformat()
+                planned_end = (plan_start + timedelta(days=task.start_day + task.duration - 1)).isoformat()
+            else:
+                planned_start = str(task.start_day) if task.start_day else "—"
+                planned_end = "—"
             values = [
                 row + 1,
                 task.name,
                 task.category,
                 task.duration,
-                task.start_day,
+                planned_start,
+                planned_end,
                 f"{task.progress:.0f}%",
                 priority_text,
                 status_text,
@@ -245,14 +264,14 @@ class _TaskTable(QTableWidget):
                 # 名称列 tooltip (col 1)
                 if col == 1 and task.name:
                     item.setToolTip(task.name)
-                # 状态颜色 (col 7)
-                if col == 7:
+                # 状态颜色 (col 8)
+                if col == 8:
                     item.setForeground(QColor(self._STATUS_COLORS.get(task.status, TEXT)))
-                # 优先级颜色 (col 6)
-                elif col == 6:
+                # 优先级颜色 (col 7)
+                elif col == 7:
                     item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, TEXT)))
-                # 通过率着色 (col 9)
-                elif col == 9 and total > 0:
+                # 通过率着色 (col 10)
+                elif col == 10 and total > 0:
                     if pass_count == total:
                         item.setForeground(QColor(GREEN))
                     elif pass_count == 0:
@@ -330,6 +349,7 @@ class _GanttWidget(QWidget):
 
         # 拖拽状态
         self._drag_task_idx: int | None = None
+        self._show_actual: bool = False  # False=预计, True=实际
         self._drag_offset_x: int = 0
         self._drag_start_day: int = 0
         self._drag_preview_offset: int = 0  # 拖拽预览偏移（不直接改 model）
@@ -339,6 +359,34 @@ class _GanttWidget(QWidget):
         self._equipment_map: dict[int, str] = {}  # {equipment_id: equipment_name}
         self._equipment_colors: dict[int, str] = {}  # {equipment_id: color_hex}
         self._palette = [BLUE, GREEN, PEACH, MAUVE, LAVENDER, YELLOW, TEAL]
+
+    def set_mode(self, actual: bool) -> None:
+        """切换预计/实际显示模式。"""
+        self._show_actual = actual
+        self.update()
+
+    def _task_day_range(self, task: TestTask) -> tuple[int, int]:
+        """获取任务在甘特图中的 (start_day, duration)。
+
+        实际模式下：用 actual_start_date/actual_end_date 相对于 _start_date 计算。
+        """
+        if not self._show_actual:
+            return task.start_day, task.duration
+        # 实际模式
+        if not task.actual_start_date or not self._start_date:
+            return task.start_day, task.duration  # 无实际数据则 fallback 到预计
+        try:
+            base = date.fromisoformat(self._start_date)
+            a_start = date.fromisoformat(task.actual_start_date)
+            start_day = (a_start - base).days
+            if task.actual_end_date:
+                a_end = date.fromisoformat(task.actual_end_date)
+                duration = max((a_end - a_start).days + 1, 1)
+            else:
+                duration = task.duration
+            return start_day, duration
+        except ValueError:
+            return task.start_day, task.duration
 
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
                   start_date: str = "",
@@ -369,13 +417,12 @@ class _GanttWidget(QWidget):
     def _bar_rect(self, idx: int) -> QRect:
         """返回第 idx 个任务条的 QRect。"""
         task = self._tasks[idx]
-        start_day = task.start_day
-        # 拖拽中的任务使用预览偏移量，不改 model
-        if self._drag_task_idx == idx:
-            start_day = self._drag_start_day + self._drag_preview_offset
+        start_day, duration = self._task_day_range(task)
+        if self._drag_task_idx == idx and not self._show_actual:
+            start_day = self._drag_start_day + self._drag_preview_offset  # 拖拽预览
         x = self._LABEL_W + start_day * self._day_w
         y = self._header_height + idx * self._row_height + (self._row_height - self._bar_height) / 2
-        return QRect(int(x), int(y), int(task.duration * self._day_w), self._bar_height)
+        return QRect(int(x), int(y), int(duration * self._day_w), self._bar_height)
 
     def _hit_test(self, pos: QPoint) -> int | None:
         """返回鼠标位置下的任务索引，没有则 None。"""
@@ -693,6 +740,24 @@ class TestPlanView(QWidget):
         tab_gantt = QWidget()
         tab_gantt_layout = QVBoxLayout(tab_gantt)
         tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
+        # 甘特图模式切换栏
+        gantt_mode_bar = QHBoxLayout()
+        gantt_mode_bar.setContentsMargins(4, 2, 4, 2)
+        from PySide6.QtWidgets import QButtonGroup
+        self._gantt_mode_planned = QRadioButton("预计日期")
+        self._gantt_mode_actual = QRadioButton("实际日期")
+        self._gantt_mode_planned.setChecked(True)
+        gantt_mode_group = QButtonGroup(self)
+        gantt_mode_group.addButton(self._gantt_mode_planned, 0)
+        gantt_mode_group.addButton(self._gantt_mode_actual, 1)
+        gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
+        mode_label = QLabel("显示模式:")
+        mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        gantt_mode_bar.addWidget(mode_label)
+        gantt_mode_bar.addWidget(self._gantt_mode_planned)
+        gantt_mode_bar.addWidget(self._gantt_mode_actual)
+        gantt_mode_bar.addStretch()
+        tab_gantt_layout.addLayout(gantt_mode_bar)
         self._gantt = _GanttWidget()
         self._gantt.setStyleSheet(f"background-color: {BASE}; border: 1px solid {SURFACE1}; border-radius: 6px;")
         self._gantt.task_moved.connect(self.task_moved.emit)
@@ -720,6 +785,11 @@ class TestPlanView(QWidget):
         self._last_result_map: dict[int, tuple[int, int]] = {}
         self._last_start_date: str = ""
 
+    def _on_gantt_mode_toggled(self, btn_id: int, checked: bool) -> None:
+        """甘特图预计/实际模式切换。"""
+        if checked:
+            self._gantt.set_mode(actual=(btn_id == 1))
+
     def _on_task_search(self, text: str) -> None:
         """根据搜索关键词过滤任务列表。"""
         text = text.strip().lower()
@@ -732,6 +802,7 @@ class TestPlanView(QWidget):
             ]
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
+            start_date=self._last_start_date,
         )
         self._gantt.set_tasks(filtered, start_date=self._last_start_date,
                               equipment_map=self._last_equipment_map)
@@ -891,6 +962,7 @@ class _ResultMatrixWidget(QWidget):
 
     行 = 测试任务（task），列 = 样品（sample）。
     单元格显示 pass/fail/conditional/pending/skip，着色区分。
+    末列 = 行统计（通过率），末行 = 列统计（各样品通过率）。
     """
 
     _RESULT_COLORS: dict[str, str] = {
@@ -937,6 +1009,19 @@ class _ResultMatrixWidget(QWidget):
         self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
         self._layout.addWidget(self._summary_label)
 
+    def _make_stat_item(self, text: str, fg: str, bg_alpha: int = 30) -> QTableWidgetItem:
+        """创建统计单元格。"""
+        item = QTableWidgetItem(text)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        item.setForeground(QColor(fg))
+        bg = QColor(fg)
+        bg.setAlpha(bg_alpha)
+        item.setBackground(bg)
+        font = item.font()
+        font.setBold(True)
+        item.setFont(font)
+        return item
+
     def refresh(
         self,
         tasks: list[TestTask],
@@ -961,8 +1046,6 @@ class _ResultMatrixWidget(QWidget):
         for r in results:
             if r.sample_id is not None:
                 sample_ids_set.add(r.sample_id)
-        # 如果有结果但无 sample，或任务还没结果，用 sample_map 中的 key 补全
-        # 这里只显示有实际结果的样品列
         sample_ids = sorted(sample_ids_set)
 
         # 构建 (task_id, sample_id) → result 的映射
@@ -977,9 +1060,9 @@ class _ResultMatrixWidget(QWidget):
             if t.id is not None:
                 task_id_to_row[t.id] = i
 
-        # 设置表格
-        rows = len(tasks)
-        cols = len(sample_ids) + 1  # 第一列是任务名
+        # 设置表格：+1 列(行统计), +1 行(列统计)
+        rows = len(tasks) + 1  # 末行为列统计
+        cols = len(sample_ids) + 2  # 第一列任务名 + 末列行统计
 
         self._table.setRowCount(rows)
         self._table.setColumnCount(cols)
@@ -989,15 +1072,17 @@ class _ResultMatrixWidget(QWidget):
         for sid in sample_ids:
             sn = sample_map.get(sid, f"#{sid}")
             headers.append(sn)
+        headers.append("通过率")
         self._table.setHorizontalHeaderLabels(headers)
 
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for c in range(1, cols):
             header.setSectionResizeMode(c, QHeaderView.ResizeMode.Fixed)
-            self._table.setColumnWidth(c, 50)
+            self._table.setColumnWidth(c, 55 if c < cols - 1 else 70)
 
-        # 填充数据
+        # 列统计累加器
+        col_stats: dict[int, dict[str, int]] = {sid: {"pass": 0, "total": 0} for sid in sample_ids}
         total_pass = 0
         total_fail = 0
         total_cells = 0
@@ -1009,6 +1094,9 @@ class _ResultMatrixWidget(QWidget):
             name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
             self._table.setVerticalHeaderItem(row, QTableWidgetItem(f"#{row + 1}"))
             self._table.setItem(row, 0, name_item)
+
+            row_pass = 0
+            row_total = 0
 
             for col_idx, sid in enumerate(sample_ids):
                 col = col_idx + 1
@@ -1034,10 +1122,49 @@ class _ResultMatrixWidget(QWidget):
 
                 if result_str:
                     total_cells += 1
+                    row_total += 1
+                    col_stats[sid]["total"] += 1
                     if result_str == "pass":
                         total_pass += 1
+                        row_pass += 1
+                        col_stats[sid]["pass"] += 1
                     elif result_str == "fail":
                         total_fail += 1
+
+            # 行统计（末列）
+            if row_total > 0:
+                rate = row_pass / row_total * 100
+                fg = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+                stat = self._make_stat_item(f"{rate:.0f}%", fg)
+            else:
+                stat = self._make_stat_item("—", SUBTEXT0)
+            self._table.setItem(row, cols - 1, stat)
+
+        # 列统计行（末行）
+        stat_row = len(tasks)
+        self._table.setVerticalHeaderItem(stat_row, QTableWidgetItem(""))
+        label_item = self._make_stat_item("合计", TEXT)
+        self._table.setItem(stat_row, 0, label_item)
+
+        for col_idx, sid in enumerate(sample_ids):
+            col = col_idx + 1
+            cs = col_stats[sid]
+            if cs["total"] > 0:
+                rate = cs["pass"] / cs["total"] * 100
+                fg = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+                stat = self._make_stat_item(f"{rate:.0f}%", fg)
+            else:
+                stat = self._make_stat_item("—", SUBTEXT0)
+            self._table.setItem(stat_row, col, stat)
+
+        # 右下角总计
+        if total_cells > 0:
+            rate = total_pass / total_cells * 100
+            fg = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+            total_item = self._make_stat_item(f"{total_pass}/{total_cells} ({rate:.0f}%)", fg, bg_alpha=50)
+        else:
+            total_item = self._make_stat_item("—", SUBTEXT0)
+        self._table.setItem(stat_row, cols - 1, total_item)
 
         # 摘要
         if total_cells > 0:
