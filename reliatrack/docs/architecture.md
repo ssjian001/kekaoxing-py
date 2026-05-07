@@ -24,14 +24,14 @@ Project ──< TestPlan ──< TestTask >── Sample
 - **v14**：capa_records 加 assignee_name（责任人自由文本，与 assignee_id 并存）；test_tasks 安全补列
 - **FK 策略**：所有外键 `ON DELETE SET NULL`，级联删除由业务逻辑手动处理
 - **显式列名**：所有 SELECT 使用具体列名，禁止 `SELECT *`
-- **迁移**：通过 `migrate.py` 管理，schema 版本记录在 `schema_meta` 表
+- **迁移**：通过 `migrate.py` 管理，schema 版本记录在 `schema_version` 表
 
 ## 分层架构
 
 ```
 View (Qt UI)
   ↓ Signal
-Handler (信号处理器, 9个类)
+Handler (信号处理器, 10个类)
   ↓ 调用
 Service (业务逻辑)
   ↓ 调用

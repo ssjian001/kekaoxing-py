@@ -147,8 +147,23 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - 备份: `data/backups/reliatrack_YYYYMMDD.db`
 - 连接: apsw，WAL 模式，FK 约束启用
 
+### 安全机制（2026-05-08 审计）
+
+- **SQL 列名注入**：`base._safe_kwargs()` 过滤非法列名；各 repo 有独立白名单（`_TXN_SAFE_COLS` 等）
+- **XML 颜色注入**：`export_service._set_cell_shading()` 用 `re.fullmatch(r"[0-9A-Fa-f]{6}")` 校验
+- **路径遍历**：`_validate_output_path()` 校验 resolve 后路径在允许目录内
+- **原子性**：出库操作用 `repo.transaction()` 包裹；scheduler 用 `deepcopy` 隔离原始对象
+- **Column tuple**：`_TXN_COLS`/`_FA_COLS`/`_ATTACH_COLS`/`_CAPA_SELECT_COLS` 为 tuple（单一真相源）
+- **审计报告**：`docs/audit-2026-05-08.md` — 完整修复记录 + P2 待修清单
+
 ### 测试覆盖
 
-- `tests/test_e2e_full.py` — E2E 测试 56 项（需 `QT_QPA_PLATFORM=offscreen`）
-- `tests/` 目录下按模块分，测试 repo 层和 service 层
-- 使用 `pytest` + `pytest-xvfb`（CI 无头环境）
+- `tests/test_security_regression.py` — 36 项安全回归（P0/P1 修复点）
+- `tests/test_services.py` — 20 项 Service 层 CRUD
+- `tests/test_new_features.py` — 16 项新增功能
+- `tests/test_column_order.py` — 11 项列序映射
+- `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景
+- `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
+- `tests/test_performance.py` — 性能基准（pytest 已 skip）
+- 共 **106 个 pytest 测试**，全量通过
+- `conftest.py` 提供 `:memory:` 数据库 fixture
