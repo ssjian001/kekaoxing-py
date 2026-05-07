@@ -426,3 +426,21 @@ def get_stylesheet() -> str:
     if _COMPILED_STYLESHEET is None:
         _COMPILED_STYLESHEET = _BASE_QSS
     return _COMPILED_STYLESHEET
+
+
+def filter_combo_qss() -> str:
+    """筛选栏 ComboBox 统一样式（DRY）。"""
+    return f"""
+        QComboBox {{
+            background-color: {SURFACE0}; color: {TEXT};
+            border: 1px solid {SURFACE1}; border-radius: 6px;
+            padding: 4px 8px; font-size: 12px; min-height: 26px;
+        }}
+        QComboBox::drop-down {{
+            border: none; width: 24px;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {SURFACE0}; color: {TEXT};
+            selection-background-color: {SURFACE1};
+        }}
+    """

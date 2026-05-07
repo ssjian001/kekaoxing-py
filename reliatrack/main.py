@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
-from src.styles.theme import get_stylesheet, TEXT, SURFACE0, SURFACE1, MANTLE
+from src.styles.theme import get_stylesheet, filter_combo_qss, TEXT, SURFACE0, SURFACE1, MANTLE
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -168,26 +168,7 @@ class MainWindow(QMainWindow):
         filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._project_filter_combo = QComboBox()
         self._project_filter_combo.setMinimumWidth(200)
-        self._project_filter_combo.setStyleSheet(f"""
-            QComboBox {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                border: 1px solid {SURFACE1};
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 12px;
-                min-height: 26px;
-            }}
-            QComboBox::drop-down {{
-                border: none;
-                width: 24px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                selection-background-color: {SURFACE1};
-            }}
-        """)
+        self._project_filter_combo.setStyleSheet(filter_combo_qss())
         self._project_filter_combo.addItem("📋 全部项目", None)  # data=None means all
 
         # 计划筛选 combo — 跟随项目联动
@@ -195,26 +176,7 @@ class MainWindow(QMainWindow):
         plan_filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._plan_filter_combo = QComboBox()
         self._plan_filter_combo.setMinimumWidth(180)
-        self._plan_filter_combo.setStyleSheet(f"""
-            QComboBox {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                border: 1px solid {SURFACE1};
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 12px;
-                min-height: 26px;
-            }}
-            QComboBox::drop-down {{
-                border: none;
-                width: 24px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: {SURFACE0};
-                color: {TEXT};
-                selection-background-color: {SURFACE1};
-            }}
-        """)
+        self._plan_filter_combo.setStyleSheet(filter_combo_qss())
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)  # 默认禁用，选项目后启用
 

@@ -88,7 +88,9 @@ class IssueRepository(BaseRepository):
 
     # ── FA 记录 ──
 
-    _FA_COLS = "id, issue_id, step_no, step_title, description, method, findings, possible_cause, cause_category, failure_mechanism, confirmed, analyst_id, attachments, created_at"
+    _FA_COLS = ("id", "issue_id", "step_no", "step_title", "description", "method",
+                "findings", "possible_cause", "cause_category", "failure_mechanism",
+                "confirmed", "analyst_id", "attachments", "created_at")
     _FA_SAFE_COLS = frozenset({
         "issue_id", "step_no", "step_title", "description", "method",
         "findings", "possible_cause", "cause_category", "failure_mechanism",
@@ -97,14 +99,13 @@ class IssueRepository(BaseRepository):
 
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         """获取 Issue 的 FA 分析记录。"""
+        col_str = ", ".join(self._FA_COLS)
         rows = self._conn.execute(
-            f"SELECT {self._FA_COLS} FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
+            f"SELECT {col_str} FROM [fa_records] WHERE issue_id = ? ORDER BY step_no",
             (issue_id,),
         ).fetchall()
         return [FARecord(**cast(dict[str, Any], dict(
-            zip(("id", "issue_id", "step_no", "step_title", "description", "method",
-                 "findings", "possible_cause", "cause_category", "failure_mechanism",
-                 "confirmed", "analyst_id", "attachments", "created_at"), r)
+            zip(self._FA_COLS, r)
         ))) for r in rows]
 
     def add_fa_record(self, issue_id: int, **kwargs: object) -> int:
@@ -122,19 +123,20 @@ class IssueRepository(BaseRepository):
 
     # ── 附件 ──
 
-    _ATTACH_COLS = "id, issue_id, file_path, file_type, description, created_at"
+    _ATTACH_COLS = ("id", "issue_id", "file_path", "file_type", "description", "created_at")
     _ATTACH_SAFE_COLS = frozenset({
         "issue_id", "file_path", "file_type", "description",
     })
 
     def get_attachments(self, issue_id: int) -> list[IssueAttachment]:
         """获取 Issue 附件。"""
+        col_str = ", ".join(self._ATTACH_COLS)
         rows = self._conn.execute(
-            f"SELECT {self._ATTACH_COLS} FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {col_str} FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
         return [IssueAttachment(**cast(dict[str, Any], dict(
-            zip(("id", "issue_id", "file_path", "file_type", "description", "created_at"), r)
+            zip(self._ATTACH_COLS, r)
         ))) for r in rows]
 
     def add_attachment(self, issue_id: int, **kwargs: object) -> int:
@@ -202,7 +204,9 @@ class IssueRepository(BaseRepository):
 
     # ── CAPA 记录 ──
 
-    _CAPA_SELECT_COLS = "id, issue_id, action, assignee_id, assignee_name, due_date, status, verification_result, verified_by, created_at, updated_at"
+    _CAPA_SELECT_COLS = ("id", "issue_id", "action", "assignee_id", "assignee_name",
+                         "due_date", "status", "verification_result", "verified_by",
+                         "created_at", "updated_at")
     _CAPA_SAFE_COLS = frozenset({
         "issue_id", "action", "assignee_id", "assignee_name", "due_date",
         "status", "verification_result", "verified_by",
@@ -210,13 +214,13 @@ class IssueRepository(BaseRepository):
 
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         """获取 Issue 的 CAPA 记录。"""
+        col_str = ", ".join(self._CAPA_SELECT_COLS)
         rows = self._conn.execute(
-            f"SELECT {self._CAPA_SELECT_COLS} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
+            f"SELECT {col_str} FROM [capa_records] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
         ).fetchall()
         return [CAPARecord(**cast(dict[str, Any], dict(
-            zip(("id", "issue_id", "action", "assignee_id", "assignee_name", "due_date", "status",
-                 "verification_result", "verified_by", "created_at", "updated_at"), r)
+            zip(self._CAPA_SELECT_COLS, r)
         ))) for r in rows]
 
     def add_capa_record(self, issue_id: int, **kwargs: object) -> int:

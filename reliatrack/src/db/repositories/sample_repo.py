@@ -42,17 +42,18 @@ class SampleRepository(BaseRepository):
     def get_by_status(self, status: str) -> list[Sample]:
         return self.list_all(status=status)
 
-    _TXN_COLS = "id, sample_id, type, operator_id, purpose, related_task_id, expected_return, actual_return, notes, created_at"
+    _TXN_COLS = ("id", "sample_id", "type", "operator_id", "purpose",
+                 "related_task_id", "expected_return", "actual_return", "notes", "created_at")
 
     def get_transactions(self, sample_id: int) -> list[SampleTransaction]:
         """获取样品的出入库记录。"""
+        col_str = ", ".join(self._TXN_COLS)
         rows = self._conn.execute(
-            f"SELECT {self._TXN_COLS} FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
+            f"SELECT {col_str} FROM [sample_transactions] WHERE sample_id = ? ORDER BY created_at DESC",
             (sample_id,),
         ).fetchall()
         return [SampleTransaction(**cast(dict[str, Any], dict(
-            zip(("id", "sample_id", "type", "operator_id", "purpose", "related_task_id",
-                 "expected_return", "actual_return", "notes", "created_at"), r)
+            zip(self._TXN_COLS, r)
         ))) for r in rows]
 
     def update_status(self, id: int, status: str) -> None:
