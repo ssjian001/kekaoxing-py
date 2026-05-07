@@ -736,4 +736,17 @@ class _CAPADialog(_BaseDialog):
             QMessageBox.warning(self, "校验失败", "措施描述为必填项。")
             self._action_edit.setFocus()
             return
+        # 职责分离检查：验证人不能是执行人
+        status_map = {label: val for label, val in self._STATUS_OPTIONS}
+        status = status_map.get(self._status_combo.currentText(), "pending")
+        if status == "verified":
+            assignee_name = self._assignee_edit.text().strip()
+            reply = QMessageBox.question(
+                self, "职责分离确认",
+                "按质量管理要求，验证人不应与执行人为同一人。\n\n"
+                "请确认验证人与负责人不是同一人。\n\n"
+                "当前负责人：" + (assignee_name or "（未指定）"),
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
         super().accept()

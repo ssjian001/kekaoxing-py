@@ -199,13 +199,37 @@ class ExportHandlers:
 
                 fa_records = ctrl.issue_service.get_fa_records(issue_id)
                 capa_records = ctrl.issue_service.get_capa_records(issue_id)
+
+                # 查关联任务和样品信息，丰富 8D 报告上下文
+                from src.models.test_plan import TestTask as _TT
+                _task: _TT | None = None
+                _sample_sn = ""
+                _tech_name = ""
+                if issue.task_id:
+                    _task = ctrl.test_plan_service.get_task(issue.task_id)
+                if issue.sample_id and ctrl.sample_service:
+                    s = ctrl.sample_service.get(issue.sample_id)
+                    if s:
+                        _sample_sn = s.sn or ""
+                if issue.assignee_id and ctrl.technicians:
+                    for t in ctrl.technicians.list_all():
+                        if t.id == issue.assignee_id:
+                            _tech_name = t.name
+                            break
+
                 if "Excel" in fmt:
                     self._win.toast("8D 报告暂不支持 Excel 格式，请选 PDF 或 Word", "info")
                     return
                 elif "Word" in fmt:
-                    path = svc.export_8d_docx(issue, fa_records, capa_records)
+                    path = svc.export_8d_docx(
+                        issue, fa_records, capa_records,
+                        technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
+                    )
                 else:
-                    path = svc.export_8d_pdf(issue, fa_records, capa_records)
+                    path = svc.export_8d_pdf(
+                        issue, fa_records, capa_records,
+                        technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
+                    )
                 self._win.toast(f"8D 报告已导出: {path}", "success")
 
         except Exception as e:

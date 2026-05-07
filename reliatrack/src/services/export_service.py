@@ -155,6 +155,60 @@ class ExportService:
         wb.save(out)
         return os.path.abspath(out)
 
+    @staticmethod
+    def _judge_conclusion(
+        pass_count: int,
+        fail_count: int,
+        conditional_count: int,
+        total_results: int,
+        accept_criteria: str = "",
+    ) -> str:
+        """基于接收准则判定结论。
+
+        结构化 JSON 格式:
+          {"type": "c0"} — 全数通过，fail=0 才 PASS
+          {"type": "aql", "accept": N} — fail<=N 则 PASS
+          {"type": "custom", "accept": N, "reject": M}
+
+        纯文本或无法解析时退化: fail>0→FAIL, conditional>0→CONDITIONAL, pass>0→PASS
+        """
+        import json
+        if accept_criteria:
+            try:
+                # 尝试从文本中提取 JSON 片段
+                start = accept_criteria.find("{")
+                end = accept_criteria.rfind("}") + 1
+                if start >= 0 and end > start:
+                    criteria = json.loads(accept_criteria[start:end])
+                    ctype = criteria.get("type", "")
+                    if ctype == "c0":
+                        if fail_count > 0:
+                            return "FAIL"
+                        elif conditional_count > 0:
+                            return "CONDITIONAL"
+                        elif pass_count > 0:
+                            return "PASS"
+                        return "—"
+                    elif ctype in ("aql", "custom"):
+                        accept_n = criteria.get("accept", 0)
+                        if fail_count > accept_n:
+                            return "FAIL"
+                        elif conditional_count > 0 and fail_count == accept_n:
+                            return "CONDITIONAL"
+                        elif pass_count > 0:
+                            return "PASS"
+                        return "—"
+            except (json.JSONDecodeError, ValueError):
+                pass
+        # 退化判定
+        if fail_count > 0:
+            return "FAIL"
+        elif conditional_count > 0:
+            return "CONDITIONAL"
+        elif pass_count > 0:
+            return "PASS"
+        return "—"
+
     # ── Excel 导出 ──────────────────────────────────────────────
 
     def export_tasks_excel(
@@ -817,6 +871,7 @@ class ExportService:
             row.append(Paragraph((task_sns or "—")[:25], cell_left))
             task_pass = 0
             task_fail = 0
+            task_conditional = 0
             for sid in sample_ids:
                 res = lookup.get((task.id, sid), "")
                 if res == "pass":
@@ -827,17 +882,17 @@ class ExportService:
                     task_fail += 1
                 elif res == "conditional":
                     row.append(Paragraph("C", cell_style))
+                    task_conditional += 1
                 elif res == "skip":
                     row.append(Paragraph("S", cell_style))
                 else:
                     row.append(Paragraph("—", cell_style))
             # 结论
-            if task_fail > 0:
-                row.append(Paragraph("FAIL", cell_style))
-            elif task_pass > 0 and task_fail == 0:
-                row.append(Paragraph("PASS", cell_style))
-            else:
-                row.append(Paragraph("—", cell_style))
+            conclusion = self._judge_conclusion(
+                task_pass, task_fail, task_conditional, 0,
+                accept_criteria=task.accept_criteria or "",
+            )
+            row.append(Paragraph(conclusion, cell_style))
             dvpr_data.append(row)
 
         # 列宽
@@ -1010,6 +1065,7 @@ class ExportService:
 
             task_pass = 0
             task_fail = 0
+            task_conditional = 0
             for sid in sample_ids:
                 res = lookup.get((task.id, sid), "")
                 if res == "pass":
@@ -1020,17 +1076,17 @@ class ExportService:
                     task_fail += 1
                 elif res == "conditional":
                     row_data.append("C")
+                    task_conditional += 1
                 elif res == "skip":
                     row_data.append("S")
                 else:
                     row_data.append("—")
 
-            if task_fail > 0:
-                row_data.append("FAIL")
-            elif task_pass > 0:
-                row_data.append("PASS")
-            else:
-                row_data.append("—")
+            conclusion = self._judge_conclusion(
+                task_pass, task_fail, task_conditional, 0,
+                accept_criteria=task.accept_criteria or "",
+            )
+            row_data.append(conclusion)
 
             self._excel_write_row(ws2, idx, row_data, s)
 
@@ -1239,6 +1295,7 @@ class ExportService:
             row_vals = [str(idx), (task.name or "")[:20], (task.accept_criteria or "")[:20], task_sns or "—"]
             task_pass = 0
             task_fail = 0
+            task_conditional = 0
             for sid in sample_ids:
                 res = lookup.get((task.id, sid), "")
                 if res == "pass":
@@ -1249,11 +1306,16 @@ class ExportService:
                     task_fail += 1
                 elif res == "conditional":
                     row_vals.append("C")
+                    task_conditional += 1
                 elif res == "skip":
                     row_vals.append("S")
                 else:
                     row_vals.append("—")
-            row_vals.append("FAIL" if task_fail > 0 else ("PASS" if task_pass > 0 else "—"))
+            conclusion = self._judge_conclusion(
+                task_pass, task_fail, task_conditional, 0,
+                accept_criteria=task.accept_criteria or "",
+            )
+            row_vals.append(conclusion)
 
             tr = dvpr_table.rows[idx]._tr
             tc_elems = tr.findall(qn("w:tc"))
@@ -1309,12 +1371,20 @@ class ExportService:
         issue: Issue,
         fa_records: list[FARecord] | None = None,
         capa_records: list[CAPARecord] | None = None,
+        technician_name: str = "",
+        task: TestTask | None = None,
+        sample_sn: str = "",
         filepath: str | None = None,
     ) -> str:
         """导出 8D Problem Solving Report 为 PDF。
 
         包含：基本信息表、D1-D8 八个章节、底部签字栏。
         用 Issue 已有数据填充可匹配的部分，其余留空供用户手写。
+
+        Args:
+            technician_name: Issue 负责人姓名（用于 D1 团队）。
+            task: 关联的测试任务（用于 D2 测试条件）。
+            sample_sn: 关联的样品 SN（用于 D2 问题描述）。
         """
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
@@ -1469,10 +1539,52 @@ class ExportService:
         story.append(info_table)
 
         # ── D1-D8 章节 ──
+        # D1: 自动填充团队信息
+        team_lines: list[str] = []
+        if technician_name:
+            team_lines.append(f"负责人: {technician_name}")
+        d1_content = "\n".join(team_lines) if team_lines else "(手写区)"
+
+        # D2: 问题描述 — 补充测试条件和样品信息
+        d2_parts: list[str] = []
+        if issue.description:
+            d2_parts.append(issue.description)
+        if task:
+            tc_parts: list[str] = []
+            if task.name:
+                tc_parts.append(f"测试项: {task.name}")
+            if task.temperature:
+                tc_parts.append(f"温度: {task.temperature}")
+            if task.humidity:
+                tc_parts.append(f"湿度: {task.humidity}")
+            if task.accept_criteria:
+                tc_parts.append(f"判定准则: {task.accept_criteria}")
+            if tc_parts:
+                d2_parts.append("测试条件: " + " | ".join(tc_parts))
+        if sample_sn:
+            d2_parts.append(f"样品: {sample_sn}")
+        if issue.failure_stage:
+            d2_parts.append(f"失效阶段: {issue.failure_stage}")
+        d2_content = "\n".join(d2_parts) if d2_parts else ""
+
+        # D3: 临时遏制 — 列出 pending/in_progress 的 CAPA
+        capa_pending: list[str] = []
+        if capa_records:
+            for _c in capa_records:
+                if _c.status in ("pending", "in_progress"):
+                    capa_pending.append(f"• {_c.action} (状态: {_c.status})")
+        d3_content = "\n".join(capa_pending) if capa_pending else "(手写区)"
+
+        # D7: 预防再发 — 提示知识库
+        d7_parts: list[str] = ["(手写区 — 建议归档至知识库)"]
+        if issue.failure_mode:
+            d7_parts.append(f"失效模式: {issue.failure_mode} → 建议同步至知识库")
+        d7_content = "\n".join(d7_parts)
+
         d_sections: list[tuple[str, str, str]] = [
-            ("D1", "团队组建 (Establish the Team)", "(手写区)"),
-            ("D2", "问题描述 (Describe the Problem)", issue.description or ""),
-            ("D3", "临时遏制措施 (Interim Containment Actions)", "(手写区)"),
+            ("D1", "团队组建 (Establish the Team)", d1_content),
+            ("D2", "问题描述 (Describe the Problem)", d2_content),
+            ("D3", "临时遏制措施 (Interim Containment Actions)", d3_content),
             ("D4", "根因分析 (Root Cause Analysis)", self._build_d4_content(issue, fa_records)),
             ("D5", "纠正措施 (Corrective Actions)", issue.resolution or ""),
             ("D6", "实施验证 (Implement & Validate)", self._build_d6_content(capa_records)),
@@ -1599,11 +1711,19 @@ class ExportService:
         issue: Issue,
         fa_records: list[FARecord] | None = None,
         capa_records: list[CAPARecord] | None = None,
+        technician_name: str = "",
+        task: TestTask | None = None,
+        sample_sn: str = "",
         filepath: str | None = None,
     ) -> str:
         """导出 8D Problem Solving Report 为 Word (.docx)。
 
         结构与 export_8d_pdf 一致：基本信息表、D1-D8 八个章节、底部签字栏。
+
+        Args:
+            technician_name: Issue 负责人姓名（用于 D1 团队）。
+            task: 关联的测试任务（用于 D2 测试条件）。
+            sample_sn: 关联的样品 SN（用于 D2 问题描述）。
         """
         from docx import Document
         from docx.shared import Pt, Cm, RGBColor, Inches, Emu
@@ -1700,10 +1820,52 @@ class ExportService:
         self._set_table_border(info)
 
         # ── D1-D8 章节 ──
+        # D1: 自动填充团队信息
+        team_lines: list[str] = []
+        if technician_name:
+            team_lines.append(f"负责人: {technician_name}")
+        d1_content = "\n".join(team_lines) if team_lines else "(手写区)"
+
+        # D2: 问题描述 — 补充测试条件和样品信息
+        d2_parts: list[str] = []
+        if issue.description:
+            d2_parts.append(issue.description)
+        if task:
+            tc_parts: list[str] = []
+            if task.name:
+                tc_parts.append(f"测试项: {task.name}")
+            if task.temperature:
+                tc_parts.append(f"温度: {task.temperature}")
+            if task.humidity:
+                tc_parts.append(f"湿度: {task.humidity}")
+            if task.accept_criteria:
+                tc_parts.append(f"判定准则: {task.accept_criteria}")
+            if tc_parts:
+                d2_parts.append("测试条件: " + " | ".join(tc_parts))
+        if sample_sn:
+            d2_parts.append(f"样品: {sample_sn}")
+        if issue.failure_stage:
+            d2_parts.append(f"失效阶段: {issue.failure_stage}")
+        d2_content = "\n".join(d2_parts) if d2_parts else ""
+
+        # D3: 临时遏制 — 列出 pending/in_progress 的 CAPA
+        capa_pending: list[str] = []
+        if capa_records:
+            for _c in capa_records:
+                if _c.status in ("pending", "in_progress"):
+                    capa_pending.append(f"• {_c.action} (状态: {_c.status})")
+        d3_content = "\n".join(capa_pending) if capa_pending else "(手写区)"
+
+        # D7: 预防再发 — 提示知识库
+        d7_parts: list[str] = ["(手写区 — 建议归档至知识库)"]
+        if issue.failure_mode:
+            d7_parts.append(f"失效模式: {issue.failure_mode} → 建议同步至知识库")
+        d7_content = "\n".join(d7_parts)
+
         d_sections: list[tuple[str, str, str]] = [
-            ("D1", "团队组建 (Establish the Team)", "(手写区)"),
-            ("D2", "问题描述 (Describe the Problem)", issue.description or ""),
-            ("D3", "临时遏制措施 (Interim Containment Actions)", "(手写区)"),
+            ("D1", "团队组建 (Establish the Team)", d1_content),
+            ("D2", "问题描述 (Describe the Problem)", d2_content),
+            ("D3", "临时遏制措施 (Interim Containment Actions)", d3_content),
             ("D4", "根因分析 (Root Cause Analysis)", self._build_d4_content(issue, fa_records)),
             ("D5", "纠正措施 (Corrective Actions)", issue.resolution or ""),
             ("D6", "实施验证 (Implement & Validate)", self._build_d6_content(capa_records)),

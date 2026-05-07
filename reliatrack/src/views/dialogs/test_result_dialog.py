@@ -37,6 +37,7 @@ class _ResultRow(QFrame):
         self,
         sample: Sample,
         existing_result: TestResult | None = None,
+        technician_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -112,6 +113,21 @@ class _ResultRow(QFrame):
             self._measured_edit.setText(existing_result.measured_value)
         layout.addWidget(self._measured_edit)
 
+        # 测试人（ISO 17025 可追溯性）
+        self._tester_combo = QComboBox()
+        self._tester_combo.setFixedWidth(90)
+        self._tester_combo.addItem("（无）", None)
+        if technician_list:
+            for tech in technician_list:
+                if hasattr(tech, "id") and hasattr(tech, "name"):
+                    self._tester_combo.addItem(tech.name, tech.id)
+        # 回显已有测试人
+        if existing_result and existing_result.tester_id:
+            idx = self._tester_combo.findData(existing_result.tester_id)
+            if idx >= 0:
+                self._tester_combo.setCurrentIndex(idx)
+        layout.addWidget(self._tester_combo)
+
         # 环境参数（温度/湿度）
         self._temp_edit = QLineEdit()
         self._temp_edit.setPlaceholderText("温度°C")
@@ -172,6 +188,7 @@ class _ResultRow(QFrame):
             "notes": self._notes_edit.text().strip(),
             "measured_value": self._measured_edit.text().strip(),
             "environment": json.dumps(env, ensure_ascii=False),
+            "tester_id": self._tester_combo.currentData(),
         }
 
     @property
@@ -191,11 +208,13 @@ class TestResultDialog(QWidget):
         task: TestTask,
         samples: list[Sample],
         existing_results: list[TestResult] | None = None,
+        technician_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._task = task
         self._existing_results = existing_results or []
+        self._technician_list = technician_list or []
         self._setup_ui(samples)
 
     def _setup_ui(self, samples: list[Sample]) -> None:
@@ -247,7 +266,7 @@ class TestResultDialog(QWidget):
         self._rows = []
         for sample in samples:
             existing = result_map.get(sample.id) if sample.id else None
-            row = _ResultRow(sample, existing, self)
+            row = _ResultRow(sample, existing, technician_list=self._technician_list, parent=self)
             self._rows.append(row)
             container_layout.addWidget(row)
 

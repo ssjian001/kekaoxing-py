@@ -66,9 +66,30 @@ class IssueHandlers:
                 ctrl.issue_service.update(data["id"], **kwargs)
                 self._win.toast(f"Issue #{data['id']} 已更新", "success")
 
-                # 状态变更为 closed 时弹出归档确认
+                # 状态变更为 closed 时做 FRACAS 完整性检查
                 new_status = data.get("status")
                 if new_status == "closed" and old_status != "closed":
+                    issue_id = data["id"]
+                    fa_records = ctrl.issue_service.get_fa_records(issue_id)
+                    capa_records = ctrl.issue_service.get_capa_records(issue_id)
+                    warnings: list[str] = []
+                    if not fa_records:
+                        warnings.append("• 无 FA 分析记录（建议至少记录根因分析步骤）")
+                    if not capa_records:
+                        warnings.append("• 无 CAPA 纠正预防措施（建议至少记录一项纠正措施）")
+                    elif not any(c.status == "verified" for c in capa_records):
+                        warnings.append("• 无已验证的 CAPA（建议至少一项 CAPA 标记为\"已验证\"）")
+                    if warnings:
+                        reply = QMessageBox.warning(
+                            self._win, "FRACAS 完整性检查",
+                            "Issue 关闭前检查发现以下不完整项：\n\n"
+                            + "\n".join(warnings)
+                            + "\n\n仍要关闭吗？（不完整的 Issue 可能不满足审核要求）",
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        )
+                        if reply != QMessageBox.StandardButton.Yes:
+                            self._win._ctrl.notify_data_changed("issue")
+                            return
                     self._prompt_archive_to_knowledge(old_issue or data)
             else:
                 ctrl.issue_service.create(**data)
@@ -208,10 +229,33 @@ class IssueHandlers:
 
             fa_records = ctrl.issue_service.get_fa_records(issue_id)
             capa_records = ctrl.issue_service.get_capa_records(issue_id)
+
+            # 查关联任务和样品信息
+            _task = None
+            _sample_sn = ""
+            _tech_name = ""
+            if issue.task_id:
+                _task = ctrl.test_plan_service.get_task(issue.task_id)
+            if issue.sample_id:
+                s = ctrl.sample_service.get(issue.sample_id)
+                if s:
+                    _sample_sn = s.sn or ""
+            if issue.assignee_id and ctrl.technicians:
+                for t in ctrl.technicians.list_all():
+                    if t.id == issue.assignee_id:
+                        _tech_name = t.name
+                        break
+
             if fmt == QMessageBox.StandardButton.Yes:
-                filepath = ctrl.export_service.export_8d_pdf(issue, fa_records, capa_records)
+                filepath = ctrl.export_service.export_8d_pdf(
+                    issue, fa_records, capa_records,
+                    technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
+                )
             else:
-                filepath = ctrl.export_service.export_8d_docx(issue, fa_records, capa_records)
+                filepath = ctrl.export_service.export_8d_docx(
+                    issue, fa_records, capa_records,
+                    technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
+                )
             self._win.toast(f"8D 报告已导出: {os.path.basename(filepath)}", "success")
         except Exception as e:
             logger.exception("8D report export failed for issue_id=%s", issue_id)

@@ -459,6 +459,7 @@ class PlanHandlers:
             task=task,
             samples=samples,
             existing_results=existing_results,
+            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
             parent=dlg,
         )
         layout.addWidget(result_widget)
@@ -488,6 +489,7 @@ class PlanHandlers:
                         test_date=item["test_date"],
                         measured_value=item.get("measured_value", ""),
                         notes=item.get("notes", ""),
+                        tester_id=item.get("tester_id"),
                         environment=item.get("environment", "{}"),
                     )
                     saved += 1
