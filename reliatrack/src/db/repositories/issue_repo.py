@@ -195,7 +195,7 @@ class IssueRepository(BaseRepository):
             (issue_id,),
         ).fetchall()
         return [CAPARecord(**cast(dict[str, Any], dict(
-            zip(("id", "issue_id", "action", "assignee_id", "due_date", "status",
+            zip(("id", "issue_id", "action", "assignee_id", "assignee_name", "due_date", "status",
                  "verification_result", "verified_by", "created_at", "updated_at"), r)
         ))) for r in rows]
 

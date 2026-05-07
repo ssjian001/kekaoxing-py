@@ -1188,6 +1188,7 @@ class ExportService:
         from docx.enum.text import WD_ALIGN_PARAGRAPH
         from docx.enum.table import WD_TABLE_ALIGNMENT
         from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
 
         _BLUE = RGBColor(0x1E, 0x66, 0xA5)
         _GRAY = RGBColor(0x99, 0x99, 0x99)
@@ -1265,7 +1266,6 @@ class ExportService:
                     run.font.color.rgb = _BLUE
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     # 蓝色背景通过 shading
-                    from docx.oxml import OxmlElement
                     shading = OxmlElement("w:shd")
                     shading.set(qn("w:fill"), "E8F0FE")
                     shading.set(qn("w:val"), "clear")
@@ -1315,7 +1315,6 @@ class ExportService:
             run.font.color.rgb = _WHITE
 
             # 蓝底
-            from docx.oxml import OxmlElement
             for cell in [d_cell, t_cell]:
                 shading = OxmlElement("w:shd")
                 shading.set(qn("w:fill"), "1E66A5")
