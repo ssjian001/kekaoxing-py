@@ -376,7 +376,7 @@ class PlanHandlers:
         dlg = TaskEditDialog(
             task=None,
             equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
-            technician_list=[],
+            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
             all_tasks=current_tasks,
             sample_list=sample_list,
             parent=self._win,
@@ -403,7 +403,7 @@ class PlanHandlers:
         dlg = TaskEditDialog(
             task=task,
             equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
-            technician_list=[],
+            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
             all_tasks=current_tasks,
             sample_list=sample_list,
             parent=self._win,
