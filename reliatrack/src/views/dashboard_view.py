@@ -685,33 +685,6 @@ class DashboardView(QWidget):
         self._donut = _DonutChart()
         left.addWidget(self._donut, 1)
 
-        # 通过率进度条
-        pass_card = QFrame()
-        pass_card.setStyleSheet(_card_qss(16))
-        pass_card.setFixedHeight(60)
-        _add_shadow(pass_card)
-        pass_lay = QVBoxLayout(pass_card)
-        pass_lay.setContentsMargins(16, 8, 16, 8)
-        pass_lay.setSpacing(4)
-        pass_header = QHBoxLayout()
-        pass_title = QLabel("通过率")
-        pass_title.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 12px; font-weight: 500;"
-            f"border: none; background: transparent;"
-        )
-        pass_header.addWidget(pass_title)
-        pass_header.addStretch()
-        self._pass_pct_label = QLabel("—%")
-        self._pass_pct_label.setStyleSheet(
-            f"color: {DASH_SUCCESS}; font-size: 16px; font-weight: bold;"
-            f"border: none; background: transparent;"
-        )
-        pass_header.addWidget(self._pass_pct_label)
-        pass_lay.addLayout(pass_header)
-        self._pass_bar = _HProgressBar(color=DASH_SUCCESS, height=8)
-        pass_lay.addWidget(self._pass_bar)
-        left.addWidget(pass_card)
-
         cols.addLayout(left, 1)
 
         # ═══ 右栏: 质量与问题概览 ═══
@@ -800,15 +773,6 @@ class DashboardView(QWidget):
         self._donut.setData(
             {task_map.get(k, k): v for k, v in (data.task_status_data or {}).items() if v > 0}
         )
-
-        # 通过率
-        pr = data.pass_rate
-        if pr is not None:
-            self._pass_pct_label.setText(f"{pr:.1f}%")
-            self._pass_bar.setPercent(pr)
-        else:
-            self._pass_pct_label.setText("—%")
-            self._pass_bar.setPercent(0)
 
         # 右栏 KPI
         self._card_fail_task.set_value(str(data.failed_task_count))
