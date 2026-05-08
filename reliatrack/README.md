@@ -105,7 +105,7 @@ E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tes
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v15：FK ON DELETE SET NULL，显式列名（无 SELECT *），CAPA PDCA 扩展，pyqtgraph 图表
+- Schema v15：FK ON DELETE SET NULL，显式列名（无 SELECT *），CAPA PDCA 扩展，QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可

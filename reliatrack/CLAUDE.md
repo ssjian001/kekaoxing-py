@@ -126,10 +126,11 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 仪表盘
 
-- **A 区（测试状态）**：6 个 KPI 卡片（任务数/已完成/进行中/待开始/通过率/失效率）+ pyqtgraph 任务状态图表
-- **B 区（测试结果）**：4 个 KPI 卡片（Fail 项数/Issue 数/Issue 闭环数/CAPA 完成率）+ pyqtgraph Issue 严重度图表
-- DashboardData 封装 16 个参数（A/B 分区），含 failed_task_count / issue_closed_count
-- **pyqtgraph 0.14** 垂直条形图（替代原 QPainter 自绘）
+- **左右两栏布局**（800×600 窗口适配）
+- **A 区（测试状态）**：2×3 KPI 卡片(52px) + `_DonutChart` 环形图(QPainter, 中心总数+底部图例)
+- **B 区（测试结果）**：2×2 KPI 卡片 + 2× `_ProgressRing` 进度环(76×76, Issue 闭环率 + CAPA 完成率)
+- 组件：`_KPICard` / `_DonutChart` / `_ProgressRing`，均为 QPainter 自绘，不依赖 pyqtgraph
+- DashboardData 封装 14 个参数，含 failed_task_count / issue_closed_count
 
 ### Schema（v15）
 

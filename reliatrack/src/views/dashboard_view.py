@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
-import pyqtgraph as pg
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
