@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
 )
 from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush, QLinearGradient
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QBrush, QLinearGradient
 
 from src.styles.constants import (
     FONT_FAMILY,
@@ -116,6 +116,20 @@ class _StatCard(QFrame):
     def set_value(self, text: str) -> None:
         self._val.setText(text)
 
+    def enterEvent(self, event):  # noqa: N802
+        shadow = self.graphicsEffect()
+        if shadow:
+            shadow.setBlurRadius(20)
+            shadow.setOffset(0, 4)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):  # noqa: N802
+        shadow = self.graphicsEffect()
+        if shadow:
+            shadow.setBlurRadius(12)
+            shadow.setOffset(0, 2)
+        super().leaveEvent(event)
+
     def mousePressEvent(self, event):  # noqa: N802
         w = self.parent()
         while w is not None:
@@ -124,6 +138,34 @@ class _StatCard(QFrame):
                 break
             w = w.parent()
         super().mousePressEvent(event)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  辅助指标卡片 — 健康度卡片的右侧小卡片
+# ═══════════════════════════════════════════════════════════════════
+
+class _AuxCard(QFrame):
+    """紧凑辅助指标: 标题 + 值。"""
+
+    def __init__(self, title: str, value: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        vl = QVBoxLayout(self)
+        vl.setContentsMargins(12, 6, 12, 6)
+        vl.setSpacing(0)
+        t = QLabel(title)
+        t.setStyleSheet(
+            f"color: {DASH_NEUTRAL}; font-size: 11px; border: none; background: transparent;"
+        )
+        vl.addWidget(t)
+        self._value_label = QLabel(value)
+        self._value_label.setStyleSheet(
+            f"color: {DASH_PRIMARY}; font-size: 16px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
+        vl.addWidget(self._value_label)
+
+    def set_value(self, text: str) -> None:
+        self._value_label.setText(text)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -189,27 +231,12 @@ class _HealthCard(QFrame):
         lay.addLayout(right, 2)
 
     @staticmethod
-    def _mk_aux(title: str, value: str) -> QFrame:
+    def _mk_aux(title: str, value: str) -> _AuxCard:
         """创建紧凑辅助指标。"""
-        f = QFrame()
-        f.setStyleSheet(_card_qss(10))
-        f.setFixedHeight(56)
-        vl = QVBoxLayout(f)
-        vl.setContentsMargins(12, 6, 12, 6)
-        vl.setSpacing(0)
-        t = QLabel(title)
-        t.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 11px; border: none; background: transparent;"
-        )
-        vl.addWidget(t)
-        v = QLabel(value)
-        v.setStyleSheet(
-            f"color: {DASH_PRIMARY}; font-size: 16px; font-weight: bold;"
-            f"border: none; background: transparent;"
-        )
-        vl.addWidget(v)
-        f._value_label = v  # type: ignore[attr-defined]
-        return f
+        card = _AuxCard(title, value)
+        card.setStyleSheet(_card_qss(10))
+        card.setFixedHeight(56)
+        return card
 
     def refresh(self, score: float | None, plan_count: int,
                 technician_count: int, last_update: str | None) -> None:
@@ -238,9 +265,9 @@ class _HealthCard(QFrame):
             self._progress.setPercent(0)
 
         # 辅助指标
-        self._aux1._value_label.setText(str(plan_count))  # type: ignore[attr-defined]
-        self._aux2._value_label.setText(str(technician_count))  # type: ignore[attr-defined]
-        self._aux3._value_label.setText(last_update or "—")  # type: ignore[attr-defined]
+        self._aux1.set_value(str(plan_count))
+        self._aux2.set_value(str(technician_count))
+        self._aux3.set_value(last_update or "—")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -265,11 +292,19 @@ class _DonutChart(QFrame):
         self.update()
 
     def paintEvent(self, event):  # noqa: N802
-        if not self._data:
-            return
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
+
+        if not self._data:
+            # 空态提示
+            p.setPen(QColor(DASH_NEUTRAL))
+            p.setFont(_FONT_MD)
+            p.drawText(QRectF(0, 0, w, h),
+                       Qt.AlignmentFlag.AlignCenter, "暂无数据")
+            p.end()
+            return
+
         total = sum(self._data.values())
         if total == 0:
             p.end()
@@ -526,7 +561,6 @@ class _SeverityBar(QWidget):
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        text)
             # 测量宽度推进
-            from PySide6.QtGui import QFontMetrics
             fm = QFontMetrics(_FONT_SM)
             lx += 12 + fm.horizontalAdvance(text) + 16
         p.end()
