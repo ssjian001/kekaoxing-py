@@ -78,6 +78,122 @@ class _KPICard(QFrame):
         super().mousePressEvent(event)
 
 
+class _PyqtGraphPieChart(QWidget):
+    """使用 QPainter 绘制的饼形图。
+
+    Args:
+        title: 图表标题。
+        parent: 父控件。
+    """
+
+    def __init__(self, title: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._data: dict[str, int] = {}
+        self._title = title
+        self.setFixedHeight(200)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        header = QLabel(title)
+        header.setStyleSheet(
+            f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        layout.addWidget(header)
+
+        self._canvas = _PieCanvas(self)
+        layout.addWidget(self._canvas)
+
+    def setData(self, data: dict[str, int]) -> None:
+        """更新图表数据并刷新绘制。"""
+        self._data = dict(data)
+        self._canvas.update()
+
+
+class _PieCanvas(QWidget):
+    """饼形图绘制画布 — 左侧饼图 + 右侧图例。"""
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setMinimumHeight(160)
+
+    def paintEvent(self, event):  # noqa: N802
+        pie_widget = self.parent()
+        while pie_widget is not None and not isinstance(pie_widget, _PyqtGraphPieChart):
+            pie_widget = pie_widget.parent()
+        if pie_widget is None:
+            return
+
+        data = pie_widget._data
+        if not data:
+            return
+
+        from PySide6.QtGui import QPainter, QPen, QBrush
+        from PySide6.QtCore import QRectF
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        w = self.width()
+        h = self.height()
+        total = sum(data.values())
+        if total == 0:
+            painter.end()
+            return
+
+        # 布局：左侧饼图（占 60%），右侧图例
+        pie_size = min(w * 0.55, h - 20)
+        pie_x = w * 0.05
+        pie_y = (h - pie_size) / 2
+        rect = QRectF(pie_x, pie_y, pie_size, pie_size)
+
+        # 绘制扇形
+        start_angle = 0
+        items = list(data.items())
+        for i, (label, value) in enumerate(items):
+            color = QColor(CHART_COLORS[i % len(CHART_COLORS)])
+            span = int(value / total * 360 * 16)
+            painter.setPen(QPen(QColor("#ffffff"), 2))
+            painter.setBrush(QBrush(color))
+            painter.drawPie(rect, -start_angle, -span)
+
+            # 扇形中心标注百分比（扇形足够大时）
+            pct = value / total * 100
+            if pct >= 5:
+                mid_angle = start_angle + span / 2
+                import math
+                cx = rect.center().x() + (pie_size * 0.3) * math.cos(math.radians(-mid_angle / 16))
+                cy = rect.center().y() + (pie_size * 0.3) * math.sin(math.radians(-mid_angle / 16))
+                painter.setPen(QColor("#ffffff"))
+                painter.setFont(QFont(FONT_FAMILY.split(",")[0].strip(), 9, QFont.Weight.Bold))
+                painter.drawText(
+                    QRectF(cx - 30, cy - 10, 60, 20),
+                    Qt.AlignmentFlag.AlignCenter,
+                    f"{pct:.0f}%",
+                )
+
+            start_angle += span
+
+        # 右侧图例
+        legend_x = w * 0.65
+        legend_y = pie_y + 4
+        painter.setFont(QFont(FONT_FAMILY.split(",")[0].strip(), 10))
+        line_h = 22
+        for i, (label, value) in enumerate(items):
+            color = QColor(CHART_COLORS[i % len(CHART_COLORS)])
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(color))
+            painter.drawRoundedRect(QRectF(legend_x, legend_y + i * line_h, 12, 12), 2, 2)
+            painter.setPen(QColor(TEXT))
+            painter.drawText(
+                QRectF(legend_x + 18, legend_y + i * line_h - 2, 200, 16),
+                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                f"{label}  {value} ({value / total * 100:.1f}%)",
+            )
+
+        painter.end()
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  pyqtgraph 垂直条形图
 # ═══════════════════════════════════════════════════════════════════
@@ -216,8 +332,8 @@ class DashboardView(QWidget):
 
         layout.addLayout(grid_a)
 
-        # A 区图表 — 任务状态分布
-        self._chart_task_status = _PyqtGraphBarChart("任务状态分布")
+        # A 区图表 — 任务状态分布（饼形图）
+        self._chart_task_status = _PyqtGraphPieChart("任务状态分布")
         layout.addWidget(self._chart_task_status)
 
         # ── B 区 — 测试结果 ──
