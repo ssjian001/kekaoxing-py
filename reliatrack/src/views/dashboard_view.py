@@ -1,7 +1,8 @@
-"""仪表盘视图 — 项目 KPI 总览。"""
+"""仪表盘视图 — A/B 两区布局：测试状态 + 测试结果。"""
 
 from __future__ import annotations
 
+import pyqtgraph as pg
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -9,38 +10,30 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QFrame,
-    QScrollArea,
 )
-from PySide6.QtCore import Qt, QRectF, Signal
-from PySide6.QtGui import (
-    QPainter,
-    QColor,
-    QPen,
-    QFont,
-    QFontMetrics,
-    QLinearGradient,
-)
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 
 from src.styles.theme import (
-    CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1, GREEN, YELLOW, RED, BLUE, MAUVE, PEACH,
-    TEAL, LAVENDER, PINK, SKY, OVERLAY0,
 )
-
 from src.styles.constants import VIEW_MARGINS, CHART_COLORS, FONT_FAMILY
 
 
 class DashboardData:
-    """Dashboard 刷新数据封装 — 替代 16 个独立参数。"""
+    """Dashboard 刷新数据封装 — A/B 两区字段。"""
 
     __slots__ = (
+        # A 区 — 测试状态
         "task_total", "task_completed", "task_in_progress", "task_pending",
-        "issue_count", "equipment_count", "sample_count",
+        "pass_rate", "failure_rate",
+        "task_status_data",
+        # B 区 — 测试结果
+        "issue_count", "issue_closed_count",
+        "capa_completion_rate", "failed_task_count",
+        "issue_severity_data",
+        # 筛选
         "project_name", "plan_name",
-        "task_status_data", "sample_status_data", "issue_severity_data",
-        "pass_rate", "issue_close_rate", "calibration_warning_count",
-        "failure_rate", "capa_completion_rate",
-        "cal_warning_list",
     )
 
     def __init__(self, **kwargs: object) -> None:
@@ -50,12 +43,7 @@ class DashboardData:
                                            else None))
 
 
-# ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-#  图表配色（来自 constants.py）
-# ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-
-
-# ═════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
 #  KPI 卡片
 # ═══════════════════════════════════════════════════════════════════
 
@@ -81,7 +69,6 @@ class _KPICard(QFrame):
 
     def mousePressEvent(self, event):  # noqa: N802
         """点击卡片发送跳转信号。"""
-        # 向上查找 DashboardView 并发出 card_clicked 信号
         parent = self.parent()
         while parent is not None:
             if hasattr(parent, "card_clicked"):
@@ -92,158 +79,88 @@ class _KPICard(QFrame):
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  QPainter 水平条形图
+#  pyqtgraph 垂直条形图
 # ═══════════════════════════════════════════════════════════════════
 
-class _BarChartWidget(QWidget):
-    """使用 QPainter 绘制的水平条形图。
+class _PyqtGraphBarChart(QWidget):
+    """使用 pyqtgraph 绘制的垂直条形图。
 
     Args:
         title: 图表标题。
-        data: 标签→数值的映射。传入空字典时显示占位提示。
         parent: 父控件。
     """
 
-    def __init__(
-        self,
-        title: str,
-        data: dict[str, int] | None = None,
-        parent: QWidget | None = None,
-    ) -> None:
+    def __init__(self, title: str, parent: QWidget | None = None):
         super().__init__(parent)
-        self._title = title
-        self._data: dict[str, int] = data or {}
-        # 布局常量
-        self._h_margin = 16
-        self._v_margin = 10
-        self._title_height = 24
-        self._bar_height = 20
-        self._bar_gap = 8
-        self._label_width = 80
-        self._value_width = 50
-        self.setMinimumHeight(160)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        header = QLabel(title)
+        header.setStyleSheet(
+            f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        layout.addWidget(header)
+
+        self._pw = pg.PlotWidget()
+        self._pw.setBackground("transparent")
+        self._pw.hideAxis("bottom")
+        self._pw.hideAxis("left")
+        self._pw.setMouseEnabled(False, False)
+        self._pw.setMinimumHeight(160)
+        layout.addWidget(self._pw)
+
+        self._labels: list[str] = []
 
     # ── 公开 API ──
 
-    def set_data(self, data: dict[str, int]) -> None:
+    def setData(self, data: dict[str, int]) -> None:
         """更新图表数据并刷新绘制。"""
-        self._data = data
-        self._adjust_size()
-        self.update()
-
-    # ── 内部 ──
-
-    def _adjust_size(self) -> None:
-        """根据数据条目数动态调整最小高度。"""
-        n = len(self._data)
-        if n == 0:
-            self.setMinimumHeight(160)
-        else:
-            h = (
-                self._v_margin
-                + self._title_height
-                + self._v_margin
-                + n * self._bar_height
-                + (n - 1) * self._bar_gap
-                + self._v_margin
-            )
-            self.setMinimumHeight(h)
-
-    def paintEvent(self, event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w, h = self.width(), self.height()
-
-        # 背景
-        painter.fillRect(0, 0, w, h, QColor(SURFACE0))
-
-        # 标题
-        title_font = QFont(FONT_FAMILY)
-        title_font.setPointSize(11)
-        title_font.setBold(True)
-        painter.setFont(title_font)
-        painter.setPen(QColor(TEXT))
-        painter.drawText(
-            self._h_margin,
-            self._v_margin,
-            w - 2 * self._h_margin,
-            self._title_height,
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-            self._title,
-        )
-
-        if not self._data:
-            self._paint_empty(painter, w, h)
+        self._pw.clear()
+        if not data:
             return
 
-        # 最大值（至少为 1 避免除零）
-        max_val = max(max(self._data.values()), 1)
-        bar_area_x = self._h_margin + self._label_width + 8
-        bar_area_w = max(w - bar_area_x - self._value_width - self._h_margin, 20)
+        labels = list(data.keys())
+        values = list(data.values())
+        self._labels = labels
 
-        # 条形字体
-        bar_font = QFont(FONT_FAMILY)
-        bar_font.setPointSize(11)
-        painter.setFont(bar_font)
+        n = len(values)
+        colors = [QColor(CHART_COLORS[i % len(CHART_COLORS)]) for i in range(n)]
 
-        colors = CHART_COLORS
-        y = self._v_margin + self._title_height + self._v_margin
-
-        for i, (label, value) in enumerate(self._data.items()):
-            # 标签
-            painter.setPen(QColor(SUBTEXT1))
-            painter.drawText(
-                self._h_margin,
-                y,
-                self._label_width,
-                self._bar_height,
-                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                label,
-            )
-
-            # 条形
-            color = QColor(colors[i % len(colors)])
-            bar_w = int(bar_area_w * value / max_val) if max_val else 0
-            bar_rect = QRectF(
-                bar_area_x,
-                y + (self._bar_height - 16) / 2,
-                bar_w,
-                16,
-            )
-            # 渐变条
-            grad = QLinearGradient(bar_rect.topLeft(), bar_rect.topRight())
-            grad.setColorAt(0, color)
-            grad.setColorAt(1, QColor(color.red(), color.green(), color.blue(), 180))
-            painter.setBrush(grad)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(bar_rect, 4, 4)
-
-            # 数值
-            painter.setPen(QColor(TEXT))
-            painter.drawText(
-                bar_area_x + bar_w + 8,
-                y,
-                self._value_width,
-                self._bar_height,
-                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                str(value),
-            )
-
-            y += self._bar_height + self._bar_gap
-
-        painter.end()
-
-    def _paint_empty(self, painter: QPainter, w: int, h: int) -> None:
-        """无数据时绘制占位提示。"""
-        painter.setPen(QColor(SUBTEXT0))
-        font = QFont(FONT_FAMILY)
-        font.setPointSize(12)
-        painter.setFont(font)
-        painter.drawText(
-            0, 0, w, h,
-            Qt.AlignmentFlag.AlignCenter,
-            "暂无数据",
+        x = list(range(n))
+        bg = pg.BarGraphItem(
+            x=x,
+            height=values,
+            width=0.6,
+            brushes=colors,
         )
+        self._pw.addItem(bg)
+
+        # 在条形顶部显示数值
+        for i, (xi, val) in enumerate(zip(x, values)):
+            text_item = pg.TextItem(
+                str(val),
+                color=TEXT,
+                anchor=(0.5, 1.0),
+            )
+            text_item.setFont(pg.QtGui.QFont(FONT_FAMILY.split(",")[0].strip(), 10))
+            text_item.setPos(xi, val)
+            self._pw.addItem(text_item)
+
+        # 在底部显示分类标签
+        for i, label in enumerate(labels):
+            text_item = pg.TextItem(
+                label,
+                color=SUBTEXT1,
+                anchor=(0.5, 0.0),
+            )
+            text_item.setFont(pg.QtGui.QFont(FONT_FAMILY.split(",")[0].strip(), 10))
+            text_item.setPos(i, 0)
+            self._pw.addItem(text_item)
+
+        # 设置范围，留一些边距
+        max_val = max(values) if values else 1
+        self._pw.setXRange(-0.5, n - 0.5, padding=0)
+        self._pw.setYRange(0, max_val * 1.15 if max_val > 0 else 1, padding=0)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -251,7 +168,7 @@ class _BarChartWidget(QWidget):
 # ═══════════════════════════════════════════════════════════════════
 
 class DashboardView(QWidget):
-    """仪表盘 — KPI 总览页，KPI 卡片点击可跳转到对应 Tab。"""
+    """仪表盘 — A/B 两区布局，KPI 卡片点击可跳转到对应 Tab。"""
 
     card_clicked = Signal(int)  # tab_index, 点击 KPI 卡片时发出
 
@@ -267,82 +184,68 @@ class DashboardView(QWidget):
         self._filter_label = QLabel("📋 全部项目")
         self._filter_label.setStyleSheet(
             f"color: {SUBTEXT0}; font-size: 13px; "
-            f"background-color: {SURFACE1}; border-radius: 6px; "
+            f"background-color: {SUBTEXT0}22; border-radius: 6px; "
             f"padding: 4px 12px;"
         )
         layout.addWidget(self._filter_label)
 
-        # KPI 卡片网格 — tab_index 映射: 0=仪表盘, 1=项目, 2=样品, 3=测试计划, 4=Issue, 5=设备, 6=知识库
-        grid = QGridLayout()
-        grid.setSpacing(8)
+        # ── A 区 — 测试状态 ──
+        section_a_label = QLabel("测试状态")
+        section_a_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 14px; font-weight: bold; padding: 8px 0 2px 0;"
+        )
+        layout.addWidget(section_a_label)
 
-        self._card_tasks = _KPICard("测试任务", "0", BLUE, tab_index=3)
-        self._card_completed = _KPICard("已完成", "0", GREEN, tab_index=3)
-        self._card_in_progress = _KPICard("进行中", "0", YELLOW, tab_index=3)
-        self._card_pending = _KPICard("待开始", "0", SUBTEXT1, tab_index=3)
-        self._card_issues = _KPICard("Issue 数", "0", PEACH, tab_index=4)
-        self._card_equipment = _KPICard("设备数", "0", MAUVE, tab_index=5)
-        self._card_samples = _KPICard("样品数", "0", TEAL, tab_index=2)
+        # A 区 KPI 卡片（6 个，2行×3列）
+        grid_a = QGridLayout()
+        grid_a.setSpacing(8)
 
-        # 专业 KPI
+        self._card_task_total = _KPICard("测试任务数", "0", BLUE, tab_index=3)
+        self._card_completed = _KPICard("已完成数", "0", GREEN, tab_index=3)
+        self._card_in_progress = _KPICard("进行中数量", "0", YELLOW, tab_index=3)
+        self._card_pending = _KPICard("待开始数量", "0", SUBTEXT1, tab_index=3)
         self._card_pass_rate = _KPICard("测试通过率", "—%", GREEN, tab_index=3)
-        self._card_issue_close_rate = _KPICard("Issue 闭环率", "—%", BLUE, tab_index=4)
-        self._card_cal_warning = _KPICard("校准预警", "0", YELLOW, tab_index=5)
-
-        # 可靠性 KPI
         self._card_failure_rate = _KPICard("失效率", "—%", RED, tab_index=4)
+
+        grid_a.addWidget(self._card_task_total, 0, 0)
+        grid_a.addWidget(self._card_completed, 0, 1)
+        grid_a.addWidget(self._card_in_progress, 0, 2)
+        grid_a.addWidget(self._card_pending, 1, 0)
+        grid_a.addWidget(self._card_pass_rate, 1, 1)
+        grid_a.addWidget(self._card_failure_rate, 1, 2)
+
+        layout.addLayout(grid_a)
+
+        # A 区图表 — 任务状态分布
+        self._chart_task_status = _PyqtGraphBarChart("任务状态分布")
+        layout.addWidget(self._chart_task_status)
+
+        # ── B 区 — 测试结果 ──
+        section_b_label = QLabel("测试结果")
+        section_b_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 14px; font-weight: bold; padding: 8px 0 2px 0;"
+        )
+        layout.addWidget(section_b_label)
+
+        # B 区 KPI 卡片（4 个，1行×4列）
+        grid_b = QHBoxLayout()
+        grid_b.setSpacing(8)
+
+        self._card_failed_task = _KPICard("Fail 项数", "0", RED, tab_index=3)
+        self._card_issues = _KPICard("Issue 数", "0", PEACH, tab_index=4)
+        self._card_issue_closed = _KPICard("Issue 闭环数", "0", BLUE, tab_index=4)
         self._card_capa_rate = _KPICard("CAPA 完成率", "—%", MAUVE, tab_index=4)
 
-        grid.addWidget(self._card_tasks, 0, 0)
-        grid.addWidget(self._card_completed, 0, 1)
-        grid.addWidget(self._card_in_progress, 0, 2)
-        grid.addWidget(self._card_pending, 1, 0)
-        grid.addWidget(self._card_issues, 1, 1)
-        grid.addWidget(self._card_equipment, 1, 2)
-        grid.addWidget(self._card_samples, 2, 0)
-        grid.addWidget(self._card_pass_rate, 2, 1)
-        grid.addWidget(self._card_issue_close_rate, 2, 2)
-        grid.addWidget(self._card_cal_warning, 3, 0)
-        grid.addWidget(self._card_failure_rate, 3, 1)
-        grid.addWidget(self._card_capa_rate, 3, 2)
+        grid_b.addWidget(self._card_failed_task)
+        grid_b.addWidget(self._card_issues)
+        grid_b.addWidget(self._card_issue_closed)
+        grid_b.addWidget(self._card_capa_rate)
 
-        layout.addLayout(grid)
+        layout.addLayout(grid_b)
 
-        # ── 图表区域 ──
-        chart_grid = QGridLayout()
-        chart_grid.setSpacing(8)
-
-        self._chart_task_status = _BarChartWidget("任务状态分布")
-        self._chart_sample_status = _BarChartWidget("样品状态分布")
-        self._chart_issue_severity = _BarChartWidget("Issue 严重度分布")
-
-        chart_grid.addWidget(self._chart_task_status, 0, 0)
-        chart_grid.addWidget(self._chart_sample_status, 0, 1)
-        chart_grid.addWidget(self._chart_issue_severity, 0, 2)
-
-        layout.addLayout(chart_grid)
-
-        # 校准到期预警列表
-        self._cal_warning_header = QLabel("校准到期预警")
-        self._cal_warning_header.setStyleSheet(
-            f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
-        )
-        self._cal_warning_header.hide()
-        layout.addWidget(self._cal_warning_header)
-
-        self._cal_warning_list_widget = QWidget()
-        self._cal_warning_layout = QVBoxLayout(self._cal_warning_list_widget)
-        self._cal_warning_layout.setContentsMargins(0, 0, 0, 0)
-        self._cal_warning_layout.setSpacing(2)
-        self._cal_warning_list_widget.hide()
-        layout.addWidget(self._cal_warning_list_widget)
-
-        # 空状态提示 — 当所有计数器为 0 时显示
-        self._empty_label = QLabel("暂无数据，请先创建项目和测试计划")
-        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 16px;")
-        self._empty_label.hide()
-        layout.addWidget(self._empty_label)
+        # B 区图表 — Issue 严重度分布
+        self._chart_issue_severity = _PyqtGraphBarChart("Issue 严重度分布")
+        layout.addWidget(self._chart_issue_severity)
 
         layout.addStretch()
 
@@ -351,35 +254,33 @@ class DashboardView(QWidget):
 
         Args:
             data: DashboardData 封装对象（推荐）。
-            **kwargs: 向后兼容，可直接传 16 个参数。
+            **kwargs: 向后兼容，可直接传参数。
         """
         if data is None:
             data = DashboardData(**kwargs)
-        # 解构到局部变量，保持后续代码可读
+
+        # 解构到局部变量
         task_total = data.task_total
         task_completed = data.task_completed
         task_in_progress = data.task_in_progress
         task_pending = data.task_pending
-        issue_count = data.issue_count
-        equipment_count = data.equipment_count
-        sample_count = data.sample_count
-        project_name = data.project_name
-        plan_name = getattr(data, 'plan_name', None)
-        task_status_data = data.task_status_data or {}
-        sample_status_data = data.sample_status_data or {}
-        issue_severity_data = data.issue_severity_data or {}
         pass_rate = data.pass_rate
-        issue_close_rate = data.issue_close_rate
-        calibration_warning_count = data.calibration_warning_count
         failure_rate = data.failure_rate
+        task_status_data = data.task_status_data or {}
+        issue_count = data.issue_count
+        issue_closed_count = data.issue_closed_count
         capa_completion_rate = data.capa_completion_rate
-        cal_warning_list = data.cal_warning_list or []
+        failed_task_count = data.failed_task_count
+        issue_severity_data = data.issue_severity_data or {}
+        project_name = data.project_name
+        plan_name = data.plan_name
+
         # 项目/计划筛选指示器
         if project_name and plan_name:
             self._filter_label.setText(f"📁 {project_name} / {plan_name}")
             self._filter_label.setStyleSheet(
                 f"color: {BLUE}; font-size: 13px; font-weight: bold; "
-                f"background-color: {SURFACE1}; border-radius: 6px; "
+                f"background-color: {SUBTEXT0}22; border-radius: 6px; "
                 f"border: 1px solid {BLUE}; "
                 f"padding: 4px 12px;"
             )
@@ -387,7 +288,7 @@ class DashboardView(QWidget):
             self._filter_label.setText(f"📁 {project_name}")
             self._filter_label.setStyleSheet(
                 f"color: {BLUE}; font-size: 13px; font-weight: bold; "
-                f"background-color: {SURFACE1}; border-radius: 6px; "
+                f"background-color: {SUBTEXT0}22; border-radius: 6px; "
                 f"border: 1px solid {BLUE}; "
                 f"padding: 4px 12px;"
             )
@@ -395,77 +296,45 @@ class DashboardView(QWidget):
             self._filter_label.setText("📋 全部项目")
             self._filter_label.setStyleSheet(
                 f"color: {SUBTEXT0}; font-size: 13px; "
-                f"background-color: {SURFACE1}; border-radius: 6px; "
+                f"background-color: {SUBTEXT0}22; border-radius: 6px; "
                 f"padding: 4px 12px;"
             )
 
-        # KPI 卡片
+        # ── A 区 KPI 卡片 ──
         for card, val in [
-            (self._card_tasks, task_total),
+            (self._card_task_total, task_total),
             (self._card_completed, task_completed),
             (self._card_in_progress, task_in_progress),
             (self._card_pending, task_pending),
-            (self._card_issues, issue_count),
-            (self._card_equipment, equipment_count),
-            (self._card_samples, sample_count),
             (self._card_pass_rate, f"{pass_rate:.0f}%" if pass_rate is not None else "—%"),
-            (self._card_issue_close_rate, f"{issue_close_rate:.0f}%" if issue_close_rate is not None else "—%"),
-            (self._card_cal_warning, calibration_warning_count),
             (self._card_failure_rate, f"{failure_rate:.0f}%" if failure_rate is not None else "—%"),
+        ]:
+            labels = card.findChildren(QLabel)
+            if len(labels) >= 2:
+                labels[1].setText(str(val))
+
+        # ── B 区 KPI 卡片 ──
+        for card, val in [
+            (self._card_failed_task, failed_task_count),
+            (self._card_issues, issue_count),
+            (self._card_issue_closed, issue_closed_count),
             (self._card_capa_rate, f"{capa_completion_rate:.0f}%" if capa_completion_rate is not None else "—%"),
         ]:
             labels = card.findChildren(QLabel)
             if len(labels) >= 2:
                 labels[1].setText(str(val))
 
-        # 图表
-        self._refresh_charts(
-            task_status_data or {},
-            sample_status_data or {},
-            issue_severity_data or {},
-        )
-
-        # 校准到期预警列表
-        self._refresh_cal_warnings(cal_warning_list)
-
-        # 空状态判断 — 所有计数器为 0 时显示占位提示
-        total = task_total + issue_count + equipment_count + sample_count
-        if total == 0:
-            self._empty_label.show()
-        else:
-            self._empty_label.hide()
-
-    # ── 图表刷新 ──
-
-    def _refresh_charts(
-        self,
-        task_status: dict[str, int],
-        sample_status: dict[str, int],
-        issue_severity: dict[str, int],
-    ) -> None:
-        """将原始英文 key 映射为中文标签，更新条形图。"""
+        # ── 图表 ──
         # 任务状态中文映射
         task_labels = {
             "pending": "待开始",
             "in_progress": "进行中",
             "completed": "已完成",
             "skipped": "已跳过",
+            "failed": "失败",
         }
-        self._chart_task_status.set_data(
-            {task_labels.get(k, k): v for k, v in task_status.items() if v > 0}
-        )
-
-        # 样品状态中文映射
-        sample_labels = {
-            "in_stock": "在库",
-            "checked_out": "已借出",
-            "in_test": "测试中",
-            "suspended": "暂停",
-            "scrapped": "已报废",
-            "returned": "已归还",
-        }
-        self._chart_sample_status.set_data(
-            {sample_labels.get(k, k): v for k, v in sample_status.items() if v > 0}
+        self._chart_task_status.setData(
+            {task_labels.get(k, k): v for k, v in task_status_data.items() if v > 0}
         )
 
         # Issue 严重度中文映射
@@ -475,42 +344,6 @@ class DashboardView(QWidget):
             "minor": "次要",
             "cosmetic": "外观",
         }
-        self._chart_issue_severity.set_data(
-            {severity_labels.get(k, k): v for k, v in issue_severity.items() if v > 0}
+        self._chart_issue_severity.setData(
+            {severity_labels.get(k, k): v for k, v in issue_severity_data.items() if v > 0}
         )
-
-    def _refresh_cal_warnings(self, warnings: list[dict]) -> None:
-        """刷新校准到期预警列表。"""
-        # 清空旧内容
-        while self._cal_warning_layout.count():
-            child = self._cal_warning_layout.takeAt(0)
-            if child is not None:
-                w = child.widget()
-                if w is not None:
-                    w.deleteLater()
-
-        if not warnings:
-            self._cal_warning_header.hide()
-            self._cal_warning_list_widget.hide()
-            return
-
-        self._cal_warning_header.show()
-        self._cal_warning_list_widget.show()
-
-        for item in warnings[:5]:  # 最多显示 5 条
-            name = item.get("name", "?")
-            next_cal = item.get("next_calibration_date", "")
-            row = QHBoxLayout()
-            name_lbl = QLabel(f"  {name}")
-            name_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
-            row.addWidget(name_lbl)
-            row.addStretch()
-            date_lbl = QLabel(next_cal)
-            date_lbl.setStyleSheet(f"color: {YELLOW}; font-size: 11px;")
-            row.addWidget(date_lbl)
-            container = QWidget()
-            container.setLayout(row)
-            container.setStyleSheet(
-                f"background-color: {SURFACE0}; border-radius: 4px; padding: 2px 4px;"
-            )
-            self._cal_warning_layout.addWidget(container)

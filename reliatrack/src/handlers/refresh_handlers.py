@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections import Counter
-from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -140,7 +138,7 @@ class RefreshHandlers:
         self._win._project_filter_combo.blockSignals(False)
 
     def _refresh_dashboard(self) -> None:
-        """刷新 Dashboard KPI + 图表 + 样品图表。"""
+        """刷新 Dashboard A/B 两区 KPI + 图表。"""
         ctrl = self._win._ctrl
         if not ctrl:
             return
@@ -161,11 +159,10 @@ class RefreshHandlers:
                     break
 
         task_status_data: dict[str, int] = {}
-        sample_status_data: dict[str, int] = {}
         issue_severity_data: dict[str, int] = {}
         sample_count = 0
 
-        # 样品（优先使用缓存）
+        # 样品（优先使用缓存）— 仍需 sample_count 用于失效率计算
         if ctrl.sample_service:
             if self._cached_samples is not None:
                 all_samples = self._cached_samples
@@ -174,10 +171,6 @@ class RefreshHandlers:
             else:
                 all_samples = ctrl.sample_service.list_all()
             sample_count = len(all_samples)
-            # SQL 聚合替代 Counter
-            sample_status_data = ctrl.sample_service.count_by_status(
-                project_id=filter_project_id
-            )
         else:
             all_samples = []
 
@@ -187,7 +180,7 @@ class RefreshHandlers:
         # 注入知识库条目给 Issue 弹窗（失效模式自动推荐）
         if ctrl.knowledge_service:
             self._win._issue_view._knowledge_list = ctrl.knowledge_service.list_all()
-        if ctrl.test_tasks and ctrl.issues and ctrl.equipment:
+        if ctrl.test_tasks and ctrl.issues:
             # ── 任务状态：SQL 聚合 ──
             task_status_data = ctrl.test_tasks.count_by_status(
                 project_id=filter_project_id,
@@ -197,6 +190,7 @@ class RefreshHandlers:
             completed = task_status_data.get("completed", 0)
             in_progress = task_status_data.get("in_progress", 0)
             pending_count = task_status_data.get("pending", 0)
+            failed_task_count = task_status_data.get("failed", 0)
 
             # 仍需任务列表供 Issue 弹窗 & 通过率计算
             all_tasks = ctrl.test_tasks.list_all()
@@ -221,14 +215,16 @@ class RefreshHandlers:
             else:
                 issues_list = ctrl.issues.list_all()
             issues = len(issues_list)
-            equipment = len(ctrl.equipment.list_all())
 
-            # Issue 严重度分布 — SQL 聚合替代 Counter
+            # Issue 闭环数
+            issue_closed_count = sum(1 for iss in issues_list if iss.status == "closed")
+
+            # Issue 严重度分布 — SQL 聚合
             issue_severity_data = ctrl.issues.count_by_severity(
                 project_id=filter_project_id
             )
 
-            # ── 专业 KPI 计算 ──
+            # ── A 区 KPI 计算 ──
             # 1. 测试通过率
             pass_rate: float | None = None
             task_ids = [t.id for t in filtered_tasks if t.id is not None]
@@ -239,29 +235,13 @@ class RefreshHandlers:
                 if total_result > 0:
                     pass_rate = total_pass / total_result * 100
 
-            # 2. Issue 闭环率 — SQL 聚合替代 sum(1 for ...)
-            issue_close_rate: float | None = None
-            if issues > 0:
-                status_counts = ctrl.issues.count_by_status(
-                    project_id=filter_project_id
-                )
-                closed_count = status_counts.get("closed", 0)
-                issue_close_rate = closed_count / issues * 100
-
-            # 3. 校准预警（30天内到期）— SQL 聚合
-            cal_warning = 0
-            cal_warning_list: list[dict] = []
-            if ctrl.equipment:
-                threshold = (date.today() + timedelta(days=30)).isoformat()
-                cal_warning = ctrl.equipment.count_calibration_due(threshold)
-                cal_warning_list = ctrl.equipment.list_calibration_due(threshold)
-
-            # 4. 失效率 = Issue 数 / 样品总数
+            # 2. 失效率 = Issue 数 / 样品总数
             failure_rate: float | None = None
             if sample_count > 0 and issues > 0:
                 failure_rate = issues / sample_count * 100
 
-            # 5. CAPA 完成率 — SQL 聚合
+            # ── B 区 KPI 计算 ──
+            # CAPA 完成率 — SQL 聚合
             capa_completion_rate: float | None = None
             if ctrl.issue_service:
                 total_capa = ctrl.issue_service.count_capa_all(project_id=filter_project_id)
@@ -282,19 +262,15 @@ class RefreshHandlers:
                 task_in_progress=in_progress,
                 task_pending=pending_count,
                 issue_count=issues,
-                equipment_count=equipment,
-                sample_count=sample_count,
+                issue_closed_count=issue_closed_count,
+                failed_task_count=failed_task_count,
                 project_name=current_project_name,
                 plan_name=current_plan_name,
                 task_status_data=task_status_data,
-                sample_status_data=sample_status_data,
                 issue_severity_data=issue_severity_data,
                 pass_rate=pass_rate,
-                issue_close_rate=issue_close_rate,
-                calibration_warning_count=cal_warning,
                 failure_rate=failure_rate,
                 capa_completion_rate=capa_completion_rate,
-                cal_warning_list=cal_warning_list,
             )
 
     def _refresh_samples(self) -> None:
