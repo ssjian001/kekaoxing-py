@@ -223,7 +223,7 @@ class _HealthCard(QFrame):
         right = QHBoxLayout()
         right.setSpacing(16)
         self._aux1 = self._mk_aux("测试计划数", "0")
-        self._aux2 = self._mk_aux("人员参与", "0")
+        self._aux2 = self._mk_aux("测试通过率", "—%")
         self._aux3 = self._mk_aux("最后更新", "—")
         right.addWidget(self._aux1)
         right.addWidget(self._aux2)
@@ -239,7 +239,7 @@ class _HealthCard(QFrame):
         return card
 
     def refresh(self, score: float | None, plan_count: int,
-                technician_count: int, last_update: str | None) -> None:
+                pass_rate: float | None, last_update: str | None) -> None:
         # 评分
         if score is not None:
             self._score_label.setText(f"{score:.0f}")
@@ -266,7 +266,7 @@ class _HealthCard(QFrame):
 
         # 辅助指标
         self._aux1.set_value(str(plan_count))
-        self._aux2.set_value(str(technician_count))
+        self._aux2.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
         self._aux3.set_value(last_update or "—")
 
 
@@ -748,24 +748,6 @@ class DashboardView(QWidget):
         rings_lay.addStretch()
         right.addWidget(rings_card)
 
-        # 严重度分布条
-        sev_card = QFrame()
-        sev_card.setStyleSheet(_card_qss(16))
-        sev_card.setFixedHeight(68)
-        _add_shadow(sev_card)
-        sev_lay = QVBoxLayout(sev_card)
-        sev_lay.setContentsMargins(16, 8, 16, 6)
-        sev_lay.setSpacing(2)
-        sev_title = QLabel("严重度分布")
-        sev_title.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 11px; font-weight: 500;"
-            f"border: none; background: transparent;"
-        )
-        sev_lay.addWidget(sev_title)
-        self._severity_bar = _SeverityBar()
-        sev_lay.addWidget(self._severity_bar)
-        right.addWidget(sev_card)
-
         right.addStretch()
         cols.addLayout(right, 1)
 
@@ -800,7 +782,7 @@ class DashboardView(QWidget):
         self._health.refresh(
             score=data.health_score,
             plan_count=data.plan_count or 0,
-            technician_count=data.technician_count or 0,
+            pass_rate=data.pass_rate,
             last_update=data.last_update,
         )
 
@@ -840,9 +822,6 @@ class DashboardView(QWidget):
         icc = data.issue_closed_count or 0
         self._ring_issue.setPercent(icc / ic * 100 if ic else 0)
         self._ring_capa.setPercent(cr if cr is not None else 0)
-
-        # 严重度条
-        self._severity_bar.setData(data.issue_severity_data or {})
 
     def _update_filter(self, project_name: str | None, plan_name: str | None) -> None:
         if project_name and plan_name:

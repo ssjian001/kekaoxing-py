@@ -273,10 +273,6 @@ class RefreshHandlers:
                     p_list = ctrl.test_plan_service.list_all_plans()
                 plan_count = len(p_list) if p_list else 0
 
-            technician_count = 0
-            if ctrl.technician_service:
-                technician_count = len(ctrl.technician_service.list_all())
-
             # 最后更新时间：取最近一条任务的 updated_at
             last_update: str | None = None
             if filtered_tasks:
@@ -304,7 +300,6 @@ class RefreshHandlers:
                 capa_completion_rate=capa_completion_rate,
                 health_score=health_score,
                 plan_count=plan_count,
-                technician_count=technician_count,
                 last_update=last_update,
             )
 
