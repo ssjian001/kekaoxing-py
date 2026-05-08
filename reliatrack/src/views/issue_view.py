@@ -800,7 +800,7 @@ class _CAPADialog(_BaseDialog):
         self._technician_list = technician_list or []
         self._action_edit = self._add_text_area(
             "措施描述",
-            default=capa_record.action if is_edit else "",
+            default=(capa_record.action or "") if is_edit else "",
             placeholder="描述纠正或预防措施",
         )
         self._due_date_edit = self._add_date_field("截止日期")
@@ -808,14 +808,14 @@ class _CAPADialog(_BaseDialog):
         # 负责人（自由输入）
         self._assignee_edit = self._add_text_field(
             "负责人",
-            default=capa_record.assignee_name if is_edit else "",
+            default=(capa_record.assignee_name or "") if is_edit else "",
             placeholder="输入负责人姓名",
         )
 
         status_labels = [label for label, _ in self._STATUS_OPTIONS]
         default_status = ""
         if is_edit:
-            status_val = capa_record.status
+            status_val = capa_record.status or ""
             for lbl, val in self._STATUS_OPTIONS:
                 if val == status_val:
                     default_status = lbl
@@ -831,17 +831,17 @@ class _CAPADialog(_BaseDialog):
         # PDCA 扩展字段
         self._root_cause_edit = self._add_text_area(
             "根因分析",
-            default=capa_record.root_cause if is_edit else "",
+            default=(capa_record.root_cause or "") if is_edit else "",
             placeholder="Plan: 分析问题根因",
         )
         self._effectiveness_edit = self._add_text_area(
             "效果验证",
-            default=capa_record.effectiveness if is_edit else "",
+            default=(capa_record.effectiveness or "") if is_edit else "",
             placeholder="Check: 措施效果如何",
         )
         self._follow_up_edit = self._add_text_area(
             "改善追踪",
-            default=capa_record.follow_up if is_edit else "",
+            default=(capa_record.follow_up or "") if is_edit else "",
             placeholder="Act: 后续改善计划",
         )
 

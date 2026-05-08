@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 
 from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1, GREEN, YELLOW, RED, BLUE, MAUVE, PEACH,
@@ -142,7 +142,7 @@ class _PyqtGraphBarChart(QWidget):
                 color=TEXT,
                 anchor=(0.5, 1.0),
             )
-            text_item.setFont(pg.QtGui.QFont(FONT_FAMILY.split(",")[0].strip(), 10))
+            text_item.setFont(QFont(FONT_FAMILY.split(",")[0].strip(), 10))
             text_item.setPos(xi, val)
             self._pw.addItem(text_item)
 
@@ -153,7 +153,7 @@ class _PyqtGraphBarChart(QWidget):
                 color=SUBTEXT1,
                 anchor=(0.5, 0.0),
             )
-            text_item.setFont(pg.QtGui.QFont(FONT_FAMILY.split(",")[0].strip(), 10))
+            text_item.setFont(QFont(FONT_FAMILY.split(",")[0].strip(), 10))
             text_item.setPos(i, 0)
             self._pw.addItem(text_item)
 

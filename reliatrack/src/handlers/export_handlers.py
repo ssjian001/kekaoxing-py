@@ -16,6 +16,8 @@ from src.views.dialogs.export_dialog import ExportDialog
 if TYPE_CHECKING:
     from main import MainWindow
 
+logger = logging.getLogger(__name__)
+
 # Project root — used to determine the export directory.
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

@@ -227,6 +227,7 @@ class IssueHandlers:
                 self._win._issue_view.refresh_capa(self._current_capa_records)
             self._win.toast(f"CAPA #{capa_id} 已更新", "success")
         except Exception as e:
+            logger.exception("CAPA update failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录更新失败: {e}")
 
     def _handle_delete_capa(self, capa_id: int) -> None:
@@ -243,6 +244,7 @@ class IssueHandlers:
                 self._win._issue_view.refresh_capa(self._current_capa_records)
             self._win.toast(f"CAPA #{capa_id} 已删除", "success")
         except Exception as e:
+            logger.exception("CAPA delete failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "删除失败", f"CAPA 记录删除失败: {e}")
 
     def _handle_export_8d(self, issue_id: int) -> None:

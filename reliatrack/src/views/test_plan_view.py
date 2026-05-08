@@ -534,6 +534,15 @@ class _GanttWidget(QWidget):
                 self._drag_preview_offset = 0
                 self.setCursor(Qt.CursorShape.ArrowCursor)
 
+    def leaveEvent(self, event) -> None:  # type: ignore[override]
+        """鼠标离开 widget 时重置所有拖拽状态，防止卡死。"""
+        if self._dragging_label:
+            self._dragging_label = False
+        if self._drag_task_idx is not None:
+            self._drag_task_idx = None
+            self._drag_preview_offset = 0
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
     def wheelEvent(self, event: QWheelEvent) -> None:  # type: ignore[override]
         """滚轮缩放天宽度。"""
         delta = event.angleDelta().y()
