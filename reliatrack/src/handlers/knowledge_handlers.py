@@ -41,6 +41,7 @@ class KnowledgeHandlers:
                 self._win.toast(f"知识条目「{data['failure_mode']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("knowledge")
             except Exception as e:
+                logger.exception("创建失败")
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
 
     def _on_knowledge_edit(self) -> None:
@@ -62,6 +63,7 @@ class KnowledgeHandlers:
                 self._win.toast(f"知识条目「{data['failure_mode']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("knowledge")
             except Exception as e:
+                logger.exception("更新失败")
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
 
     def _on_knowledge_delete(self) -> None:
@@ -91,4 +93,5 @@ class KnowledgeHandlers:
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))
         except Exception as e:
+            logger.exception("删除失败")
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")

@@ -152,6 +152,7 @@ class ProjectView(QWidget):
 
     def _populate_table(self, items: list[Project]) -> None:
         """填充表格。"""
+        self._table.setSortingEnabled(False)
         header = self._table.horizontalHeader()
         header.blockSignals(True)
         self._table.setRowCount(len(items))
@@ -172,6 +173,7 @@ class ProjectView(QWidget):
                     item.setForeground(QColor(color))
                 self._table.setItem(row, col, item)
         header.blockSignals(False)
+        self._table.setSortingEnabled(True)
 
         self._update_empty_state()
 

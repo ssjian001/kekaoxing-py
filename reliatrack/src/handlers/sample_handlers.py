@@ -78,6 +78,7 @@ class SampleHandlers:
                 self._win.toast(f"样品 {data['sn']} 入库成功", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
+                logger.exception("入库失败")
                 QMessageBox.critical(self._win, "入库失败", f"保存失败: {e}")
 
     def _on_sample_checkout(self) -> None:
@@ -126,6 +127,7 @@ class SampleHandlers:
                 self._win.toast(f"样品 {sample.sn} 出库成功", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
+                logger.exception("出库失败")
                 QMessageBox.critical(self._win, "出库失败", f"保存失败: {e}")
 
     def _on_sample_batch_import(self) -> None:
@@ -211,4 +213,5 @@ class SampleHandlers:
                 self._win.toast(f"样品「{data['sn']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("sample")
             except Exception as e:
+                logger.exception("更新失败")
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")

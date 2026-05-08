@@ -44,6 +44,7 @@ class EquipmentHandlers:
                 self._win.toast(f"设备「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("equipment")
             except Exception as e:
+                logger.exception("创建失败")
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
 
     def _on_equipment_edit(self) -> None:
@@ -65,6 +66,7 @@ class EquipmentHandlers:
                 self._win.toast(f"设备「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("equipment")
             except Exception as e:
+                logger.exception("更新失败")
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
 
     def _on_equipment_delete(self) -> None:
@@ -94,6 +96,7 @@ class EquipmentHandlers:
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))
         except Exception as e:
+            logger.exception("删除失败")
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
 
     def _on_equipment_import(self) -> None:

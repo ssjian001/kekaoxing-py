@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.constants import (
+from src.styles.theme import (
     BASE,
     BLUE,
     CRUST,
@@ -29,8 +29,8 @@ from src.constants import (
     SURFACE2,
     TEXT,
     YELLOW,
-    FONT_FAMILY,
 )
+from src.styles.constants import FONT_FAMILY
 
 # ── 利用率条形图 ──────────────────────────────────────────
 

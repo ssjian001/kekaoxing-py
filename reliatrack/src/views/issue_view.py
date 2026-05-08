@@ -705,7 +705,7 @@ class _CAPAPanel(QScrollArea):
             card_layout.addLayout(header)
 
             # 措施内容
-            action_lbl = QLabel(rec.action)
+            action_lbl = QLabel(rec.action or "")
             action_lbl.setWordWrap(True)
             action_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
             card_layout.addWidget(action_lbl)

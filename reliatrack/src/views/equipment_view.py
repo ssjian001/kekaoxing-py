@@ -163,6 +163,7 @@ class EquipmentView(QWidget):
 
     def _populate_table(self, items: list[Equipment]) -> None:
         """填充表格。"""
+        self._table.setSortingEnabled(False)
         header = self._table.horizontalHeader()
         header.blockSignals(True)
         self._table.setRowCount(len(items))
@@ -201,6 +202,7 @@ class EquipmentView(QWidget):
                         pass
                 self._table.setItem(row, col, item)
         header.blockSignals(False)
+        self._table.setSortingEnabled(True)
 
         self._update_empty_state()
 

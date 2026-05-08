@@ -44,6 +44,7 @@ class TechnicianHandlers:
                 self._win.toast(f"技术员「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("technician")
             except Exception as e:
+                logger.exception("创建失败")
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
 
     def _on_technician_edit(self) -> None:
@@ -65,6 +66,7 @@ class TechnicianHandlers:
                 self._win.toast(f"技术员「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("technician")
             except Exception as e:
+                logger.exception("更新失败")
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
 
     def _on_technician_delete(self) -> None:
@@ -92,8 +94,10 @@ class TechnicianHandlers:
             self._win.toast(f"技术员「{tech.name}」已删除", "success")
             self._win._ctrl.notify_data_changed("technician")
         except ValueError as e:
+            logger.exception("删除失败")
             QMessageBox.warning(self._win, "删除失败", str(e))
         except Exception as e:
+            logger.exception("删除失败")
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
 
     def _on_technician_import(self) -> None:

@@ -256,6 +256,7 @@ class ExportHandlers:
                 self._win.toast(f"8D 报告已导出: {path}", "success")
 
         except Exception as e:
+            logger.exception("操作失败")
             import traceback
 
             traceback.print_exc()

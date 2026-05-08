@@ -40,6 +40,7 @@ class ProjectHandlers:
                 self._win.toast(f"项目「{data['name']}」已创建", "success")
                 self._win._ctrl.notify_data_changed("project")
             except Exception as e:
+                logger.exception("创建失败")
                 QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
 
     def _on_project_edit(self) -> None:
@@ -63,6 +64,7 @@ class ProjectHandlers:
                 self._win.toast(f"项目「{data['name']}」已更新", "success")
                 self._win._ctrl.notify_data_changed("project")
             except Exception as e:
+                logger.exception("更新失败")
                 QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
 
     def _on_project_delete(self) -> None:
@@ -92,4 +94,5 @@ class ProjectHandlers:
         except ValueError as e:
             QMessageBox.warning(self._win, "删除失败", str(e))
         except Exception as e:
+            logger.exception("删除失败")
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
