@@ -15,7 +15,7 @@ python3 -m venv .venv
 
 ## 功能
 
-- **仪表盘** — 12 个 KPI 卡片 + 设备利用率/状态/严重度图表 + 校准到期预警
+- **仪表盘** — 左右两栏: A区(6 KPI + 环形图) + B区(4 KPI + 2进度环), QPainter 自绘, 校准到期预警
 - **项目管理** — 创建/管理可靠性测试项目
 - **样品追踪** — 全生命周期样品状态跟踪 + Excel 批量导入
 - **测试计划** — 定义测试任务（13列含预计日期）、自动排程（3阶段算法）、甘特图可视化（预计/实际切换+设备颜色编码）、结果矩阵（行列统计）、导出按项目筛选、依赖弹出式选择
@@ -44,7 +44,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   ├── schema.py        # SQLite schema（v14）
+│   └── schema.py        # SQLite schema（v15）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -57,7 +57,7 @@ src/
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
 │       └── settings_repo.py
-├── handlers/        # 信号处理（10个Handler类，含export_handlers）
+├── handlers/        # 信号处理（9个Handler类，含export_handlers）
 │   ├── project_handlers.py
 │   ├── sample_handlers.py
 │   ├── plan_handlers.py
@@ -79,7 +79,7 @@ src/
 │   └── ...
 ├── styles/          # QSS 样式（Catppuccin Latte 明亮主题）
 └── views/           # Qt 视图
-    ├── dashboard_view.py      # 12 KPI + 3 图表 + 校准预警
+    ├── dashboard_view.py      # 左右两栏: A(6 KPI+环形图) + B(4 KPI+进度环), QPainter
     ├── project_view.py
     ├── sample_view.py
     ├── test_plan_view.py      # 任务表 + 甘特图（设备颜色）

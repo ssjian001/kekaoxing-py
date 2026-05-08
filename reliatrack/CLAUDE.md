@@ -74,7 +74,7 @@ src/
 │   ├── connection.py
 │   ├── repositories/   # 数据访问层（repo 模式）
 │   └── schema.py        # SQLite schema 初始化
-├── handlers/      # 信号处理器（10个 Handler 类，含 export_handlers）
+├── handlers/      # 信号处理器（9个 Handler 类，含 export_handlers）
 ├── models/        # 数据模型
 ├── services/      # 业务逻辑层
 ├── styles/        # QSS 样式
@@ -95,7 +95,7 @@ src/
 | 5 | 🔧 设备管理 | equipment_view.py + technician_view.py |
 | 6 | 📚 知识库 | knowledge_view.py |
 
-### Handler 层（10 个 Handler）
+### Handler 层（9 个 Handler）
 
 project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局快捷键在 main.py
 
