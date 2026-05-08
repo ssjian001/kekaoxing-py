@@ -256,6 +256,37 @@ class RefreshHandlers:
                 if plan_obj:
                     current_plan_name = plan_obj.name
 
+            # ── 健康评分（加权: 通过率40% + Issue闭环率30% + CAPA完成率30%）──
+            issue_closure_rate = issue_closed_count / issues * 100 if issues else 0
+            health_score = (
+                (pass_rate or 0) * 0.4
+                + issue_closure_rate * 0.3
+                + (capa_completion_rate or 0) * 0.3
+            )
+
+            # ── 辅助指标 ──
+            plan_count = 0
+            if ctrl.test_plan_service:
+                if filter_project_id:
+                    p_list = ctrl.test_plan_service.get_plans_by_project(filter_project_id)
+                else:
+                    p_list = ctrl.test_plan_service.list_all()
+                plan_count = len(p_list) if p_list else 0
+
+            technician_count = 0
+            if ctrl.technician_service:
+                technician_count = len(ctrl.technician_service.list_all())
+
+            # 最后更新时间：取最近一条任务的 updated_at
+            last_update: str | None = None
+            if filtered_tasks:
+                latest = max(
+                    (t.updated_at for t in filtered_tasks if getattr(t, "updated_at", None)),
+                    default=None,
+                )
+                if latest:
+                    last_update = str(latest)[:16]  # 截取到分钟
+
             self._win._dashboard.refresh(
                 task_total=total,
                 task_completed=completed,
@@ -271,6 +302,10 @@ class RefreshHandlers:
                 pass_rate=pass_rate,
                 failure_rate=failure_rate,
                 capa_completion_rate=capa_completion_rate,
+                health_score=health_score,
+                plan_count=plan_count,
+                technician_count=technician_count,
+                last_update=last_update,
             )
 
     def _refresh_samples(self) -> None:
