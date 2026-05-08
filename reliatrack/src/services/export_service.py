@@ -467,10 +467,11 @@ class ExportService:
             if os.path.isfile(reg) and (reg == bld or os.path.isfile(bld)):
                 return reg, bld, r_sub, b_sub
 
-        raise FileNotFoundError(
-            "未找到可用的中文字体。请安装微软雅黑 (Windows) 或 "
-            "DroidSansFallback (Linux) 字体。"
+        # Fallback: reportlab 内置 CID 字体（无需外部文件）
+        logger.warning(
+            "未找到系统 CJK 字体，使用 reportlab 内置 STSong-Light 作为 fallback"
         )
+        return ("", "", -1, -1)
 
     def export_report_pdf(
         self,
@@ -505,20 +506,28 @@ class ExportService:
         _FN = "CJK"   # 内部注册名（固定）
         _FN_B = "CJK-Bold"
 
-        # 注册字体（已注册则跳过）
-        if _FN not in pdfmetrics.getRegisteredFontNames():
-            kw: dict[str, object] = {}
-            if reg_sub is not None:
-                kw["subfontIndex"] = reg_sub
-            pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
+        # CID fallback: 系统无 CJK 字体时使用 reportlab 内置 STSong-Light
+        if reg_sub == -1:
+            from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+            if _FN not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+            _FN = "STSong-Light"
+            _FN_B = "STSong-Light"
+        else:
+            # 注册字体（已注册则跳过）
+            if _FN not in pdfmetrics.getRegisteredFontNames():
+                kw: dict[str, object] = {}
+                if reg_sub is not None:
+                    kw["subfontIndex"] = reg_sub
+                pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
 
-        if _FN_B not in pdfmetrics.getRegisteredFontNames():
-            kw = {}
-            if bld_sub is not None:
-                kw["subfontIndex"] = bld_sub
-            pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw))
+            if _FN_B not in pdfmetrics.getRegisteredFontNames():
+                kw = {}
+                if bld_sub is not None:
+                    kw["subfontIndex"] = bld_sub
+                pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw))
 
-        pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
+            pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
 
         # 颜色
         _BLUE = HexColor("#2B579A")
@@ -825,17 +834,24 @@ class ExportService:
         reg_path, bld_path, reg_sub, bld_sub = self._find_cjk_font()
         _FN = "CJK"
         _FN_B = "CJK-Bold"
-        if _FN not in pdfmetrics.getRegisteredFontNames():
-            kw: dict[str, object] = {}
-            if reg_sub is not None:
-                kw["subfontIndex"] = reg_sub
-            pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
-        if _FN_B not in pdfmetrics.getRegisteredFontNames():
-            kw = {}
-            if bld_sub is not None:
-                kw["subfontIndex"] = bld_sub
-            pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw))
-        pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
+        if reg_sub == -1:
+            from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+            if _FN not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+            _FN = "STSong-Light"
+            _FN_B = "STSong-Light"
+        else:
+            if _FN not in pdfmetrics.getRegisteredFontNames():
+                kw: dict[str, object] = {}
+                if reg_sub is not None:
+                    kw["subfontIndex"] = reg_sub
+                pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
+            if _FN_B not in pdfmetrics.getRegisteredFontNames():
+                kw = {}
+                if bld_sub is not None:
+                    kw["subfontIndex"] = bld_sub
+                pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw))
+            pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
 
         _BLUE = HexColor("#2B579A")
         _RED = HexColor("#C0504D")
@@ -1522,17 +1538,24 @@ class ExportService:
         reg_path, bld_path, reg_sub, bld_sub = self._find_cjk_font()
         _FN = "CJK"
         _FN_B = "CJK-Bold"
-        if _FN not in pdfmetrics.getRegisteredFontNames():
-            kw: dict[str, object] = {}
-            if reg_sub is not None:
-                kw["subfontIndex"] = reg_sub
-            pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
-        if _FN_B not in pdfmetrics.getRegisteredFontNames():
-            kw2: dict[str, object] = {}
-            if bld_sub is not None:
-                kw2["subfontIndex"] = bld_sub
-            pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw2))
-        pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
+        if reg_sub == -1:
+            from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+            if _FN not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+            _FN = "STSong-Light"
+            _FN_B = "STSong-Light"
+        else:
+            if _FN not in pdfmetrics.getRegisteredFontNames():
+                kw: dict[str, object] = {}
+                if reg_sub is not None:
+                    kw["subfontIndex"] = reg_sub
+                pdfmetrics.registerFont(TTFont(_FN, reg_path, **kw))
+            if _FN_B not in pdfmetrics.getRegisteredFontNames():
+                kw2: dict[str, object] = {}
+                if bld_sub is not None:
+                    kw2["subfontIndex"] = bld_sub
+                pdfmetrics.registerFont(TTFont(_FN_B, bld_path, **kw2))
+            pdfmetrics.registerFontFamily(_FN, normal=_FN, bold=_FN_B)
 
         _BLUE = HexColor("#2B579A")
         _RED = HexColor("#C0504D")
