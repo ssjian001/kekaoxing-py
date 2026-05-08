@@ -479,10 +479,11 @@ class ExportService:
         issues: list[Issue],
         samples: list[Sample],
         filepath: str | None = None,
+        results: list | None = None,
     ) -> str:
         """导出综合测试报告为 PDF (reportlab)。
 
-        包含：概览统计、任务列表、Issue 列表、样品状态。
+        包含：概览统计、任务列表、Issue 列表、测试结果汇总、样品状态。
         自动检测系统中可用的中文字体（Windows/macOS/Linux）。
         """
         from reportlab.lib.pagesizes import A4
@@ -692,6 +693,95 @@ class ExportService:
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]))
             story.append(issue_table)
+
+        # ── 测试结果汇总 ──
+        _results = results or []
+        if _results:
+            story.append(PageBreak())
+            story.append(Paragraph("测试结果汇总", style_section))
+
+            # 构建辅助映射
+            sample_map = {s.id: s.sn for s in samples if s.id is not None}
+            task_map = {t.id: t for t in tasks if t.id is not None}
+
+            # 通过率统计
+            total_pass = sum(1 for r in _results if r.result == "pass")
+            total_fail = sum(1 for r in _results if r.result == "fail")
+            total_conditional = sum(1 for r in _results if r.result == "conditional")
+            total_results = len(_results)
+            pass_rate = f"{total_pass / total_results * 100:.1f}%" if total_results else "—"
+
+            stat_lines = [
+                f"测试结果总数: {total_results}  |  通过: {total_pass}  |  失败: {total_fail}  |  条件通过: {total_conditional}  |  通过率: {pass_rate}",
+            ]
+
+            # 总判定结论
+            overall_conclusion = self._judge_conclusion(
+                total_pass, total_fail, total_conditional, total_results,
+                accept_criteria="",
+            )
+            stat_lines.append(f"总体判定结论: {overall_conclusion}")
+
+            for s in stat_lines:
+                story.append(Paragraph(s, style_stat))
+
+            # ── 测试结果明细表 ──
+            story.append(Spacer(1, 4 * mm))
+            story.append(Paragraph("结果明细", ParagraphStyle(
+                "SubSection", fontName=_FN_B, fontSize=12,
+                textColor=_BLUE, spaceAfter=2 * mm, spaceBefore=3 * mm,
+            )))
+
+            res_headers = ["#", "任务名", "样品SN", "结果", "判定"]
+            res_col_widths = [18, 120, 100, 50, 50]
+            res_header_row = [Paragraph(h, ParagraphStyle(
+                "RH", fontName=_FN_B, fontSize=9,
+                textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
+            )) for h in res_headers]
+
+            res_data = [res_header_row]
+            for idx, r in enumerate(_results, 1):
+                task_name = ""
+                if r.task_id and r.task_id in task_map:
+                    task_name = (task_map[r.task_id].name or "")[:25]
+                sample_sn = sample_map.get(r.sample_id, f"#{r.sample_id}") if r.sample_id else "—"
+                result_text = r.result.upper() if r.result else "—"
+
+                # 计算本任务判定
+                task_obj = task_map.get(r.task_id)
+                task_pass = sum(1 for x in _results if x.task_id == r.task_id and x.result == "pass")
+                task_fail = sum(1 for x in _results if x.task_id == r.task_id and x.result == "fail")
+                task_cond = sum(1 for x in _results if x.task_id == r.task_id and x.result == "conditional")
+                accept_criteria = task_obj.accept_criteria if task_obj else ""
+                conclusion = self._judge_conclusion(
+                    task_pass, task_fail, task_cond, 0,
+                    accept_criteria=accept_criteria or "",
+                )
+                # 只在每任务首行显示判定，其余为空
+                if idx > 1 and _results[idx - 2].task_id == r.task_id:
+                    conclusion = ""
+
+                res_data.append([
+                    Paragraph(str(idx), cell_style),
+                    Paragraph(task_name, cell_style),
+                    Paragraph(sample_sn, cell_style),
+                    Paragraph(result_text, cell_style),
+                    Paragraph(conclusion, cell_style),
+                ])
+
+            res_table = Table(res_data, colWidths=res_col_widths)
+            _GREEN = HexColor("#339933")
+            res_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), _GREEN),
+                ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
+                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                 [HexColor("#FFFFFF"), HexColor("#F0FFF0")]),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(res_table)
 
         # ── 生成 PDF ──
         self._validate_output_path(out)
@@ -2035,10 +2125,12 @@ class ExportService:
         issues: list[Issue],
         samples: list[Sample],
         filepath: str | None = None,
+        results: list | None = None,
     ) -> str:
         """导出综合测试报告为 Word (.docx)。
 
-        包含：封面标题、项目信息表格、任务列表表格、Issue 列表表格、样品列表表格。
+        包含：封面标题、项目信息表格、任务列表表格、Issue 列表表格、
+        测试结果汇总、样品列表表格。
         """
         from docx import Document
         from docx.shared import Pt, Cm, RGBColor, Inches
@@ -2206,6 +2298,72 @@ class ExportService:
                     self.STATUS_MAP.get(issue.status, issue.status),
                     (issue.root_cause or "")[:80] if issue.root_cause else "",
                 ], center_cols={0})
+
+        # ── 测试结果汇总 ──
+        _results = results or []
+        if _results:
+            doc.add_heading("测试结果汇总", level=2)
+
+            # 构建辅助映射
+            sample_map = {s.id: s.sn for s in samples if s.id is not None}
+            task_map = {t.id: t for t in tasks if t.id is not None}
+
+            # 通过率统计
+            total_pass = sum(1 for r in _results if r.result == "pass")
+            total_fail = sum(1 for r in _results if r.result == "fail")
+            total_conditional = sum(1 for r in _results if r.result == "conditional")
+            total_results = len(_results)
+            pass_rate = f"{total_pass / total_results * 100:.1f}%" if total_results else "—"
+
+            # 总判定结论
+            overall_conclusion = self._judge_conclusion(
+                total_pass, total_fail, total_conditional, total_results,
+                accept_criteria="",
+            )
+
+            stat_lines = [
+                f"测试结果总数: {total_results}  |  通过: {total_pass}  |  失败: {total_fail}  |  条件通过: {total_conditional}  |  通过率: {pass_rate}",
+                f"总体判定结论: {overall_conclusion}",
+            ]
+            for line in stat_lines:
+                p = doc.add_paragraph(line)
+                p.paragraph_format.space_after = Pt(2)
+
+            # ── 测试结果明细表 ──
+            doc.add_heading("结果明细", level=3)
+            res_headers = ["#", "任务名", "样品SN", "结果", "判定"]
+            res_table = doc.add_table(
+                rows=1 + len(_results), cols=len(res_headers), style="Table Grid"
+            )
+            res_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            _fill_row_cells(res_table.rows[0]._tr, res_headers, bold=True,
+                            color="FFFFFF", shade="339933",
+                            center_cols=set(range(len(res_headers))))
+
+            for idx, r in enumerate(_results, 1):
+                task_name = ""
+                if r.task_id and r.task_id in task_map:
+                    task_name = (task_map[r.task_id].name or "")[:25]
+                sample_sn = sample_map.get(r.sample_id, f"#{r.sample_id}") if r.sample_id else "—"
+                result_text = r.result.upper() if r.result else "—"
+
+                # 计算本任务判定
+                task_obj = task_map.get(r.task_id)
+                task_pass = sum(1 for x in _results if x.task_id == r.task_id and x.result == "pass")
+                task_fail = sum(1 for x in _results if x.task_id == r.task_id and x.result == "fail")
+                task_cond = sum(1 for x in _results if x.task_id == r.task_id and x.result == "conditional")
+                accept_criteria = task_obj.accept_criteria if task_obj else ""
+                conclusion = self._judge_conclusion(
+                    task_pass, task_fail, task_cond, 0,
+                    accept_criteria=accept_criteria or "",
+                )
+                # 只在每任务首行显示判定，其余为空
+                if idx > 1 and _results[idx - 2].task_id == r.task_id:
+                    conclusion = ""
+
+                _fill_row_cells(res_table.rows[idx]._tr, [
+                    idx, task_name, sample_sn, result_text, conclusion,
+                ], center_cols={0, 3, 4})
 
         # ── 样品列表表格 ──
         if samples:

@@ -106,18 +106,24 @@ class ExportHandlers:
                     path = svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
                 # word export: 测试任务也支持 Word 格式（综合报告）
                 elif "Word" in fmt:
+                    task_ids = [t.id for t in tasks if t.id is not None]
+                    _results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
                     path = svc.export_to_word(
                         plan,
                         tasks,
                         self._get_issues(ctrl, project_id),
                         self._get_samples(ctrl, project_id),
+                        results=_results,
                     )
                 else:
+                    task_ids = [t.id for t in tasks if t.id is not None]
+                    _results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
                     path = svc.export_report_pdf(
                         plan,
                         tasks,
                         self._get_issues(ctrl, project_id),
                         self._get_samples(ctrl, project_id),
+                        results=_results,
                     )
                 self._win.toast(f"已导出: {path}", "success")
 
@@ -159,18 +165,24 @@ class ExportHandlers:
                     return
                 # word export: 综合报告支持 Word 格式
                 if "Word" in fmt:
+                    task_ids = [t.id for t in tasks if t.id is not None]
+                    _results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
                     path = svc.export_to_word(
                         plan,
                         tasks,
                         self._get_issues(ctrl, project_id),
                         self._get_samples(ctrl, project_id),
+                        results=_results,
                     )
                 else:
+                    task_ids = [t.id for t in tasks if t.id is not None]
+                    _results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
                     path = svc.export_report_pdf(
                         plan,
                         tasks,
                         self._get_issues(ctrl, project_id),
                         self._get_samples(ctrl, project_id),
+                        results=_results,
                     )
                 self._win.toast(f"已导出: {path}", "success")
 
