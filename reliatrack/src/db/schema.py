@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -218,6 +218,9 @@ _DDL_TABLES: list[str] = [
         status              TEXT    NOT NULL DEFAULT 'pending',
         verification_result TEXT    NOT NULL DEFAULT '',
         verified_by         INTEGER REFERENCES technicians(id),
+        root_cause          TEXT    DEFAULT '',
+        effectiveness       TEXT    DEFAULT '',
+        follow_up           TEXT    DEFAULT '',
         created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -638,6 +641,9 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             status              TEXT    NOT NULL DEFAULT 'pending',
             verification_result TEXT    NOT NULL DEFAULT '',
             verified_by         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            root_cause          TEXT    DEFAULT '',
+            effectiveness       TEXT    DEFAULT '',
+            follow_up           TEXT    DEFAULT '',
             created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")
@@ -829,6 +835,17 @@ def _migrate_v14(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (14)")
 
 
+def _migrate_v15(conn: apsw.Connection) -> None:
+    """v14→v15: CAPA PDCA 扩展 — root_cause + effectiveness + follow_up。"""
+    c_cols = {r[1] for r in conn.execute("PRAGMA table_info(capa_records)").fetchall()}
+    for col in ("root_cause", "effectiveness", "follow_up"):
+        if col not in c_cols:
+            conn.execute(
+                f"ALTER TABLE capa_records ADD COLUMN {col} TEXT DEFAULT ''"
+            )
+    conn.execute("INSERT INTO schema_version (version) VALUES (15)")
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -910,6 +927,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v14 failed")
+            raise
+
+    # v15: CAPA PDCA 扩展 — root_cause + effectiveness + follow_up
+    if current < 15:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v15(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v15 failed")
             raise
 
     return _get_current_version(conn)

@@ -32,6 +32,8 @@ class IssueHandlers:
         v.issue_selected.connect(self._handle_issue_selected)
         v.fa_record_added.connect(self._handle_fa_record_added)
         v.capa_record_added.connect(self._handle_capa_record_added)
+        v.capa_record_edited.connect(self._handle_edit_capa)
+        v.capa_record_deleted.connect(self._handle_delete_capa)
         v.export_8d_requested.connect(self._handle_export_8d)
         v.btn_attachments.clicked.connect(self._on_issue_attachments)
 
@@ -206,6 +208,42 @@ class IssueHandlers:
             self._win.toast("CAPA 措施已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
+
+    def _handle_edit_capa(self, data: dict) -> None:
+        """CAPA 记录编辑后回调。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        capa_id = data.get("id")
+        if capa_id is None:
+            return
+        try:
+            update_data = {k: v for k, v in data.items() if k != "id"}
+            ctrl.issue_service.update_capa_record(capa_id, **update_data)
+            # 刷新 CAPA 面板：从当前选中 Issue 重新加载
+            issue_id = self._win._issue_view.get_selected_issue_id()
+            if issue_id is not None:
+                self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
+                self._win._issue_view.refresh_capa(self._current_capa_records)
+            self._win.toast(f"CAPA #{capa_id} 已更新", "success")
+        except Exception as e:
+            QMessageBox.critical(self._win, "保存失败", f"CAPA 记录更新失败: {e}")
+
+    def _handle_delete_capa(self, capa_id: int) -> None:
+        """CAPA 记录删除后回调。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        try:
+            ctrl.issue_service.delete_capa_record(capa_id)
+            # 刷新 CAPA 面板
+            issue_id = self._win._issue_view.get_selected_issue_id()
+            if issue_id is not None:
+                self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
+                self._win._issue_view.refresh_capa(self._current_capa_records)
+            self._win.toast(f"CAPA #{capa_id} 已删除", "success")
+        except Exception as e:
+            QMessageBox.critical(self._win, "删除失败", f"CAPA 记录删除失败: {e}")
 
     def _handle_export_8d(self, issue_id: int) -> None:
         """导出 8D 报告（PDF / Word 格式选择）。"""

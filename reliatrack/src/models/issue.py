@@ -130,5 +130,8 @@ class CAPARecord:
     status: str = CAPAStatus.PENDING.value
     verification_result: str = ""  # 验证结果
     verified_by: Optional[int] = None
+    root_cause: str = ""       # PDCA Plan: 根因分析
+    effectiveness: str = ""    # PDCA Check: 效果验证
+    follow_up: str = ""        # PDCA Act: 改善追踪
     created_at: str = ""
     updated_at: str = ""

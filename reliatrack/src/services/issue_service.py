@@ -78,6 +78,16 @@ class IssueService:
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         return self._repo.get_capa_records(issue_id)
 
+    def update_capa_record(self, capa_id: int, **kwargs: object) -> bool:
+        """更新 CAPA 记录。返回 True 表示成功。"""
+        self._repo.update_capa_record(capa_id, **kwargs)
+        return True
+
+    def delete_capa_record(self, capa_id: int) -> bool:
+        """删除单条 CAPA 记录。返回 True 表示成功。"""
+        self._repo.delete_capa_record(capa_id)
+        return True
+
     def count_capa_all(self, project_id: int | None = None) -> int:
         """CAPA 记录总数（可按项目筛选）。"""
         return self._repo.count_capa_all(project_id)

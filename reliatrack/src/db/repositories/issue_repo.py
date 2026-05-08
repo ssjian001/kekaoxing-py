@@ -206,10 +206,12 @@ class IssueRepository(BaseRepository):
 
     _CAPA_SELECT_COLS = ("id", "issue_id", "action", "assignee_id", "assignee_name",
                          "due_date", "status", "verification_result", "verified_by",
+                         "root_cause", "effectiveness", "follow_up",
                          "created_at", "updated_at")
     _CAPA_SAFE_COLS = frozenset({
         "issue_id", "action", "assignee_id", "assignee_name", "due_date",
         "status", "verification_result", "verified_by",
+        "root_cause", "effectiveness", "follow_up",
     })
 
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
@@ -279,12 +281,12 @@ class IssueRepository(BaseRepository):
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "
-                "WHERE i.project_id = ? AND cr.status IN ('done', 'verified')",
+                "WHERE i.project_id = ? AND cr.status IN ('completed', 'verified')",
                 (project_id,),
             ).fetchone()
         else:
             row = self._conn.execute(
-                "SELECT COUNT(*) FROM [capa_records] WHERE status IN ('done', 'verified')"
+                "SELECT COUNT(*) FROM [capa_records] WHERE status IN ('completed', 'verified')"
             ).fetchone()
         return row[0] if row else 0
 

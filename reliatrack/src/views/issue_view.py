@@ -31,7 +31,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, PINK, OVERLAY0,
 )
-from src.models.issue import Issue, FARecord
+from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS
@@ -289,6 +289,8 @@ class IssueView(QWidget):
     issue_selected = Signal(object)     # Issue 选中时发射 issue_id (int | None)
     fa_record_added = Signal(dict)      # FA 记录添加时发射 data: dict
     capa_record_added = Signal(dict)    # CAPA 记录添加时发射 data: dict
+    capa_record_edited = Signal(dict)   # CAPA 记录编辑时发射 data: dict
+    capa_record_deleted = Signal(int)   # CAPA 记录删除时发射 capa_id
     export_8d_requested = Signal(int)   # 导出 8D 报告时发射 issue_id
 
     def __init__(self, parent: QWidget | None = None):
@@ -552,6 +554,30 @@ class IssueView(QWidget):
             data["issue_id"] = issue_id
             self.capa_record_added.emit(data)
 
+    def _open_edit_capa_dialog(self, record) -> None:
+        """打开编辑 CAPA 弹窗。"""
+        dlg = _CAPADialog(
+            technician_list=self._technician_list,
+            capa_record=record,
+            parent=self,
+        )
+        if dlg.exec():
+            data = dlg.get_data()
+            self.capa_record_edited.emit(data)
+
+    def _confirm_delete_capa(self, record) -> None:
+        """确认删除 CAPA 记录。"""
+        if record.id is None:
+            return
+        reply = QMessageBox.warning(
+            self, "确认删除",
+            f"确定要删除该 CAPA 措施吗？\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.capa_record_deleted.emit(record.id)
+
     def _on_export_8d(self) -> None:
         """导出 8D 报告。"""
         issue_id = self.get_selected_issue_id()
@@ -660,6 +686,22 @@ class _CAPAPanel(QScrollArea):
                 due_lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
                 header.addWidget(due_lbl)
             header.addStretch()
+
+            # 编辑/删除按钮
+            btn_edit = QPushButton("编辑")
+            btn_edit.setFixedHeight(24)
+            btn_edit.setStyleSheet(f"color: {BLUE}; font-size: 11px; border: none; padding: 2px 6px;")
+            btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_edit.clicked.connect(lambda checked, r=rec: self._on_edit_capa(r))
+            header.addWidget(btn_edit)
+
+            btn_del = QPushButton("删除")
+            btn_del.setFixedHeight(24)
+            btn_del.setStyleSheet(f"color: {RED}; font-size: 11px; border: none; padding: 2px 6px;")
+            btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_del.clicked.connect(lambda checked, r=rec: self._on_delete_capa(r))
+            header.addWidget(btn_del)
+
             card_layout.addLayout(header)
 
             # 措施内容
@@ -675,6 +717,39 @@ class _CAPAPanel(QScrollArea):
                 assignee_lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
                 card_layout.addWidget(assignee_lbl)
 
+            # PDCA 字段：根因分析
+            root_cause = getattr(rec, 'root_cause', '') or ''
+            if root_cause:
+                rc_lbl = QLabel(f"根因分析: {root_cause}")
+                rc_lbl.setWordWrap(True)
+                rc_lbl.setStyleSheet(f"color: {MAUVE}; font-size: 11px;")
+            else:
+                rc_lbl = QLabel("根因分析: 待填写")
+                rc_lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; font-style: italic;")
+            card_layout.addWidget(rc_lbl)
+
+            # PDCA 字段：效果验证
+            effectiveness = getattr(rec, 'effectiveness', '') or ''
+            if effectiveness:
+                eff_lbl = QLabel(f"效果验证: {effectiveness}")
+                eff_lbl.setWordWrap(True)
+                eff_lbl.setStyleSheet(f"color: {GREEN}; font-size: 11px;")
+            else:
+                eff_lbl = QLabel("效果验证: 待填写")
+                eff_lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; font-style: italic;")
+            card_layout.addWidget(eff_lbl)
+
+            # PDCA 字段：改善追踪
+            follow_up = getattr(rec, 'follow_up', '') or ''
+            if follow_up:
+                fu_lbl = QLabel(f"改善追踪: {follow_up}")
+                fu_lbl.setWordWrap(True)
+                fu_lbl.setStyleSheet(f"color: {LAVENDER}; font-size: 11px;")
+            else:
+                fu_lbl = QLabel("改善追踪: 待填写")
+                fu_lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; font-style: italic;")
+            card_layout.addWidget(fu_lbl)
+
             # 验证结果
             if rec.verification_result:
                 v_lbl = QLabel(f"验证: {rec.verification_result}")
@@ -684,9 +759,28 @@ class _CAPAPanel(QScrollArea):
 
             self._layout.addWidget(card)
 
+    def _on_edit_capa(self, record) -> None:
+        """触发编辑 CAPA 记录。"""
+        view = self.parent_issue_view()
+        if view:
+            view._open_edit_capa_dialog(record)
+
+    def _on_delete_capa(self, record) -> None:
+        """触发删除 CAPA 记录。"""
+        view = self.parent_issue_view()
+        if view:
+            view._confirm_delete_capa(record)
+
+    def parent_issue_view(self) -> "IssueView | None":
+        """向上查找到 IssueView 实例。"""
+        p = self.parent()
+        while p is not None and not isinstance(p, IssueView):
+            p = p.parent()
+        return p
+
 
 class _CAPADialog(_BaseDialog):
-    """新建 CAPA 记录弹窗。"""
+    """新建/编辑 CAPA 记录弹窗。"""
 
     _STATUS_OPTIONS = [
         ("待执行", "pending"),
@@ -695,12 +789,18 @@ class _CAPADialog(_BaseDialog):
         ("已验证", "verified"),
     ]
 
-    def __init__(self, technician_list: list | None = None, parent: QWidget | None = None):
-        super().__init__("新建 CAPA 纠正预防措施", parent, width=480)
+    def __init__(self, technician_list: list | None = None,
+                 capa_record: CAPARecord | None = None,
+                 parent: QWidget | None = None):
+        is_edit = capa_record is not None
+        title = "编辑 CAPA 措施" if is_edit else "新建 CAPA 措施"
+        super().__init__(title, parent, width=520)
 
+        self._capa_record = capa_record
         self._technician_list = technician_list or []
         self._action_edit = self._add_text_area(
             "措施描述",
+            default=capa_record.action if is_edit else "",
             placeholder="描述纠正或预防措施",
         )
         self._due_date_edit = self._add_date_field("截止日期")
@@ -708,19 +808,47 @@ class _CAPADialog(_BaseDialog):
         # 负责人（自由输入）
         self._assignee_edit = self._add_text_field(
             "负责人",
+            default=capa_record.assignee_name if is_edit else "",
             placeholder="输入负责人姓名",
         )
 
         status_labels = [label for label, _ in self._STATUS_OPTIONS]
+        default_status = ""
+        if is_edit:
+            status_val = capa_record.status
+            for lbl, val in self._STATUS_OPTIONS:
+                if val == status_val:
+                    default_status = lbl
+                    break
         self._status_combo = self._add_combo_field(
             "状态",
             items=status_labels,
+            default=default_status,
+        )
+
+        self._add_separator()
+
+        # PDCA 扩展字段
+        self._root_cause_edit = self._add_text_area(
+            "根因分析",
+            default=capa_record.root_cause if is_edit else "",
+            placeholder="Plan: 分析问题根因",
+        )
+        self._effectiveness_edit = self._add_text_area(
+            "效果验证",
+            default=capa_record.effectiveness if is_edit else "",
+            placeholder="Check: 措施效果如何",
+        )
+        self._follow_up_edit = self._add_text_area(
+            "改善追踪",
+            default=capa_record.follow_up if is_edit else "",
+            placeholder="Act: 后续改善计划",
         )
 
     def get_data(self) -> dict:
         status_map = {label: val for label, val in self._STATUS_OPTIONS}
         assignee_name = self._assignee_edit.text().strip()
-        return {
+        data = {
             "action": self._action_edit.toPlainText().strip(),
             "due_date": self._due_date_edit.date().toString("yyyy-MM-dd")
                 if self._due_date_edit.date().isValid() and self._due_date_edit.date().year() >= 2020
@@ -728,7 +856,14 @@ class _CAPADialog(_BaseDialog):
             "assignee_id": None,
             "assignee_name": assignee_name,
             "status": status_map.get(self._status_combo.currentText(), "pending"),
+            "root_cause": self._root_cause_edit.toPlainText().strip(),
+            "effectiveness": self._effectiveness_edit.toPlainText().strip(),
+            "follow_up": self._follow_up_edit.toPlainText().strip(),
         }
+        # 编辑模式时附带 id
+        if self._capa_record is not None:
+            data["id"] = self._capa_record.id
+        return data
 
     def accept(self) -> None:
         from PySide6.QtWidgets import QMessageBox
