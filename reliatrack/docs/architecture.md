@@ -19,8 +19,9 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v14
+### Schema 版本：v15
 
+- **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up`；CAPA 编辑/删除 UI；`count_capa_done` bug 修复
 - **v14**：capa_records 加 assignee_name（责任人自由文本，与 assignee_id 并存）；test_tasks 安全补列
 - **FK 策略**：所有外键 `ON DELETE SET NULL`，级联删除由业务逻辑手动处理
 - **显式列名**：所有 SELECT 使用具体列名，禁止 `SELECT *`

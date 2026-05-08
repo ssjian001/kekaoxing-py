@@ -99,13 +99,13 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。106 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。115 个 pytest 测试全通过。
 
 ## 技术栈
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v14：FK ON DELETE SET NULL，显式列名（无 SELECT *），CAPA assignee_name
+- Schema v15：FK ON DELETE SET NULL，显式列名（无 SELECT *），CAPA PDCA 扩展，pyqtgraph 图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可

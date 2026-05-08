@@ -107,12 +107,14 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - 8D Word：`export_8d_docx()` — 结构与 PDF 一致（基本信息表、D1-D8 章节、签字栏），格式选择对话框
 - 信号链：issue_view `_on_export_8d` → `export_8d_requested` signal → `issue_handlers._handle_export_8d`（弹出 PDF/Word 选择）
 - CAPA 写入：`issue_view capa_record_added` → `issue_handlers._handle_capa_record_added` → `issue_service.add_capa_record`（列名白名单校验）
+- CAPA 编辑/删除：`capa_record_edited`/`capa_record_deleted` 信号 → `issue_handlers._handle_edit_capa`/`_handle_delete_capa` → service.update/delete
 - CAPA 负责人：自由文本输入（`assignee_name`），非下拉选择
+- CAPA PDCA：`root_cause`（根因分析）/`effectiveness`（效果验证）/`follow_up`（改善追踪），Schema v15 新增
 
 ### 测试计划视图
 
 - `_TaskTable`：13 列（#, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成），# 列显示数据库 ID
-- `_GanttWidget`：支持预计/实际日期切换（`_task_day_range` 方法，RadioButton 切换），实际模式下禁拖拽
+- `_GanttWidget`：支持预计/实际日期切换（`_task_day_range` 方法，RadioButton 切换），实际模式下禁拖拽；标签列 8pt 字体、260px 初始宽度、可拖拽分隔线调节、hover tooltip
 - `_ResultMatrixWidget`：任务×样品矩阵 + 行统计列（通过率）+ 列统计行 + 右下角总计
 - 依赖编辑：弹出式对话框（QListWidget checkbox 多选），按排程排序 + 当前任务参照行，保存时校验自依赖和 ID 有效性
 
@@ -122,15 +124,16 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `scheduler_service.py`：DB 读写封装，支持 skip_weekends/skip_holidays/lock_existing
 - 排程报告弹窗：`schedule_report_dialog.py`（利用率条形图+瓶颈+建议）
 
-### 仪表盘 KPI
+### 仪表盘
 
-- 12 个 KPI 卡片（任务/Issue/设备/样品/通过率/闭环率/失效率/CAPA完成率等）
-- 3 个 QPainter 条形图（任务状态/样品状态/Issue 严重度）
-- 校准到期预警列表（最多 5 条，30 天内到期设备）
-- DashboardData 封装 17 个参数
+- **A 区（测试状态）**：6 个 KPI 卡片（任务数/已完成/进行中/待开始/通过率/失效率）+ pyqtgraph 任务状态图表
+- **B 区（测试结果）**：4 个 KPI 卡片（Fail 项数/Issue 数/Issue 闭环数/CAPA 完成率）+ pyqtgraph Issue 严重度图表
+- DashboardData 封装 16 个参数（A/B 分区），含 failed_task_count / issue_closed_count
+- **pyqtgraph 0.14** 垂直条形图（替代原 QPainter 自绘）
 
-### Schema（v14）
+### Schema（v15）
 
+- **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up` 三字段；CAPA 编辑/删除 UI；`count_capa_done` SQL bug 修复（`'done'`→`'completed'`）
 - **v14**：capa_records 加 assignee_name（责任人自由文本）；test_tasks 安全补列（dependencies/accept_criteria 等 9 列，防旧库缺失）
 - **v13**：修复 v11 迁移丢失的 20 个索引，schema_version 加 UNIQUE，v12 迁移加事务包裹
 - **v12**：修补迁移链遗漏列（samples.notes、equipment.asset_no/manufacturer/accuracy）
@@ -139,7 +142,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **SELECT \***：全部消除，所有查询使用显式列名
 - **base.py**：空字符串→0 int 防御 + ESCAPE 子句修复 + search() 模糊搜索修复
 - **issue.py**：priority/occurrence_count 防御性类型转换（str→int）
-- **Dashboard refresh**：16参数封装为 `DashboardData` 数据类
+- **Dashboard refresh**：DashboardData 封装 16 参数（A/B 分区模式）
 
 ### 数据库路径
 
@@ -158,6 +161,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 测试覆盖
 
+- `tests/test_capa_pdca.py` — 9 项 CAPA PDCA（v15 迁移 + CRUD + count bug 修复）
 - `tests/test_security_regression.py` — 36 项安全回归（P0/P1 修复点）
 - `tests/test_services.py` — 20 项 Service 层 CRUD
 - `tests/test_new_features.py` — 16 项新增功能
@@ -165,5 +169,5 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- 共 **106 个 pytest 测试**，全量通过
+- 共 **115 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
