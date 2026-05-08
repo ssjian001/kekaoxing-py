@@ -332,7 +332,10 @@ class _GanttWidget(QWidget):
     # 拖拽移动任务后发射 (task_id, new_start_day)
     task_moved = Signal(int, int)
 
-    _LABEL_W = 200  # 左侧标签列宽度
+    _LABEL_W_DEFAULT = 260  # 左侧标签列初始宽度（可拖拽调节）
+    _LABEL_W_MIN = 120
+    _LABEL_W_MAX = 500
+    _DIVIDER_MARGIN = 4  # 拖拽热区宽度
     _MIN_DAY_W = 4  # 最小每天像素宽度（极度缩小）
     _MAX_DAY_W = 150  # 最大每天像素宽度（极度放大）
 
@@ -345,6 +348,7 @@ class _GanttWidget(QWidget):
         self._header_height: int = 24
         self._bar_height: int = 18
         self._day_w: float = 30.0  # 每天像素宽度（可缩放）
+        self._label_w: int = self._LABEL_W_DEFAULT  # 当前标签列宽度
         self.setMinimumHeight(150)
         self.setMouseTracking(True)  # 悬浮提示需要
         self.setStyleSheet(f"background-color: {BASE};")
@@ -357,6 +361,9 @@ class _GanttWidget(QWidget):
         self._drag_start_day: int = 0
         self._drag_preview_offset: int = 0  # 拖拽预览偏移（不直接改 model）
         self._hover_task_idx: int | None = None
+
+        # 标签列拖拽调节
+        self._dragging_label: bool = False
 
         # 设备颜色映射：equipment_id → 颜色
         self._equipment_map: dict[int, str] = {}  # {equipment_id: equipment_name}
@@ -439,6 +446,20 @@ class _GanttWidget(QWidget):
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
         pos = event.position().toPoint()
 
+        # 标签列宽度拖拽中
+        if self._dragging_label:
+            new_w = max(self._LABEL_W_MIN, min(self._LABEL_W_MAX, pos.x()))
+            if new_w != self._label_w:
+                self._label_w = new_w
+                self.update()
+            return
+
+        # 检测是否在标签/图表分隔线附近 → 显示 SplitHCursor
+        if abs(pos.x() - self._label_w) <= self._DIVIDER_MARGIN:
+            self.setCursor(Qt.CursorShape.SplitHCursor)
+            self.setToolTip("")
+            return
+
         if self._drag_task_idx is not None:
             # 拖拽中 — 更新 cursor 并实时预览
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
@@ -450,7 +471,16 @@ class _GanttWidget(QWidget):
             self.update()
             return
 
-        # 悬浮检测
+        # 标签区域 hover — 显示完整任务名 tooltip
+        if pos.x() < self._label_w:
+            row_idx = (pos.y() - self._header_height) // self._row_height
+            if 0 <= row_idx < len(self._tasks):
+                task = self._tasks[row_idx]
+                self.setToolTip(task.name)
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+                return
+
+        # 悬浮检测（甘特条）
         idx = self._hit_test(pos)
         if idx != self._hover_task_idx:
             self._hover_task_idx = idx
@@ -473,25 +503,36 @@ class _GanttWidget(QWidget):
                 self.setToolTip("")
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
-        if self._show_actual:
-            return  # 实际模式下禁止拖拽
         if event.button() == Qt.MouseButton.LeftButton:
-            idx = self._hit_test(event.position().toPoint())
-            if idx is not None:
-                self._drag_task_idx = idx
-                self._drag_offset_x = event.position().toPoint().x() - self._bar_rect(idx).x()
-                self._drag_start_day = self._tasks[idx].start_day
-                self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            pos = event.position().toPoint()
+            # 标签列分隔线拖拽
+            if abs(pos.x() - self._label_w) <= self._DIVIDER_MARGIN:
+                self._dragging_label = True
+                return
+            # 甘特条拖拽（仅预计模式）
+            if not self._show_actual:
+                idx = self._hit_test(pos)
+                if idx is not None:
+                    self._drag_task_idx = idx
+                    self._drag_offset_x = pos.x() - self._bar_rect(idx).x()
+                    self._drag_start_day = self._tasks[idx].start_day
+                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
-        if event.button() == Qt.MouseButton.LeftButton and self._drag_task_idx is not None:
-            task = self._tasks[self._drag_task_idx]
-            new_day = self._drag_start_day + self._drag_preview_offset
-            if task.id is not None and self._drag_preview_offset != 0:
-                self.task_moved.emit(task.id, new_day)
-            self._drag_task_idx = None
-            self._drag_preview_offset = 0
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+        if event.button() == Qt.MouseButton.LeftButton:
+            # 结束标签列拖拽
+            if self._dragging_label:
+                self._dragging_label = False
+                return
+            # 结束甘特条拖拽
+            if self._drag_task_idx is not None:
+                task = self._tasks[self._drag_task_idx]
+                new_day = self._drag_start_day + self._drag_preview_offset
+                if task.id is not None and self._drag_preview_offset != 0:
+                    self.task_moved.emit(task.id, new_day)
+                self._drag_task_idx = None
+                self._drag_preview_offset = 0
+                self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def wheelEvent(self, event: QWheelEvent) -> None:  # type: ignore[override]
         """滚轮缩放天宽度。"""
@@ -513,8 +554,12 @@ class _GanttWidget(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         w = self.width()
-        label_w = self._LABEL_W
+        label_w = self._label_w
         chart_w = w - label_w
+
+        # ── 标签/图表分隔线 ──
+        p.setPen(QPen(QColor(SURFACE1), 1))
+        p.drawLine(label_w, 0, label_w, self.height())
 
         # ── 表头（天数标尺）──
         p.fillRect(0, 0, w, self._header_height, QColor(SURFACE0))
@@ -574,7 +619,7 @@ class _GanttWidget(QWidget):
                            Qt.AlignmentFlag.AlignCenter, "今天")
 
         # ── 任务条 ──
-        p.setFont(QFont(FONT_FAMILY, 10))
+        p.setFont(QFont(FONT_FAMILY, 8))
         for i, task in enumerate(self._tasks):
             y = self._header_height + i * self._row_height
 
@@ -582,9 +627,9 @@ class _GanttWidget(QWidget):
             if i % 2 == 1:
                 p.fillRect(0, y, w, self._row_height, QColor(MANTLE))
 
-            # 任务名称标签 — 根据可用宽度自动省略
+            # 任务名称标签 — 8pt 字体，根据可用宽度自动省略
             p.setPen(QColor(TEXT))
-            p.setFont(QFont(FONT_FAMILY, 10))
+            p.setFont(QFont(FONT_FAMILY, 8))
             fm = p.fontMetrics()
             name = fm.elidedText(task.name, Qt.TextElideMode.ElideRight, label_w - 16)
             p.drawText(8, y, label_w - 16, self._row_height,
