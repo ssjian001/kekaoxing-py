@@ -270,7 +270,7 @@ class RefreshHandlers:
                 if filter_project_id:
                     p_list = ctrl.test_plan_service.get_plans_by_project(filter_project_id)
                 else:
-                    p_list = ctrl.test_plan_service.list_all()
+                    p_list = ctrl.test_plan_service.list_all_plans()
                 plan_count = len(p_list) if p_list else 0
 
             technician_count = 0

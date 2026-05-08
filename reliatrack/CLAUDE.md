@@ -124,13 +124,18 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `scheduler_service.py`：DB 读写封装，支持 skip_weekends/skip_holidays/lock_existing
 - 排程报告弹窗：`schedule_report_dialog.py`（利用率条形图+瓶颈+建议）
 
-### 仪表盘
+### 仪表盘（v2 — 现代企业 SaaS 风格）
 
-- **左右两栏布局**（800×600 窗口适配）
-- **A 区（测试状态）**：2×3 KPI 卡片(52px) + `_DonutChart` 环形图(QPainter, 中心总数+底部图例)
-- **B 区（测试结果）**：2×2 KPI 卡片 + 2× `_ProgressRing` 进度环(76×76, Issue 闭环率 + CAPA 完成率)
-- 组件：`_KPICard` / `_DonutChart` / `_ProgressRing`，均为 QPainter 自绘，不依赖 pyqtgraph
-- DashboardData 封装 14 个参数，含 failed_task_count / issue_closed_count
+- **布局**: QScrollArea + 浅灰背景(#F7F8FC) + 白底圆角卡片(16px)
+- **Header**: 项目/计划筛选标签 + 最后更新时间
+- **健康度卡片**: 健康评分(0-100) + 状态文字 + 绿色进度条 + 3辅助指标(计划数/人员/更新时间)
+- **左栏(测试执行)**: 4 KPI `_StatCard`(72px) + `_DonutChart`环形图(右侧垂直图例) + `_HProgressBar`通过率进度条
+- **右栏(质量与问题)**: 4 KPI `_StatCard` + 2× `_ProgressRing`(100px) + `_SeverityBar`严重度分段条
+- **配色**: 5 语义色映射 Catppuccin Latte (PRIMARY/SUCCESS/WARNING/DANGER/NEUTRAL)
+- **阴影**: QGraphicsDropShadowEffect（仅顶层卡片）
+- **组件**: `_StatCard` / `_HealthCard` / `_DonutChart` / `_HProgressBar` / `_ProgressRing` / `_SeverityBar`
+- **DashboardData**: 20 个字段，含 health_score / plan_count / technician_count / last_update
+- **健康评分**: 通过率×40% + Issue闭环率×30% + CAPA完成率×30% (APQP 门控核心指标)
 
 ### Schema（v15）
 
@@ -143,7 +148,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **SELECT \***：全部消除，所有查询使用显式列名
 - **base.py**：空字符串→0 int 防御 + ESCAPE 子句修复 + search() 模糊搜索修复
 - **issue.py**：priority/occurrence_count 防御性类型转换（str→int）
-- **Dashboard refresh**：DashboardData 封装 16 参数（A/B 分区模式）
+- **Dashboard refresh**：DashboardData 封装 20 参数（SaaS 风格 v2）
 
 ### 数据库路径
 
