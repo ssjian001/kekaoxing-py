@@ -421,6 +421,15 @@ def main() -> int:
     app.setOrganizationName("ReliaTrack")
     app.setStyleSheet(get_stylesheet())
 
+    # 单实例互斥 — 防止两个进程同时写同一 DB
+    from PySide6.QtCore import QLockFile
+    _lock = QLockFile(os.path.join("data", ".reliatrack.lock"))
+    _lock.setStaleLockTimeout(0)
+    if not _lock.tryLock(100):
+        from PySide6.QtWidgets import QMessageBox as _MB
+        _MB.critical(None, "已运行", "ReliaTrack 已在运行中，请勿重复启动。")
+        return 1
+
     # 初始化 Controller（数据库 + 服务）
     controller = AppController()
     controller.initialize()
