@@ -183,7 +183,33 @@ DASH_PRIMARY = STATUS_BLUE       # #1e66f5
 DASH_SUCCESS = STATUS_GREEN      # #40a02b
 DASH_WARNING = STATUS_YELLOW     # #df8e1d
 DASH_DANGER  = STATUS_RED        # #d20f39
-DASH_NEUTRAL = "#7c7f93"         # Subtext0 附近 — 中性灰
-DASH_BG      = "#F7F8FC"         # 仪表盘专用浅灰背景
-DASH_CARD_BG = "#FFFFFF"         # 卡片白底
-DASH_CARD_BORDER = "#E2E8F0"     # 卡片边框（低透明度灰）
+DASH_NEUTRAL = "#64748B"         # Subtext0 — 中性灰（与全局一致）
+DASH_BG      = "#F7F8FC"         # 仪表盘背景（= 全局 BASE）
+DASH_CARD_BG = "#FFFFFF"         # 卡片白底（= 全局 MANTLE）
+DASH_CARD_BORDER = "#E2E8F0"     # 卡片边框（= 全局 SURFACE1）
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  全局卡片样式工具（提升自 dashboard_view）
+# ═══════════════════════════════════════════════════════════════════
+
+def card_qss(radius: int = 12) -> str:
+    """返回白底圆角卡片 QSS，供所有 Tab/Dialog 复用。"""
+    from src.styles.theme import MANTLE, SURFACE1
+    return (
+        f"background-color: {MANTLE};"
+        f"border: 1px solid {SURFACE1};"
+        f"border-radius: {radius}px;"
+    )
+
+
+def add_shadow(widget, blur: int = 12, offset: int = 2,
+               opacity: int = 25) -> None:
+    """给 widget 添加柔和阴影效果。"""
+    from PySide6.QtWidgets import QGraphicsDropShadowEffect
+    from PySide6.QtGui import QColor
+    shadow = QGraphicsDropShadowEffect()
+    shadow.setOffset(0, offset)
+    shadow.setBlurRadius(blur)
+    shadow.setColor(QColor(0, 0, 0, opacity))
+    widget.setGraphicsEffect(shadow)

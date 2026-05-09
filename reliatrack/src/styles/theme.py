@@ -12,17 +12,17 @@ from src.styles.constants import FONT_FAMILY, FONT_SIZE_NORMAL
 #  Catppuccin Latte 色板
 # ═══════════════════════════════════════════════════════════════════
 
-# Base
+# Base — 浅灰背景（SaaS 风格升级）
 CRUST    = "#dc8a78"
-MANTLE   = "#e6e9ef"
-BASE     = "#eff1f5"
-SURFACE0 = "#ccd0da"
-SURFACE1 = "#bcc0cc"
-SURFACE2 = "#acb0be"
-OVERLAY0 = "#9ca0b0"
-TEXT     = "#4c4f69"
-SUBTEXT0 = "#6c6f85"
-SUBTEXT1 = "#5c5f77"
+MANTLE   = "#FFFFFF"      # 卡片/次要背景 → 白底
+BASE     = "#F7F8FC"      # 主背景 → 浅灰
+SURFACE0 = "#F1F5F9"      # 输入框背景 → 更亮的灰
+SURFACE1 = "#E2E8F0"      # hover / 边框
+SURFACE2 = "#CBD5E1"      # 更深灰
+OVERLAY0 = "#94A3B8"      # muted text
+TEXT     = "#1E293B"      # 主文字 → 更深更清晰
+SUBTEXT0 = "#64748B"      # 次要文字
+SUBTEXT1 = "#475569"      # 二级文字
 
 # Accent
 RED      = "#d20f39"
@@ -68,9 +68,9 @@ QDialog, QMainWindow {{
 QGroupBox {{
     background-color: {BG_CARD};
     border: 1px solid {BORDER};
-    border-radius: 6px;
-    margin-top: 12px;
-    padding-top: 16px;
+    border-radius: 12px;
+    margin-top: 14px;
+    padding-top: 18px;
     font-weight: bold;
     color: {FG_PRIMARY};
 }}
@@ -85,7 +85,7 @@ QLineEdit, QDoubleSpinBox, QComboBox {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 5px 8px;
     min-height: 24px;
 }}
@@ -93,7 +93,7 @@ QSpinBox {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 2px 4px;
     min-height: 24px;
 }}
@@ -126,7 +126,7 @@ QTextEdit, QPlainTextEdit {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 5px 8px;
     font-family: {FONT_FAMILY};
 }}
@@ -136,7 +136,7 @@ QPushButton {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 6px 14px;
     min-height: 24px;
 }}
@@ -230,16 +230,18 @@ QTabWidget::pane {{
     border: 1px solid {BORDER};
     background-color: {BG_DARK};
     padding-top: 4px;
+    border-radius: 8px;
 }}
 QTabBar::tab {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     border-bottom: none;
-    padding: 6px 14px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    padding: 6px 16px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
     font-size: 13px;
+    margin-right: 2px;
 }}
 QTabBar::tab:selected {{
     background-color: {BG_HOVER};
@@ -388,7 +390,7 @@ QDateEdit, QTimeEdit, QDateTimeEdit {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 5px 8px;
     min-height: 24px;
 }}

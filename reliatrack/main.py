@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
-from src.styles.theme import get_stylesheet, filter_combo_qss, TEXT, SURFACE0, SURFACE1, MANTLE
+from src.styles.theme import get_stylesheet, filter_combo_qss, TEXT, BASE, SURFACE0, SURFACE1
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -187,7 +187,7 @@ class MainWindow(QMainWindow):
         filter_bar.addStretch()
         filter_layout = QWidget()
         filter_layout.setLayout(filter_bar)
-        filter_layout.setStyleSheet(f"background-color: {MANTLE}; padding: 3px 16px;")
+        filter_layout.setStyleSheet(f"background-color: {BASE}; padding: 4px 20px; border-radius: 8px;")
         layout.insertWidget(0, filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
