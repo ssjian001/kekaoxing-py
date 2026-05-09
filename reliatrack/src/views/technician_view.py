@@ -28,12 +28,12 @@ from src.styles.constants import VIEW_MARGINS, apply_column_specs
 
 _TECHNICIAN_SPECS = [
     ("ID", "fixed", 50),
-    ("工号", "content", 80),
+    ("工号", "interactive", 90),
     ("姓名", "interactive", 100),
     ("部门", "interactive", 100),
     ("职位", "interactive", 100),
     ("联系方式", "interactive", 120),
-    ("邮箱", "stretch", 0),
+    ("邮箱", "interactive", 200),
 ]
 
 

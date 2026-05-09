@@ -24,8 +24,8 @@ from src.styles.theme import OVERLAY0, TEXT, SURFACE1
 
 _KNOWLEDGE_SPECS = [
     ("ID", "fixed", 50),
-    ("类别", "content", 70),
-    ("失效模式", "stretch", 0),
+    ("类别", "interactive", 80),
+    ("失效模式", "interactive", 200),
     ("原因分析", "interactive", 160),
     ("改进措施", "interactive", 160),
     ("参考标准", "interactive", 120),

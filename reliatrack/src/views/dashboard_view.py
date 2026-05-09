@@ -41,6 +41,7 @@ from src.styles.constants import (
     card_qss,
     add_shadow,
 )
+from src.styles.theme import TEXT, SUBTEXT0, SURFACE1
 
 # ── 通用字体 ──
 _FAMILY = FONT_FAMILY.split(",")[0].strip()
@@ -149,8 +150,8 @@ class _AuxCard(QFrame):
 #  健康度卡片 — 顶部大摘要
 # ═══════════════════════════════════════════════════════════════════
 
-class _HealthCard(QFrame):
-    """整体健康度摘要: 左侧健康评分 + 进度条, 右侧 3 个辅助指标。"""
+class _TestProgressCard(QFrame):
+    """测试进度摘要: 堆叠进度条 (PASS/FAIL/进行中/待开始) + 辅助指标。"""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -160,48 +161,43 @@ class _HealthCard(QFrame):
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(24, 12, 24, 12)
-        lay.setSpacing(32)
+        lay.setSpacing(24)
 
-        # ── 左侧: 评分 + 状态 + 进度条 ──
+        # ── 左侧: 堆叠进度条 + 图例 ──
         left = QVBoxLayout()
         left.setSpacing(4)
 
-        score_row = QHBoxLayout()
-        score_row.setSpacing(8)
-        self._score_label = QLabel("—")
-        self._score_label.setStyleSheet(
-            f"color: {DASH_PRIMARY}; font-size: 36px; font-weight: bold;"
+        self._title_label = QLabel("测试进度")
+        self._title_label.setStyleSheet(
+            f"color: {TEXT}; font-size: 13px; font-weight: bold;"
             f"border: none; background: transparent;"
         )
-        score_row.addWidget(self._score_label)
+        left.addWidget(self._title_label)
 
-        score_unit = QLabel("/ 100")
-        score_unit.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 14px;"
-            f"border: none; background: transparent;"
-        )
-        score_row.addWidget(score_unit)
-        score_row.addStretch()
-        left.addLayout(score_row)
+        self._stacked = _StackedBar()
+        left.addWidget(self._stacked)
 
-        self._status_label = QLabel("状态：—")
-        self._status_label.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 12px;"
-            f"border: none; background: transparent;"
-        )
-        left.addWidget(self._status_label)
-
-        # 进度条（QPainter 自绘容器）
-        self._progress = _HProgressBar(color=DASH_SUCCESS, height=8)
-        left.addWidget(self._progress)
+        # 图例行
+        legend = QHBoxLayout()
+        legend.setSpacing(12)
+        for label, color in [("PASS", DASH_SUCCESS), ("FAIL", DASH_DANGER),
+                             ("进行中", DASH_WARNING), ("待开始", DASH_NEUTRAL)]:
+            dot = QLabel("●")
+            dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
+            lbl = QLabel(label)
+            lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 10px; border: none; background: transparent;")
+            legend.addWidget(dot)
+            legend.addWidget(lbl)
+        legend.addStretch()
+        left.addLayout(legend)
         lay.addLayout(left, 3)
 
         # ── 右侧: 3 个辅助指标 ──
         right = QHBoxLayout()
         right.setSpacing(16)
-        self._aux1 = self._mk_aux("测试计划数", "0")
-        self._aux2 = self._mk_aux("测试通过率", "—%")
-        self._aux3 = self._mk_aux("最后更新", "—")
+        self._aux1 = self._mk_aux("测试通过率", "—%")
+        self._aux2 = self._mk_aux("最后更新", "—")
+        self._aux3 = self._mk_aux("技术员数", "0")
         right.addWidget(self._aux1)
         right.addWidget(self._aux2)
         right.addWidget(self._aux3)
@@ -215,36 +211,13 @@ class _HealthCard(QFrame):
         card.setFixedHeight(56)
         return card
 
-    def refresh(self, score: float | None, plan_count: int,
-                pass_rate: float | None, last_update: str | None) -> None:
-        # 评分
-        if score is not None:
-            self._score_label.setText(f"{score:.0f}")
-            if score >= 80:
-                color, status = DASH_SUCCESS, "良好"
-            elif score >= 60:
-                color, status = DASH_WARNING, "一般"
-            else:
-                color, status = DASH_DANGER, "需关注"
-            self._score_label.setStyleSheet(
-                f"color: {color}; font-size: 36px; font-weight: bold;"
-                f"border: none; background: transparent;"
-            )
-            self._status_label.setText(f"状态：{status}")
-            self._status_label.setStyleSheet(
-                f"color: {color}; font-size: 12px;"
-                f"border: none; background: transparent;"
-            )
-            self._progress.setPercent(score)
-        else:
-            self._score_label.setText("—")
-            self._status_label.setText("状态：无数据")
-            self._progress.setPercent(0)
-
-        # 辅助指标
-        self._aux1.set_value(str(plan_count))
-        self._aux2.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
-        self._aux3.set_value(last_update or "—")
+    def refresh(self, total: int, completed: int, pass_count: int, fail_count: int,
+                in_progress: int, pass_rate: float | None,
+                last_update: str | None, tech_count: int) -> None:
+        self._stacked.set_data(total, pass_count, fail_count, in_progress)
+        self._aux1.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
+        self._aux2.set_value(last_update or "—")
+        self._aux3.set_value(str(tech_count))
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -362,6 +335,77 @@ class _DonutChart(QFrame):
 # ═══════════════════════════════════════════════════════════════════
 #  水平进度条 — QPainter
 # ═══════════════════════════════════════════════════════════════════
+
+class _StackedBar(QWidget):
+    """堆叠进度条: PASS(绿) + FAIL(红) + 进行中(黄) + 待开始(灰)。"""
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setFixedHeight(18)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._total = 0
+        self._pass = 0
+        self._fail = 0
+        self._progress = 0
+
+    def set_data(self, total: int, pass_count: int, fail_count: int,
+                 in_progress: int) -> None:
+        self._total = max(total, 1)
+        self._pass = pass_count
+        self._fail = fail_count
+        self._progress = in_progress
+        self.update()
+
+    def paintEvent(self, event):  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w, h = self.width(), self.height()
+
+        # 背景
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(SURFACE1))
+        p.drawRoundedRect(0, 0, w, h, 4, 4)
+
+        if self._total <= 0:
+            p.end()
+            return
+
+        x = 0
+        segments = [
+            (self._pass, DASH_SUCCESS),
+            (self._fail, DASH_DANGER),
+            (self._progress, DASH_WARNING),
+        ]
+        pending = self._total - self._pass - self._fail - self._progress
+        if pending > 0:
+            segments.append((pending, DASH_NEUTRAL))
+
+        for count, color in segments:
+            if count <= 0:
+                continue
+            sw = int(w * count / self._total)
+            if sw <= 0:
+                continue
+            p.setBrush(QColor(color))
+            # 首尾段带圆角，中间段矩形
+            p.drawRect(x, 0, sw, h)
+            x += sw
+
+        # 首段和尾段圆角覆盖
+        if segments and segments[0][0] > 0:
+            sw0 = int(w * segments[0][0] / self._total)
+            if sw0 > 0:
+                p.setBrush(QColor(segments[0][1]))
+                p.drawRoundedRect(0, 0, sw0, h, 4, 4)
+        if len(segments) > 1 and segments[-1][0] > 0:
+            sw_last = int(w * segments[-1][0] / self._total)
+            x_last = w - sw_last
+            if sw_last > 0:
+                p.setBrush(QColor(segments[-1][1]))
+                p.drawRoundedRect(x_last, 0, sw_last, h, 4, 4)
+
+        p.end()
+
 
 class _HProgressBar(QWidget):
     """水平进度条（用于通过率显示）。"""
@@ -562,6 +606,7 @@ class DashboardData:
         "project_name", "plan_name",
         # 新增
         "health_score", "plan_count", "technician_count",
+        "pass_count", "fail_count",
         "last_update", "pass_rate_trend", "capa_trend",
     )
 
@@ -632,8 +677,8 @@ class DashboardView(QWidget):
         header.addWidget(self._time_label)
         root.addLayout(header)
 
-        # ── 健康度卡片 ──
-        self._health = _HealthCard()
+        # ── 测试进度卡片 ──
+        self._health = _TestProgressCard()
         root.addWidget(self._health)
 
         # ── 左右两栏 ──
@@ -645,17 +690,15 @@ class DashboardView(QWidget):
         left.setSpacing(12)
         left.addWidget(self._mk_section_title("测试执行概览"))
 
-        # KPI 4 卡
-        ga = QGridLayout()
+        # KPI 3 卡（已完成 / 进行中 / 待开始）
+        ga = QHBoxLayout()
         ga.setSpacing(10)
-        self._card_total  = _StatCard("任务数", "0", DASH_PRIMARY, 3)
         self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3)
         self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3)
         self._card_wait   = _StatCard("待开始", "0", DASH_NEUTRAL, 3)
-        ga.addWidget(self._card_total, 0, 0)
-        ga.addWidget(self._card_done, 0, 1)
-        ga.addWidget(self._card_active, 1, 0)
-        ga.addWidget(self._card_wait, 1, 1)
+        ga.addWidget(self._card_done)
+        ga.addWidget(self._card_active)
+        ga.addWidget(self._card_wait)
         left.addLayout(ga)
 
         # 环形图
@@ -728,16 +771,19 @@ class DashboardView(QWidget):
             f"最后更新：{data.last_update}" if data.last_update else ""
         )
 
-        # 健康度卡片
+        # 测试进度卡片
         self._health.refresh(
-            score=data.health_score,
-            plan_count=data.plan_count or 0,
+            total=data.task_total or 0,
+            completed=data.task_completed or 0,
+            pass_count=data.pass_count or 0,
+            fail_count=data.fail_count or 0,
+            in_progress=data.task_in_progress or 0,
             pass_rate=data.pass_rate,
             last_update=data.last_update,
+            tech_count=data.technician_count or 0,
         )
 
         # 左栏 KPI
-        self._card_total.set_value(str(data.task_total))
         self._card_done.set_value(str(data.task_completed))
         self._card_active.set_value(str(data.task_in_progress))
         self._card_wait.set_value(str(data.task_pending))

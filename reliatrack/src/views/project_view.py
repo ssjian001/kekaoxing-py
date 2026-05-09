@@ -28,11 +28,11 @@ from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_colu
 
 _PROJECT_SPECS = [
     ("ID", "fixed", 50),
-    ("名称", "stretch", 0),
+    ("名称", "interactive", 200),
     ("产品", "interactive", 120),
     ("客户", "interactive", 120),
-    ("状态", "content", 80),
-    ("创建时间", "content", 90),
+    ("状态", "interactive", 80),
+    ("创建时间", "interactive", 100),
 ]
 
 

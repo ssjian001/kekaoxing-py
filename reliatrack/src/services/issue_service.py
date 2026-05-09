@@ -58,6 +58,12 @@ class IssueService:
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         return self._repo.get_fa_records(issue_id)
 
+    def update_fa_record(self, fa_id: int, **kwargs: object) -> None:
+        return self._repo.update_fa_record(fa_id, **kwargs)
+
+    def delete_fa_record(self, fa_id: int) -> None:
+        return self._repo.delete_fa_record(fa_id)
+
     # ── 附件 ──
 
     def add_attachment(self, issue_id: int, **kwargs: object) -> int:
