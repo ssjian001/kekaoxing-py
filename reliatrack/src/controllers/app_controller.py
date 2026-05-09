@@ -173,7 +173,13 @@ class AppController:
     # ── 生命周期 ──
 
     def shutdown(self) -> None:
-        """关闭数据库连接。"""
+        """关闭数据库连接（先 WAL checkpoint 再 close）。"""
+        if self._conn:
+            try:
+                self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                logger.info("WAL checkpoint completed")
+            except Exception:
+                logger.exception("WAL checkpoint failed")
         close_all_connections()
         self._conn = None
         logger.info("Database connection closed")
