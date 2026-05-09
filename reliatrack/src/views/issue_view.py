@@ -34,25 +34,30 @@ from src.styles.theme import (
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS, apply_column_specs
 from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
 from src.views.dialogs.base_dialog import _BaseDialog
+
+# Issue 表列规格: (表头, 模式, 默认宽度)
+#   fixed=固定 / content=按内容 / stretch=填满 / interactive=可拖拽
+_ISSUE_SPECS = [
+    ("ID", "fixed", 50),
+    ("标题", "stretch", 0),
+    ("严重度", "content", 60),
+    ("状态", "content", 70),
+    ("优先级", "content", 60),
+    ("根因", "interactive", 120),
+    ("解决方案", "interactive", 140),
+    ("创建时间", "content", 90),
+]
 
 
 class _IssueTable(QTableWidget):
     """Issue 列表表格。"""
 
-    COLUMNS = ["ID", "标题", "严重度", "状态", "优先级", "根因", "解决方案", "创建时间"]
-
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setColumnCount(len(self.COLUMNS))
-        self.setHorizontalHeaderLabels(self.COLUMNS)
-        # 自适应列宽：ID 固定，其余 Stretch 自动填满
-        header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self.setColumnWidth(0, 50)    # ID
+        apply_column_specs(self, _ISSUE_SPECS)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)

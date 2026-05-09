@@ -29,7 +29,21 @@ from src.styles.theme import (
     BLUE,
     YELLOW,
 )
-from src.styles.constants import EQUIPMENT_STATUS_COLORS, VIEW_MARGINS
+from src.styles.constants import EQUIPMENT_STATUS_COLORS, VIEW_MARGINS, apply_column_specs
+
+_EQUIPMENT_SPECS = [
+    ("ID", "fixed", 50),
+    ("资产编号", "interactive", 120),
+    ("型号", "interactive", 120),
+    ("名称", "stretch", 0),
+    ("类型", "content", 70),
+    ("制造商", "interactive", 120),
+    ("精度/不确定度", "interactive", 110),
+    ("校准日期", "content", 90),
+    ("下次校准", "content", 90),
+    ("间隔(月)", "content", 60),
+    ("状态", "content", 70),
+]
 
 
 class EquipmentView(QWidget):
@@ -110,28 +124,13 @@ class EquipmentView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        self._table.setColumnCount(len(self._COLUMNS))
-        self._table.setHorizontalHeaderLabels([c[0] for c in self._COLUMNS])
+        apply_column_specs(self._table, _EQUIPMENT_SPECS)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
-
-        # 列宽
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 资产编号
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 型号
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)            # 名称
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 类型
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 制造商
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # 精度/不确定度
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)  # 校准日期
-        header.setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)  # 下次校准
-        header.setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents)  # 间隔
-        header.setSectionResizeMode(10, QHeaderView.ResizeMode.ResizeToContents) # 状态
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)

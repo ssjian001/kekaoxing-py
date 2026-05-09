@@ -24,35 +24,55 @@ from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
 )
-from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS
+from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS, apply_column_specs
 from src.models.sample import Sample
+
+# 样品池列规格
+_POOL_SPECS = [
+    ("SN", "stretch", 0),
+    ("批次号", "interactive", 120),
+    ("规格", "interactive", 100),
+    ("项目ID", "content", 60),
+    ("状态", "content", 80),
+    ("创建时间", "content", 90),
+]
+
+# 出入库记录列规格
+_LOG_SPECS = [
+    ("样品SN", "interactive", 120),
+    ("批次号", "interactive", 100),
+    ("操作类型", "content", 80),
+    ("操作人", "content", 80),
+    ("用途", "stretch", 0),
+    ("关联任务", "content", 80),
+    ("预计归还", "content", 90),
+    ("操作时间", "content", 90),
+]
+
+# 样品台账列规格
+_LEDGER_SPECS = [
+    ("ID", "fixed", 50),
+    ("SN", "stretch", 0),
+    ("批次号", "interactive", 120),
+    ("规格", "interactive", 100),
+    ("项目ID", "content", 60),
+    ("状态", "content", 80),
+    ("供应商", "interactive", 100),
+    ("累计测试(h)", "content", 80),
+    ("创建时间", "content", 90),
+]
 
 
 class _SampleTable(QTableWidget):
     """样品数据表格基类。"""
 
-    def __init__(self, columns: list[tuple[str, str]], parent: QWidget | None = None):
-        """columns: [(header_text, field_name), ...]"""
+    def __init__(self, columns: list[tuple[str, str]], specs: list[tuple[str, str, int]],
+                 parent: QWidget | None = None):
+        """columns: [(header_text, field_name)], specs: [(header, mode, width)]"""
         super().__init__(parent)
         self._columns = columns
         self._data: list[Sample] = []
-        self.setColumnCount(len(columns))
-        self.setHorizontalHeaderLabels([c[0] for c in columns])
-        # 列宽策略：SN / 批次号 ResizeToContents, 状态 Fixed(80), 其余 Stretch
-        for col_idx, (header_text, _) in enumerate(columns):
-            if header_text == "SN" or header_text == "批次号":
-                self.horizontalHeader().setSectionResizeMode(
-                    col_idx, QHeaderView.ResizeMode.ResizeToContents,
-                )
-            elif header_text == "状态":
-                self.horizontalHeader().setSectionResizeMode(
-                    col_idx, QHeaderView.ResizeMode.Fixed,
-                )
-                self.setColumnWidth(col_idx, 80)
-            else:
-                self.horizontalHeader().setSectionResizeMode(
-                    col_idx, QHeaderView.ResizeMode.Stretch,
-                )
+        apply_column_specs(self, specs)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -141,7 +161,7 @@ class _SamplePoolTab(QWidget):
 
         layout.addLayout(toolbar)
 
-        self._table = _SampleTable(self.COLUMNS)
+        self._table = _SampleTable(self.COLUMNS, _POOL_SPECS)
         layout.addWidget(self._table)
 
         # 右键菜单
@@ -299,18 +319,7 @@ class _SampleUsageTab(QWidget):
 
         # ── 表格 ──
         self._table = QTableWidget()
-        self._table.setColumnCount(len(self.COLUMNS))
-        self._table.setHorizontalHeaderLabels(self.COLUMNS)
-        # 列宽策略：操作类型 ResizeToContents, 操作时间 Fixed(160), 其余 Stretch
-        header = self._table.horizontalHeader()
-        for col_idx, col_name in enumerate(self.COLUMNS):
-            if col_name == "操作类型":
-                header.setSectionResizeMode(col_idx, QHeaderView.ResizeMode.ResizeToContents)
-            elif col_name == "操作时间":
-                header.setSectionResizeMode(col_idx, QHeaderView.ResizeMode.Fixed)
-                self._table.setColumnWidth(col_idx, 160)
-            else:
-                header.setSectionResizeMode(col_idx, QHeaderView.ResizeMode.Stretch)
+        apply_column_specs(self._table, _LOG_SPECS)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
@@ -468,7 +477,7 @@ class _SampleLedgerTab(QWidget):
 
         layout.addLayout(toolbar)
 
-        self._table = _SampleTable(self.COLUMNS)
+        self._table = _SampleTable(self.COLUMNS, _LEDGER_SPECS)
         layout.addWidget(self._table)
 
         # 右键菜单
