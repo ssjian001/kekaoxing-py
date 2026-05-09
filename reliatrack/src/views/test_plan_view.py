@@ -581,11 +581,12 @@ class _GanttWidget(QWidget):
 
             if d % step == 0:
                 p.setPen(QColor(SUBTEXT1))
-                label = f"D{d}"
-                if is_weekend and base_date is not None:
+                if base_date is not None:
                     real_date = base_date + timedelta(days=d)
-                    label = f"D{d} ({'六' if real_date.weekday() == 5 else '日'})"
-                p.drawText(int(x) - 15, 0, 40, self._header_height,
+                    label = f"{real_date.month}/{real_date.day}"
+                else:
+                    label = f"D{d}"
+                p.drawText(int(x) - 20, 0, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, label)
             p.setPen(QColor(SURFACE1))
             if d % step == 0:

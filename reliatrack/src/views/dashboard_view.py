@@ -645,17 +645,15 @@ class DashboardView(QWidget):
         left.setSpacing(12)
         left.addWidget(self._mk_section_title("测试执行概览"))
 
-        # KPI 4 卡
-        ga = QGridLayout()
+        # KPI 3 卡（已完成 / 进行中 / 待开始）
+        ga = QHBoxLayout()
         ga.setSpacing(10)
-        self._card_total  = _StatCard("任务数", "0", DASH_PRIMARY, 3)
         self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3)
         self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3)
         self._card_wait   = _StatCard("待开始", "0", DASH_NEUTRAL, 3)
-        ga.addWidget(self._card_total, 0, 0)
-        ga.addWidget(self._card_done, 0, 1)
-        ga.addWidget(self._card_active, 1, 0)
-        ga.addWidget(self._card_wait, 1, 1)
+        ga.addWidget(self._card_done)
+        ga.addWidget(self._card_active)
+        ga.addWidget(self._card_wait)
         left.addLayout(ga)
 
         # 环形图
@@ -737,7 +735,6 @@ class DashboardView(QWidget):
         )
 
         # 左栏 KPI
-        self._card_total.set_value(str(data.task_total))
         self._card_done.set_value(str(data.task_completed))
         self._card_active.set_value(str(data.task_in_progress))
         self._card_wait.set_value(str(data.task_pending))

@@ -71,9 +71,9 @@ class FARecordDialog(_BaseDialog):
             items=["待定", "确认", "排除"],
         )
         tech_names = ["（无）"] + [t.name for t in self._technician_list if t.id is not None]
-        self._analyst_combo = self._add_combo_field(
+        self._analyst_edit = self._add_text_field(
             "分析人",
-            items=tech_names,
+            placeholder="自由输入姓名",
         )
 
     # ── 公开 API ───────────────────────────────────────────────
@@ -83,9 +83,9 @@ class FARecordDialog(_BaseDialog):
         confirmed_map = {"待定": 0, "确认": 1, "排除": 2}
         category_text = self._cause_category_combo.currentText()
         fm_text = self._failure_mechanism_combo.currentText()
-        analyst_name = self._analyst_combo.currentText()
+        analyst_name = self._analyst_edit.text().strip()
         analyst_id: int | None = None
-        if analyst_name != "（无）":
+        if analyst_name:
             for t in self._technician_list:
                 if t.name == analyst_name and t.id is not None:
                     analyst_id = t.id
