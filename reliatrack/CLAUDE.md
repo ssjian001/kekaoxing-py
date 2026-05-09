@@ -166,7 +166,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **SELECT \***：全部消除，所有查询使用显式列名
 - **base.py**：空字符串→0 int 防御 + ESCAPE 子句修复 + search() 模糊搜索修复
 - **issue.py**：priority/occurrence_count 防御性类型转换（str→int）
-- **Dashboard refresh**：DashboardData 封装 20 参数（SaaS 风格 v2）
+- **Dashboard refresh**：`_collect_dashboard_data()` 收集 → `DashboardData` 封装 → `dashboard.refresh()` 推送（SaaS 风格 v2）；任务加载用 SQL 过滤（`get_by_plan`/`get_tasks_by_project`），非全表
 
 ### 数据库路径
 
@@ -180,6 +180,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **XML 颜色注入**：`export_service._set_cell_shading()` 用 `re.fullmatch(r"[0-9A-Fa-f]{6}")` 校验
 - **路径遍历**：`_validate_output_path()` 校验 resolve 后路径在允许目录内
 - **原子性**：出库操作用 `repo.transaction()` 包裹；scheduler 用 `deepcopy` 隔离原始对象
+- **附件完整性**：`shutdown()` 时 `scan_attachment_integrity()` 检查 DB 记录 vs 磁盘文件，缺失/孤立写入日志
 - **Column tuple**：`_TXN_COLS`/`_FA_COLS`/`_ATTACH_COLS`/`_CAPA_SELECT_COLS` 为 tuple（单一真相源）
 - **审计报告**：`docs/audit-2026-05-08.md` — 完整修复记录 + P2 待修清单
 
@@ -195,3 +196,8 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
 - 共 **115 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
+
+### 架构优化进展（2026-05-09）
+
+16/22 项已完成：P3/P7-P11/P14-P17/P18-P22。P4 跳过。
+剩余 6 项（P1/P2/P5/P6/P12/P13）已完成侦察，Phase 1-4 计划就绪，Phase 1 cron 已安排。
