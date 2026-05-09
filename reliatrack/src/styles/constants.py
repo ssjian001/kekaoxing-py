@@ -25,7 +25,16 @@ SPACING_LARGE: int = 12
 #  字体
 # ═══════════════════════════════════════════════════════════════════
 
-FONT_FAMILY: str = "Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif"
+import sys as _sys
+
+if _sys.platform == "linux":
+    FONT_FAMILY: str = "Noto Sans CJK SC, WenQuanYi Micro Hei, Microsoft YaHei, sans-serif"
+elif _sys.platform == "darwin":
+    FONT_FAMILY: str = "PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif"
+else:
+    FONT_FAMILY: str = "Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif"
+
+del _sys
 FONT_SIZE_SMALL: int = 12
 FONT_SIZE_NORMAL: int = 14
 FONT_SIZE_LARGE: int = 17
