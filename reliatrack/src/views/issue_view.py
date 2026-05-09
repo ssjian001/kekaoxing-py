@@ -42,7 +42,7 @@ from src.views.dialogs.base_dialog import _BaseDialog
 class _IssueTable(QTableWidget):
     """Issue 列表表格。"""
 
-    COLUMNS = ["ID", "标题", "严重度", "状态", "优先级", "根因", "创建时间"]
+    COLUMNS = ["ID", "标题", "严重度", "状态", "优先级", "根因", "解决方案", "创建时间"]
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -54,12 +54,13 @@ class _IssueTable(QTableWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         # 初始宽度
         self.setColumnWidth(0, 50)    # ID
-        self.setColumnWidth(1, 250)   # 标题
+        self.setColumnWidth(1, 220)   # 标题
         self.setColumnWidth(2, 60)    # 严重度
         self.setColumnWidth(3, 70)    # 状态
         self.setColumnWidth(4, 60)    # 优先级
-        self.setColumnWidth(5, 120)   # 根因
-        self.setColumnWidth(6, 120)   # 创建时间
+        self.setColumnWidth(5, 100)   # 根因
+        self.setColumnWidth(6, 120)   # 解决方案
+        self.setColumnWidth(7, 100)   # 创建时间
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -100,6 +101,7 @@ class _IssueTable(QTableWidget):
                 status_labels.get(issue.status, issue.status),
                 issue.priority,
                 (issue.root_cause or "")[:15],
+                (issue.resolution or "")[:20],
                 (issue.created_at or "")[:10],
             ]):
                 item = QTableWidgetItem(str(val))
@@ -442,7 +444,8 @@ class IssueView(QWidget):
         if search_text:
             filtered = [i for i in filtered
                         if search_text in (i.title or "").lower()
-                        or search_text in (i.root_cause or "").lower()]
+                        or search_text in (i.root_cause or "").lower()
+                        or search_text in (i.resolution or "").lower()]
 
         self._issue_table.set_issues(filtered)
         open_count = sum(1 for i in filtered if i.status == "open")
