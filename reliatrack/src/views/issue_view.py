@@ -531,6 +531,7 @@ class IssueView(QWidget):
         )
         if dlg.exec():
             self.issue_saved.emit(dlg.get_data())
+        dlg.deleteLater()
 
     def _open_edit_dialog(self, issue: Issue) -> None:
         """打开编辑 Issue 弹窗。"""
@@ -546,6 +547,7 @@ class IssueView(QWidget):
             data = dlg.get_data()
             data["id"] = issue.id
             self.issue_saved.emit(data)
+        dlg.deleteLater()
 
     def _delete_issue(self, issue: Issue) -> None:
         """删除 Issue（带确认）。"""
@@ -577,6 +579,7 @@ class IssueView(QWidget):
             data = dlg.get_data()
             data["issue_id"] = issue_id
             self.fa_record_added.emit(data)
+        dlg.deleteLater()
 
     def _open_edit_fa_dialog(self, fa_id: int) -> None:
         """打开编辑 FA 步骤弹窗。"""
@@ -597,6 +600,7 @@ class IssueView(QWidget):
             data["id"] = fa_id
             data["issue_id"] = self.get_selected_issue_id()
             self.fa_record_edited.emit(data)
+        dlg.deleteLater()
 
     def _delete_fa_record(self, fa_id: int) -> None:
         """删除 FA 记录，需确认。"""
@@ -620,6 +624,7 @@ class IssueView(QWidget):
             data = dlg.get_data()
             data["issue_id"] = issue_id
             self.capa_record_added.emit(data)
+        dlg.deleteLater()
 
     def _open_edit_capa_dialog(self, record) -> None:
         """打开编辑 CAPA 弹窗。"""
@@ -631,6 +636,7 @@ class IssueView(QWidget):
         if dlg.exec():
             data = dlg.get_data()
             self.capa_record_edited.emit(data)
+        dlg.deleteLater()
 
     def _confirm_delete_capa(self, record) -> None:
         """确认删除 CAPA 记录。"""

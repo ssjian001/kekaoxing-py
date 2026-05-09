@@ -11,6 +11,7 @@ from src.views.dialogs.project_edit_dialog import ProjectEditDialog
 
 if TYPE_CHECKING:
     from main import MainWindow
+    from src.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,23 @@ class ProjectHandlers:
         win._project_view.btn_add.clicked.connect(self._on_project_add)
         win._project_view.btn_edit.clicked.connect(self._on_project_edit)
         win._project_view.btn_delete.clicked.connect(self._on_project_delete)
+
+    @staticmethod
+    def _cascade_message(service: "ProjectService", project_id: int) -> str:
+        """生成级联删除影响的统计描述。"""
+        try:
+            stats = service.cascade_stats(project_id)
+        except Exception:
+            return "关联数据将一并删除。\n"
+        total = sum(stats.values())
+        if total == 0:
+            return ""
+        parts = []
+        labels = {"plans": "个测试计划", "tasks": "个任务", "samples": "个样品", "issues": "个 Issue"}
+        for key, label in labels.items():
+            if stats[key]:
+                parts.append(f"{stats[key]} {label}")
+        return f"将同时删除：{'、'.join(parts)}。\n"
 
     def _on_project_add(self) -> None:
         """新建项目。"""
@@ -79,7 +97,9 @@ class ProjectHandlers:
         reply = QMessageBox.question(
             self._win,
             "确认删除",
-            f"确定要删除项目「{proj.name}」吗？\n关联的测试计划、任务、样品、Issue 等数据将一并删除。\n此操作不可撤销。",
+            f"确定要删除项目「{proj.name}」吗？\n"
+            + self._cascade_message(ctrl.project_service, proj.id)
+            + "此操作不可撤销。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )

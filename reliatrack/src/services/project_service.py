@@ -61,5 +61,29 @@ class ProjectService:
             # 5. 删除项目本身
             self._repo.delete(project_id)
 
+    def cascade_stats(self, project_id: int) -> dict[str, int]:
+        """返回项目级联删除影响的关联记录数。"""
+        conn = self._repo._conn
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM test_plans WHERE project_id = ?", (project_id,)
+        )
+        plans = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM test_tasks WHERE plan_id IN "
+            "(SELECT id FROM test_plans WHERE project_id = ?)",
+            (project_id,),
+        )
+        tasks = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM samples WHERE project_id = ?", (project_id,)
+        )
+        samples = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM issues WHERE project_id = ?", (project_id,)
+        )
+        issues = cur.fetchone()[0]
+        return {"plans": plans, "tasks": tasks, "samples": samples, "issues": issues}
+
     def list_all(self) -> list[Project]:
         return self._repo.list_all()
