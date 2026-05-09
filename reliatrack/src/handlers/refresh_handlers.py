@@ -192,19 +192,13 @@ class RefreshHandlers:
             pending_count = task_status_data.get("pending", 0)
             failed_task_count = task_status_data.get("failed", 0)
 
-            # 仍需任务列表供 Issue 弹窗 & 通过率计算
-            all_tasks = ctrl.test_tasks.list_all()
+            # 任务列表：SQL 过滤替代全表加载
             if filter_plan_id:
-                # 优先按计划筛选
-                filtered_tasks = [t for t in all_tasks if t.plan_id == filter_plan_id]
+                filtered_tasks = ctrl.test_tasks.get_by_plan(filter_plan_id)
             elif filter_project_id and ctrl.test_plan_service:
-                filtered_plans = ctrl.test_plan_service.get_plans_by_project(
-                    filter_project_id
-                )
-                plan_ids = {p.id for p in filtered_plans}
-                filtered_tasks = [t for t in all_tasks if t.plan_id in plan_ids]
+                filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id)
             else:
-                filtered_tasks = all_tasks
+                filtered_tasks = ctrl.test_tasks.list_all()
 
             # 注入给 Issue 弹窗
             self._win._issue_view._task_list = filtered_tasks
@@ -305,7 +299,7 @@ class RefreshHandlers:
                 last_update=last_update,
                 pass_count=total_pass if task_ids else 0,
                 fail_count=max(total_result - total_pass, 0) if task_ids else 0,
-                technician_count=len(ctrl.technician_service.list_all()) if ctrl.technician_service else 0,
+                technician_count=ctrl.technicians.count() if ctrl.technicians else 0,
             )
 
     def _refresh_samples(self) -> None:

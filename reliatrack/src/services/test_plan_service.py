@@ -64,6 +64,10 @@ class TestPlanService:
     def get_tasks(self, plan_id: int) -> list[TestTask]:
         return self._plan_repo.get_tasks(plan_id)
 
+    def get_tasks_by_project(self, project_id: int) -> list[TestTask]:
+        """按项目获取任务（SQL 过滤，非全表加载）。"""
+        return self._task_repo.get_by_project(project_id)
+
     def get_task_dependencies(self, task_id: int) -> list[TestTask]:
         return self._task_repo.get_dependencies(task_id)
 

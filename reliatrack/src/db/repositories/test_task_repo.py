@@ -49,6 +49,22 @@ class TestTaskRepository(BaseRepository):
     def get_by_plan(self, plan_id: int) -> list[TestTask]:
         return self.list_all(plan_id=plan_id)
 
+    def get_by_project(self, project_id: int) -> list[TestTask]:
+        """按项目 ID 获取任务（通过 plan_id JOIN）。"""
+        plan_ids = [r[0] for r in self._conn.execute(
+            "SELECT id FROM test_plans WHERE project_id = ?", (project_id,)
+        ).fetchall()]
+        if not plan_ids:
+            return []
+        placeholders = ','.join(['?'] * len(plan_ids))
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        rows = self._conn.execute(
+            f"SELECT {cols_sql} FROM [{self._table}] WHERE plan_id IN ({placeholders}) ORDER BY id",
+            plan_ids,
+        ).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
+
     def get_by_status(self, status: str) -> list[TestTask]:
         return self.list_all(status=status)
 
