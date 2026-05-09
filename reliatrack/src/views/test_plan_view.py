@@ -636,11 +636,12 @@ class _GanttWidget(QWidget):
             if i % 2 == 1:
                 p.fillRect(0, y, w, self._row_height, QColor(MANTLE))
 
-            # 任务名称标签 — 8pt 字体，根据可用宽度自动省略
+            # 序号 + 任务名称标签 — 8pt 字体，根据可用宽度自动省略
             p.setPen(QColor(TEXT))
             p.setFont(QFont(FONT_FAMILY, 8))
             fm = p.fontMetrics()
-            name = fm.elidedText(task.name, Qt.TextElideMode.ElideRight, label_w - 16)
+            display = f"{i + 1}. {task.name}"
+            name = fm.elidedText(display, Qt.TextElideMode.ElideRight, label_w - 16)
             p.drawText(8, y, label_w - 16, self._row_height,
                        Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                        name)
