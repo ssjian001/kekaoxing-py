@@ -19,8 +19,9 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v15
+### Schema 版本：v16
 
+- **v16**：Issue 加 `dri_name`（DRI 责任人）；CAPA 加 `verifier_name`（验证人）；测试结果保存时可自动创建 Issue
 - **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up`；CAPA 编辑/删除 UI；`count_capa_done` bug 修复
 - **v14**：capa_records 加 assignee_name（责任人自由文本，与 assignee_id 并存）；test_tasks 安全补列
 - **FK 策略**：所有外键 `ON DELETE SET NULL`，级联删除由业务逻辑手动处理
@@ -50,11 +51,11 @@ SQLite (apsw)
 
 | 索引 | Tab | 核心组件 |
 |-----|-----|---------|
-| 0 | 📊 仪表盘 | SaaS v2: Header + 健康度卡片(0-100) + 左栏(4KPI+环形图+通过率条) + 右栏(4KPI+进度环+严重度条), QPainter |
+| 0 | 📊 仪表盘 | SaaS v2: Header + 测试进度堆叠条卡片(_StackedBar) + 左栏(3KPI+环形图) + 右栏(4KPI+进度环+严重度条), QPainter |
 | 1 | 📁 项目管理 | 项目 CRUD + 搜索过滤 |
 | 2 | 📦 样品管理 | 样品池 + 出入库记录 + Excel 批量导入 |
 | 3 | 📋 测试计划 | 任务表（13列含预计日期）+ 甘特图（预计/实际切换+设备颜色编码）+ 自动排程 + 结果矩阵（行列统计）+ 导出按项目筛选 |
-| 4 | 🐛 Issue 追踪 | Issue CRUD + FA 分析 + CAPA 措施（自由文本负责人）+ FA/CAPA↔Issue 双向联动（状态自动流转+根因/解决方案回写）+ 8D PDF/Word 导出 + 状态/严重度筛选 |
+| 4 | 🐛 Issue 追踪 | Issue CRUD(9列含DRI) + FA 分析 + CAPA 措施（负责人+验证人自由输入）+ FA/CAPA↔Issue 双向联动 + 自动创建 Issue(fail→Issue) + 8D PDF/Word 导出 + 状态/严重度筛选 |
 | 5 | 🔧 设备管理 | 设备 CRUD + 校准管理 + 技术员管理（内部子 Tab） |
 | 6 | 📚 知识库 | 失效模式 CRUD + 关键词搜索 |
 

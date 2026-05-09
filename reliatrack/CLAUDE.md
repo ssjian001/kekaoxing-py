@@ -113,7 +113,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### Issue 视图
 
-- 表格 8 列：ID/标题/严重度/状态/优先级/根因/解决方案/创建时间
+- 表格 9 列：ID/标题/严重度/状态/优先级/DRI/根因/解决方案/创建时间
 - FA + CAPA 面板左右等宽排列（`QHBoxLayout`），各带标题标签
 - **Issue ↔ FA/CAPA 双向联动**（`issue_handlers._sync_issue_from_fa` / `_sync_issue_from_capa`）：
   - FA 添加 → 状态 `open`→`analyzing`；确认的根因（confirmed=1）回写 `root_cause`
@@ -138,14 +138,15 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 - **布局**: QScrollArea + 浅灰背景(#F7F8FC) + 白底圆角卡片(16px)
 - **Header**: 项目/计划筛选标签 + 最后更新时间
-- **健康度卡片**: 健康评分(0-100) + 状态文字 + 绿色进度条 + 3辅助指标(测试通过率/Issue闭环/CAPA完成)
-- **左栏(测试执行)**: 3 KPI `_StatCard`(72px) + `_DonutChart`环形图(右侧垂直图例)
+- **测试进度卡片**(`_TestProgressCard`): `_StackedBar` 堆叠条(PASS绿+FAIL红+进行中黄+待开始灰) + 图例 + 2辅助(通过率/最后更新)
+- **左栏(测试执行)**: 3 KPI `_StatCard`(已完成/进行中/待开始) + `_DonutChart`环形图(右侧垂直图例)
 - **右栏(质量与问题)**: 4 KPI `_StatCard` + 2× `_ProgressRing`(100px) + `_SeverityBar`严重度分段条
 - **配色**: 5 语义色映射 Catppuccin Latte (PRIMARY/SUCCESS/WARNING/DANGER/NEUTRAL)
 - **卡片样式**: `card_qss()`/`add_shadow()` 提升至 `constants.py` 全局复用
-- **组件**: `_StatCard` / `_HealthCard` / `_DonutChart` / `_HProgressBar` / `_ProgressRing` / `_SeverityBar`
-- **DashboardData**: 20 个字段，含 health_score / plan_count / technician_count / last_update
-- **健康评分**: 通过率×40% + Issue闭环率×30% + CAPA完成率×30% (APQP 门控核心指标)
+- **组件**: `_StatCard` / `_TestProgressCard` / `_StackedBar` / `_DonutChart` / `_ProgressRing` / `_SeverityBar`
+- **DashboardData**: 22 字段，含 pass_count / fail_count / last_update
+- **自动创建 Issue**: 测试结果为 fail 时可选自动创建（title=任务名, severity=MAJOR）
+- **刷新机制**: FA/CAPA 增删改后 `notify_data_changed("issue")` 触发仪表盘刷新
 
 ### 全局样式（SaaS 风格统一）
 
@@ -153,8 +154,9 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 
-### Schema（v15）
+### Schema（v16）
 
+- **v16**：Issue 加 `dri_name`（DRI 责任人自由输入）；CAPA 加 `verifier_name`（验证人自由输入）；测试结果保存时可自动创建 Issue
 - **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up` 三字段；CAPA 编辑/删除 UI；`count_capa_done` SQL bug 修复（`'done'`→`'completed'`）
 - **v14**：capa_records 加 assignee_name（责任人自由文本）；test_tasks 安全补列（dependencies/accept_criteria 等 9 列，防旧库缺失）
 - **v13**：修复 v11 迁移丢失的 20 个索引，schema_version 加 UNIQUE，v12 迁移加事务包裹
