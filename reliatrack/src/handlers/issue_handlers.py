@@ -174,7 +174,7 @@ class IssueHandlers:
         self._win._issue_view.refresh_capa(self._current_capa_records)
 
     def _handle_fa_record_added(self, data: dict) -> None:
-        """FA 记录添加后回调。"""
+        """FA 记录添加后回调。自动联动更新 Issue。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
@@ -187,12 +187,14 @@ class IssueHandlers:
             # 刷新 FA 面板
             self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
             self._win._issue_view.refresh_fa(self._current_fa_records)
+            # ── 联动: FA → Issue ──
+            self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA 步骤已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")
 
     def _handle_capa_record_added(self, data: dict) -> None:
-        """CAPA 记录添加后回调。"""
+        """CAPA 记录添加后回调。自动联动更新 Issue。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
@@ -205,12 +207,14 @@ class IssueHandlers:
             # 刷新 CAPA 面板
             self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
             self._win._issue_view.refresh_capa(self._current_capa_records)
+            # ── 联动: CAPA → Issue ──
+            self._sync_issue_from_capa(issue_id)
             self._win.toast("CAPA 措施已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
 
     def _handle_edit_capa(self, data: dict) -> None:
-        """CAPA 记录编辑后回调。"""
+        """CAPA 记录编辑后回调。自动联动更新 Issue。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
@@ -225,13 +229,15 @@ class IssueHandlers:
             if issue_id is not None:
                 self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
                 self._win._issue_view.refresh_capa(self._current_capa_records)
+                # ── 联动: CAPA → Issue ──
+                self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已更新", "success")
         except Exception as e:
             logger.exception("CAPA update failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录更新失败: {e}")
 
     def _handle_delete_capa(self, capa_id: int) -> None:
-        """CAPA 记录删除后回调。"""
+        """CAPA 记录删除后回调。自动联动更新 Issue。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
@@ -242,6 +248,8 @@ class IssueHandlers:
             if issue_id is not None:
                 self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
                 self._win._issue_view.refresh_capa(self._current_capa_records)
+                # ── 联动: CAPA → Issue ──
+                self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已删除", "success")
         except Exception as e:
             logger.exception("CAPA delete failed for capa_id=%s", capa_id)
@@ -301,3 +309,82 @@ class IssueHandlers:
         except Exception as e:
             logger.exception("8D report export failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "导出失败", f"8D 报告导出失败: {e}")
+
+    # ══════════════════════════════════════════════════════════════
+    #  Issue ↔ FA/CAPA 联动
+    # ══════════════════════════════════════════════════════════════
+
+    def _sync_issue_from_fa(self, issue_id: int) -> None:
+        """FA 记录变更后自动回写 Issue。
+
+        规则:
+        1. 有 FA 记录 → 状态改为 'analyzing'（如果当前是 'open'）
+        2. FA 中 confirmed=1 的 possible_cause → 回写 Issue.root_cause
+        """
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        issue = ctrl.issue_service.get(issue_id)
+        if not issue:
+            return
+
+        fa_records = ctrl.issue_service.get_fa_records(issue_id)
+        updates: dict = {}
+
+        # 状态联动: open → analyzing
+        if issue.status == "open" and fa_records:
+            updates["status"] = "analyzing"
+
+        # 根因联动: 确认的原因（confirmed=1）汇总
+        confirmed_causes = [
+            rec.possible_cause for rec in fa_records
+            if rec.confirmed == 1 and rec.possible_cause
+        ]
+        if confirmed_causes:
+            root_cause = "; ".join(confirmed_causes)
+            if root_cause != issue.root_cause:
+                updates["root_cause"] = root_cause
+
+        if updates:
+            ctrl.issue_service.update(issue_id, **updates)
+            ctrl.notify_data_changed("issue")
+
+    def _sync_issue_from_capa(self, issue_id: int) -> None:
+        """CAPA 记录变更后自动回写 Issue。
+
+        规则:
+        1. 所有 CAPA action 汇总 → 回写 Issue.resolution
+        2. 所有 CAPA 都 completed/verified → 状态改为 'verified'
+        """
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        issue = ctrl.issue_service.get(issue_id)
+        if not issue:
+            return
+
+        capa_records = ctrl.issue_service.get_capa_records(issue_id)
+        updates: dict = {}
+
+        # 解决方案联动: 汇总所有 CAPA action
+        actions = [rec.action for rec in capa_records if rec.action]
+        if actions:
+            resolution = "; ".join(actions)
+            if resolution != issue.resolution:
+                updates["resolution"] = resolution
+        elif not capa_records and issue.resolution:
+            # 所有 CAPA 被删空，清空 resolution
+            updates["resolution"] = ""
+
+        # 状态联动: 全部完成/验证 → verified（仅当状态为 analyzing 时）
+        if capa_records and issue.status == "analyzing":
+            all_done = all(
+                rec.status in ("completed", "verified")
+                for rec in capa_records
+            )
+            if all_done:
+                updates["status"] = "verified"
+
+        if updates:
+            ctrl.issue_service.update(issue_id, **updates)
+            ctrl.notify_data_changed("issue")
