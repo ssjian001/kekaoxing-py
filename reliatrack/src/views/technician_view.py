@@ -24,7 +24,17 @@ from src.styles.theme import (
     SURFACE1,
     TEXT,
 )
-from src.styles.constants import VIEW_MARGINS
+from src.styles.constants import VIEW_MARGINS, apply_column_specs
+
+_TECHNICIAN_SPECS = [
+    ("ID", "fixed", 50),
+    ("工号", "content", 80),
+    ("姓名", "interactive", 100),
+    ("部门", "interactive", 100),
+    ("职位", "interactive", 100),
+    ("联系方式", "interactive", 120),
+    ("邮箱", "stretch", 0),
+]
 
 
 class TechnicianView(QWidget):
@@ -101,24 +111,13 @@ class TechnicianView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        self._table.setColumnCount(len(self._COLUMNS))
-        self._table.setHorizontalHeaderLabels([c[0] for c in self._COLUMNS])
+        apply_column_specs(self._table, _TECHNICIAN_SPECS)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
-
-        # 列宽
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 工号
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 姓名
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 部门
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 职位
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 联系方式
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)            # 邮箱
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)

@@ -24,7 +24,16 @@ from src.styles.theme import (
     TEXT,
     OVERLAY0,
 )
-from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS
+from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
+
+_PROJECT_SPECS = [
+    ("ID", "fixed", 50),
+    ("名称", "stretch", 0),
+    ("产品", "interactive", 120),
+    ("客户", "interactive", 120),
+    ("状态", "content", 80),
+    ("创建时间", "content", 90),
+]
 
 
 class ProjectView(QWidget):
@@ -104,23 +113,13 @@ class ProjectView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        self._table.setColumnCount(len(self._COLUMNS))
-        self._table.setHorizontalHeaderLabels([c[0] for c in self._COLUMNS])
+        apply_column_specs(self._table, _PROJECT_SPECS)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
-
-        # 列宽
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)            # 名称
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 产品
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 客户
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # 状态
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 创建时间
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)

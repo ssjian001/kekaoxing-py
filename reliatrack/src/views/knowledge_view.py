@@ -19,8 +19,17 @@ from PySide6.QtCore import QEvent, Signal, Qt
 from PySide6.QtGui import QColor
 
 from src.models.knowledge import KnowledgeEntry
-from src.styles.constants import KNOWLEDGE_CATEGORY_COLORS, VIEW_MARGINS
+from src.styles.constants import KNOWLEDGE_CATEGORY_COLORS, VIEW_MARGINS, apply_column_specs
 from src.styles.theme import OVERLAY0, TEXT, SURFACE1
+
+_KNOWLEDGE_SPECS = [
+    ("ID", "fixed", 50),
+    ("类别", "content", 70),
+    ("失效模式", "stretch", 0),
+    ("原因分析", "interactive", 160),
+    ("改进措施", "interactive", 160),
+    ("参考标准", "interactive", 120),
+]
 
 
 class KnowledgeView(QWidget):
@@ -89,23 +98,13 @@ class KnowledgeView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        self._table.setColumnCount(len(self._COLUMNS))
-        self._table.setHorizontalHeaderLabels([c[0] for c in self._COLUMNS])
+        apply_column_specs(self._table, _KNOWLEDGE_SPECS)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
-
-        # 列宽
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # 类别
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # 失效模式
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # 原因分析
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)           # 改进措施
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # 参考标准
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)

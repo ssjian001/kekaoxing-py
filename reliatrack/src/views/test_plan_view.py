@@ -32,16 +32,31 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
 )
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
+# 任务表列规格
+_TASK_SPECS = [
+    ("#", "fixed", 40),
+    ("名称", "stretch", 0),
+    ("类别", "content", 80),
+    ("天数", "content", 50),
+    ("预计开始", "content", 90),
+    ("预计结束", "content", 90),
+    ("进度", "content", 55),
+    ("优先级", "content", 55),
+    ("状态", "content", 70),
+    ("技术员", "interactive", 80),
+    ("通过率", "content", 60),
+    ("实际开始", "content", 90),
+    ("实际完成", "content", 90),
+]
+
 
 class _TaskTable(QTableWidget):
     """测试任务列表表格。"""
-
-    COLUMNS = ["#", "名称", "类别", "天数", "预计开始", "预计结束", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
 
     _STATUS_LABELS: dict[str, str] = TASK_STATUS_LABELS  # type: ignore[assignment]
     _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
@@ -49,35 +64,7 @@ class _TaskTable(QTableWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setColumnCount(len(self.COLUMNS))
-        self.setHorizontalHeaderLabels(self.COLUMNS)
-        # 列宽策略：Interactive 允许用户拖动并持久化，Fixed 禁止拖动
-        header = self.horizontalHeader()
-        # 默认全部 Interactive
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        # Fixed 列
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)   # #
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)   # 天数
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)   # 进度
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)   # 优先级
-        header.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)   # 技术员
-        header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)  # 通过率
-        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)  # 实际开始
-        header.setSectionResizeMode(12, QHeaderView.ResizeMode.Fixed)  # 实际完成
-        # 初始宽度
-        self.setColumnWidth(0, 40)    # #
-        self.setColumnWidth(1, 200)   # 名称
-        self.setColumnWidth(2, 80)    # 类别
-        self.setColumnWidth(3, 50)    # 天数
-        self.setColumnWidth(4, 90)    # 预计开始
-        self.setColumnWidth(5, 90)    # 预计结束
-        self.setColumnWidth(6, 55)    # 进度
-        self.setColumnWidth(7, 50)    # 优先级
-        self.setColumnWidth(8, 70)    # 状态
-        self.setColumnWidth(9, 70)    # 技术员
-        self.setColumnWidth(10, 60)   # 通过率
-        self.setColumnWidth(11, 90)   # 实际开始
-        self.setColumnWidth(12, 90)   # 实际完成
+        apply_column_specs(self, _TASK_SPECS)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -99,13 +86,6 @@ class _TaskTable(QTableWidget):
         # 右键菜单
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
-        # 恢复上次列宽
-        from src.styles.column_persistence import restore_column_widths, save_column_widths_debounced
-        restore_column_widths(self, "task_table")
-        # 列宽变化时自动保存（debounce 300ms）
-        self.horizontalHeader().sectionResized.connect(
-            lambda *_: save_column_widths_debounced(self, "task_table")
-        )
         # 空状态提示
         self._empty_label = QLabel("暂无测试任务")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
