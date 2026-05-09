@@ -173,7 +173,22 @@ class AppController:
     # ── 生命周期 ──
 
     def shutdown(self) -> None:
-        """关闭数据库连接（先 WAL checkpoint 再 close）。"""
+        """关闭数据库连接（附件扫描 + WAL checkpoint + close）。"""
+        # 附件完整性扫描（仅记录日志，不阻塞关闭）
+        if self.issue_service:
+            try:
+                scan = self.issue_service.scan_attachment_integrity()
+                missing = scan.get("missing_files", [])
+                orphan = scan.get("orphan_files", [])
+                if missing:
+                    logger.warning("附件引用扫描: %d 个文件缺失: %s", len(missing), missing[:5])
+                if orphan:
+                    logger.info("附件引用扫描: %d 个孤立文件: %s", len(orphan), orphan[:5])
+                if not missing and not orphan:
+                    logger.info("附件引用扫描: 全部正常")
+            except Exception:
+                logger.debug("附件扫描跳过（无数据或异常）")
+
         if self._conn:
             try:
                 self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")

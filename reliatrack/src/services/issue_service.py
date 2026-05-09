@@ -101,3 +101,35 @@ class IssueService:
     def count_capa_done(self, project_id: int | None = None) -> int:
         """已完成/已验证的 CAPA 记录数。"""
         return self._repo.count_capa_done(project_id)
+
+    def scan_attachment_integrity(self) -> dict[str, list[str]]:
+        """扫描附件引用完整性。返回 {'missing_files': [...], 'orphan_files': [...]}。"""
+        from pathlib import Path
+        result: dict[str, list[str]] = {"missing_files": [], "orphan_files": []}
+
+        # 1. DB 记录指向不存在的文件
+        all_issues = self._repo.list_all()
+        for issue in all_issues:
+            if issue.id is None:
+                continue
+            for att in self._repo.get_attachments(issue.id):
+                if att.file_path and not Path(att.file_path).is_file():
+                    result["missing_files"].append(
+                        f"Issue#{issue.id} 附件#{att.id}: {att.file_path}"
+                    )
+
+        # 2. 磁盘文件无 DB 记录
+        attach_dir = Path.home() / ".reliatrack" / "attachments"
+        if attach_dir.is_dir():
+            db_paths = set()
+            for issue in all_issues:
+                if issue.id is None:
+                    continue
+                for att in self._repo.get_attachments(issue.id):
+                    if att.file_path:
+                        db_paths.add(att.file_path)
+            for fp in attach_dir.rglob("*"):
+                if fp.is_file() and str(fp) not in db_paths:
+                    result["orphan_files"].append(str(fp))
+
+        return result
