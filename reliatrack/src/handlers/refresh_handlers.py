@@ -227,6 +227,8 @@ class RefreshHandlers:
             # ── A 区 KPI 计算 ──
             # 1. 测试通过率
             pass_rate: float | None = None
+            total_pass = 0
+            total_result = 0
             task_ids = [t.id for t in filtered_tasks if t.id is not None]
             if task_ids and ctrl.test_plan_service:
                 rm = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
@@ -301,6 +303,9 @@ class RefreshHandlers:
                 health_score=health_score,
                 plan_count=plan_count,
                 last_update=last_update,
+                pass_count=total_pass if task_ids else 0,
+                fail_count=max(total_result - total_pass, 0) if task_ids else 0,
+                technician_count=len(ctrl.technician_service.list_all()) if ctrl.technician_service else 0,
             )
 
     def _refresh_samples(self) -> None:
