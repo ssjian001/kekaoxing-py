@@ -48,19 +48,11 @@ class _IssueTable(QTableWidget):
         super().__init__(parent)
         self.setColumnCount(len(self.COLUMNS))
         self.setHorizontalHeaderLabels(self.COLUMNS)
-        # Interactive 允许用户拖动并持久化
+        # 自适应列宽：ID 固定，其余 Stretch 自动填满
         header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        # 初始宽度
         self.setColumnWidth(0, 50)    # ID
-        self.setColumnWidth(1, 220)   # 标题
-        self.setColumnWidth(2, 60)    # 严重度
-        self.setColumnWidth(3, 70)    # 状态
-        self.setColumnWidth(4, 60)    # 优先级
-        self.setColumnWidth(5, 100)   # 根因
-        self.setColumnWidth(6, 120)   # 解决方案
-        self.setColumnWidth(7, 100)   # 创建时间
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -74,11 +66,6 @@ class _IssueTable(QTableWidget):
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=12,
         ))
-
-        # 恢复/保存列宽
-        from src.styles.column_persistence import restore_column_widths, save_column_widths_debounced
-        restore_column_widths(self, "issue_table")
-        header.sectionResized.connect(lambda *_: save_column_widths_debounced(self, "issue_table"))
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)
