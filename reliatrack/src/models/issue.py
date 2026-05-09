@@ -79,6 +79,12 @@ class Issue:
             raise ValueError(f"发生次数必须≥1: {self.occurrence_count}")
         if not isinstance(self.priority, int) or self.priority < 1 or self.priority > 5:
             raise ValueError(f"优先级必须在 1-5 之间: {self.priority}")
+        _valid_status = {s.value for s in IssueStatus}
+        if self.status not in _valid_status:
+            raise ValueError(f"无效的 Issue 状态: {self.status!r}，合法值: {sorted(_valid_status)}")
+        _valid_severity = {s.value for s in IssueSeverity}
+        if self.severity not in _valid_severity:
+            raise ValueError(f"无效的 Issue 严重度: {self.severity!r}，合法值: {sorted(_valid_severity)}")
 
 
 @dataclass
@@ -137,3 +143,8 @@ class CAPARecord:
     follow_up: str = ""        # PDCA Act: 改善追踪
     created_at: str = ""
     updated_at: str = ""
+
+    def __post_init__(self):
+        _valid_status = {s.value for s in CAPAStatus}
+        if self.status not in _valid_status:
+            raise ValueError(f"无效的 CAPA 状态: {self.status!r}，合法值: {sorted(_valid_status)}")
