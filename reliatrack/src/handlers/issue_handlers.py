@@ -396,7 +396,6 @@ class IssueHandlers:
 
             if updates:
                 ctrl.issue_service.update(issue_id, **updates)
-                ctrl.notify_data_changed("issue")
         except Exception:
             logger.exception("FA→Issue sync failed for issue_id=%s", issue_id)
 
@@ -442,6 +441,5 @@ class IssueHandlers:
 
             if updates:
                 ctrl.issue_service.update(issue_id, **updates)
-                ctrl.notify_data_changed("issue")
         except Exception:
             logger.exception("CAPA→Issue sync failed for issue_id=%s", issue_id)
