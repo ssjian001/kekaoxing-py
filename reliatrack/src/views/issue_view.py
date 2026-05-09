@@ -371,16 +371,31 @@ class IssueView(QWidget):
         self._issue_table = _IssueTable()
         layout.addWidget(self._issue_table, stretch=3)
 
-        self._fa_panel = _FAPanel()
-        layout.addWidget(self._fa_panel, stretch=2)
+        # FA + CAPA 左右排列
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(8)
 
-        # CAPA 面板
+        # 左: FA 面板
+        fa_col = QVBoxLayout()
+        fa_col.setSpacing(4)
+        self._fa_label = QLabel("FA 失效分析")
+        self._fa_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
+        fa_col.addWidget(self._fa_label)
+        self._fa_panel = _FAPanel()
+        fa_col.addWidget(self._fa_panel, stretch=1)
+
+        # 右: CAPA 面板
+        capa_col = QVBoxLayout()
+        capa_col.setSpacing(4)
         self._capa_label = QLabel("CAPA 纠正预防措施")
         self._capa_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
-        layout.addWidget(self._capa_label)
-
+        capa_col.addWidget(self._capa_label)
         self._capa_panel = _CAPAPanel()
-        layout.addWidget(self._capa_panel, stretch=2)
+        capa_col.addWidget(self._capa_panel, stretch=1)
+
+        bottom_row.addLayout(fa_col, stretch=1)
+        bottom_row.addLayout(capa_col, stretch=1)
+        layout.addLayout(bottom_row, stretch=2)
 
         # 空状态提示
         self._empty_label = QLabel("暂无 Issue 数据")
