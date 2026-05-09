@@ -128,14 +128,20 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 - **布局**: QScrollArea + 浅灰背景(#F7F8FC) + 白底圆角卡片(16px)
 - **Header**: 项目/计划筛选标签 + 最后更新时间
-- **健康度卡片**: 健康评分(0-100) + 状态文字 + 绿色进度条 + 3辅助指标(计划数/人员/更新时间)
-- **左栏(测试执行)**: 4 KPI `_StatCard`(72px) + `_DonutChart`环形图(右侧垂直图例) + `_HProgressBar`通过率进度条
+- **健康度卡片**: 健康评分(0-100) + 状态文字 + 绿色进度条 + 3辅助指标(测试通过率/Issue闭环/CAPA完成)
+- **左栏(测试执行)**: 3 KPI `_StatCard`(72px) + `_DonutChart`环形图(右侧垂直图例)
 - **右栏(质量与问题)**: 4 KPI `_StatCard` + 2× `_ProgressRing`(100px) + `_SeverityBar`严重度分段条
 - **配色**: 5 语义色映射 Catppuccin Latte (PRIMARY/SUCCESS/WARNING/DANGER/NEUTRAL)
-- **阴影**: QGraphicsDropShadowEffect（仅顶层卡片）
+- **卡片样式**: `card_qss()`/`add_shadow()` 提升至 `constants.py` 全局复用
 - **组件**: `_StatCard` / `_HealthCard` / `_DonutChart` / `_HProgressBar` / `_ProgressRing` / `_SeverityBar`
 - **DashboardData**: 20 个字段，含 health_score / plan_count / technician_count / last_update
 - **健康评分**: 通过率×40% + Issue闭环率×30% + CAPA完成率×30% (APQP 门控核心指标)
+
+### 全局样式（SaaS 风格统一）
+
+- **色值**: BASE=#F7F8FC(浅灰背景), MANTLE=#FFFFFF(白底卡片), SURFACE0=#F1F5F9(输入框), TEXT=#1E293B(深色文字)
+- **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
+- **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 
 ### Schema（v15）
 
