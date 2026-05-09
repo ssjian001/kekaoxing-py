@@ -137,19 +137,14 @@ class RefreshHandlers:
                 break
         self._win._project_filter_combo.blockSignals(False)
 
-    def _refresh_dashboard(self) -> None:
-        """刷新 Dashboard A/B 两区 KPI + 图表。"""
-        ctrl = self._win._ctrl
-        if not ctrl:
-            return
+    def _collect_dashboard_data(self, ctrl, filter_project_id, filter_plan_id) -> "DashboardData | None":
+        """从 DB 收集仪表盘所需全部数据，返回 DashboardData 或 None。"""
+        from src.views.dashboard_view import DashboardData
 
-        filter_project_id = self._get_filter_project_id()
-        filter_plan_id = self._get_filter_plan_id()
-
-        # 获取项目列表和名称
-        all_projects = self._cached_projects if self._cached_projects is not None else (ctrl.project_service.list_all() if ctrl.project_service else [])
-        self._win._issue_view._project_list = all_projects
-        self._win._issue_view._default_project_id = filter_project_id
+        # ── 基础数据 ──
+        all_projects = self._cached_projects if self._cached_projects is not None else (
+            ctrl.project_service.list_all() if ctrl.project_service else []
+        )
 
         current_project_name: str | None = None
         if filter_project_id and ctrl.project_service:
@@ -158,11 +153,7 @@ class RefreshHandlers:
                     current_project_name = p.name
                     break
 
-        task_status_data: dict[str, int] = {}
-        issue_severity_data: dict[str, int] = {}
         sample_count = 0
-
-        # 样品（优先使用缓存）— 仍需 sample_count 用于失效率计算
         if ctrl.sample_service:
             if self._cached_samples is not None:
                 all_samples = self._cached_samples
@@ -174,133 +165,140 @@ class RefreshHandlers:
         else:
             all_samples = []
 
-        # 注入任务列表和样品列表给 Issue 弹窗
+        # ── 注入 Issue 弹窗上下文 ──
+        self._win._issue_view._project_list = all_projects
+        self._win._issue_view._default_project_id = filter_project_id
         self._win._issue_view._sample_list = all_samples
-
-        # 注入知识库条目给 Issue 弹窗（失效模式自动推荐）
         if ctrl.knowledge_service:
             self._win._issue_view._knowledge_list = ctrl.knowledge_service.list_all()
-        if ctrl.test_tasks and ctrl.issues:
-            # ── 任务状态：SQL 聚合 ──
-            task_status_data = ctrl.test_tasks.count_by_status(
-                project_id=filter_project_id,
-                plan_id=filter_plan_id,
+
+        if not (ctrl.test_tasks and ctrl.issues):
+            return None
+
+        # ── 任务状态 ──
+        task_status_data = ctrl.test_tasks.count_by_status(
+            project_id=filter_project_id, plan_id=filter_plan_id,
+        )
+        total = sum(task_status_data.values())
+        completed = task_status_data.get("completed", 0)
+        in_progress = task_status_data.get("in_progress", 0)
+        pending_count = task_status_data.get("pending", 0)
+        failed_task_count = task_status_data.get("failed", 0)
+
+        # ── 任务列表（SQL 过滤） ──
+        if filter_plan_id:
+            filtered_tasks = ctrl.test_tasks.get_by_plan(filter_plan_id)
+        elif filter_project_id and ctrl.test_plan_service:
+            filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id)
+        else:
+            filtered_tasks = ctrl.test_tasks.list_all()
+        self._win._issue_view._task_list = filtered_tasks
+
+        # ── Issue ──
+        issues_list = (
+            ctrl.issues.get_by_project(filter_project_id) if filter_project_id
+            else ctrl.issues.list_all()
+        )
+        issues = len(issues_list)
+        issue_closed_count = sum(1 for iss in issues_list if iss.status == "closed")
+        issue_severity_data = ctrl.issues.count_by_severity(project_id=filter_project_id)
+
+        # ── 通过率 ──
+        pass_rate: float | None = None
+        total_pass = 0
+        total_result = 0
+        task_ids = [t.id for t in filtered_tasks if t.id is not None]
+        if task_ids and ctrl.test_plan_service:
+            rm = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
+            total_pass = sum(v[0] for v in rm.values())
+            total_result = sum(v[1] for v in rm.values())
+            if total_result > 0:
+                pass_rate = total_pass / total_result * 100
+
+        # ── 失效率 ──
+        failure_rate: float | None = None
+        if sample_count > 0 and issues > 0:
+            failure_rate = issues / sample_count * 100
+
+        # ── CAPA 完成率 ──
+        capa_completion_rate: float | None = None
+        if ctrl.issue_service:
+            total_capa = ctrl.issue_service.count_capa_all(project_id=filter_project_id)
+            if total_capa and total_capa > 0:
+                done_capa = ctrl.issue_service.count_capa_done(project_id=filter_project_id)
+                capa_completion_rate = done_capa / total_capa * 100
+
+        # ── 计划名 ──
+        current_plan_name: str | None = None
+        if filter_plan_id and ctrl.test_plan_service:
+            plan_obj = ctrl.test_plan_service.get_plan(filter_plan_id)
+            if plan_obj:
+                current_plan_name = plan_obj.name
+
+        # ── 健康评分 ──
+        issue_closure_rate = issue_closed_count / issues * 100 if issues else 0
+        health_score = (
+            (pass_rate or 0) * 0.4
+            + issue_closure_rate * 0.3
+            + (capa_completion_rate or 0) * 0.3
+        )
+
+        # ── 辅助指标 ──
+        plan_count = 0
+        if ctrl.test_plan_service:
+            p_list = (
+                ctrl.test_plan_service.get_plans_by_project(filter_project_id)
+                if filter_project_id
+                else ctrl.test_plan_service.list_all_plans()
             )
-            total = sum(task_status_data.values())
-            completed = task_status_data.get("completed", 0)
-            in_progress = task_status_data.get("in_progress", 0)
-            pending_count = task_status_data.get("pending", 0)
-            failed_task_count = task_status_data.get("failed", 0)
+            plan_count = len(p_list) if p_list else 0
 
-            # 任务列表：SQL 过滤替代全表加载
-            if filter_plan_id:
-                filtered_tasks = ctrl.test_tasks.get_by_plan(filter_plan_id)
-            elif filter_project_id and ctrl.test_plan_service:
-                filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id)
-            else:
-                filtered_tasks = ctrl.test_tasks.list_all()
-
-            # 注入给 Issue 弹窗
-            self._win._issue_view._task_list = filtered_tasks
-
-            # 按项目筛选 issues
-            if filter_project_id:
-                issues_list = ctrl.issues.get_by_project(filter_project_id)
-            else:
-                issues_list = ctrl.issues.list_all()
-            issues = len(issues_list)
-
-            # Issue 闭环数
-            issue_closed_count = sum(1 for iss in issues_list if iss.status == "closed")
-
-            # Issue 严重度分布 — SQL 聚合
-            issue_severity_data = ctrl.issues.count_by_severity(
-                project_id=filter_project_id
+        last_update: str | None = None
+        if filtered_tasks:
+            latest = max(
+                (t.updated_at for t in filtered_tasks if getattr(t, "updated_at", None)),
+                default=None,
             )
+            if latest:
+                last_update = str(latest)[:16]
 
-            # ── A 区 KPI 计算 ──
-            # 1. 测试通过率
-            pass_rate: float | None = None
-            total_pass = 0
-            total_result = 0
-            task_ids = [t.id for t in filtered_tasks if t.id is not None]
-            if task_ids and ctrl.test_plan_service:
-                rm = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
-                total_pass = sum(v[0] for v in rm.values())
-                total_result = sum(v[1] for v in rm.values())
-                if total_result > 0:
-                    pass_rate = total_pass / total_result * 100
+        return DashboardData(
+            task_total=total,
+            task_completed=completed,
+            task_in_progress=in_progress,
+            task_pending=pending_count,
+            issue_count=issues,
+            issue_closed_count=issue_closed_count,
+            failed_task_count=failed_task_count,
+            project_name=current_project_name,
+            plan_name=current_plan_name,
+            task_status_data=task_status_data,
+            issue_severity_data=issue_severity_data,
+            pass_rate=pass_rate,
+            failure_rate=failure_rate,
+            capa_completion_rate=capa_completion_rate,
+            health_score=health_score,
+            plan_count=plan_count,
+            last_update=last_update,
+            pass_count=total_pass if task_ids else 0,
+            fail_count=max(total_result - total_pass, 0) if task_ids else 0,
+            technician_count=ctrl.technicians.count() if ctrl.technicians else 0,
+        )
 
-            # 2. 失效率 = Issue 数 / 样品总数
-            failure_rate: float | None = None
-            if sample_count > 0 and issues > 0:
-                failure_rate = issues / sample_count * 100
+    def _refresh_dashboard(self) -> None:
+        """刷新 Dashboard A/B 两区 KPI + 图表。"""
+        ctrl = self._win._ctrl
+        if not ctrl:
+            return
 
-            # ── B 区 KPI 计算 ──
-            # CAPA 完成率 — SQL 聚合
-            capa_completion_rate: float | None = None
-            if ctrl.issue_service:
-                total_capa = ctrl.issue_service.count_capa_all(project_id=filter_project_id)
-                if total_capa and total_capa > 0:
-                    done_capa = ctrl.issue_service.count_capa_done(project_id=filter_project_id)
-                    capa_completion_rate = done_capa / total_capa * 100
+        filter_project_id = self._get_filter_project_id()
+        filter_plan_id = self._get_filter_plan_id()
 
-            # 查找当前计划名
-            current_plan_name: str | None = None
-            if filter_plan_id and ctrl.test_plan_service:
-                plan_obj = ctrl.test_plan_service.get_plan(filter_plan_id)
-                if plan_obj:
-                    current_plan_name = plan_obj.name
-
-            # ── 健康评分（加权: 通过率40% + Issue闭环率30% + CAPA完成率30%）──
-            issue_closure_rate = issue_closed_count / issues * 100 if issues else 0
-            health_score = (
-                (pass_rate or 0) * 0.4
-                + issue_closure_rate * 0.3
-                + (capa_completion_rate or 0) * 0.3
-            )
-
-            # ── 辅助指标 ──
-            plan_count = 0
-            if ctrl.test_plan_service:
-                if filter_project_id:
-                    p_list = ctrl.test_plan_service.get_plans_by_project(filter_project_id)
-                else:
-                    p_list = ctrl.test_plan_service.list_all_plans()
-                plan_count = len(p_list) if p_list else 0
-
-            # 最后更新时间：取最近一条任务的 updated_at
-            last_update: str | None = None
-            if filtered_tasks:
-                latest = max(
-                    (t.updated_at for t in filtered_tasks if getattr(t, "updated_at", None)),
-                    default=None,
-                )
-                if latest:
-                    last_update = str(latest)[:16]  # 截取到分钟
-
-            self._win._dashboard.refresh(
-                task_total=total,
-                task_completed=completed,
-                task_in_progress=in_progress,
-                task_pending=pending_count,
-                issue_count=issues,
-                issue_closed_count=issue_closed_count,
-                failed_task_count=failed_task_count,
-                project_name=current_project_name,
-                plan_name=current_plan_name,
-                task_status_data=task_status_data,
-                issue_severity_data=issue_severity_data,
-                pass_rate=pass_rate,
-                failure_rate=failure_rate,
-                capa_completion_rate=capa_completion_rate,
-                health_score=health_score,
-                plan_count=plan_count,
-                last_update=last_update,
-                pass_count=total_pass if task_ids else 0,
-                fail_count=max(total_result - total_pass, 0) if task_ids else 0,
-                technician_count=ctrl.technicians.count() if ctrl.technicians else 0,
-            )
+        data = self._collect_dashboard_data(ctrl, filter_project_id, filter_plan_id)
+        if data is not None:
+            self._win._dashboard.refresh(**{
+                slot: getattr(data, slot) for slot in data.__slots__
+            })
 
     def _refresh_samples(self) -> None:
         """刷新样品视图。"""
