@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QSizePolicy,
     QScrollArea,
-    QGraphicsDropShadowEffect,
 )
 from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QBrush, QLinearGradient
@@ -39,6 +38,8 @@ from src.styles.constants import (
     DASH_CARD_BORDER,
     STATUS_RED,
     STATUS_PEACH,
+    card_qss,
+    add_shadow,
 )
 
 # ── 通用字体 ──
@@ -49,30 +50,6 @@ _FONT_LG = QFont(_FAMILY, 13, QFont.Weight.Bold)
 _FONT_XL = QFont(_FAMILY, 16, QFont.Weight.Bold)
 _FONT_XXL = QFont(_FAMILY, 28, QFont.Weight.Bold)
 _FONT_SCORE = QFont(_FAMILY, 36, QFont.Weight.Bold)
-
-
-# ═══════════════════════════════════════════════════════════════════
-#  工具函数
-# ═══════════════════════════════════════════════════════════════════
-
-def _add_shadow(widget: QWidget, blur: int = 12, offset: int = 2,
-                opacity: int = 25) -> None:
-    """给 widget 添加柔和阴影效果。"""
-    shadow = QGraphicsDropShadowEffect()
-    shadow.setOffset(0, offset)
-    shadow.setBlurRadius(blur)
-    shadow.setColor(QColor(0, 0, 0, opacity))
-    widget.setGraphicsEffect(shadow)
-
-
-def _card_qss(radius: int = 16) -> str:
-    """返回白底圆角卡片 QSS。"""
-    return (
-        f"background-color: {DASH_CARD_BG};"
-        f"border: 1px solid {DASH_CARD_BORDER};"
-        f"border-radius: {radius}px;"
-    )
-
 
 # ═══════════════════════════════════════════════════════════════════
 #  KPI 卡片 — 替代旧 _KPICard
@@ -87,11 +64,11 @@ class _StatCard(QFrame):
         self._tab_index = tab_index
         self._color = color
         self.setObjectName("stat-card")
-        self.setStyleSheet(_card_qss(16))
+        self.setStyleSheet(card_qss(16))
         self.setFixedHeight(72)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        _add_shadow(self)
+        add_shadow(self)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 10, 16, 10)
@@ -177,9 +154,9 @@ class _HealthCard(QFrame):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setStyleSheet(_card_qss(16))
+        self.setStyleSheet(card_qss(16))
         self.setFixedHeight(88)
-        _add_shadow(self, blur=16, offset=3, opacity=20)
+        add_shadow(self, blur=16, offset=3, opacity=20)
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(24, 12, 24, 12)
@@ -234,7 +211,7 @@ class _HealthCard(QFrame):
     def _mk_aux(title: str, value: str) -> _AuxCard:
         """创建紧凑辅助指标。"""
         card = _AuxCard(title, value)
-        card.setStyleSheet(_card_qss(10))
+        card.setStyleSheet(card_qss(10))
         card.setFixedHeight(56)
         return card
 
@@ -282,10 +259,10 @@ class _DonutChart(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._data: dict[str, int] = {}
-        self.setStyleSheet(_card_qss(16))
+        self.setStyleSheet(card_qss(16))
         self.setMinimumHeight(180)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        _add_shadow(self)
+        add_shadow(self)
 
     def setData(self, data: dict[str, int]) -> None:
         self._data = dict(data)
@@ -707,9 +684,9 @@ class DashboardView(QWidget):
 
         # 进度环（居中）
         rings_card = QFrame()
-        rings_card.setStyleSheet(_card_qss(16))
+        rings_card.setStyleSheet(card_qss(16))
         rings_card.setFixedHeight(130)
-        _add_shadow(rings_card)
+        add_shadow(rings_card)
         rings_lay = QHBoxLayout(rings_card)
         rings_lay.setContentsMargins(16, 12, 16, 12)
         rings_lay.setSpacing(24)
