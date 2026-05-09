@@ -24,7 +24,7 @@ Project ──< TestPlan ──< TestTask >── Sample
 - **v16**：Issue 加 `dri_name`（DRI 责任人）；CAPA 加 `verifier_name`（验证人）；测试结果保存时可自动创建 Issue
 - **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up`；CAPA 编辑/删除 UI；`count_capa_done` bug 修复
 - **v14**：capa_records 加 assignee_name（责任人自由文本，与 assignee_id 并存）；test_tasks 安全补列
-- **FK 策略**：所有外键 `ON DELETE SET NULL`，级联删除由业务逻辑手动处理
+- **FK 策略**：核心关联表（issues/fa_records/capa_records/attachments）使用 `ON DELETE CASCADE`，级联删除由 DB 层保证一致性；保留孤立记录的字段（如 assignee_id）使用 `ON DELETE SET NULL`
 - **显式列名**：所有 SELECT 使用具体列名，禁止 `SELECT *`
 - **迁移**：通过 `migrate.py` 管理，schema 版本记录在 `schema_version` 表
 
@@ -83,6 +83,6 @@ SQLite (apsw)
 |---|---|
 | Repo 模式而非 ORM | SQLite 单文件场景，ORM 过重；repo 提供足够抽象同时保持 SQL 可控性 |
 | apsw 而非 sqlite3 | 支持 WAL 模式、更好的并发控制 |
-| FK ON DELETE SET NULL | 防止级联删除误伤关联数据，由 service 层决定是否级联 |
+| FK ON DELETE CASCADE（关联表）+ SET NULL（引用字段） | 核心关联数据随父记录级联删除保证一致性；引用字段（如 assignee_id）设 NULL 保留记录 |
 | Handler 层分离 | 解耦 View 和 Service，信号处理可独立测试 |
 | QSS 样式独立 | 主题切换需求（Catppuccin Latte 明亮主题） |
