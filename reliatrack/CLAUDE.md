@@ -111,6 +111,16 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - CAPA 负责人：自由文本输入（`assignee_name`），非下拉选择
 - CAPA PDCA：`root_cause`（根因分析）/`effectiveness`（效果验证）/`follow_up`（改善追踪），Schema v15 新增
 
+### Issue 视图
+
+- 表格 8 列：ID/标题/严重度/状态/优先级/根因/解决方案/创建时间
+- FA + CAPA 面板左右等宽排列（`QHBoxLayout`），各带标题标签
+- **Issue ↔ FA/CAPA 双向联动**（`issue_handlers._sync_issue_from_fa` / `_sync_issue_from_capa`）：
+  - FA 添加 → 状态 `open`→`analyzing`；确认的根因（confirmed=1）回写 `root_cause`
+  - CAPA 变更 → 汇总 action 到 `resolution`；全部 completed/verified → `analyzing`→`verified`
+  - 状态只进不退（`verified` 不会自动回退）
+- 甘特图任务标签格式：`1. 任务名`（序号前缀）
+
 ### 测试计划视图
 
 - `_TaskTable`：13 列（#, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成），# 列显示数据库 ID
