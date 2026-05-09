@@ -12,17 +12,17 @@ from src.styles.constants import FONT_FAMILY, FONT_SIZE_NORMAL
 #  Catppuccin Latte 色板
 # ═══════════════════════════════════════════════════════════════════
 
-# Base
+# Base — 浅灰背景（SaaS 风格升级）
 CRUST    = "#dc8a78"
-MANTLE   = "#e6e9ef"
-BASE     = "#eff1f5"
-SURFACE0 = "#ccd0da"
-SURFACE1 = "#bcc0cc"
-SURFACE2 = "#acb0be"
-OVERLAY0 = "#9ca0b0"
-TEXT     = "#4c4f69"
-SUBTEXT0 = "#6c6f85"
-SUBTEXT1 = "#5c5f77"
+MANTLE   = "#FFFFFF"      # 卡片/次要背景 → 白底
+BASE     = "#F7F8FC"      # 主背景 → 浅灰
+SURFACE0 = "#F1F5F9"      # 输入框背景 → 更亮的灰
+SURFACE1 = "#E2E8F0"      # hover / 边框
+SURFACE2 = "#CBD5E1"      # 更深灰
+OVERLAY0 = "#94A3B8"      # muted text
+TEXT     = "#1E293B"      # 主文字 → 更深更清晰
+SUBTEXT0 = "#64748B"      # 次要文字
+SUBTEXT1 = "#475569"      # 二级文字
 
 # Accent
 RED      = "#d20f39"

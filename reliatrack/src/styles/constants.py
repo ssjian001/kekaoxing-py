@@ -183,7 +183,7 @@ DASH_PRIMARY = STATUS_BLUE       # #1e66f5
 DASH_SUCCESS = STATUS_GREEN      # #40a02b
 DASH_WARNING = STATUS_YELLOW     # #df8e1d
 DASH_DANGER  = STATUS_RED        # #d20f39
-DASH_NEUTRAL = "#7c7f93"         # Subtext0 附近 — 中性灰
-DASH_BG      = "#F7F8FC"         # 仪表盘专用浅灰背景
-DASH_CARD_BG = "#FFFFFF"         # 卡片白底
-DASH_CARD_BORDER = "#E2E8F0"     # 卡片边框（低透明度灰）
+DASH_NEUTRAL = "#64748B"         # Subtext0 — 中性灰（与全局一致）
+DASH_BG      = "#F7F8FC"         # 仪表盘背景（= 全局 BASE）
+DASH_CARD_BG = "#FFFFFF"         # 卡片白底（= 全局 MANTLE）
+DASH_CARD_BORDER = "#E2E8F0"     # 卡片边框（= 全局 SURFACE1）
