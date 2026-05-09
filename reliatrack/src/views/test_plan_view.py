@@ -40,18 +40,18 @@ from src.models.common import Equipment, Technician
 # 任务表列规格
 _TASK_SPECS = [
     ("#", "fixed", 40),
-    ("名称", "stretch", 0),
-    ("类别", "content", 80),
-    ("天数", "content", 50),
-    ("预计开始", "content", 90),
-    ("预计结束", "content", 90),
-    ("进度", "content", 55),
-    ("优先级", "content", 55),
-    ("状态", "content", 70),
+    ("名称", "interactive", 200),
+    ("类别", "interactive", 80),
+    ("天数", "interactive", 60),
+    ("预计开始", "interactive", 100),
+    ("预计结束", "interactive", 100),
+    ("进度", "interactive", 60),
+    ("优先级", "interactive", 60),
+    ("状态", "interactive", 80),
     ("技术员", "interactive", 80),
-    ("通过率", "content", 60),
-    ("实际开始", "content", 90),
-    ("实际完成", "content", 90),
+    ("通过率", "interactive", 70),
+    ("实际开始", "interactive", 100),
+    ("实际完成", "interactive", 100),
 ]
 
 

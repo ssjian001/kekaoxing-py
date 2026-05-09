@@ -29,37 +29,37 @@ from src.models.sample import Sample
 
 # 样品池列规格
 _POOL_SPECS = [
-    ("SN", "stretch", 0),
+    ("SN", "interactive", 150),
     ("批次号", "interactive", 120),
     ("规格", "interactive", 100),
-    ("项目ID", "content", 60),
-    ("状态", "content", 80),
-    ("创建时间", "content", 90),
+    ("项目ID", "interactive", 70),
+    ("状态", "interactive", 80),
+    ("创建时间", "interactive", 100),
 ]
 
 # 出入库记录列规格
 _LOG_SPECS = [
     ("样品SN", "interactive", 120),
     ("批次号", "interactive", 100),
-    ("操作类型", "content", 80),
-    ("操作人", "content", 80),
-    ("用途", "stretch", 0),
-    ("关联任务", "content", 80),
-    ("预计归还", "content", 90),
-    ("操作时间", "content", 90),
+    ("操作类型", "interactive", 80),
+    ("操作人", "interactive", 80),
+    ("用途", "interactive", 120),
+    ("关联任务", "interactive", 80),
+    ("预计归还", "interactive", 100),
+    ("操作时间", "interactive", 100),
 ]
 
 # 样品台账列规格
 _LEDGER_SPECS = [
     ("ID", "fixed", 50),
-    ("SN", "stretch", 0),
+    ("SN", "interactive", 150),
     ("批次号", "interactive", 120),
     ("规格", "interactive", 100),
-    ("项目ID", "content", 60),
-    ("状态", "content", 80),
+    ("项目ID", "interactive", 70),
+    ("状态", "interactive", 80),
     ("供应商", "interactive", 100),
-    ("累计测试(h)", "content", 80),
-    ("创建时间", "content", 90),
+    ("累计测试(h)", "interactive", 80),
+    ("创建时间", "interactive", 100),
 ]
 
 

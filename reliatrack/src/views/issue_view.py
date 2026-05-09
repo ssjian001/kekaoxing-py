@@ -42,13 +42,13 @@ from src.views.dialogs.base_dialog import _BaseDialog
 #   fixed=固定 / content=按内容 / stretch=填满 / interactive=可拖拽
 _ISSUE_SPECS = [
     ("ID", "fixed", 50),
-    ("标题", "stretch", 0),
-    ("严重度", "content", 60),
-    ("状态", "content", 70),
-    ("优先级", "content", 60),
+    ("标题", "interactive", 200),
+    ("严重度", "interactive", 70),
+    ("状态", "interactive", 80),
+    ("优先级", "interactive", 70),
     ("根因", "interactive", 120),
     ("解决方案", "interactive", 140),
-    ("创建时间", "content", 90),
+    ("创建时间", "interactive", 100),
 ]
 
 

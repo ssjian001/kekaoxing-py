@@ -35,14 +35,14 @@ _EQUIPMENT_SPECS = [
     ("ID", "fixed", 50),
     ("资产编号", "interactive", 120),
     ("型号", "interactive", 120),
-    ("名称", "stretch", 0),
-    ("类型", "content", 70),
+    ("名称", "interactive", 200),
+    ("类型", "interactive", 80),
     ("制造商", "interactive", 120),
     ("精度/不确定度", "interactive", 110),
-    ("校准日期", "content", 90),
-    ("下次校准", "content", 90),
-    ("间隔(月)", "content", 60),
-    ("状态", "content", 70),
+    ("校准日期", "interactive", 100),
+    ("下次校准", "interactive", 100),
+    ("间隔(月)", "interactive", 70),
+    ("状态", "interactive", 80),
 ]
 
 
