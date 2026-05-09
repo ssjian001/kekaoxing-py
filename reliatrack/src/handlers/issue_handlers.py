@@ -324,30 +324,33 @@ class IssueHandlers:
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
-        issue = ctrl.issue_service.get(issue_id)
-        if not issue:
-            return
+        try:
+            issue = ctrl.issue_service.get(issue_id)
+            if not issue:
+                return
 
-        fa_records = ctrl.issue_service.get_fa_records(issue_id)
-        updates: dict = {}
+            fa_records = ctrl.issue_service.get_fa_records(issue_id)
+            updates: dict = {}
 
-        # 状态联动: open → analyzing
-        if issue.status == "open" and fa_records:
-            updates["status"] = "analyzing"
+            # 状态联动: open → analyzing
+            if issue.status == "open" and fa_records:
+                updates["status"] = "analyzing"
 
-        # 根因联动: 确认的原因（confirmed=1）汇总
-        confirmed_causes = [
-            rec.possible_cause for rec in fa_records
-            if rec.confirmed == 1 and rec.possible_cause
-        ]
-        if confirmed_causes:
-            root_cause = "; ".join(confirmed_causes)
-            if root_cause != issue.root_cause:
-                updates["root_cause"] = root_cause
+            # 根因联动: 确认的原因（confirmed=1）汇总
+            confirmed_causes = [
+                rec.possible_cause for rec in fa_records
+                if rec.confirmed == 1 and rec.possible_cause
+            ]
+            if confirmed_causes:
+                root_cause = "; ".join(confirmed_causes)
+                if root_cause != issue.root_cause:
+                    updates["root_cause"] = root_cause
 
-        if updates:
-            ctrl.issue_service.update(issue_id, **updates)
-            ctrl.notify_data_changed("issue")
+            if updates:
+                ctrl.issue_service.update(issue_id, **updates)
+                ctrl.notify_data_changed("issue")
+        except Exception:
+            logger.exception("FA→Issue sync failed for issue_id=%s", issue_id)
 
     def _sync_issue_from_capa(self, issue_id: int) -> None:
         """CAPA 记录变更后自动回写 Issue。
@@ -359,32 +362,38 @@ class IssueHandlers:
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
-        issue = ctrl.issue_service.get(issue_id)
-        if not issue:
-            return
+        try:
+            issue = ctrl.issue_service.get(issue_id)
+            if not issue:
+                return
 
-        capa_records = ctrl.issue_service.get_capa_records(issue_id)
-        updates: dict = {}
+            capa_records = ctrl.issue_service.get_capa_records(issue_id)
+            updates: dict = {}
 
-        # 解决方案联动: 汇总所有 CAPA action
-        actions = [rec.action for rec in capa_records if rec.action]
-        if actions:
-            resolution = "; ".join(actions)
-            if resolution != issue.resolution:
-                updates["resolution"] = resolution
-        elif not capa_records and issue.resolution:
-            # 所有 CAPA 被删空，清空 resolution
-            updates["resolution"] = ""
+            # 解决方案联动: 汇总所有 CAPA action
+            actions = [rec.action for rec in capa_records if rec.action]
+            if actions:
+                resolution = "; ".join(actions)
+                if resolution != issue.resolution:
+                    updates["resolution"] = resolution
+            elif not capa_records and issue.resolution:
+                # 所有 CAPA 被删空，清空 resolution
+                updates["resolution"] = ""
+            elif capa_records and not actions and issue.resolution:
+                # CAPA 存在但 action 全为空，清空旧 resolution
+                updates["resolution"] = ""
 
-        # 状态联动: 全部完成/验证 → verified（仅当状态为 analyzing 时）
-        if capa_records and issue.status == "analyzing":
-            all_done = all(
-                rec.status in ("completed", "verified")
-                for rec in capa_records
-            )
-            if all_done:
-                updates["status"] = "verified"
+            # 状态联动: 全部完成/验证 → verified（仅当状态为 analyzing 时）
+            if capa_records and issue.status == "analyzing":
+                all_done = all(
+                    rec.status in ("completed", "verified")
+                    for rec in capa_records
+                )
+                if all_done:
+                    updates["status"] = "verified"
 
-        if updates:
-            ctrl.issue_service.update(issue_id, **updates)
-            ctrl.notify_data_changed("issue")
+            if updates:
+                ctrl.issue_service.update(issue_id, **updates)
+                ctrl.notify_data_changed("issue")
+        except Exception:
+            logger.exception("CAPA→Issue sync failed for issue_id=%s", issue_id)
