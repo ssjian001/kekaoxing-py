@@ -219,11 +219,13 @@ class IssueRepository(BaseRepository):
 
     _CAPA_SELECT_COLS = ("id", "issue_id", "action", "assignee_id", "assignee_name",
                          "due_date", "status", "verification_result", "verified_by",
+                         "verifier_name",
                          "root_cause", "effectiveness", "follow_up",
                          "created_at", "updated_at")
     _CAPA_SAFE_COLS = frozenset({
         "issue_id", "action", "assignee_id", "assignee_name", "due_date",
         "status", "verification_result", "verified_by",
+        "verifier_name",
         "root_cause", "effectiveness", "follow_up",
     })
 

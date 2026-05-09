@@ -55,6 +55,7 @@ class Issue:
     status: str = IssueStatus.OPEN.value
     priority: int = 3
     assignee_id: Optional[int] = None
+    dri_name: str = ""              # DRI 责任人（自由输入）
     root_cause: str = ""
     resolution: str = ""
     failure_code: str = ""      # 失效代码 (如 GJB/Z 1391 编码)
@@ -130,6 +131,7 @@ class CAPARecord:
     status: str = CAPAStatus.PENDING.value
     verification_result: str = ""  # 验证结果
     verified_by: Optional[int] = None
+    verifier_name: str = ""       # 验证人自由文本
     root_cause: str = ""       # PDCA Plan: 根因分析
     effectiveness: str = ""    # PDCA Check: 效果验证
     follow_up: str = ""        # PDCA Act: 改善追踪

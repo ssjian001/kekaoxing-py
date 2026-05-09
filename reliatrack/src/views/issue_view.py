@@ -46,6 +46,7 @@ _ISSUE_SPECS = [
     ("严重度", "interactive", 70),
     ("状态", "interactive", 80),
     ("优先级", "interactive", 70),
+    ("DRI", "interactive", 80),
     ("根因", "interactive", 120),
     ("解决方案", "interactive", 140),
     ("创建时间", "interactive", 100),
@@ -92,6 +93,7 @@ class _IssueTable(QTableWidget):
                 severity_labels.get(issue.severity, issue.severity),
                 status_labels.get(issue.status, issue.status),
                 issue.priority,
+                getattr(issue, "dri_name", "") or "",
                 (issue.root_cause or "")[:15],
                 (issue.resolution or "")[:20],
                 (issue.created_at or "")[:10],
@@ -234,18 +236,18 @@ class _FAPanel(QScrollArea):
             header.addWidget(method_label)
             header.addStretch()
 
-            # 编辑/删除按钮
+            # 编辑/删除按钮（参考 CAPA 纯文字样式）
             btn_edit = QPushButton("编辑")
-            btn_edit.setFixedSize(40, 22)
-            btn_edit.setStyleSheet(f"color: {BLUE}; border: 1px solid {SURFACE1}; border-radius: 4px; background: transparent; font-size: 11px;")
+            btn_edit.setFixedHeight(24)
+            btn_edit.setStyleSheet(f"color: {BLUE}; font-size: 11px; border: none; padding: 2px 6px;")
             btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
             rec_id = rec.id
             btn_edit.clicked.connect(lambda checked, rid=rec_id: self.fa_edit_requested.emit(rid))
             header.addWidget(btn_edit)
 
             btn_del = QPushButton("删除")
-            btn_del.setFixedSize(40, 22)
-            btn_del.setStyleSheet(f"color: {RED}; border: 1px solid {SURFACE1}; border-radius: 4px; background: transparent; font-size: 11px;")
+            btn_del.setFixedHeight(24)
+            btn_del.setStyleSheet(f"color: {RED}; font-size: 11px; border: none; padding: 2px 6px;")
             btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_del.clicked.connect(lambda checked, rid=rec_id: self.fa_delete_requested.emit(rid))
             header.addWidget(btn_del)
@@ -877,6 +879,13 @@ class _CAPADialog(_BaseDialog):
             placeholder="输入负责人姓名",
         )
 
+        # 验证人（自由输入，一直显示）
+        self._verifier_edit = self._add_text_field(
+            "验证人",
+            default=(capa_record.verifier_name or "") if is_edit and hasattr(capa_record, "verifier_name") else "",
+            placeholder="输入验证人姓名",
+        )
+
         status_labels = [label for label, _ in self._STATUS_OPTIONS]
         default_status = ""
         if is_edit:
@@ -913,6 +922,7 @@ class _CAPADialog(_BaseDialog):
     def get_data(self) -> dict:
         status_map = {label: val for label, val in self._STATUS_OPTIONS}
         assignee_name = self._assignee_edit.text().strip()
+        verifier_name = self._verifier_edit.text().strip()
         data = {
             "action": self._action_edit.toPlainText().strip(),
             "due_date": self._due_date_edit.date().toString("yyyy-MM-dd")
@@ -920,6 +930,7 @@ class _CAPADialog(_BaseDialog):
                 else "",
             "assignee_id": None,
             "assignee_name": assignee_name,
+            "verifier_name": verifier_name,
             "status": status_map.get(self._status_combo.currentText(), "pending"),
             "root_cause": self._root_cause_edit.toPlainText().strip(),
             "effectiveness": self._effectiveness_edit.toPlainText().strip(),
@@ -936,17 +947,27 @@ class _CAPADialog(_BaseDialog):
             QMessageBox.warning(self, "校验失败", "措施描述为必填项。")
             self._action_edit.setFocus()
             return
-        # 职责分离检查：验证人不能是执行人
+        # 职责分离检查：验证人不能是负责人
         status_map = {label: val for label, val in self._STATUS_OPTIONS}
         status = status_map.get(self._status_combo.currentText(), "pending")
         if status == "verified":
             assignee_name = self._assignee_edit.text().strip()
-            reply = QMessageBox.question(
-                self, "职责分离确认",
-                "按质量管理要求，验证人不应与执行人为同一人。\n\n"
-                "请确认验证人与负责人不是同一人。\n\n"
-                "当前负责人：" + (assignee_name or "（未指定）"),
-            )
-            if reply != QMessageBox.StandardButton.Yes:
+            verifier_name = self._verifier_edit.text().strip()
+            if verifier_name and assignee_name and verifier_name == assignee_name:
+                QMessageBox.warning(
+                    self, "职责分离冲突",
+                    f"按质量管理要求，验证人不应与负责人为同一人。\n\n"
+                    f"当前负责人：{assignee_name}\n"
+                    f"当前验证人：{verifier_name}\n\n"
+                    f"请修改后再保存。",
+                )
                 return
+            if not verifier_name:
+                reply = QMessageBox.question(
+                    self, "验证人未指定",
+                    "状态为「已验证」但未指定验证人。\n\n"
+                    "建议填写验证人以确保职责分离。仍要继续吗？",
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
         super().accept()

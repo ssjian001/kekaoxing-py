@@ -97,12 +97,11 @@ class TestSchemaV15Migration:
         assert records[0].effectiveness == ""
         assert records[0].follow_up == ""
 
-    def test_schema_version_is_15(self, db_conn: apsw.Connection) -> None:
-        """init_schema 后版本应为 15。"""
+    def test_schema_version_is_latest(self, db_conn: apsw.Connection) -> None:
+        """init_schema 后版本应为最新。"""
         from src.db.schema import SCHEMA_VERSION
         row = db_conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
         assert row[0] == SCHEMA_VERSION
-        assert SCHEMA_VERSION == 15
 
 
 # ═══════════════════════════════════════════════════════════════════

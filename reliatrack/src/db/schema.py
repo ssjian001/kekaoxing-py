@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -846,6 +846,21 @@ def _migrate_v15(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (15)")
 
 
+def _migrate_v16(conn: apsw.Connection) -> None:
+    """v15→v16: CAPA 加 verifier_name 列 + Issue 加 dri_name 列。"""
+    c_cols = {r[1] for r in conn.execute("PRAGMA table_info(capa_records)").fetchall()}
+    if "verifier_name" not in c_cols:
+        conn.execute(
+            "ALTER TABLE capa_records ADD COLUMN verifier_name TEXT DEFAULT ''"
+        )
+    i_cols = {r[1] for r in conn.execute("PRAGMA table_info(issues)").fetchall()}
+    if "dri_name" not in i_cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN dri_name TEXT DEFAULT ''"
+        )
+    conn.execute("INSERT INTO schema_version (version) VALUES (16)")
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -938,6 +953,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v15 failed")
+            raise
+
+    # v16: CAPA verifier_name + Issue dri_name
+    if current < 16:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v16(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v16 failed")
             raise
 
     return _get_current_version(conn)

@@ -484,6 +484,7 @@ class PlanHandlers:
         if dlg.exec():
             all_data = result_widget.get_all_data()
             saved = 0
+            issue_count = 0
             for item in all_data:
                 if item["sample_id"] is not None:
                     ctrl.test_plan_service.save_result(
@@ -497,8 +498,35 @@ class PlanHandlers:
                         environment=item.get("environment", "{}"),
                     )
                     saved += 1
-            self._win.toast(f"已保存 {saved} 条测试结果（任务: {task.name}）", "success")
+                    # 自动创建 Issue
+                    if item.get("create_issue") and item.get("result") == "fail":
+                        if ctrl.issue_service:
+                            try:
+                                sample_name = item.get("sample_name", "")
+                                title = task.name
+                                if sample_name:
+                                    title += f" - {sample_name}"
+                                ctrl.issue_service.create(
+                                    title=title,
+                                    project_id=task.project_id if hasattr(task, "project_id") else None,
+                                    plan_id=task.plan_id if hasattr(task, "plan_id") else None,
+                                    task_id=task.id,
+                                    sample_id=item["sample_id"],
+                                    failure_mode="不通过",
+                                    severity="major",
+                                    status="open",
+                                    description=f"自动创建：测试任务「{task.name}」样品「{sample_name}」结果不通过",
+                                )
+                                issue_count += 1
+                            except Exception:
+                                pass  # 不阻断主流程
+            msg = f"已保存 {saved} 条测试结果（任务: {task.name}）"
+            if issue_count:
+                msg += f"，自动创建 {issue_count} 条 Issue"
+            self._win.toast(msg, "success")
             self._win._ctrl.notify_data_changed("task")
+            if issue_count:
+                self._win._ctrl.notify_data_changed("issue")
 
     def _on_task_delete(self, task) -> None:
         """删除测试任务。"""

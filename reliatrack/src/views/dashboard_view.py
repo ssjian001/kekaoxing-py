@@ -192,15 +192,13 @@ class _TestProgressCard(QFrame):
         left.addLayout(legend)
         lay.addLayout(left, 3)
 
-        # ── 右侧: 3 个辅助指标 ──
+        # ── 右侧: 2 个辅助指标 ──
         right = QHBoxLayout()
         right.setSpacing(16)
         self._aux1 = self._mk_aux("测试通过率", "—%")
         self._aux2 = self._mk_aux("最后更新", "—")
-        self._aux3 = self._mk_aux("技术员数", "0")
         right.addWidget(self._aux1)
         right.addWidget(self._aux2)
-        right.addWidget(self._aux3)
         lay.addLayout(right, 2)
 
     @staticmethod
@@ -213,11 +211,10 @@ class _TestProgressCard(QFrame):
 
     def refresh(self, total: int, completed: int, pass_count: int, fail_count: int,
                 in_progress: int, pass_rate: float | None,
-                last_update: str | None, tech_count: int) -> None:
+                last_update: str | None) -> None:
         self._stacked.set_data(total, pass_count, fail_count, in_progress)
         self._aux1.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
         self._aux2.set_value(last_update or "—")
-        self._aux3.set_value(str(tech_count))
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -780,7 +777,6 @@ class DashboardView(QWidget):
             in_progress=data.task_in_progress or 0,
             pass_rate=data.pass_rate,
             last_update=data.last_update,
-            tech_count=data.technician_count or 0,
         )
 
         # 左栏 KPI

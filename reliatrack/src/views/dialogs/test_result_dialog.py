@@ -155,6 +155,18 @@ class _ResultRow(QFrame):
 
         layout.addStretch()
 
+        # 自动创建 Issue 勾选框
+        from PySide6.QtWidgets import QCheckBox
+        self._create_issue_cb = QCheckBox("创建Issue")
+        self._create_issue_cb.setStyleSheet(
+            f"color: {RED}; font-size: 10px; border: none; background: transparent;"
+        )
+        self._create_issue_cb.setToolTip("不通过时自动创建 Issue 追踪")
+        # 仅 fail 时自动勾选
+        if existing_result and existing_result.result == "fail":
+            self._create_issue_cb.setChecked(True)
+        layout.addWidget(self._create_issue_cb)
+
         # 状态色块指示
         self._indicator = QLabel()
         self._indicator.setFixedSize(12, 12)
@@ -170,6 +182,9 @@ class _ResultRow(QFrame):
 
     def _on_result_changed(self) -> None:
         self._update_indicator()
+        # 选 fail 时自动勾选创建 Issue
+        if self._combo.currentData() == "fail":
+            self._create_issue_cb.setChecked(True)
 
     def get_data(self) -> dict:
         """返回录入数据。"""
@@ -189,6 +204,8 @@ class _ResultRow(QFrame):
             "measured_value": self._measured_edit.text().strip(),
             "environment": json.dumps(env, ensure_ascii=False),
             "tester_id": self._tester_combo.currentData(),
+            "create_issue": self._create_issue_cb.isChecked(),
+            "sample_name": self._sample.sn,
         }
 
     @property

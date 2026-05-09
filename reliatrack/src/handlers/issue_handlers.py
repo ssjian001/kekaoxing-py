@@ -192,6 +192,7 @@ class IssueHandlers:
             # ── 联动: FA → Issue ──
             self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA 步骤已添加", "success")
+            self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")
 
@@ -213,6 +214,7 @@ class IssueHandlers:
                 self._win._issue_view.refresh_fa(self._current_fa_records)
                 self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA #{fa_id} 已更新", "success")
+            self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("FA update failed for fa_id=%s", fa_id)
             QMessageBox.critical(self._win, "保存失败", f"FA 记录更新失败: {e}")
@@ -231,6 +233,7 @@ class IssueHandlers:
                 self._win._issue_view.refresh_fa(self._current_fa_records)
                 self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA #{fa_id} 已删除", "success")
+            self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("FA delete failed for fa_id=%s", fa_id)
             QMessageBox.critical(self._win, "删除失败", f"FA 记录删除失败: {e}")
@@ -252,6 +255,7 @@ class IssueHandlers:
             # ── 联动: CAPA → Issue ──
             self._sync_issue_from_capa(issue_id)
             self._win.toast("CAPA 措施已添加", "success")
+            self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
 
@@ -274,6 +278,7 @@ class IssueHandlers:
                 # ── 联动: CAPA → Issue ──
                 self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已更新", "success")
+            self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("CAPA update failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录更新失败: {e}")
@@ -293,6 +298,7 @@ class IssueHandlers:
                 # ── 联动: CAPA → Issue ──
                 self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已删除", "success")
+            self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("CAPA delete failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "删除失败", f"CAPA 记录删除失败: {e}")

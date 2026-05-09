@@ -177,6 +177,13 @@ class IssueEditDialog(_BaseDialog):
             min_val=1, max_val=9999,
         )
 
+        # ── DRI 责任人 ──
+        self._dri_edit = self._add_text_field(
+            "DRI 责任人",
+            default=getattr(issue, "dri_name", "") or "" if issue else "",
+            placeholder="输入责任人姓名",
+        )
+
         # ── 根因 & 解决方案 ──
         self._root_cause_edit = self._add_text_area(
             "根因分析", default=issue.root_cause if issue else "",
@@ -226,6 +233,7 @@ class IssueEditDialog(_BaseDialog):
             "sample_id": sample_id,
             "failure_code": self._failure_code_edit.text().strip(),
             "occurrence_count": self._occurrence_spin.value(),
+            "dri_name": self._dri_edit.text().strip(),
             "root_cause": self._root_cause_edit.toPlainText().strip(),
             "resolution": self._resolution_edit.toPlainText().strip(),
         }
