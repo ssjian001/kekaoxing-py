@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.handlers.crud_helpers import exec_crud
 from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
 
 if TYPE_CHECKING:
@@ -36,13 +37,14 @@ class KnowledgeHandlers:
         dlg = KnowledgeEditDialog(parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                ctrl.knowledge_service.create(**data)
-                self._win.toast(f"知识条目「{data['failure_mode']}」已创建", "success")
-                self._win._ctrl.notify_data_changed("knowledge")
-            except Exception as e:
-                logger.exception("创建失败")
-                QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
+            exec_crud(
+                win=self._win,
+                action=ctrl.knowledge_service.create,
+                action_kwargs=data,
+                toast_msg=f"知识条目「{data['failure_mode']}」已创建",
+                entity="knowledge",
+                error_title="创建失败",
+            )
 
     def _on_knowledge_edit(self) -> None:
         """编辑选中的知识条目。"""
@@ -56,15 +58,18 @@ class KnowledgeHandlers:
         dlg = KnowledgeEditDialog(entry=entry, parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                if entry.id is None:
-                    raise ValueError("Knowledge entry id is None")
-                ctrl.knowledge_service.update(entry.id, **data)
-                self._win.toast(f"知识条目「{data['failure_mode']}」已更新", "success")
-                self._win._ctrl.notify_data_changed("knowledge")
-            except Exception as e:
-                logger.exception("更新失败")
-                QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
+            if entry.id is None:
+                QMessageBox.warning(self._win, "更新失败", "Knowledge entry id is None")
+                return
+            exec_crud(
+                win=self._win,
+                action=ctrl.knowledge_service.update,
+                action_args=(entry.id,),
+                action_kwargs=data,
+                toast_msg=f"知识条目「{data['failure_mode']}」已更新",
+                entity="knowledge",
+                error_title="更新失败",
+            )
 
     def _on_knowledge_delete(self) -> None:
         """删除选中的知识条目。"""
@@ -84,14 +89,15 @@ class KnowledgeHandlers:
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        try:
-            if entry.id is None:
-                raise ValueError("Knowledge entry id is None")
-            ctrl.knowledge_service.delete(entry.id)
-            self._win.toast(f"知识条目「{entry.failure_mode}」已删除", "success")
-            self._win._ctrl.notify_data_changed("knowledge")
-        except ValueError as e:
-            QMessageBox.warning(self._win, "删除失败", str(e))
-        except Exception as e:
-            logger.exception("删除失败")
-            QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
+        if entry.id is None:
+            QMessageBox.warning(self._win, "删除失败", "Knowledge entry id is None")
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.knowledge_service.delete,
+            action_args=(entry.id,),
+            toast_msg=f"知识条目「{entry.failure_mode}」已删除",
+            entity="knowledge",
+            error_title="删除失败",
+            catch_value_error=True,
+        )

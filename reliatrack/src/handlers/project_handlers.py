@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.handlers.crud_helpers import exec_crud
 from src.views.dialogs.project_edit_dialog import ProjectEditDialog
 
 if TYPE_CHECKING:
@@ -53,13 +54,14 @@ class ProjectHandlers:
         dlg = ProjectEditDialog(parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                ctrl.project_service.create(**data)
-                self._win.toast(f"项目「{data['name']}」已创建", "success")
-                self._win._ctrl.notify_data_changed("project")
-            except Exception as e:
-                logger.exception("创建失败")
-                QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
+            exec_crud(
+                win=self._win,
+                action=ctrl.project_service.create,
+                action_kwargs=data,
+                toast_msg=f"项目「{data['name']}」已创建",
+                entity="project",
+                error_title="创建失败",
+            )
 
     def _on_project_edit(self) -> None:
         """编辑选中的项目。"""
@@ -77,13 +79,15 @@ class ProjectHandlers:
             if proj_id is None:
                 return
             update_data = {k: v for k, v in data.items() if k != "id"}
-            try:
-                ctrl.project_service.update(proj_id, **update_data)
-                self._win.toast(f"项目「{data['name']}」已更新", "success")
-                self._win._ctrl.notify_data_changed("project")
-            except Exception as e:
-                logger.exception("更新失败")
-                QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
+            exec_crud(
+                win=self._win,
+                action=ctrl.project_service.update,
+                action_args=(proj_id,),
+                action_kwargs=update_data,
+                toast_msg=f"项目「{data['name']}」已更新",
+                entity="project",
+                error_title="更新失败",
+            )
 
     def _on_project_delete(self) -> None:
         """删除选中的项目。"""
@@ -105,14 +109,15 @@ class ProjectHandlers:
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        try:
-            if proj.id is None:
-                raise ValueError("Project id is None")
-            ctrl.project_service.delete(proj.id)
-            self._win.toast(f"项目「{proj.name}」已删除", "success")
-            self._win._ctrl.notify_data_changed("project")
-        except ValueError as e:
-            QMessageBox.warning(self._win, "删除失败", str(e))
-        except Exception as e:
-            logger.exception("删除失败")
-            QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
+        if proj.id is None:
+            QMessageBox.warning(self._win, "删除失败", "Project id is None")
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.project_service.delete,
+            action_args=(proj.id,),
+            toast_msg=f"项目「{proj.name}」已删除",
+            entity="project",
+            error_title="删除失败",
+            catch_value_error=True,
+        )

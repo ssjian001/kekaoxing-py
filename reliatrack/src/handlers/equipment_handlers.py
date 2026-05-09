@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.handlers.crud_helpers import exec_crud
 from src.services.import_service import import_equipment
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
@@ -39,13 +40,14 @@ class EquipmentHandlers:
         dlg = EquipmentEditDialog(parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                ctrl.equipment_service.create(**data)
-                self._win.toast(f"设备「{data['name']}」已创建", "success")
-                self._win._ctrl.notify_data_changed("equipment")
-            except Exception as e:
-                logger.exception("创建失败")
-                QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
+            exec_crud(
+                win=self._win,
+                action=ctrl.equipment_service.create,
+                action_kwargs=data,
+                toast_msg=f"设备「{data['name']}」已创建",
+                entity="equipment",
+                error_title="创建失败",
+            )
 
     def _on_equipment_edit(self) -> None:
         """编辑选中的设备。"""
@@ -59,15 +61,18 @@ class EquipmentHandlers:
         dlg = EquipmentEditDialog(equipment=eq, parent=self._win)
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                if eq.id is None:
-                    raise ValueError("Equipment id is None")
-                ctrl.equipment_service.update(eq.id, **data)
-                self._win.toast(f"设备「{data['name']}」已更新", "success")
-                self._win._ctrl.notify_data_changed("equipment")
-            except Exception as e:
-                logger.exception("更新失败")
-                QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
+            if eq.id is None:
+                QMessageBox.warning(self._win, "更新失败", "Equipment id is None")
+                return
+            exec_crud(
+                win=self._win,
+                action=ctrl.equipment_service.update,
+                action_args=(eq.id,),
+                action_kwargs=data,
+                toast_msg=f"设备「{data['name']}」已更新",
+                entity="equipment",
+                error_title="更新失败",
+            )
 
     def _on_equipment_delete(self) -> None:
         """删除选中的设备。"""
@@ -87,17 +92,18 @@ class EquipmentHandlers:
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        try:
-            if eq.id is None:
-                raise ValueError("Equipment id is None")
-            ctrl.equipment_service.delete(eq.id)
-            self._win.toast(f"设备「{eq.name}」已删除", "success")
-            self._win._ctrl.notify_data_changed("equipment")
-        except ValueError as e:
-            QMessageBox.warning(self._win, "删除失败", str(e))
-        except Exception as e:
-            logger.exception("删除失败")
-            QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
+        if eq.id is None:
+            QMessageBox.warning(self._win, "删除失败", "Equipment id is None")
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.equipment_service.delete,
+            action_args=(eq.id,),
+            toast_msg=f"设备「{eq.name}」已删除",
+            entity="equipment",
+            error_title="删除失败",
+            catch_value_error=True,
+        )
 
     def _on_equipment_import(self) -> None:
         """批量导入设备。"""

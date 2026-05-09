@@ -19,6 +19,7 @@ from src.views.dialogs.plan_edit_dialog import PlanEditDialog
 from src.views.dialogs.task_dialog import TaskEditDialog
 from src.views.dialogs.test_result_dialog import TestResultDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
+from src.handlers.crud_helpers import exec_crud
 from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand
 
 if TYPE_CHECKING:
@@ -268,18 +269,19 @@ class PlanHandlers:
         )
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                # 从 data 中提取用于 create_plan 的参数
-                kwargs = {k: v for k, v in data.items() if k != "id"}
-                # project_id 为 0 表示未选择项目，弹出提示
-                if kwargs.get("project_id") == 0:
-                    QMessageBox.warning(self._win, "校验失败", "请选择关联项目后再创建计划。")
-                    return
-                ctrl.test_plan_service.create_plan(**kwargs)
-                self._win.toast(f"计划「{data['name']}」已创建", "success")
-                self._win._ctrl.notify_data_changed("plan")
-            except Exception as e:
-                QMessageBox.critical(self._win, "创建失败", f"保存失败: {e}")
+            kwargs = {k: v for k, v in data.items() if k != "id"}
+            # project_id 为 0 表示未选择项目，弹出提示
+            if kwargs.get("project_id") == 0:
+                QMessageBox.warning(self._win, "校验失败", "请选择关联项目后再创建计划。")
+                return
+            exec_crud(
+                win=self._win,
+                action=ctrl.test_plan_service.create_plan,
+                action_kwargs=kwargs,
+                toast_msg=f"计划「{data['name']}」已创建",
+                entity="plan",
+                error_title="创建失败",
+            )
 
     def _on_plan_edit(self) -> None:
         """编辑当前选中的测试计划。"""
@@ -305,12 +307,15 @@ class PlanHandlers:
             if plan_id_from_data is None:
                 return
             update_data = {k: v for k, v in data.items() if k != "id"}
-            try:
-                ctrl.test_plan_service.update_plan(plan_id_from_data, **update_data)
-                self._win.toast(f"计划「{data['name']}」已更新", "success")
-                self._win._ctrl.notify_data_changed("plan")
-            except Exception as e:
-                QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
+            exec_crud(
+                win=self._win,
+                action=ctrl.test_plan_service.update_plan,
+                action_args=(plan_id_from_data,),
+                action_kwargs=update_data,
+                toast_msg=f"计划「{data['name']}」已更新",
+                entity="plan",
+                error_title="更新失败",
+            )
 
     def _on_plan_changed(self, index: int) -> None:
         """切换测试计划时刷新任务列表。"""
@@ -383,12 +388,15 @@ class PlanHandlers:
         )
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                ctrl.test_plan_service.create_task(plan_id, **data)
-                self._win.toast(f"任务「{data['name']}」已创建", "success")
-                self._win._ctrl.notify_data_changed("task")
-            except Exception as e:
-                QMessageBox.critical(self._win, "创建失败", f"任务创建失败: {e}")
+            exec_crud(
+                win=self._win,
+                action=ctrl.test_plan_service.create_task,
+                action_args=(plan_id,),
+                action_kwargs=data,
+                toast_msg=f"任务「{data['name']}」已创建",
+                entity="task",
+                error_title="创建失败",
+            )
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""
@@ -419,9 +427,15 @@ class PlanHandlers:
             if new_status == "completed" and not data.get("actual_end_date"):
                 data["actual_end_date"] = today
                 data["progress"] = 100.0
-            ctrl.test_plan_service.update_task(task.id, **data)
-            self._win.toast(f"任务「{data['name']}」已更新", "success")
-            self._win._ctrl.notify_data_changed("task")
+            exec_crud(
+                win=self._win,
+                action=ctrl.test_plan_service.update_task,
+                action_args=(task.id,),
+                action_kwargs=data,
+                toast_msg=f"任务「{data['name']}」已更新",
+                entity="task",
+                error_title="更新失败",
+            )
 
     def _on_record_result(self) -> None:
         """录入测试结果 — 选中任务后打开结果录入弹窗。"""
@@ -534,12 +548,14 @@ class PlanHandlers:
         if not ctrl or not ctrl.test_plan_service:
             return
         name = task.name
-        try:
-            ctrl.test_plan_service.delete_task(task.id)
-            self._win.toast(f"任务「{name}」已删除", "success")
-            self._win._ctrl.notify_data_changed("task")
-        except Exception as e:
-            QMessageBox.critical(self._win, "删除失败", f"任务删除失败: {e}")
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.delete_task,
+            action_args=(task.id,),
+            toast_msg=f"任务「{name}」已删除",
+            entity="task",
+            error_title="删除失败",
+        )
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:
         """一键推进任务状态 — 自动填日期和进度。
@@ -574,9 +590,12 @@ class PlanHandlers:
         else:
             status_label = new_status
 
-        try:
-            ctrl.test_plan_service.update_task(task.id, **updates)
-            self._win.toast(f"任务「{task.name}」已标记为{status_label}", "success")
-            self._win._ctrl.notify_data_changed("task")
-        except Exception as e:
-            QMessageBox.critical(self._win, "操作失败", f"状态更新失败: {e}")
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.update_task,
+            action_args=(task.id,),
+            action_kwargs=updates,
+            toast_msg=f"任务「{task.name}」已标记为{status_label}",
+            entity="task",
+            error_title="操作失败",
+        )

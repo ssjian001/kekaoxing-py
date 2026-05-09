@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.handlers.crud_helpers import exec_crud
+
 logger = logging.getLogger(__name__)
 
 from src.views.dialogs.sample_checkin_dialog import SampleCheckInDialog
@@ -63,8 +65,10 @@ class SampleHandlers:
         )
         if dlg.exec():
             data = dlg.get_data()
-            try:
-                ctrl.sample_service.create(
+            exec_crud(
+                win=self._win,
+                action=ctrl.sample_service.create,
+                action_kwargs=dict(
                     sn=data["sn"],
                     batch_no=data.get("batch_no") or "",
                     spec=data.get("spec") or "",
@@ -74,12 +78,11 @@ class SampleHandlers:
                     supplier=data.get("supplier") or "",
                     notes=data.get("notes") or "",
                     status="in_stock",
-                )
-                self._win.toast(f"样品 {data['sn']} 入库成功", "success")
-                self._win._ctrl.notify_data_changed("sample")
-            except Exception as e:
-                logger.exception("入库失败")
-                QMessageBox.critical(self._win, "入库失败", f"保存失败: {e}")
+                ),
+                toast_msg=f"样品 {data['sn']} 入库成功",
+                entity="sample",
+                error_title="入库失败",
+            )
 
     def _on_sample_checkout(self) -> None:
         """样品出库。"""
@@ -205,13 +208,16 @@ class SampleHandlers:
             parent=self._win,
         )
         if dlg.exec():
-            try:
-                data = dlg.get_data()
-                if sample.id is None:
-                    raise ValueError("Sample id is None")
-                ctrl.sample_service.update(sample.id, **data)
-                self._win.toast(f"样品「{data['sn']}」已更新", "success")
-                self._win._ctrl.notify_data_changed("sample")
-            except Exception as e:
-                logger.exception("更新失败")
-                QMessageBox.critical(self._win, "更新失败", f"保存失败: {e}")
+            data = dlg.get_data()
+            if sample.id is None:
+                QMessageBox.warning(self._win, "更新失败", "Sample id is None")
+                return
+            exec_crud(
+                win=self._win,
+                action=ctrl.sample_service.update,
+                action_args=(sample.id,),
+                action_kwargs=data,
+                toast_msg=f"样品「{data['sn']}」已更新",
+                entity="sample",
+                error_title="更新失败",
+            )
