@@ -422,6 +422,7 @@ class SchedulePreviewDialog(QDialog):
             # 更新该行
             self._update_row(row)
             self._detect_conflicts()
+        dlg.deleteLater()
 
     def _update_row(self, row: int) -> None:
         """更新指定行的显示内容。"""

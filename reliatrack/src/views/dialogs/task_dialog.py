@@ -421,6 +421,7 @@ class TaskEditDialog(_BaseDialog):
         if dlg.exec():
             self._selected_sample_ids = dlg.get_selected_ids()
             self._sample_count_label.setText(self._format_sample_count())
+        dlg.deleteLater()
 
     def _format_sample_count(self) -> str:
         """格式化已选样品数量标签。"""
@@ -562,6 +563,7 @@ class TaskEditDialog(_BaseDialog):
                         selected.append(dep_id)
             self._selected_dep_ids = selected
             self._dep_summary.setText(self._format_dep_summary())
+        dlg.deleteLater()
 
     # ── 公开 API ───────────────────────────────────────────────
 
