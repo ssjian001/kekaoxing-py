@@ -369,7 +369,25 @@ class MainWindow(QMainWindow):
         ToastWidget.show_toast(self, message, level)
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        """处理窗口关闭事件 — 有未撤销操作时确认。"""
+        """处理窗口关闭事件 — 检查打开的 dialog 和未撤销操作。"""
+        # 检查是否有正在编辑的 dialog
+        from PySide6.QtWidgets import QDialog
+        open_dialogs = [
+            w for w in QApplication.topLevelWidgets()
+            if isinstance(w, QDialog) and w.isVisible()
+        ]
+        if open_dialogs:
+            reply = QMessageBox.question(
+                self,
+                "确认关闭",
+                f"有 {len(open_dialogs)} 个窗口正在编辑中，关闭后未保存的内容将丢失。\n确定要退出吗？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+
         um = self._ctrl.undo_manager
         if um and um.can_undo():
             reply = QMessageBox.question(
