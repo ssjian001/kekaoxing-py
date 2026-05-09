@@ -396,11 +396,24 @@ def main() -> int:
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
     import logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
+    import logging.handlers
+    from pathlib import Path as _P
+
+    log_fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    log_datefmt = "%H:%M:%S"
+    logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=log_datefmt)
+
+    # 持久化日志 — RotatingFileHandler（5×1MB）
+    _log_dir = _P("data/logs")
+    _log_dir.mkdir(parents=True, exist_ok=True)
+    _fh = logging.handlers.RotatingFileHandler(
+        _log_dir / "reliatrack.log",
+        maxBytes=1_000_000,
+        backupCount=5,
+        encoding="utf-8",
     )
+    _fh.setFormatter(logging.Formatter(log_fmt, datefmt=log_datefmt))
+    logging.getLogger().addHandler(_fh)
 
     app = QApplication(sys.argv)
     app.setApplicationName("ReliaTrack")

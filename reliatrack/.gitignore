@@ -22,3 +22,4 @@ __pycache__/
 # Hermes plans (local only)
 .hermes/
 .prism-history.md
+data/logs/
