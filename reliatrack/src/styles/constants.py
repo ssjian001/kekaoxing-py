@@ -243,7 +243,6 @@ def apply_column_specs(table, specs: list[tuple[str, str, int]],
     header = table.horizontalHeader()
     header.setMinimumSectionSize(40)  # 空表时防止列塌缩
 
-    stretch_count = 0
     for col, (_, mode, width) in enumerate(specs):
         if mode == "fixed":
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Fixed)
@@ -255,7 +254,6 @@ def apply_column_specs(table, specs: list[tuple[str, str, int]],
                 header.setMinimumSectionSize(max(header.minimumSectionSize(), width))
         elif mode == "stretch":
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
-            stretch_count += 1
         elif mode == "interactive":
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
             table.setColumnWidth(col, width)
