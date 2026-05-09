@@ -387,9 +387,22 @@ class _StackedBar(QWidget):
             if sw <= 0:
                 continue
             p.setBrush(QColor(color))
-            # 只有第一段和最后一段需要圆角
-            p.drawRoundedRect(x, 0, sw + 1, h, 4, 4)
+            # 首尾段带圆角，中间段矩形
+            p.drawRect(x, 0, sw, h)
             x += sw
+
+        # 首段和尾段圆角覆盖
+        if segments and segments[0][0] > 0:
+            sw0 = int(w * segments[0][0] / self._total)
+            if sw0 > 0:
+                p.setBrush(QColor(segments[0][1]))
+                p.drawRoundedRect(0, 0, sw0, h, 4, 4)
+        if len(segments) > 1 and segments[-1][0] > 0:
+            sw_last = int(w * segments[-1][0] / self._total)
+            x_last = w - sw_last
+            if sw_last > 0:
+                p.setBrush(QColor(segments[-1][1]))
+                p.drawRoundedRect(x_last, 0, sw_last, h, 4, 4)
 
         p.end()
 

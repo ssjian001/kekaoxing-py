@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
 )
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QPoint
-from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, QWheelEvent
+from PySide6.QtGui import QPainter, QColor, QFont, QPen, QAction, QMouseEvent, QWheelEvent, QRegion
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
@@ -625,6 +625,12 @@ class _GanttWidget(QWidget):
 
         # ── 任务条 ──
         p.setFont(QFont(FONT_FAMILY, 8))
+        # 画任务时排除冻结表头区域，防止任务内容覆盖表头
+        clip_rect = event.rect()
+        if vy > 0:
+            # 任务区域：表头下方
+            task_region = QRegion(0, 0, w, vy) + QRegion(0, vy + self._header_height, w, self.height())
+            p.setClipRegion(task_region)
         for i, task in enumerate(self._tasks):
             y = self._header_height + i * self._row_height
 
