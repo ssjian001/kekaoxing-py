@@ -213,3 +213,63 @@ def add_shadow(widget, blur: int = 12, offset: int = 2,
     shadow.setBlurRadius(blur)
     shadow.setColor(QColor(0, 0, 0, opacity))
     widget.setGraphicsEffect(shadow)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  自适应列宽工具（三档混合策略）
+# ═══════════════════════════════════════════════════════════════════
+#
+# 列规格格式: (表头, 模式, 默认宽度)
+#   模式:
+#     'content'    — ResizeToContents，短文本/日期/状态自动贴合
+#     'stretch'    — Stretch，充满剩余空间（每表仅 1 列）
+#     'interactive' — Interactive，用户可拖拽，给默认宽度
+#     'fixed'      — Fixed，不可调整（如 ID 列）
+#
+# 用法:
+#   SPECS = [("ID", "fixed", 50), ("名称", "stretch", 0), ...]
+#   apply_column_specs(table, SPECS)
+#
+
+def apply_column_specs(table, specs: list[tuple[str, str, int]],
+                       table_key: str = "") -> None:
+    """根据列规格自动设置表头模式和宽度。"""
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QHeaderView
+
+    table.setColumnCount(len(specs))
+    table.setHorizontalHeaderLabels([s[0] for s in specs])
+
+    header = table.horizontalHeader()
+    header.setMinimumSectionSize(40)  # 空表时防止列塌缩
+
+    stretch_count = 0
+    for col, (_, mode, width) in enumerate(specs):
+        if mode == "fixed":
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Fixed)
+            table.setColumnWidth(col, width)
+        elif mode == "content":
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+            # 设最小宽度防止空表时太窄
+            if width > 0:
+                header.setMinimumSectionSize(max(header.minimumSectionSize(), width))
+        elif mode == "stretch":
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+            stretch_count += 1
+        elif mode == "interactive":
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
+            table.setColumnWidth(col, width)
+
+    # 文字截断时显示省略号
+    from PySide6.QtWidgets import QAbstractItemView
+    table.setTextElideMode(Qt.TextElideMode.ElideRight)
+
+    # 列宽持久化（仅 interactive 列有意义）
+    if table_key:
+        from src.styles.column_persistence import (
+            restore_column_widths, save_column_widths_debounced,
+        )
+        restore_column_widths(table, table_key)
+        header.sectionResized.connect(
+            lambda *_: save_column_widths_debounced(table, table_key)
+        )
