@@ -350,9 +350,23 @@ class _GanttWidget(QWidget):
         self._equipment_colors: dict[int, str] = {}  # {equipment_id: color_hex}
         self._palette = [BLUE, GREEN, PEACH, MAUVE, LAVENDER, YELLOW, TEAL]
 
+        # 表头冻结：连接父级 QScrollArea 的垂直滚动
+        self._scroll_v_offset: int = 0
+
     def set_mode(self, actual: bool) -> None:
         """切换预计/实际显示模式。"""
         self._show_actual = actual
+        self.update()
+
+    def bind_scroll_area(self, scroll_area: QScrollArea) -> None:
+        """连接 QScrollArea 的垂直滚动信号，用于表头冻结。"""
+        bar = scroll_area.verticalScrollBar()
+        bar.valueChanged.connect(self._on_scroll)
+        self._scroll_area = scroll_area
+
+    def _on_scroll(self, value: int) -> None:
+        """垂直滚动时更新偏移并重绘。"""
+        self._scroll_v_offset = value
         self.update()
 
     def _task_day_range(self, task: TestTask) -> tuple[int, int]:
@@ -550,8 +564,9 @@ class _GanttWidget(QWidget):
         p.setPen(QPen(QColor(SURFACE1), 1))
         p.drawLine(label_w, 0, label_w, self.height())
 
-        # ── 表头（天数标尺）──
-        p.fillRect(0, 0, w, self._header_height, QColor(SURFACE0))
+        # ── 表头（天数标尺）— 冻结在滚动位置顶部 ──
+        vy = self._scroll_v_offset  # 表头固定 Y 坐标
+        p.fillRect(0, vy, w, self._header_height, QColor(SURFACE0))
         p.setPen(QColor(SUBTEXT1))
         p.setFont(QFont(FONT_FAMILY, 9))
         step = max(1, self._total_days // 15)
@@ -586,11 +601,11 @@ class _GanttWidget(QWidget):
                     label = f"{real_date.month}/{real_date.day}"
                 else:
                     label = f"D{d}"
-                p.drawText(int(x) - 20, 0, 40, self._header_height,
+                p.drawText(int(x) - 20, vy, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, label)
             p.setPen(QColor(SURFACE1))
             if d % step == 0:
-                p.drawLine(int(x), self._header_height, int(x), self.height())
+                p.drawLine(int(x), vy + self._header_height, int(x), self.height())
             p.setPen(QColor(SUBTEXT0))
 
         # ── 今日线 ──
@@ -601,11 +616,11 @@ class _GanttWidget(QWidget):
                 tx = label_w + today_offset * self._day_w
                 pen = QPen(QColor(PEACH), 2, Qt.PenStyle.DashLine)
                 p.setPen(pen)
-                p.drawLine(int(tx), self._header_height, int(tx), self.height())
+                p.drawLine(int(tx), vy + self._header_height, int(tx), self.height())
                 # "今天" 标签
                 p.setPen(QColor(PEACH))
                 p.setFont(QFont(FONT_FAMILY, 8))
-                p.drawText(int(tx) - 20, 0, 40, self._header_height,
+                p.drawText(int(tx) - 20, vy, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, "今天")
 
         # ── 任务条 ──
@@ -810,6 +825,7 @@ class TestPlanView(QWidget):
         self._gantt_scroll.setWidgetResizable(True)
         self._gantt_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._gantt_scroll.setStyleSheet(f"background-color: {BASE}; border: none;")
+        self._gantt.bind_scroll_area(self._gantt_scroll)
         tab_gantt_layout.addWidget(self._gantt_scroll)
         self._sub_tabs.addTab(tab_gantt, "甘特图")
 

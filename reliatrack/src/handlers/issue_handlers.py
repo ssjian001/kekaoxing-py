@@ -31,6 +31,8 @@ class IssueHandlers:
         v.issue_deleted.connect(self._handle_issue_deleted)
         v.issue_selected.connect(self._handle_issue_selected)
         v.fa_record_added.connect(self._handle_fa_record_added)
+        v.fa_record_edited.connect(self._handle_edit_fa)
+        v.fa_record_deleted.connect(self._handle_delete_fa)
         v.capa_record_added.connect(self._handle_capa_record_added)
         v.capa_record_edited.connect(self._handle_edit_capa)
         v.capa_record_deleted.connect(self._handle_delete_capa)
@@ -192,6 +194,46 @@ class IssueHandlers:
             self._win.toast(f"FA 步骤已添加", "success")
         except Exception as e:
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")
+
+    def _handle_edit_fa(self, data: dict) -> None:
+        """FA 记录编辑后回调。自动联动更新 Issue。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        fa_id = data.get("id")
+        if fa_id is None:
+            return
+        try:
+            update_data = {k: v for k, v in data.items() if k not in ("id", "issue_id")}
+            ctrl.issue_service.update_fa_record(fa_id, **update_data)
+            # 刷新 FA 面板
+            issue_id = self._win._issue_view.get_selected_issue_id()
+            if issue_id is not None:
+                self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
+                self._win._issue_view.refresh_fa(self._current_fa_records)
+                self._sync_issue_from_fa(issue_id)
+            self._win.toast(f"FA #{fa_id} 已更新", "success")
+        except Exception as e:
+            logger.exception("FA update failed for fa_id=%s", fa_id)
+            QMessageBox.critical(self._win, "保存失败", f"FA 记录更新失败: {e}")
+
+    def _handle_delete_fa(self, fa_id: int) -> None:
+        """FA 记录删除后回调。自动联动更新 Issue。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.issue_service:
+            return
+        try:
+            ctrl.issue_service.delete_fa_record(fa_id)
+            # 刷新 FA 面板
+            issue_id = self._win._issue_view.get_selected_issue_id()
+            if issue_id is not None:
+                self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
+                self._win._issue_view.refresh_fa(self._current_fa_records)
+                self._sync_issue_from_fa(issue_id)
+            self._win.toast(f"FA #{fa_id} 已删除", "success")
+        except Exception as e:
+            logger.exception("FA delete failed for fa_id=%s", fa_id)
+            QMessageBox.critical(self._win, "删除失败", f"FA 记录删除失败: {e}")
 
     def _handle_capa_record_added(self, data: dict) -> None:
         """CAPA 记录添加后回调。自动联动更新 Issue。"""

@@ -178,6 +178,9 @@ class _IssueTable(QTableWidget):
 class _FAPanel(QScrollArea):
     """FA 分析记录面板。"""
 
+    fa_edit_requested = Signal(int)     # fa_record.id
+    fa_delete_requested = Signal(int)   # fa_record.id
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWidgetResizable(True)
@@ -230,6 +233,23 @@ class _FAPanel(QScrollArea):
             method_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px;")
             header.addWidget(method_label)
             header.addStretch()
+
+            # 编辑/删除按钮
+            btn_edit = QPushButton("编辑")
+            btn_edit.setFixedSize(40, 22)
+            btn_edit.setStyleSheet(f"color: {BLUE}; border: 1px solid {SURFACE1}; border-radius: 4px; background: transparent; font-size: 11px;")
+            btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
+            rec_id = rec.id
+            btn_edit.clicked.connect(lambda checked, rid=rec_id: self.fa_edit_requested.emit(rid))
+            header.addWidget(btn_edit)
+
+            btn_del = QPushButton("删除")
+            btn_del.setFixedSize(40, 22)
+            btn_del.setStyleSheet(f"color: {RED}; border: 1px solid {SURFACE1}; border-radius: 4px; background: transparent; font-size: 11px;")
+            btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_del.clicked.connect(lambda checked, rid=rec_id: self.fa_delete_requested.emit(rid))
+            header.addWidget(btn_del)
+
             card_layout.addLayout(header)
 
             # 步骤标题
@@ -282,6 +302,8 @@ class IssueView(QWidget):
     issue_deleted = Signal(int)         # Issue 删除时发射 issue_id
     issue_selected = Signal(object)     # Issue 选中时发射 issue_id (int | None)
     fa_record_added = Signal(dict)      # FA 记录添加时发射 data: dict
+    fa_record_edited = Signal(dict)     # FA 记录编辑时发射 data: dict (含 id)
+    fa_record_deleted = Signal(int)     # FA 记录删除时发射 fa_id
     capa_record_added = Signal(dict)    # CAPA 记录添加时发射 data: dict
     capa_record_edited = Signal(dict)   # CAPA 记录编辑时发射 data: dict
     capa_record_deleted = Signal(int)   # CAPA 记录删除时发射 capa_id
@@ -376,6 +398,8 @@ class IssueView(QWidget):
         self._fa_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
         fa_col.addWidget(self._fa_label)
         self._fa_panel = _FAPanel()
+        self._fa_panel.fa_edit_requested.connect(self._open_edit_fa_dialog)
+        self._fa_panel.fa_delete_requested.connect(self._delete_fa_record)
         fa_col.addWidget(self._fa_panel, stretch=1)
 
         # 右: CAPA 面板
@@ -551,6 +575,37 @@ class IssueView(QWidget):
             data = dlg.get_data()
             data["issue_id"] = issue_id
             self.fa_record_added.emit(data)
+
+    def _open_edit_fa_dialog(self, fa_id: int) -> None:
+        """打开编辑 FA 步骤弹窗。"""
+        # 找到对应的 FARecord
+        record = None
+        for rec in self._fa_panel._records:
+            if rec.id == fa_id:
+                record = rec
+                break
+        if record is None:
+            return
+        existing_nos = [rec.step_no for rec in self._fa_panel._records]
+        dlg = FARecordDialog(existing_step_nos=existing_nos,
+                             technician_list=self._technician_list,
+                             edit_record=record, parent=self)
+        if dlg.exec():
+            data = dlg.get_data()
+            data["id"] = fa_id
+            data["issue_id"] = self.get_selected_issue_id()
+            self.fa_record_edited.emit(data)
+
+    def _delete_fa_record(self, fa_id: int) -> None:
+        """删除 FA 记录，需确认。"""
+        ret = QMessageBox.question(
+            self, "确认删除",
+            "确定要删除这条 FA 分析记录吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if ret == QMessageBox.StandardButton.Yes:
+            self.fa_record_deleted.emit(fa_id)
 
     def _open_capa_dialog(self) -> None:
         """打开新建 CAPA 弹窗。"""

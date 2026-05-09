@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from PySide6.QtWidgets import (
     QWidget,
 )
 
 from src.views.dialogs.base_dialog import _BaseDialog
+
+if TYPE_CHECKING:
+    from src.models.issue import FARecord
 
 
 class FARecordDialog(_BaseDialog):
@@ -31,8 +36,11 @@ class FARecordDialog(_BaseDialog):
         existing_step_nos: list[int] | None = None,
         technician_list: list | None = None,
         parent: QWidget | None = None,
+        edit_record: FARecord | None = None,
     ) -> None:
-        super().__init__("新建 FA 分析步骤", parent, width=500)
+        self._edit_record = edit_record
+        title = "编辑 FA 分析步骤" if edit_record else "新建 FA 分析步骤"
+        super().__init__(title, parent, width=500)
         step_nos = existing_step_nos or []
         next_step = max(step_nos, default=0) + 1
         self._technician_list = technician_list or []
@@ -75,6 +83,38 @@ class FARecordDialog(_BaseDialog):
             "分析人",
             placeholder="自由输入姓名",
         )
+
+        # 编辑模式：回填数据
+        if edit_record:
+            self._step_spin.setValue(edit_record.step_no)
+            self._title_edit.setText(edit_record.step_title or "")
+            self._description_edit.setPlainText(edit_record.description or "")
+            idx = self._method_combo.findText(edit_record.method or "")
+            if idx >= 0:
+                self._method_combo.setCurrentIndex(idx)
+            self._findings_edit.setPlainText(edit_record.findings or "")
+            self._cause_edit.setText(edit_record.possible_cause or "")
+            idx = self._cause_category_combo.findText(
+                edit_record.cause_category if edit_record.cause_category else "（无）"
+            )
+            if idx >= 0:
+                self._cause_category_combo.setCurrentIndex(idx)
+            idx = self._failure_mechanism_combo.findText(
+                edit_record.failure_mechanism if edit_record.failure_mechanism else "（无）"
+            )
+            if idx >= 0:
+                self._failure_mechanism_combo.setCurrentIndex(idx)
+            confirmed_labels = {0: "待定", 1: "确认", 2: "排除"}
+            idx = self._confirmed_combo.findText(
+                confirmed_labels.get(edit_record.confirmed, "待定")
+            )
+            if idx >= 0:
+                self._confirmed_combo.setCurrentIndex(idx)
+            if edit_record.analyst_id:
+                for t in self._technician_list:
+                    if t.id == edit_record.analyst_id:
+                        self._analyst_edit.setText(t.name)
+                        break
 
     # ── 公开 API ───────────────────────────────────────────────
 

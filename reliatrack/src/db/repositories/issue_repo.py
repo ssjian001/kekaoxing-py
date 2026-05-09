@@ -121,6 +121,19 @@ class IssueRepository(BaseRepository):
         row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
         return row[0] if row else 0
 
+    def update_fa_record(self, fa_id: int, **kwargs: object) -> None:
+        """更新单条 FA 记录。"""
+        safe = {k: v for k, v in kwargs.items() if k in self._FA_SAFE_COLS}
+        if not safe:
+            return
+        sets = ", ".join(f"[{k}] = ?" for k in safe)
+        vals = list(safe.values()) + [fa_id]
+        self._conn.execute(f"UPDATE [fa_records] SET {sets} WHERE id = ?", vals)
+
+    def delete_fa_record(self, fa_id: int) -> None:
+        """删除单条 FA 记录。"""
+        self._conn.execute("DELETE FROM [fa_records] WHERE id = ?", (fa_id,))
+
     # ── 附件 ──
 
     _ATTACH_COLS = ("id", "issue_id", "file_path", "file_type", "description", "created_at")
