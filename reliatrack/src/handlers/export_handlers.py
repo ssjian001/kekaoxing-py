@@ -43,13 +43,9 @@ class ExportHandlers:
     def _on_export(self) -> None:
         """导出数据。"""
         ctrl = self._win._ctrl
-        if not ctrl:
-            return
         if not ctrl or not ctrl.test_plan_service:
             return
-        if not ctrl.issue_service:
-            return
-        if not ctrl.sample_service:
+        if not ctrl.issue_service or not ctrl.sample_service:
             return
         # 构建项目列表供筛选
         project_list: list[tuple[int, str]] = []

@@ -33,12 +33,13 @@ def _ensure_dir(db_path: str) -> None:
     parent.mkdir(parents=True, exist_ok=True)
 
 
-def get_connection(db_path: str = "") -> apsw.Connection:
+def get_connection(db_path: str = "", *, health_check: bool = False) -> apsw.Connection:
     """获取数据库连接（单例模式）。
 
     Args:
         db_path: 数据库文件路径。为空时使用默认路径 ~/.reliatrack/reliatrack.db。
                  传入 ":memory:" 可创建内存数据库（用于测试）。
+        health_check: 是否在返回缓存连接前执行健康检查。
 
     Returns:
         apsw.Connection 实例。对相同 db_path 多次调用返回同一连接。
@@ -47,6 +48,20 @@ def get_connection(db_path: str = "") -> apsw.Connection:
         db_path = str(_DEFAULT_DB_DIR / _DEFAULT_DB_NAME)
 
     with _lock:
+        if db_path in _connections:
+            conn = _connections[db_path]
+            if health_check and db_path != ":memory:":
+                try:
+                    conn.execute("PRAGMA quick_check")
+                except apsw.Error:
+                    # 连接失效，关闭重建
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    del _connections[db_path]
+                    # fall through to recreate
+
         if db_path not in _connections:
             if db_path != ":memory:":
                 _ensure_dir(db_path)

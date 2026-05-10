@@ -897,8 +897,11 @@ def init_schema(conn: apsw.Connection) -> int:
     # 降级保护：数据库版本高于当前代码版本时拒绝启动
     if current > SCHEMA_VERSION:
         raise RuntimeError(
-            f"数据库 schema 版本 (v{current}) 高于当前代码版本 (v{SCHEMA_VERSION})。"
-            f"请升级 ReliaTrack 到最新版本。"
+            f"数据库 schema 版本 (v{current}) 高于当前代码版本 (v{SCHEMA_VERSION})。\n"
+            f"请按以下步骤操作：\n"
+            f"1. 备份数据库：cp ~/.reliatrack/reliatrack.db ~/.reliatrack/reliatrack.db.bak\n"
+            f"2. 升级 ReliaTrack 到最新版本\n"
+            f"3. 如无法升级，联系管理员获取匹配版本"
         )
 
     needs_migration = current < SCHEMA_VERSION
@@ -937,8 +940,16 @@ def init_schema(conn: apsw.Connection) -> int:
             raise
 
     # v11 需关闭 FK 约束后重建表，不能在事务内执行 PRAGMA foreign_keys
+    # SQLite DDL 不可回滚，但加 try/except 保证失败有日志记录
     if current < 11:
-        _migrate_v11(conn)
+        logger.info("Starting non-transactional migration v11...")
+        try:
+            _migrate_v11(conn)
+        except Exception:
+            logger.critical(
+                "Migration v11 failed — database may be in inconsistent state"
+            )
+            raise
 
     # v12 修补 samples.notes 列（CREATE TABLE 有但历史迁移链漏掉）
     if current < 12:
@@ -953,7 +964,14 @@ def init_schema(conn: apsw.Connection) -> int:
 
     # v13 修复 v11 丢失的索引 + schema_version 加 UNIQUE 约束
     if current < 13:
-        _migrate_v13(conn)
+        logger.info("Starting non-transactional migration v13...")
+        try:
+            _migrate_v13(conn)
+        except Exception:
+            logger.critical(
+                "Migration v13 failed — database may be in inconsistent state"
+            )
+            raise
 
     # v14: capa_records 加 assignee_name 列；test_tasks 安全补列
     if current < 14:

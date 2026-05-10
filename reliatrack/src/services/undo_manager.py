@@ -199,6 +199,11 @@ class SoftDeleteCommand(Command):
     """
 
     def __init__(self, repo: Any, entity_id: int, entity_name: str = "实体"):
+        if not (hasattr(repo, "soft_delete") and hasattr(repo, "restore")):
+            raise TypeError(
+                f"SoftDeleteCommand requires a repository with "
+                f"soft_delete/restore methods, got {type(repo).__name__}"
+            )
         self._repo = repo
         self._entity_id = entity_id
         self._entity_name = entity_name

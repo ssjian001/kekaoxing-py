@@ -8,10 +8,13 @@ from __future__ import annotations
 import sys
 import os
 
-# 确保项目根目录在 Python 路径中
+# 确保项目父目录在 Python 路径中（reliatrack/ 内的 src/ 通过此路径被找到）
+# 注意：只插入 reliatrack/ 的父目录，不会与 reliatrack/src/ 冲突
+# 但父级 xiangmu/kekaoxing-py/src/ 如存在同名模块会静默覆盖，勿在父级添加同名文件
 _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, os.path.dirname(_PROJECT_ROOT))
+_parent_dir = os.path.dirname(_PROJECT_ROOT)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -442,11 +445,13 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """处理窗口关闭事件 — 检查打开的 dialog 和未撤销操作。"""
-        # 检查是否有正在编辑的 dialog
+        # 检查是否有正在编辑的 dialog（排除 QMenu/QToolTip 等瞬时窗口）
         from PySide6.QtWidgets import QDialog
+        from PySide6.QtCore import Qt
         open_dialogs = [
             w for w in QApplication.topLevelWidgets()
             if isinstance(w, QDialog) and w.isVisible()
+            and w.windowModality() != Qt.WindowModality.NonModal
         ]
         if open_dialogs:
             reply = QMessageBox.question(
@@ -530,13 +535,26 @@ def main() -> int:
 
     sys.excepthook = _global_excepthook
 
+    # 捕获 Qt C++ 层的致命错误（段错误、paint 崩溃等）
+    from PySide6.QtCore import qInstallMessageHandler, QtMsgType
+    _log = logging.getLogger("reliatrack")
+
+    def _qt_message_handler(msg_type, context, message):
+        if msg_type in (QtMsgType.QtCriticalMsg, QtMsgType.QtFatalMsg):
+            _log.critical(
+                "Qt fatal: %s (file=%s, line=%d, func=%s)",
+                message, context.file, context.line, context.function,
+            )
+
+    qInstallMessageHandler(_qt_message_handler)
+
     # 单实例互斥 — 防止两个进程同时写同一 DB
     from PySide6.QtCore import QLockFile
     _lock = QLockFile(str(DEFAULT_BACKUPS_DIR.parent / ".reliatrack.lock"))
     if hasattr(_lock, 'setStaleLockTime'):
-        _lock.setStaleLockTime(0)
+        _lock.setStaleLockTime(30000)  # 30 秒过期，防止崩溃后锁文件永久残留
     else:
-        _lock.setStaleLockTimeout(0)
+        _lock.setStaleLockTimeout(30000)
     if not _lock.tryLock(100):
         from PySide6.QtWidgets import QMessageBox as _MB
         _MB.critical(None, "已运行", "ReliaTrack 已在运行中，请勿重复启动。")

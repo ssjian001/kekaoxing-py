@@ -88,11 +88,12 @@ class HolidayService:
         """批量导入节假日 [(date, name, source), ...]，返回插入行数。"""
         count = 0
         for d, n, s in records:
-            cursor = self._conn.execute(
+            self._conn.execute(
                 "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
                 (d, n, s),
             )
-            if cursor.getrowcount() > 0:
+            # changes() 返回最近一条 SQL 影响的行数，比 getrowcount() 更可靠
+            if self._conn.execute("SELECT changes()").fetchone()[0] > 0:
                 count += 1
         return count
 
