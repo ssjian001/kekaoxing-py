@@ -84,7 +84,7 @@ class ExportHandlers:
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             svc = ctrl.export_service
             if svc is None:
-                from src.services.export_service import ExportService
+                from src.services.export import ExportService
                 svc = ExportService(output_dir=export_dir)
             else:
                 svc._output_dir = Path(export_dir)
