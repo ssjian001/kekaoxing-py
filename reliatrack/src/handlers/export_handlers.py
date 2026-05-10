@@ -99,8 +99,8 @@ class ExportHandlers:
                     task_ids = [t.id for t in tasks if t.id is not None]
                     results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
                     tech_names = {}
-                    if ctrl.equipment:
-                        for tech in (ctrl.technician.list_all() if ctrl.technician else []):
+                    if ctrl.technicians:
+                        for tech in ctrl.technicians.list_all():
                             if tech.id is not None:
                                 tech_names[tech.id] = tech.name
                     path = svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
@@ -134,6 +134,7 @@ class ExportHandlers:
                     return
                 if "Excel" not in fmt:
                     self._win.toast("Issue 导出暂只支持 Excel 格式", "info")
+                    return
                 # Build fa_map and capa_map
                 fa_map = {}
                 capa_map = {}
@@ -151,6 +152,7 @@ class ExportHandlers:
                     return
                 if "Excel" not in fmt:
                     self._win.toast("样品导出暂只支持 Excel 格式", "info")
+                    return
                 path = svc.export_samples_excel(samples)
                 self._win.toast(f"已导出: {path}", "success")
 
@@ -162,6 +164,7 @@ class ExportHandlers:
                 plan = ctrl.test_plan_service.get_plan(plan_id)
                 tasks = ctrl.test_plan_service.get_tasks(plan_id)
                 if not plan:
+                    self._win.toast("未找到该测试计划", "info")
                     return
                 # word export: 综合报告支持 Word 格式
                 if "Word" in fmt:
