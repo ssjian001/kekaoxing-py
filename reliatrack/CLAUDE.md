@@ -95,7 +95,7 @@ src/
 | 5 | 🔧 设备管理 | equipment_view.py + technician_view.py |
 | 6 | 📚 知识库 | knowledge_view.py |
 
-### Handler 层（9 个 Handler）
+### Handler 层（10 个 Handler）
 
 project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局快捷键在 main.py
 
@@ -154,9 +154,10 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 
-### Schema（v16）
+### Schema（v17）
 
-- **v16**：Issue 加 `dri_name`（DRI 责任人自由输入）；CAPA 加 `verifier_name`（验证人自由输入）；测试结果保存时可自动创建 Issue
+- **v16**：Issue 加 `dri_name`（DRI 责任人）；CAPA 加 `verifier_name`（验证人）；测试结果保存时可自动创建 Issue
+- **v17**：Issue 软删除试点（`is_deleted`/`deleted_at` 列，`list_all` 过滤，`soft_delete`/`restore`/`purge_old`）
 - **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up` 三字段；CAPA 编辑/删除 UI；`count_capa_done` SQL bug 修复（`'done'`→`'completed'`）
 - **v14**：capa_records 加 assignee_name（责任人自由文本）；test_tasks 安全补列（dependencies/accept_criteria 等 9 列，防旧库缺失）
 - **v13**：修复 v11 迁移丢失的 20 个索引，schema_version 加 UNIQUE，v12 迁移加事务包裹
@@ -194,10 +195,11 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- 共 **126 个 pytest 测试**，全量通过
+- 共 **177 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
-### 架构优化进展（2026-05-09）
+### 架构优化进展（2026-05-10 已全部完成）
 
-16/22 项已完成：P3/P7-P11/P14-P17/P18-P22。P4 跳过。
-剩余 6 项（P1/P2/P5/P6/P12/P13）已完成侦察，Phase 1-4 计划就绪，Phase 1 cron 已安排。
+**22/22 原始项 + D1-D8 深度审查 + D3 undo + P2 #4 跨层穿透重构**，全部完成。
+关键成果：export_service 拆 5 文件、Handler↔View 解耦、24 个 Handler 联动测试、软删除(Schema v17)、undo 接入 7 个删除操作、全局异常兜底、路径统一、跨层穿透归零。
+详见 `reliatrack-architecture-optimization` skill。
