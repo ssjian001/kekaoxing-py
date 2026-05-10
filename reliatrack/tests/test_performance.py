@@ -71,7 +71,7 @@ def bulk_create_plans_and_tasks(n_plans, tasks_per_plan):
                 category=['高低温', '振动', '盐雾', 'EMC', '机械冲击'][j % 5],
                 start_day=j * 3 + 1,
                 duration=3 + (j % 5),
-                priority=['high', 'medium', 'low'][j % 3],
+                priority=[1, 3, 5][j % 3],
                 status='completed' if i < n_plans//2 else 'in_progress' if j < tasks_per_plan//2 else 'pending',
             )
     return plan_ids

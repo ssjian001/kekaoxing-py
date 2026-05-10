@@ -494,7 +494,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=log_datefmt)
 
     # 持久化日志 — RotatingFileHandler（5×1MB）
-    from src.db.connection import DEFAULT_LOGS_DIR
+    from src.db.connection import DEFAULT_BACKUPS_DIR, DEFAULT_LOGS_DIR
     DEFAULT_LOGS_DIR.mkdir(parents=True, exist_ok=True)
     _fh = logging.handlers.RotatingFileHandler(
         DEFAULT_LOGS_DIR / "reliatrack.log",
