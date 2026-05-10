@@ -98,7 +98,7 @@ class AppController:
         logger = logging.getLogger("app_ctrl")
         logger.warning("[DEBUG AppController.initialize] db_path=%s", self._db_path)
         self._conn = get_connection(self._db_path)
-        logger.warning("[DEBUG AppController.initialize] conn=%s closed=%s id=%d", self._conn, self._conn.closed, id(self._conn))
+        logger.warning("[DEBUG AppController.initialize] conn_id=%d", id(self._conn))
         init_schema(self._conn)
         tables = [r[0] for r in self._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
         logger.warning("[DEBUG AppController.initialize] tables after init_schema: %s (count=%d)", tables, len(tables))

@@ -888,7 +888,7 @@ def init_schema(conn: apsw.Connection) -> int:
     import logging
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger("init_schema")
-    logger.warning("[DEBUG init_schema] START conn=%s closed=%s id=%d", conn, conn.closed, id(conn))
+    logger.warning("[DEBUG init_schema] START conn_id=%d", id(conn))
     # 确保迁移追踪表存在（DDL 自动提交，无需事务）
     conn.execute(
         """CREATE TABLE IF NOT EXISTS schema_version (
