@@ -560,8 +560,16 @@ def main() -> int:
         _MB.critical(None, "已运行", "ReliaTrack 已在运行中，请勿重复启动。")
         return 1
 
+    # 数据库路径：开发模式优先用项目下 data/reliatrack.db
+    # PyInstaller 打包模式（sys.frozen）用默认 ~/.reliatrack/reliatrack.db
+    _db_path = ""
+    if not getattr(sys, 'frozen', False):
+        _local_db = _P(__file__).parent / "data" / "reliatrack.db"
+        if _local_db.exists():
+            _db_path = str(_local_db)
+
     # 初始化 Controller（数据库 + 服务）
-    controller = AppController()
+    controller = AppController(_db_path)
     controller.initialize()
 
     # 启动主窗口
