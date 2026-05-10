@@ -286,3 +286,44 @@ class TestBackwardCompatibility:
         assert issue is not None
         assert issue.is_deleted == 1
         assert issue not in issue_svc.list_all()
+
+
+# ── SoftDeleteCommand undo 测试 ──────────────────────────────
+
+
+class TestSoftDeleteCommand:
+    """SoftDeleteCommand 通过 UndoManager 执行后可撤销/重做。"""
+
+    def test_soft_delete_command_undo(self, issue_repo, issue_svc):
+        from src.services.undo_manager import SoftDeleteCommand, UndoManager
+
+        iid = _create_issue(issue_svc, "Undoable")
+        mgr = UndoManager()
+
+        cmd = SoftDeleteCommand(issue_repo, iid, "Issue")
+        mgr.execute(cmd)
+
+        # 已软删除
+        assert issue_repo.get_by_id(iid).is_deleted == 1
+        assert len(issue_repo.list_all()) == 0
+
+        # 撤销
+        mgr.undo()
+        issue = issue_repo.get_by_id(iid)
+        assert issue.is_deleted == 0
+        assert len(issue_repo.list_all()) == 1
+
+    def test_soft_delete_command_redo(self, issue_repo, issue_svc):
+        from src.services.undo_manager import SoftDeleteCommand, UndoManager
+
+        iid = _create_issue(issue_svc, "Redoable")
+        mgr = UndoManager()
+
+        cmd = SoftDeleteCommand(issue_repo, iid, "Issue")
+        mgr.execute(cmd)
+        mgr.undo()
+
+        # 重做
+        mgr.redo()
+        assert issue_repo.get_by_id(iid).is_deleted == 1
+        assert len(issue_repo.list_all()) == 0

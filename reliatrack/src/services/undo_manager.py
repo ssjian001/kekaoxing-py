@@ -192,6 +192,28 @@ class DeleteEntityCommand(Command):
                 self._repo.insert(**self._saved_data)
 
 
+class SoftDeleteCommand(Command):
+    """软删除实体（标记 is_deleted=1），撤销时恢复。
+
+    适用于实现了 soft_delete() 和 restore() 方法的 Repository（如 IssueRepository）。
+    """
+
+    def __init__(self, repo: Any, entity_id: int, entity_name: str = "实体"):
+        self._repo = repo
+        self._entity_id = entity_id
+        self._entity_name = entity_name
+        self.description = f"删除{entity_name}"
+
+    def do(self) -> None:
+        self._repo.soft_delete(self._entity_id)
+
+    def undo(self) -> None:
+        self._repo.restore(self._entity_id)
+
+    def redo(self) -> None:
+        self.do()
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  UndoManager
 # ═══════════════════════════════════════════════════════════════════

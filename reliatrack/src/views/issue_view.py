@@ -587,7 +587,7 @@ class IssueView(QWidget):
         reply = QMessageBox.warning(
             self,
             "确认删除",
-            f"确定要删除 Issue #{issue.id} 「{issue.title}」吗？\n此操作不可撤销。",
+            f"确定要删除 Issue #{issue.id} 「{issue.title}」吗？\n可通过 Ctrl+Z 撤销。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )

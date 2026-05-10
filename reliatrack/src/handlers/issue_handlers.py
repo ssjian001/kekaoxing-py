@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import QMessageBox
 
 from src.db.repositories.issue_repo import FARecordRepository, CAPARecordRepository
-from src.services.undo_manager import DeleteEntityCommand
+from src.services.undo_manager import DeleteEntityCommand, SoftDeleteCommand
 from src.views.dialogs.attachment_dialog import AttachmentDialog
 
 if TYPE_CHECKING:
@@ -150,13 +150,14 @@ class IssueHandlers:
                 QMessageBox.warning(self._win, "归档失败", f"知识库归档失败: {e}")
 
     def _handle_issue_deleted(self, issue_id: int) -> None:
-        """Issue 删除后回调（软删除）。"""
+        """Issue 删除后回调（软删除，可撤销）。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            ctrl.issue_service.soft_delete(issue_id)
-            self._win.toast(f"Issue #{issue_id} 已删除", "success")
+            cmd = SoftDeleteCommand(ctrl.issue_service._repo, issue_id, "Issue")
+            ctrl.undo_manager.execute(cmd)
+            self._win.toast(f"Issue #{issue_id} 已删除（可撤销）", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
             QMessageBox.critical(self._win, "删除失败", f"Issue 删除失败: {e}")
