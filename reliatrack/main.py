@@ -311,6 +311,78 @@ class MainWindow(QMainWindow):
     def _schedule_refresh(self, entity_type: str = "all") -> None:
         self._refresh_handlers._schedule_refresh(entity_type)
 
+    # ── 公共方法：供 Handler 访问（替代直接访问私有属性） ──────────
+
+    def get_project_filter_id(self) -> int | None:
+        """获取当前项目筛选 combo 的 currentData（None = 全部项目）。"""
+        return self._project_filter_combo.currentData()
+
+    def get_plan_filter_id(self) -> int | None:
+        """获取当前计划筛选 combo 的 currentData（None = 全部计划）。
+
+        若 combo 禁用则返回 None。
+        """
+        if not self._plan_filter_combo.isEnabled():
+            return None
+        return self._plan_filter_combo.currentData()
+
+    def refresh_project_filter(self, projects: list, current_id: int | None = None) -> None:
+        """刷新项目筛选 combo 选项（不触发信号）。
+
+        Args:
+            projects: 项目列表（需有 .name 和 .id 属性）
+            current_id: 之前选中的项目 ID，用于恢复
+        """
+        combo = self._project_filter_combo
+        combo.blockSignals(True)
+        _current = current_id if current_id is not None else combo.currentData()
+        combo.clear()
+        combo.addItem("📋 全部项目", None)
+        for p in projects:
+            combo.addItem(f"📁 {p.name}", p.id)
+        # 恢复之前选中的筛选项
+        for i in range(combo.count()):
+            if combo.itemData(i) == _current:
+                combo.setCurrentIndex(i)
+                break
+        combo.blockSignals(False)
+
+    def schedule_throttled_refresh(self, entity_type: str = "all") -> None:
+        """节流刷新：合并短时间内的多次变更，100ms 后统一刷新。
+
+        供 handler 调用，替代直接操作 _pending_entity_types + _refresh_timer。
+        """
+        if entity_type == "all":
+            self._pending_entity_types.clear()
+        else:
+            self._pending_entity_types.add(entity_type)
+            # plan 变更也影响 dashboard
+            self._pending_entity_types.add("plan")
+        self._refresh_timer.start()
+
+    def get_pending_entity_types(self) -> set[str]:
+        """获取当前待刷新的实体类型集合。"""
+        return self._pending_entity_types
+
+    def clear_pending_entities(self) -> None:
+        """清空待刷新实体类型集合。"""
+        self._pending_entity_types.clear()
+
+    def update_undo_redo(
+        self,
+        can_undo: bool = False,
+        can_redo: bool = False,
+        undo_desc: str = "",
+        redo_desc: str = "",
+    ) -> None:
+        """更新撤销/重做按钮状态（供 handler 调用）。"""
+        self._act_undo.setEnabled(can_undo)
+        self._act_redo.setEnabled(can_redo)
+        if undo_desc:
+            self._act_undo.setText(f"↩ {undo_desc}")
+        if redo_desc:
+            self._act_redo.setText(f"↪ {redo_desc}")
+
     def _on_project_filter_changed(self, index: int) -> None:
         """项目筛选变化时：更新计划 combo + 刷新所有视图。"""
         # 更新计划 combo

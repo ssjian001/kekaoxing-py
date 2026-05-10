@@ -324,6 +324,35 @@ class IssueView(QWidget):
         self._all_issues: list[Issue] = []  # 筛选前的完整列表缓存
         self._setup_ui()
 
+    # ── 公共方法：上下文数据注入 ────────────────────────────────────
+
+    def set_context_data(
+        self,
+        *,
+        projects: list | None = None,
+        default_project_id: int | None = None,
+        samples: list | None = None,
+        knowledge: list | None = None,
+        tasks: list | None = None,
+        technicians: list | None = None,
+    ) -> None:
+        """批量设置 Issue 弹窗所需的上下文数据（替代直接写入私有属性）。
+
+        仅传入非 None 的参数会被更新。
+        """
+        if projects is not None:
+            self._project_list = projects
+        if default_project_id is not None:
+            self._default_project_id = default_project_id
+        if samples is not None:
+            self._sample_list = samples
+        if knowledge is not None:
+            self._knowledge_list = knowledge
+        if tasks is not None:
+            self._task_list = tasks
+        if technicians is not None:
+            self._technician_list = technicians
+
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*VIEW_MARGINS)

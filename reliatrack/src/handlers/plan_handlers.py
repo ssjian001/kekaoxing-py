@@ -264,7 +264,7 @@ class PlanHandlers:
         if not ctrl or not ctrl.test_plan_service or not ctrl.project_service:
             return
         project_list = ctrl.project_service.list_all()
-        default_project_id = self._win._project_filter_combo.currentData()
+        default_project_id = self._win.get_project_filter_id()
         dlg = PlanEditDialog(
             plan=None,
             project_list=project_list,

@@ -253,6 +253,31 @@ class TestPlanView(QWidget):
         self._plan_ids = plan_ids or list(range(len(plan_names)))
         self._plan_combo.blockSignals(False)
 
+    def set_plans_and_restore(
+        self, plan_names: list[str], plan_ids: list[int], restore_id: int | None = None,
+    ) -> None:
+        """设置计划下拉选项并恢复选中（不触发信号）。
+
+        Args:
+            plan_names: 计划名称列表
+            plan_ids: 计划 ID 列表（与 plan_names 等长）
+            restore_id: 要恢复选中的计划 ID，None 则选第一项
+        """
+        self._plan_combo.blockSignals(True)
+        self._plan_combo.clear()
+        for i, name in enumerate(plan_names):
+            self._plan_combo.addItem(name)
+            self._plan_combo.setItemData(i, name, Qt.ItemDataRole.ToolTipRole)
+        self._plan_ids = plan_ids or list(range(len(plan_names)))
+        # 恢复选中
+        restore_idx = 0
+        if plan_ids and restore_id is not None:
+            if restore_id in plan_ids:
+                restore_idx = plan_ids.index(restore_id)
+        if self._plan_combo.count() > 0:
+            self._plan_combo.setCurrentIndex(restore_idx)
+        self._plan_combo.blockSignals(False)
+
     def get_selected_plan_id(self) -> int | None:
         """获取当前选中计划的 ID。"""
         idx = self._plan_combo.currentIndex()

@@ -26,32 +26,24 @@ class RefreshHandlers:
 
     def _get_filter_project_id(self):
         """获取当前筛选的项目 ID（None = 全部）。"""
-        return self._win._project_filter_combo.currentData()
+        return self._win.get_project_filter_id()
 
     def _get_filter_plan_id(self):
         """获取当前筛选的测试计划 ID（None = 全部）。"""
-        if not self._win._plan_filter_combo.isEnabled():
-            return None
-        return self._win._plan_filter_combo.currentData()
+        return self._win.get_plan_filter_id()
 
     def _refresh_all(self) -> None:
         """全量刷新（项目筛选切换时调用）。"""
-        self._win._pending_entity_types.clear()
+        self._win.clear_pending_entities()
         self._do_refresh_all()
 
     def _schedule_refresh(self, entity_type: str = "all") -> None:
         """节流刷新：合并短时间内的多次变更，100ms 后统一刷新。"""
-        if entity_type == "all":
-            self._win._pending_entity_types.clear()
-        else:
-            self._win._pending_entity_types.add(entity_type)
-            # plan 变更也影响 dashboard
-            self._win._pending_entity_types.add("plan")
-        self._win._refresh_timer.start()
+        self._win.schedule_throttled_refresh(entity_type)
 
     def _do_refresh_all(self) -> None:
         """执行实际的刷新操作。"""
-        pending = self._win._pending_entity_types
+        pending = self._win.get_pending_entity_types()
         need_all = not pending or "all" in pending
 
         if need_all:
@@ -123,19 +115,8 @@ class RefreshHandlers:
             return
         all_projects = self._cached_projects if self._cached_projects is not None else ctrl.project_service.list_all()
         self._win._project_view.refresh(all_projects)
-        # 更新筛选 combo 选项（不触发信号）
-        self._win._project_filter_combo.blockSignals(True)
-        current_filter = self._win._project_filter_combo.currentData()
-        self._win._project_filter_combo.clear()
-        self._win._project_filter_combo.addItem("📋 全部项目", None)
-        for p in all_projects:
-            self._win._project_filter_combo.addItem(f"📁 {p.name}", p.id)
-        # 恢复之前选中的筛选项
-        for i in range(self._win._project_filter_combo.count()):
-            if self._win._project_filter_combo.itemData(i) == current_filter:
-                self._win._project_filter_combo.setCurrentIndex(i)
-                break
-        self._win._project_filter_combo.blockSignals(False)
+        # 更新筛选 combo 选项（通过公共方法，不触发信号）
+        self._win.refresh_project_filter(all_projects)
 
     def _collect_dashboard_data(self, ctrl, filter_project_id, filter_plan_id) -> "DashboardData | None":
         """从 DB 收集仪表盘所需全部数据，返回 DashboardData 或 None。"""
@@ -165,12 +146,16 @@ class RefreshHandlers:
         else:
             all_samples = []
 
-        # ── 注入 Issue 弹窗上下文 ──
-        self._win._issue_view._project_list = all_projects
-        self._win._issue_view._default_project_id = filter_project_id
-        self._win._issue_view._sample_list = all_samples
+        # ── 注入 Issue 弹窗上下文（通过公共方法）──
+        self._win._issue_view.set_context_data(
+            projects=all_projects,
+            default_project_id=filter_project_id,
+            samples=all_samples,
+        )
         if ctrl.knowledge_service:
-            self._win._issue_view._knowledge_list = ctrl.knowledge_service.list_all()
+            self._win._issue_view.set_context_data(
+                knowledge=ctrl.knowledge_service.list_all(),
+            )
 
         if not (ctrl.test_tasks and ctrl.issues):
             return None
@@ -192,7 +177,7 @@ class RefreshHandlers:
             filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id)
         else:
             filtered_tasks = ctrl.test_tasks.list_all()
-        self._win._issue_view._task_list = filtered_tasks
+        self._win._issue_view.set_context_data(tasks=filtered_tasks)
 
         # ── Issue ──
         issues_list = (
@@ -333,22 +318,16 @@ class RefreshHandlers:
             )
         else:
             all_plans = ctrl.test_plan_service.list_all_plans()
-        # 保存当前选中索引
+        # 保存当前选中索引 — 通过公共方法设置 combo 并恢复选中
         current_plan_id = self._win._test_plan_view.get_selected_plan_id()
-        self._win._test_plan_view._plan_combo.blockSignals(True)
-        self._win._test_plan_view.set_plans(
-            [p.name for p in all_plans],
-            [p.id for p in all_plans],  # type: ignore[misc]
-        )
+        plan_names = [p.name for p in all_plans]
+        plan_ids = [p.id for p in all_plans]  # type: ignore[misc]
+        target_id = current_plan_id if current_plan_id else (all_plans[0].id if all_plans else None)
+        self._win._test_plan_view.set_plans_and_restore(plan_names, plan_ids, target_id)
+        # 确定恢复后的索引
         restore_idx = 0
-        if all_plans:
-            # 尝试恢复之前选中的计划
-            target_id = current_plan_id if current_plan_id else all_plans[0].id
-            # 在新 plan_ids 中找到对应索引
-            new_ids = [p.id for p in all_plans]
-            restore_idx = new_ids.index(target_id) if target_id in new_ids else 0
-            self._win._test_plan_view._plan_combo.setCurrentIndex(restore_idx)
-        self._win._test_plan_view._plan_combo.blockSignals(False)
+        if target_id and target_id in plan_ids:
+            restore_idx = plan_ids.index(target_id)
         # 手动加载选中计划的任务
         if all_plans:
             plan_id = all_plans[restore_idx].id
@@ -404,9 +383,11 @@ class RefreshHandlers:
             all_issues = ctrl.issue_service.get_by_project(filter_project_id)
         else:
             all_issues = ctrl.issue_service.list_all()
-        # 注入技术员列表供 CAPA 弹窗使用
+        # 注入技术员列表供 CAPA 弹窗使用（通过公共方法）
         if ctrl.technician_service:
-            self._win._issue_view._technician_list = ctrl.technician_service.list_all()
+            self._win._issue_view.set_context_data(
+                technicians=ctrl.technician_service.list_all(),
+            )
         self._win._issue_view.refresh(all_issues)
 
     def _refresh_equipment(self) -> None:
@@ -438,9 +419,9 @@ class RefreshHandlers:
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.undo_manager:
             return
-        self._win._act_undo.setEnabled(ctrl.undo_manager.can_undo())
-        self._win._act_redo.setEnabled(ctrl.undo_manager.can_redo())
-        if ctrl.undo_manager.undo_description():
-            self._win._act_undo.setText(f"↩ {ctrl.undo_manager.undo_description()}")
-        if ctrl.undo_manager.redo_description():
-            self._win._act_redo.setText(f"↪ {ctrl.undo_manager.redo_description()}")
+        self._win.update_undo_redo(
+            can_undo=ctrl.undo_manager.can_undo(),
+            can_redo=ctrl.undo_manager.can_redo(),
+            undo_desc=ctrl.undo_manager.undo_description() or "",
+            redo_desc=ctrl.undo_manager.redo_description() or "",
+        )

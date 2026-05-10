@@ -56,7 +56,7 @@ class SampleHandlers:
 
         sample_svc = ctrl.sample_service
         project_list = ctrl.project_service.list_all() if ctrl.project_service else []
-        default_project_id = self._win._project_filter_combo.currentData()
+        default_project_id = self._win.get_project_filter_id()
         dlg = SampleCheckInDialog(
             parent=self._win,
             sn_exists_cb=lambda sn: sample_svc.get_by_sn(sn) is not None,
