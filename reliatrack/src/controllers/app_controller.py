@@ -93,15 +93,8 @@ class AppController:
 
     def initialize(self) -> None:
         """初始化数据库连接、schema 和所有 Repository/Service。"""
-        import sys
-        import logging
-        logger = logging.getLogger("app_ctrl")
-        logger.warning("[DEBUG AppController.initialize] db_path=%s", self._db_path)
         self._conn = get_connection(self._db_path)
-        logger.warning("[DEBUG AppController.initialize] conn_id=%d", id(self._conn))
         init_schema(self._conn)
-        tables = [r[0] for r in self._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
-        logger.warning("[DEBUG AppController.initialize] tables after init_schema: %s (count=%d)", tables, len(tables))
         # 启动时自动备份
         self._startup_backup()
         logger.info("Database initialized: %s", self._db_path)

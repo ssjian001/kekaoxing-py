@@ -884,11 +884,6 @@ def init_schema(conn: apsw.Connection) -> int:
     Returns:
         初始化后的 schema 版本号。
     """
-    import sys
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger("init_schema")
-    logger.warning("[DEBUG init_schema] START conn_id=%d", id(conn))
     # 确保迁移追踪表存在（DDL 自动提交，无需事务）
     conn.execute(
         """CREATE TABLE IF NOT EXISTS schema_version (
@@ -896,9 +891,6 @@ def init_schema(conn: apsw.Connection) -> int:
             applied_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         )"""
     )
-    tables_before = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
-    logger.warning("[DEBUG init_schema] tables after schema_version: %s (count=%d)", tables_before, len(tables_before))
-
     current = _get_current_version(conn)
 
     # 降级保护：数据库版本高于当前代码版本时拒绝启动
