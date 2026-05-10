@@ -101,6 +101,11 @@ src/
 
 E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。216 个 pytest 测试全通过。
 
+## CI/CD
+
+- **CI**：GitHub Actions，Python 3.11/3.12 matrix，自动测试
+- **Release**：推送 `v*` tag 触发 PyInstaller 打包，自动生成 Linux/Windows 独立可运行版本
+
 ## 技术栈
 
 - Python 3.11 + PySide6 + apsw (SQLite)
