@@ -150,12 +150,12 @@ class IssueHandlers:
                 QMessageBox.warning(self._win, "归档失败", f"知识库归档失败: {e}")
 
     def _handle_issue_deleted(self, issue_id: int) -> None:
-        """Issue 删除后回调。"""
+        """Issue 删除后回调（软删除）。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            ctrl.issue_service.delete(issue_id)
+            ctrl.issue_service.soft_delete(issue_id)
             self._win.toast(f"Issue #{issue_id} 已删除", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:

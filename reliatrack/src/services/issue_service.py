@@ -48,6 +48,22 @@ class IssueService:
             self._repo.delete_attachments(issue_id)
             self._repo.delete(issue_id)
 
+    def soft_delete(self, issue_id: int) -> None:
+        """软删除 Issue：标记为已删除但保留数据。"""
+        self._repo.soft_delete(issue_id)
+
+    def list_deleted(self) -> list[Issue]:
+        """查询所有已软删除的 Issue。"""
+        return self._repo.list_deleted()
+
+    def restore(self, issue_id: int) -> None:
+        """恢复已软删除的 Issue。"""
+        self._repo.restore(issue_id)
+
+    def purge_old(self, days: int = 30) -> int:
+        """彻底删除已软删除超过 N 天的 Issue，返回删除行数。"""
+        return self._repo.purge_old(days)
+
     def list_all(self) -> list[Issue]:
         return self._repo.list_all()
 

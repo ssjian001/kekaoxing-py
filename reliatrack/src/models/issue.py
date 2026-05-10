@@ -60,6 +60,8 @@ class Issue:
     resolution: str = ""
     failure_code: str = ""      # 失效代码 (如 GJB/Z 1391 编码)
     occurrence_count: int = 1   # 发生次数
+    is_deleted: int = 0         # 软删除标记: 0=正常, 1=已删除
+    deleted_at: str = ""        # 软删除时间
     created_at: str = ""
     updated_at: str = ""
 

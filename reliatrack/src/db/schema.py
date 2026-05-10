@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -861,6 +861,20 @@ def _migrate_v16(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (16)")
 
 
+def _migrate_v17(conn: apsw.Connection) -> None:
+    """v16→v17: issues 软删除字段 — is_deleted + deleted_at。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(issues)").fetchall()}
+    if "is_deleted" not in cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0"
+        )
+    if "deleted_at" not in cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN deleted_at TEXT NOT NULL DEFAULT ''"
+        )
+    conn.execute("INSERT INTO schema_version (version) VALUES (17)")
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -972,6 +986,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v16 failed")
+            raise
+
+    # v17: issues 软删除字段 — is_deleted + deleted_at
+    if current < 17:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v17(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v17 failed")
             raise
 
     return _get_current_version(conn)

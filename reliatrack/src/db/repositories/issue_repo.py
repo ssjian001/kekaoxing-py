@@ -23,6 +23,68 @@ class IssueRepository(BaseRepository):
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "issues", Issue)
 
+    def list_all(self, **filters: Any) -> list[Issue]:
+        """查询所有未删除的 Issue，支持可选过滤条件。
+
+        软删除的记录 (is_deleted=1) 会被自动过滤。
+        """
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        sql = f"SELECT {cols_sql} FROM [issues]"
+        params: list[Any] = []
+        # 始终过滤已软删除的记录
+        clauses = ["[is_deleted] = 0"]
+        for k, v in filters.items():
+            clauses.append(f"[{k}] = ?")
+            params.append(v)
+        sql += " WHERE " + " AND ".join(clauses)
+        try:
+            rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
+            return self._rows_to_models(rows, cols=cols_list)
+        except Exception:
+            logger.exception("list_all failed: table=issues, filters=%s", filters)
+            return []
+
+    # ── 软删除方法 ──
+
+    def soft_delete(self, issue_id: int) -> None:
+        """软删除 Issue：标记 is_deleted=1 并记录 deleted_at。"""
+        self._conn.execute(
+            "UPDATE [issues] SET is_deleted = 1, "
+            "deleted_at = datetime('now','localtime'), "
+            "updated_at = datetime('now','localtime') "
+            "WHERE id = ?",
+            (issue_id,),
+        )
+
+    def list_deleted(self) -> list[Issue]:
+        """查询所有已软删除的 Issue。"""
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        rows = self._conn.execute(
+            f"SELECT {cols_sql} FROM [issues] WHERE is_deleted = 1 ORDER BY id"
+        ).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
+
+    def restore(self, issue_id: int) -> None:
+        """恢复已软删除的 Issue。"""
+        self._conn.execute(
+            "UPDATE [issues] SET is_deleted = 0, deleted_at = '', "
+            "updated_at = datetime('now','localtime') "
+            "WHERE id = ?",
+            (issue_id,),
+        )
+
+    def purge_old(self, days: int = 30) -> int:
+        """彻底删除已软删除超过 N 天的 Issue，返回删除行数。"""
+        self._conn.execute(
+            "DELETE FROM [issues] WHERE is_deleted = 1 "
+            "AND deleted_at < datetime('now','localtime', ?)",
+            (f"-{days} days",),
+        )
+        row = self._conn.execute("SELECT changes()").fetchone()
+        return row[0] if row else 0
+
     def count_by_assignee(self, assignee_id: int) -> int:
         """统计指定指派人（技术员）的 Issue 数量。"""
         return self.count(assignee_id=assignee_id)
