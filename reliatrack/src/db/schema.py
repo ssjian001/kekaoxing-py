@@ -885,7 +885,10 @@ def init_schema(conn: apsw.Connection) -> int:
         初始化后的 schema 版本号。
     """
     import sys
-    print(f"[DEBUG init_schema] conn={conn}, closed={conn.closed}", file=sys.stderr)
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger("init_schema")
+    logger.warning("[DEBUG init_schema] START conn=%s closed=%s id=%d", conn, conn.closed, id(conn))
     # 确保迁移追踪表存在（DDL 自动提交，无需事务）
     conn.execute(
         """CREATE TABLE IF NOT EXISTS schema_version (
@@ -894,7 +897,7 @@ def init_schema(conn: apsw.Connection) -> int:
         )"""
     )
     tables_before = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
-    print(f"[DEBUG init_schema] tables after schema_version: {tables_before}", file=sys.stderr)
+    logger.warning("[DEBUG init_schema] tables after schema_version: %s (count=%d)", tables_before, len(tables_before))
 
     current = _get_current_version(conn)
 
