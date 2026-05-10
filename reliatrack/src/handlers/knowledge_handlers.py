@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import QMessageBox
 
 from src.handlers.crud_helpers import exec_crud
+from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
 
 if TYPE_CHECKING:
@@ -85,7 +86,7 @@ class KnowledgeHandlers:
         reply = QMessageBox.question(
             self._win,
             "确认删除",
-            f"确定要删除知识条目「{entry.failure_mode}」({entry.category}) 吗？\n此操作不可撤销。",
+            f"确定要删除知识条目「{entry.failure_mode}」({entry.category}) 吗？\n此操作可通过 Ctrl+Z 撤销。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -94,6 +95,7 @@ class KnowledgeHandlers:
         if entry.id is None:
             QMessageBox.warning(self._win, "删除失败", "Knowledge entry id is None")
             return
+        cmd = DeleteEntityCommand(ctrl.knowledge_service._repo, entry.id, "知识条目")
         exec_crud(
             win=self._win,
             action=ctrl.knowledge_service.delete,
@@ -102,4 +104,5 @@ class KnowledgeHandlers:
             entity="knowledge",
             error_title="删除失败",
             catch_value_error=True,
+            undo_command=cmd,
         )

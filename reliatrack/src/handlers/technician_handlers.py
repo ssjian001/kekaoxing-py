@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QMessageBox
 
 from src.handlers.crud_helpers import exec_crud
 from src.services.import_service import import_technicians
+from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
 
@@ -88,7 +89,7 @@ class TechnicianHandlers:
         reply = QMessageBox.question(
             self._win,
             "确认删除",
-            f"确定要删除技术员「{tech.name}」({tech.employee_id or tech.department}) 吗？\n此操作不可撤销。",
+            f"确定要删除技术员「{tech.name}」({tech.employee_id or tech.department}) 吗？\n此操作可通过 Ctrl+Z 撤销。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -97,6 +98,7 @@ class TechnicianHandlers:
         if tech.id is None:
             QMessageBox.warning(self._win, "删除失败", "技术员 ID 不能为空")
             return
+        cmd = DeleteEntityCommand(ctrl.technician_service._repo, tech.id, "技术员")
         exec_crud(
             win=self._win,
             action=ctrl.technician_service.delete,
@@ -105,6 +107,7 @@ class TechnicianHandlers:
             entity="technician",
             error_title="删除失败",
             catch_value_error=True,
+            undo_command=cmd,
         )
 
     def _on_technician_import(self) -> None:

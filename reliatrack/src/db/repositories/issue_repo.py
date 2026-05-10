@@ -326,3 +326,17 @@ class IssueRepository(BaseRepository):
             "DELETE FROM [issues] WHERE project_id = ?", (project_id,),
         )
         return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0
+
+
+class FARecordRepository(BaseRepository):
+    """FA 分析记录数据访问（用于 DeleteEntityCommand 撤销）。"""
+
+    def __init__(self, conn: apsw.Connection) -> None:
+        super().__init__(conn, "fa_records", FARecord)
+
+
+class CAPARecordRepository(BaseRepository):
+    """CAPA 记录数据访问（用于 DeleteEntityCommand 撤销）。"""
+
+    def __init__(self, conn: apsw.Connection) -> None:
+        super().__init__(conn, "capa_records", CAPARecord)

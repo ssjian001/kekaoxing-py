@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QMessageBox
 
 if TYPE_CHECKING:
     from main import MainWindow
+    from src.services.undo_manager import Command
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ def exec_crud(
     entity: str,
     error_title: str = "操作失败",
     catch_value_error: bool = False,
+    undo_command: Command | None = None,
 ) -> bool:
     """执行 CRUD 操作并统一处理 toast / notify / 异常弹窗。
 
@@ -49,6 +51,8 @@ def exec_crud(
         entity: 数据变更通知的实体名（如 "project", "issue"）。
         error_title: 异常弹窗标题。
         catch_value_error: 是否单独捕获 ValueError（用于 delete 操作）。
+        undo_command: 可选的撤销命令。如果提供，将通过 UndoManager 执行，
+            替代直接调用 action。
 
     Returns:
         True 表示操作成功，False 表示失败或被异常中断。
@@ -59,7 +63,11 @@ def exec_crud(
         action_kwargs = {}
 
     try:
-        action(*action_args, **action_kwargs)
+        ctrl = win._ctrl
+        if undo_command is not None and ctrl is not None:
+            ctrl.undo_manager.execute(undo_command)
+        else:
+            action(*action_args, **action_kwargs)
     except ValueError as e:
         if catch_value_error:
             QMessageBox.warning(win, error_title, str(e))
@@ -74,7 +82,8 @@ def exec_crud(
         return False
 
     win.toast(toast_msg, "success")
-    ctrl = win._ctrl
+    if ctrl is None:
+        ctrl = win._ctrl
     if ctrl:
         ctrl.notify_data_changed(entity)
     return True

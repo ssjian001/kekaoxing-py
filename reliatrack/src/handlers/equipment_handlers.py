@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QMessageBox
 
 from src.handlers.crud_helpers import exec_crud
 from src.services.import_service import import_equipment
+from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
 
@@ -88,7 +89,7 @@ class EquipmentHandlers:
         reply = QMessageBox.question(
             self._win,
             "确认删除",
-            f"确定要删除设备「{eq.name}」({eq.model}) 吗？\n此操作不可撤销。",
+            f"确定要删除设备「{eq.name}」({eq.model}) 吗？\n此操作可通过 Ctrl+Z 撤销。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -97,6 +98,7 @@ class EquipmentHandlers:
         if eq.id is None:
             QMessageBox.warning(self._win, "删除失败", "Equipment id is None")
             return
+        cmd = DeleteEntityCommand(ctrl.equipment_service._repo, eq.id, "设备")
         exec_crud(
             win=self._win,
             action=ctrl.equipment_service.delete,
@@ -105,6 +107,7 @@ class EquipmentHandlers:
             entity="equipment",
             error_title="删除失败",
             catch_value_error=True,
+            undo_command=cmd,
         )
 
     def _on_equipment_import(self) -> None:

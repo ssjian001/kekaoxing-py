@@ -20,7 +20,7 @@ from src.views.dialogs.task_dialog import TaskEditDialog
 from src.views.dialogs.test_result_dialog import TestResultDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.handlers.crud_helpers import exec_crud
-from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand
+from src.services.undo_manager import BatchScheduleCommand, DeleteEntityCommand, MoveTaskCommand
 
 if TYPE_CHECKING:
     from main import MainWindow
@@ -557,6 +557,7 @@ class PlanHandlers:
         if not ctrl or not ctrl.test_plan_service:
             return
         name = task.name
+        cmd = DeleteEntityCommand(ctrl.test_plan_service._task_repo, task.id, "任务")
         exec_crud(
             win=self._win,
             action=ctrl.test_plan_service.delete_task,
@@ -564,6 +565,7 @@ class PlanHandlers:
             toast_msg=f"任务「{name}」已删除",
             entity="task",
             error_title="删除失败",
+            undo_command=cmd,
         )
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:

@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
+from src.db.repositories.issue_repo import FARecordRepository, CAPARecordRepository
+from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.attachment_dialog import AttachmentDialog
 
 if TYPE_CHECKING:
@@ -226,7 +228,9 @@ class IssueHandlers:
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            ctrl.issue_service.delete_fa_record(fa_id)
+            fa_repo = FARecordRepository(ctrl.issue_service._repo._conn)
+            cmd = DeleteEntityCommand(fa_repo, fa_id, "FA 步骤")
+            ctrl.undo_manager.execute(cmd)
             # 刷新 FA 面板
             issue_id = self._win._issue_view.get_selected_issue_id()
             if issue_id is not None:
@@ -290,7 +294,9 @@ class IssueHandlers:
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            ctrl.issue_service.delete_capa_record(capa_id)
+            capa_repo = CAPARecordRepository(ctrl.issue_service._repo._conn)
+            cmd = DeleteEntityCommand(capa_repo, capa_id, "CAPA 措施")
+            ctrl.undo_manager.execute(cmd)
             # 刷新 CAPA 面板
             issue_id = self._win._issue_view.get_selected_issue_id()
             if issue_id is not None:
