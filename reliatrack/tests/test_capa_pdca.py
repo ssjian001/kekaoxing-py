@@ -103,6 +103,17 @@ class TestSchemaV15Migration:
         row = db_conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
         assert row[0] == SCHEMA_VERSION
 
+    def test_downgrade_protection(self, db_conn: apsw.Connection) -> None:
+        """数据库版本高于代码版本时应拒绝启动。"""
+        from src.db.schema import SCHEMA_VERSION, init_schema
+        # 注入一个虚假的未来版本
+        db_conn.execute(
+            "INSERT INTO schema_version (version) VALUES (?)",
+            (SCHEMA_VERSION + 1,),
+        )
+        with pytest.raises(RuntimeError, match="高于当前代码版本"):
+            init_schema(db_conn)
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  CAPA PDCA 字段 CRUD

@@ -879,6 +879,14 @@ def init_schema(conn: apsw.Connection) -> int:
     )
 
     current = _get_current_version(conn)
+
+    # 降级保护：数据库版本高于当前代码版本时拒绝启动
+    if current > SCHEMA_VERSION:
+        raise RuntimeError(
+            f"数据库 schema 版本 (v{current}) 高于当前代码版本 (v{SCHEMA_VERSION})。"
+            f"请升级 ReliaTrack 到最新版本。"
+        )
+
     needs_migration = current < SCHEMA_VERSION
 
     if not needs_migration:
