@@ -130,7 +130,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 排程引擎
 
-- `scheduler.py`（546行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
+- `scheduler.py`（571行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
 - `scheduler_service.py`：DB 读写封装，支持 skip_weekends/skip_holidays/lock_existing
 - 排程报告弹窗：`schedule_report_dialog.py`（利用率条形图+瓶颈+建议）
 
@@ -195,11 +195,11 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- 共 **177 个 pytest 测试**，全量通过
+- 共 **216 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### 架构优化进展（2026-05-10 已全部完成）
 
 **22/22 原始项 + D1-D8 深度审查 + D3 undo + P2 #4 跨层穿透重构**，全部完成。
-关键成果：export_service 拆 5 文件、Handler↔View 解耦、24 个 Handler 联动测试、软删除(Schema v17)、undo 接入 7 个删除操作、全局异常兜底、路径统一、跨层穿透归零。
+关键成果：export_service 拆 5 文件、Handler↔View 解耦、24 个 Handler 联动测试、软删除(Schema v17)、undo 接入 7 个删除操作、全局异常兜底、路径统一、跨层穿透归零。QLockFile 兼容 PySide6 (setStaleLockTime)。
 详见 `reliatrack-architecture-optimization` skill。

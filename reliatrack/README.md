@@ -44,7 +44,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   └── schema.py        # SQLite schema（v16）
+│   └── schema.py        # SQLite schema（v17）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -99,13 +99,13 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。177 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。216 个 pytest 测试全通过。
 
 ## 技术栈
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v16：Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
+- Schema v17：Issue 软删除试点；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可
