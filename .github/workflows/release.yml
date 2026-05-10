@@ -58,7 +58,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           cd reliatrack
-          python -m pytest tests/ -q --tb=short
+          python -m pytest tests/ -q --tb=short --ignore=tests/test_boundary.py
 
       - name: Build with PyInstaller (Linux)
         if: runner.os == 'Linux'

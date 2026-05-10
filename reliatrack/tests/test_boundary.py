@@ -26,6 +26,13 @@ def app():
 def ctrl(app):
     c = AppController(':memory:')
     c.initialize()
+    # 调试验证：确认表已创建
+    tables = [r[0] for r in c._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+    cols = c._conn.execute("PRAGMA table_info([projects])").fetchall()
+    import sys
+    print(f"[DEBUG test_boundary] tables={len(tables)} projects_cols={len(cols)}", file=sys.stderr)
+    if not cols:
+        print(f"[DEBUG test_boundary] tables={tables}", file=sys.stderr)
     return c
 
 
