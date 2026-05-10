@@ -26,7 +26,16 @@ def db_conn() -> apsw.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     init_schema(conn)
     yield conn
-    conn.close()
+    # 通过 close_connection 清理单例缓存，避免后续测试拿到已关闭连接
+    from src.db.connection import _connections, _lock
+    with _lock:
+        key = ":memory:"  # fixture 固定用 :memory:
+        if key in _connections:
+            try:
+                _connections[key].close()
+            except Exception:
+                pass
+            del _connections[key]
 
 
 @pytest.fixture()

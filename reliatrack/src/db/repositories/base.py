@@ -64,6 +64,8 @@ class BaseRepository:
         if self._columns_cache is not None:
             return self._columns_cache
         rows = self._conn.execute(f"PRAGMA table_info([{self._table}])").fetchall()
+        if not rows:
+            logger.warning("PRAGMA table_info(%s) returned empty — table may not exist", self._table)
         self._columns_cache = [str(r[1]) for r in rows]
         return self._columns_cache
 

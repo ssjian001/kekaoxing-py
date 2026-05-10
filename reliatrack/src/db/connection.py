@@ -50,17 +50,16 @@ def get_connection(db_path: str = "", *, health_check: bool = False) -> apsw.Con
     with _lock:
         if db_path in _connections:
             conn = _connections[db_path]
-            if health_check and db_path != ":memory:":
+            # 检查连接是否仍然可用（可能被外部 close()）
+            try:
+                conn.execute("SELECT 1")
+            except Exception:
                 try:
-                    conn.execute("PRAGMA quick_check")
-                except apsw.Error:
-                    # 连接失效，关闭重建
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
-                    del _connections[db_path]
-                    # fall through to recreate
+                    conn.close()
+                except Exception:
+                    pass
+                del _connections[db_path]
+                # fall through to recreate
 
         if db_path not in _connections:
             if db_path != ":memory:":

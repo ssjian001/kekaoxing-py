@@ -47,11 +47,37 @@ jobs:
           find src -name "*.py" -exec python -m py_compile {} +;
           echo "All files compile successfully"
 
+      - name: Verify init_schema
+        run: |
+          . .venv/bin/activate
+          cd reliatrack
+          python -c "
+          import apsw
+          from src.db.schema import init_schema
+          conn = apsw.Connection(':memory:')
+          conn.execute('PRAGMA foreign_keys=ON')
+          init_schema(conn)
+          tables = [r[0] for r in conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()]
+          print(f'Tables ({len(tables)}): {tables}')
+          cols = conn.execute('PRAGMA table_info([projects])').fetchall()
+          print(f'projects columns: {[r[1] for r in cols]}')
+          assert len(tables) >= 10, f'Expected >= 10 tables, got {len(tables)}'
+          assert len(cols) >= 5, f'projects should have >= 5 columns, got {len(cols)}'
+          print('init_schema OK')
+          "
+
       - name: Run pytest
         run: |
           . .venv/bin/activate
           cd reliatrack
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -v --tb=short
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -v --tb=long 2>&1 | tee pytest-output.txt
+
+      - name: Upload pytest output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-output-${{ matrix.python-version }}
+          path: reliatrack/pytest-output.txt
 
       - name: Run E2E tests (script mode)
         run: |
