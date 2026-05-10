@@ -19,6 +19,9 @@ import apsw
 
 _DEFAULT_DB_DIR = Path.home() / ".reliatrack"
 _DEFAULT_DB_NAME = "reliatrack.db"
+DEFAULT_ATTACHMENTS_DIR = _DEFAULT_DB_DIR / "attachments"
+DEFAULT_BACKUPS_DIR = _DEFAULT_DB_DIR / "backups"
+DEFAULT_LOGS_DIR = _DEFAULT_DB_DIR / "logs"
 
 _connections: dict[str, apsw.Connection] = {}
 _lock = threading.Lock()

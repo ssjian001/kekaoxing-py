@@ -63,7 +63,9 @@ class ExportHandlers:
 
         dlg = ExportDialog(parent=self._win, projects=project_list)
         if not dlg.exec():
+            dlg.deleteLater()
             return
+        dlg.deleteLater()
         data = dlg.get_data()
         content = data["content"]
         fmt = data["format"]

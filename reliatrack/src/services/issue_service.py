@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from src.db.repositories import IssueRepository
+from src.db.connection import DEFAULT_ATTACHMENTS_DIR
 from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
 
 logger = logging.getLogger(__name__)
@@ -119,7 +120,7 @@ class IssueService:
                     )
 
         # 2. 磁盘文件无 DB 记录
-        attach_dir = Path.home() / ".reliatrack" / "attachments"
+        attach_dir = DEFAULT_ATTACHMENTS_DIR
         if attach_dir.is_dir():
             db_paths = set()
             for issue in all_issues:

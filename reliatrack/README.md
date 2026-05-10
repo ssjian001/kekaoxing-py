@@ -31,7 +31,7 @@ python3 -m venv .venv
 | 1 | 项目管理 | 项目 CRUD + 搜索 |
 | 2 | 样品管理 | 样品池 + 出入库 + 批量导入 |
 | 3 | 测试计划 | 任务 CRUD + 自动排程 + 甘特图（序号标签+预计/实际切换）+ 结果矩阵（行列统计）+ 依赖弹出选择 |
-| 4 | Issue 追踪 | Issue(8列含解决方案) + FA/CAPA 左右排列 + 双向联动 + 8D 导出 + 筛选 |
+| 4 | Issue 追踪 | Issue(9列含DRI+解决方案) + FA/CAPA 左右排列 + 双向联动 + 8D 导出 + 筛选 |
 | 5 | 设备管理 | 设备 + 校准 + 技术员（子 Tab） |
 | 6 | 知识库 | 失效模式 CRUD |
 
@@ -44,7 +44,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   └── schema.py        # SQLite schema（v15）
+│   └── schema.py        # SQLite schema（v16）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -57,7 +57,7 @@ src/
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
 │       └── settings_repo.py
-├── handlers/        # 信号处理（9个Handler类，含export_handlers）
+├── handlers/        # 信号处理（10个Handler类，含export_handlers）
 │   ├── project_handlers.py
 │   ├── sample_handlers.py
 │   ├── plan_handlers.py
@@ -99,13 +99,13 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。115 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。126 个 pytest 测试全通过。
 
 ## 技术栈
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v15：FK ON DELETE SET NULL，显式列名（无 SELECT *），CAPA PDCA 扩展，QPainter 自绘图表
+- Schema v16：Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可

@@ -45,6 +45,7 @@ class KnowledgeHandlers:
                 entity="knowledge",
                 error_title="创建失败",
             )
+        dlg.deleteLater()
 
     def _on_knowledge_edit(self) -> None:
         """编辑选中的知识条目。"""
@@ -70,6 +71,7 @@ class KnowledgeHandlers:
                 entity="knowledge",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
 
     def _on_knowledge_delete(self) -> None:
         """删除选中的知识条目。"""

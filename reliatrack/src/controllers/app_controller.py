@@ -20,6 +20,7 @@ from typing import Callable
 import apsw
 
 from src.db.connection import get_connection, close_all_connections
+from src.db.connection import DEFAULT_ATTACHMENTS_DIR, DEFAULT_BACKUPS_DIR
 from src.db.schema import init_schema
 from src.db.repositories import (
     ProjectRepository,
@@ -54,7 +55,7 @@ logger = logging.getLogger(__name__)
 class AppController:
     """应用主控制器 — 所有业务逻辑的统一入口。"""
 
-    def __init__(self, db_path: str = "data/reliatrack.db") -> None:
+    def __init__(self, db_path: str = "") -> None:
         self._db_path = db_path
         self._conn: apsw.Connection | None = None
 
@@ -131,21 +132,23 @@ class AppController:
         logger.info("All services initialized")
 
     def _startup_backup(self) -> None:
-        """启动时自动备份数据库（每日一次）。"""
-        db_path = Path(self._db_path)
-        backup_dir = db_path.parent / "backups"
-        backup_dir.mkdir(parents=True, exist_ok=True)
+        """启动时自动备份数据库（每日一次，使用 apsw Backup API 保证一致性）。"""
+        db_path = Path(self._conn.db_filename("main") or self._db_path)
+        DEFAULT_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
         date_str = datetime.date.today().strftime("%Y%m%d")
-        backup_path = backup_dir / f"reliatrack_{date_str}.db"
+        backup_path = DEFAULT_BACKUPS_DIR / f"reliatrack_{date_str}.db"
         # 同一天只备份一次
         if not backup_path.exists():
             try:
-                shutil.copy2(db_path, backup_path)
+                dest = apsw.Connection(str(backup_path))
+                with self._conn.backup("main", dest, "main") as backup:
+                    backup.step()
+                dest.close()
                 logger.info("Backup created: %s", backup_path)
             except Exception:
                 logger.exception("Backup failed")
         # 清理超过30天的旧备份
-        for old in sorted(backup_dir.glob("reliatrack_*.db"))[:-30]:
+        for old in sorted(DEFAULT_BACKUPS_DIR.glob("reliatrack_*.db"))[:-30]:
             old.unlink(missing_ok=True)
 
     # ── 变更通知 ──

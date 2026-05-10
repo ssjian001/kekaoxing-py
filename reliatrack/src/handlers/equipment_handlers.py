@@ -48,6 +48,7 @@ class EquipmentHandlers:
                 entity="equipment",
                 error_title="创建失败",
             )
+        dlg.deleteLater()
 
     def _on_equipment_edit(self) -> None:
         """编辑选中的设备。"""
@@ -73,6 +74,7 @@ class EquipmentHandlers:
                 entity="equipment",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
 
     def _on_equipment_delete(self) -> None:
         """删除选中的设备。"""
@@ -147,5 +149,6 @@ class EquipmentHandlers:
             on_import=lambda rows: import_equipment(rows, ctrl.equipment_service),
         )
         dlg.exec()
+        dlg.deleteLater()
         if dlg.was_imported():
             ctrl.notify_data_changed("equipment")

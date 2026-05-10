@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.db.connection import DEFAULT_ATTACHMENTS_DIR
 from src.styles.theme import (
     BASE,
     SURFACE0,
@@ -33,8 +34,6 @@ from src.styles.theme import (
     SUBTEXT1,
     BLUE,
 )
-
-ATTACHMENT_DIR = Path.home() / '.reliatrack' / 'attachments'
 
 from src.views.dialogs.base_dialog import _BaseDialog
 
@@ -202,8 +201,8 @@ class AttachmentDialog(_BaseDialog):
                     file_type = "other"
 
                 # 复制文件到安全目录
-                ATTACHMENT_DIR.mkdir(parents=True, exist_ok=True)
-                dest_dir = ATTACHMENT_DIR / str(self._issue_id)
+                DEFAULT_ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
+                dest_dir = DEFAULT_ATTACHMENTS_DIR / str(self._issue_id)
                 dest_dir.mkdir(parents=True, exist_ok=True)
                 dest_path = dest_dir / Path(file_path).name
                 # 处理同名文件

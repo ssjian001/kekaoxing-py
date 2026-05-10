@@ -81,7 +81,9 @@ class PlanHandlers:
             parent=self._win,
         )
         if dlg.exec() != dlg.DialogCode.Accepted:
+            dlg.deleteLater()
             return
+        dlg.deleteLater()
 
         config = dlg.get_config()
         user_locked_days: dict[int, int] = {}
@@ -115,6 +117,7 @@ class PlanHandlers:
                 preview_data, config, parent=self._win,
             )
             result = preview_dlg.exec()
+            preview_dlg.deleteLater()
 
             if result == QDialog.DialogCode.Accepted:
                 # 用户确认应用
@@ -250,6 +253,7 @@ class PlanHandlers:
             result_msg_labels=("成功导入", "导入失败"),
         )
         dlg.exec()
+        dlg.deleteLater()
         if dlg.was_imported():
             self._win._ctrl.notify_data_changed("task")
             self._win.statusBar().showMessage("测试任务导入完成", 5000)
@@ -282,6 +286,7 @@ class PlanHandlers:
                 entity="plan",
                 error_title="创建失败",
             )
+        dlg.deleteLater()
 
     def _on_plan_edit(self) -> None:
         """编辑当前选中的测试计划。"""
@@ -316,6 +321,7 @@ class PlanHandlers:
                 entity="plan",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
 
     def _on_plan_changed(self, index: int) -> None:
         """切换测试计划时刷新任务列表。"""
@@ -397,6 +403,7 @@ class PlanHandlers:
                 entity="task",
                 error_title="创建失败",
             )
+        dlg.deleteLater()
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""
@@ -436,6 +443,7 @@ class PlanHandlers:
                 entity="task",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
 
     def _on_record_result(self) -> None:
         """录入测试结果 — 选中任务后打开结果录入弹窗。"""
@@ -541,6 +549,7 @@ class PlanHandlers:
             self._win._ctrl.notify_data_changed("task")
             if issue_count:
                 self._win._ctrl.notify_data_changed("issue")
+        dlg.deleteLater()
 
     def _on_task_delete(self, task) -> None:
         """删除测试任务。"""

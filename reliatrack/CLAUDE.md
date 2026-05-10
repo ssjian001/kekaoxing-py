@@ -74,7 +74,7 @@ src/
 │   ├── connection.py
 │   ├── repositories/   # 数据访问层（repo 模式）
 │   └── schema.py        # SQLite schema 初始化
-├── handlers/      # 信号处理器（9个 Handler 类，含 export_handlers）
+├── handlers/      # 信号处理器（10个 Handler 类，含 export_handlers）
 ├── models/        # 数据模型
 ├── services/      # 业务逻辑层
 ├── styles/        # QSS 样式
@@ -194,7 +194,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- 共 **115 个 pytest 测试**，全量通过
+- 共 **126 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### 架构优化进展（2026-05-09）

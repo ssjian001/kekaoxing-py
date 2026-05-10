@@ -422,10 +422,10 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=log_datefmt)
 
     # 持久化日志 — RotatingFileHandler（5×1MB）
-    _log_dir = _P("data/logs")
-    _log_dir.mkdir(parents=True, exist_ok=True)
+    from src.db.connection import DEFAULT_LOGS_DIR
+    DEFAULT_LOGS_DIR.mkdir(parents=True, exist_ok=True)
     _fh = logging.handlers.RotatingFileHandler(
-        _log_dir / "reliatrack.log",
+        DEFAULT_LOGS_DIR / "reliatrack.log",
         maxBytes=1_000_000,
         backupCount=5,
         encoding="utf-8",
@@ -439,9 +439,28 @@ def main() -> int:
     app.setOrganizationName("ReliaTrack")
     app.setStyleSheet(get_stylesheet())
 
+    # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗
+    _log = logging.getLogger("reliatrack")
+    _orig_excepthook = sys.excepthook
+
+    def _global_excepthook(exc_type, exc_val, exc_tb):
+        _log.critical("Uncaught exception", exc_info=(exc_type, exc_val, exc_tb))
+        try:
+            from PySide6.QtWidgets import QMessageBox as _MB
+            _MB.critical(
+                None, "意外错误",
+                f"程序发生未预期的错误：\n{exc_val}\n\n"
+                "详细信息已记录到日志。请尝试重启程序。",
+            )
+        except Exception:
+            pass  # 弹窗也失败时 fallback 到原始 hook
+        _orig_excepthook(exc_type, exc_val, exc_tb)
+
+    sys.excepthook = _global_excepthook
+
     # 单实例互斥 — 防止两个进程同时写同一 DB
     from PySide6.QtCore import QLockFile
-    _lock = QLockFile(os.path.join("data", ".reliatrack.lock"))
+    _lock = QLockFile(str(DEFAULT_BACKUPS_DIR.parent / ".reliatrack.lock"))
     _lock.setStaleLockTimeout(0)
     if not _lock.tryLock(100):
         from PySide6.QtWidgets import QMessageBox as _MB

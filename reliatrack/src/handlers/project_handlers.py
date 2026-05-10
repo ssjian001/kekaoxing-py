@@ -62,6 +62,7 @@ class ProjectHandlers:
                 entity="project",
                 error_title="创建失败",
             )
+        dlg.deleteLater()
 
     def _on_project_edit(self) -> None:
         """编辑选中的项目。"""
@@ -88,6 +89,7 @@ class ProjectHandlers:
                 entity="project",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
 
     def _on_project_delete(self) -> None:
         """删除选中的项目。"""

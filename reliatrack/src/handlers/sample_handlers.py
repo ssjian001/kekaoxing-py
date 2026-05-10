@@ -83,6 +83,7 @@ class SampleHandlers:
                 entity="sample",
                 error_title="入库失败",
             )
+        dlg.deleteLater()
 
     def _on_sample_checkout(self) -> None:
         """样品出库。"""
@@ -132,6 +133,7 @@ class SampleHandlers:
             except Exception as e:
                 logger.exception("出库失败")
                 QMessageBox.critical(self._win, "出库失败", f"保存失败: {e}")
+        dlg.deleteLater()
 
     def _on_sample_batch_import(self) -> None:
         """样品批量导入。"""
@@ -174,6 +176,7 @@ class SampleHandlers:
             required_fields=["sn"],
         )
         dlg.exec()
+        dlg.deleteLater()
         if dlg.was_imported():
             self._win._ctrl.notify_data_changed("sample")
             success, skip = dlg.import_result()
@@ -221,3 +224,4 @@ class SampleHandlers:
                 entity="sample",
                 error_title="更新失败",
             )
+        dlg.deleteLater()

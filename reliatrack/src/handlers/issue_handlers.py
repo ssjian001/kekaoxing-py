@@ -54,6 +54,7 @@ class IssueHandlers:
             parent=self._win,
         )
         dlg.exec()
+        dlg.deleteLater()
 
     def _handle_issue_saved(self, data: dict) -> None:
         """Issue 新建/编辑后回调。"""

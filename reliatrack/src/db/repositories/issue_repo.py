@@ -11,6 +11,7 @@ from typing import Any, cast
 from pathlib import Path
 
 from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
+from src.db.connection import DEFAULT_ATTACHMENTS_DIR
 from src.db.repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -173,7 +174,7 @@ class IssueRepository(BaseRepository):
 
     # 附件磁盘存储允许的基础目录
     _ALLOWED_ATTACH_DIRS: tuple[str, ...] = (
-        str(Path.home() / ".reliatrack"),
+        str(DEFAULT_ATTACHMENTS_DIR.parent),
     )
 
     @staticmethod
