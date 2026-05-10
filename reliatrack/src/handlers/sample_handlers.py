@@ -117,7 +117,7 @@ class SampleHandlers:
                 if sample.id is None:
                     raise ValueError("Sample id is None")
                 # 出库操作包裹在事务中，保证原子性
-                with ctrl.sample_service._repo.transaction():
+                with ctrl.sample_service.transaction():
                     ctrl.sample_service.add_transaction(
                         sample_id=sample.id,
                         txn_type="check_out",

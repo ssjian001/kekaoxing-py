@@ -63,7 +63,7 @@ class ProjectService:
 
     def cascade_stats(self, project_id: int) -> dict[str, int]:
         """返回项目级联删除影响的关联记录数。"""
-        conn = self._repo._conn
+        conn = self._repo.conn
         cur = conn.cursor()
         cur.execute(
             "SELECT COUNT(*) FROM test_plans WHERE project_id = ?", (project_id,)

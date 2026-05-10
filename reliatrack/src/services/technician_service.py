@@ -62,3 +62,27 @@ class TechnicianService:
 
     def list_all(self) -> list[Technician]:
         return self._repo.list_all()
+
+    def create_delete_command(self, technician_id: int):
+        """创建删除命令（含前置校验：检查任务/Issue/FA 引用）。"""
+        from src.services.undo_manager import DeleteEntityCommand
+        reasons: list[str] = []
+        if self._test_task_repo is not None:
+            task_count = self._test_task_repo.count_by_technician(technician_id)
+            if task_count > 0:
+                reasons.append(f"{task_count} 个测试任务")
+        if self._issue_repo is not None:
+            assignee_count = self._issue_repo.count_by_assignee(technician_id)
+            if assignee_count > 0:
+                reasons.append(f"{assignee_count} 个 Issue（指派人）")
+            analyst_count = self._issue_repo.count_by_analyst(technician_id)
+            if analyst_count > 0:
+                reasons.append(f"{analyst_count} 条 FA 分析记录")
+        if reasons:
+            detail = "、".join(reasons)
+            raise ValueError(f"技术员 #{technician_id} 仍被 {detail} 引用，请先解除分配")
+        return DeleteEntityCommand(self._repo, technician_id, "技术员")
+
+    def transaction(self):
+        """事务上下文管理器。"""
+        return self._repo.transaction()

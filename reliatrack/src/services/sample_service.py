@@ -103,3 +103,7 @@ class SampleService:
             字典列表，每个字典包含 sample_sn, batch_no, operator_name 等字段。
         """
         return self._repo.list_transactions(filter_sn, filter_type)
+
+    def transaction(self):
+        """事务上下文管理器。"""
+        return self._repo.transaction()

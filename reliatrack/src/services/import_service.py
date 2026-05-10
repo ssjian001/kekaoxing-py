@@ -39,7 +39,7 @@ def import_equipment(
     seen_this_batch: set[str] = set()
     result = ImportResult()
 
-    with service._repo.transaction():
+    with service.transaction():
         for idx, row in enumerate(rows, 1):
             name = row.get("name", "").strip()
             if not name:
@@ -86,7 +86,7 @@ def import_technicians(
     seen_this_batch: set[tuple[str, str]] = set()
     result = ImportResult()
 
-    with service._repo.transaction():
+    with service.transaction():
         for idx, row in enumerate(rows, 1):
             name = row.get("name", "").strip()
             if not name:

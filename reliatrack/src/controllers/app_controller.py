@@ -118,7 +118,7 @@ class AppController:
         self.equipment_service = EquipmentService(self.equipment)
         self.sample_service = SampleService(self.samples, self.test_results, self.issues)
         self.test_plan_service = TestPlanService(self.test_plans, self.test_tasks, self.test_results)
-        self.issue_service = IssueService(self.issues)
+        self.issue_service = IssueService(self.issues, conn=self._conn)
         self.settings_service = SettingsService(self.settings)
         self.holiday_service = HolidayService(self._conn)
         self.scheduler_service = SchedulerService(

@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QMessageBox
 
 from src.handlers.crud_helpers import exec_crud
 from src.services.import_service import import_technicians
-from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.technician_edit_dialog import TechnicianEditDialog
 
@@ -98,7 +97,7 @@ class TechnicianHandlers:
         if tech.id is None:
             QMessageBox.warning(self._win, "删除失败", "技术员 ID 不能为空")
             return
-        cmd = DeleteEntityCommand(ctrl.technician_service._repo, tech.id, "技术员")
+        cmd = ctrl.technician_service.create_delete_command(tech.id)
         exec_crud(
             win=self._win,
             action=ctrl.technician_service.delete,

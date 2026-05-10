@@ -131,3 +131,8 @@ class TestPlanService:
     def delete_result(self, result_id: int) -> None:
         """删除测试结果。"""
         self._result_repo.delete(result_id)
+
+    def create_task_delete_command(self, task_id: int):
+        """创建任务删除命令（可撤销）。"""
+        from src.services.undo_manager import DeleteEntityCommand
+        return DeleteEntityCommand(self._task_repo, task_id, "任务")

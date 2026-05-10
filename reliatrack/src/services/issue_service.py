@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 class IssueService:
     """Issue / FA 业务逻辑。"""
 
-    def __init__(self, repo: IssueRepository) -> None:
+    def __init__(self, repo: IssueRepository, conn=None) -> None:
         self._repo = repo
+        self._conn = conn or repo.conn
 
     # ── Issue CRUD ──
 
@@ -150,3 +151,24 @@ class IssueService:
                     result["orphan_files"].append(str(fp))
 
         return result
+
+    # ── Delete Command 工厂 ──
+
+    def create_delete_command(self, issue_id: int):
+        """创建 Issue 软删除命令（可撤销）。"""
+        from src.services.undo_manager import SoftDeleteCommand
+        return SoftDeleteCommand(self._repo, issue_id, "Issue")
+
+    def create_fa_delete_command(self, fa_id: int):
+        """创建 FA 记录删除命令（可撤销）。"""
+        from src.db.repositories.issue_repo import FARecordRepository
+        from src.services.undo_manager import DeleteEntityCommand
+        fa_repo = FARecordRepository(self._conn)
+        return DeleteEntityCommand(fa_repo, fa_id, "FA 步骤")
+
+    def create_capa_delete_command(self, capa_id: int):
+        """创建 CAPA 记录删除命令（可撤销）。"""
+        from src.db.repositories.issue_repo import CAPARecordRepository
+        from src.services.undo_manager import DeleteEntityCommand
+        capa_repo = CAPARecordRepository(self._conn)
+        return DeleteEntityCommand(capa_repo, capa_id, "CAPA 措施")

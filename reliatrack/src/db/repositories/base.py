@@ -30,6 +30,11 @@ class BaseRepository:
         self._model_class = model_class
         self._columns_cache: list[str] | None = None
 
+    @property
+    def conn(self) -> apsw.Connection:
+        """数据库连接（只读）。"""
+        return self._conn
+
     # ── 事务支持 ──
 
     def begin_transaction(self) -> None:

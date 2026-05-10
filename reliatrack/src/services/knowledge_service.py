@@ -39,3 +39,8 @@ class KnowledgeService:
     def search(self, keyword: str) -> list[KnowledgeEntry]:
         """按关键词搜索。"""
         return self._repo.search(keyword)
+
+    def create_delete_command(self, entry_id: int):
+        """创建删除命令。"""
+        from src.services.undo_manager import DeleteEntityCommand
+        return DeleteEntityCommand(self._repo, entry_id, "知识条目")

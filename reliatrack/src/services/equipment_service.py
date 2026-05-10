@@ -42,3 +42,17 @@ class EquipmentService:
 
     def list_all(self) -> list[Equipment]:
         return self._repo.list_all()
+
+    def create_delete_command(self, equipment_id: int):
+        """创建删除命令（含前置校验）。"""
+        from src.services.undo_manager import DeleteEntityCommand
+        ref_count = self._repo.count_task_references(equipment_id)
+        if ref_count > 0:
+            raise ValueError(
+                f"设备 #{equipment_id} 仍被 {ref_count} 个任务引用，请先解除分配"
+            )
+        return DeleteEntityCommand(self._repo, equipment_id, "设备")
+
+    def transaction(self):
+        """事务上下文管理器。"""
+        return self._repo.transaction()

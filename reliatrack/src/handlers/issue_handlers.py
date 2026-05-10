@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
 
-from src.db.repositories.issue_repo import FARecordRepository, CAPARecordRepository
-from src.services.undo_manager import DeleteEntityCommand, SoftDeleteCommand
+from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.attachment_dialog import AttachmentDialog
 
 if TYPE_CHECKING:
@@ -155,7 +154,7 @@ class IssueHandlers:
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            cmd = SoftDeleteCommand(ctrl.issue_service._repo, issue_id, "Issue")
+            cmd = ctrl.issue_service.create_delete_command(issue_id)
             ctrl.undo_manager.execute(cmd)
             self._win.toast(f"Issue #{issue_id} 已删除（可撤销）", "success")
             self._win._ctrl.notify_data_changed("issue")
@@ -229,8 +228,7 @@ class IssueHandlers:
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            fa_repo = FARecordRepository(ctrl.issue_service._repo._conn)
-            cmd = DeleteEntityCommand(fa_repo, fa_id, "FA 步骤")
+            cmd = ctrl.issue_service.create_fa_delete_command(fa_id)
             ctrl.undo_manager.execute(cmd)
             # 刷新 FA 面板
             issue_id = self._win._issue_view.get_selected_issue_id()
@@ -295,8 +293,7 @@ class IssueHandlers:
         if not ctrl or not ctrl.issue_service:
             return
         try:
-            capa_repo = CAPARecordRepository(ctrl.issue_service._repo._conn)
-            cmd = DeleteEntityCommand(capa_repo, capa_id, "CAPA 措施")
+            cmd = ctrl.issue_service.create_capa_delete_command(capa_id)
             ctrl.undo_manager.execute(cmd)
             # 刷新 CAPA 面板
             issue_id = self._win._issue_view.get_selected_issue_id()

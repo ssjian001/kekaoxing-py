@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import QMessageBox
 
 from src.handlers.crud_helpers import exec_crud
-from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.knowledge_edit_dialog import KnowledgeEditDialog
 
 if TYPE_CHECKING:
@@ -95,7 +94,7 @@ class KnowledgeHandlers:
         if entry.id is None:
             QMessageBox.warning(self._win, "删除失败", "Knowledge entry id is None")
             return
-        cmd = DeleteEntityCommand(ctrl.knowledge_service._repo, entry.id, "知识条目")
+        cmd = ctrl.knowledge_service.create_delete_command(entry.id)
         exec_crud(
             win=self._win,
             action=ctrl.knowledge_service.delete,
