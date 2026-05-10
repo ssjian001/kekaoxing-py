@@ -36,28 +36,28 @@ jobs:
         run: |
           python -m venv .venv
           . .venv/bin/activate
-          pip install --upgrade pip
-          pip install pyside6 apsw openpyxl python-docx reportlab lxml qrcode[pil]
+          pip install --upgrade pip pytest
+          pip install -r reliatrack/requirements.txt
 
       - name: Compile check
         run: |
           . .venv/bin/activate
           cd reliatrack
           python -m py_compile main.py
-          find src -name "*.py" -exec python -m py_compile {} \;
+          find src -name "*.py" -exec python -m py_compile {} +;
           echo "All files compile successfully"
 
-      - name: Run E2E tests
+      - name: Run pytest
+        run: |
+          . .venv/bin/activate
+          cd reliatrack
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -v --tb=short
+
+      - name: Run E2E tests (script mode)
         run: |
           . .venv/bin/activate
           cd reliatrack
           QT_QPA_PLATFORM=offscreen python tests/test_e2e_full.py
-
-      - name: Run boundary tests
-        run: |
-          . .venv/bin/activate
-          cd reliatrack
-          QT_QPA_PLATFORM=offscreen python tests/test_boundary.py
 
       - name: Run performance baseline
         run: |

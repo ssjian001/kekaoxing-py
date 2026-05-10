@@ -3,13 +3,32 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create GitHub Release"
+        default: "true"
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: Linux
+            ext: tar.gz
+            pyinstaller_args: ""
+          - os: windows-latest
+            platform: Windows
+            ext: zip
+            pyinstaller_args: "--console"
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -18,38 +37,98 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libxcb-xinerama0 libxcb-cursor0 \
-            fonts-noto-cjk-extra
-          pip install --upgrade pip pyinstaller
+            libegl1 libgl1 libglib2.0-0 \
+            libxcb-xinerama0 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 \
+            fonts-noto-cjk-extra fonts-droid-fallback
 
-      - name: Install app dependencies
-        run: pip install pyside6 apsw fpdf2 openpyxl python-docx qrcode[pil]
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          pip install -r reliatrack/requirements.txt
 
-      - name: Build with PyInstaller
+      - name: Run tests before build
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          cd reliatrack
+          python -m pytest tests/ -q --tb=short
+
+      - name: Build with PyInstaller (Linux)
+        if: runner.os == 'Linux'
         run: |
           cd reliatrack
           pyinstaller --noconfirm --onedir \
             --name ReliaTrack \
             --windowed \
-            --add-data "src:src" \
             --hidden-import apsw \
-            --hidden-import fpdf2 \
             --hidden-import openpyxl \
             --hidden-import docx \
-            --hidden-import qrcode \
+            --hidden-import reportlab \
+            --hidden-import reportlab.lib \
+            --hidden-import reportlab.pdfgen \
+            --hidden-import reportlab.platypus \
+            --hidden-import lxml \
+            --collect-all apsw \
+            --noupx \
             main.py
 
-      - name: Create tarball
+      - name: Build with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd reliatrack
+          pyinstaller --noconfirm --onedir `
+            --name ReliaTrack `
+            --windowed `
+            --hidden-import apsw `
+            --hidden-import openpyxl `
+            --hidden-import docx `
+            --hidden-import reportlab `
+            --hidden-import reportlab.lib `
+            --hidden-import reportlab.pdfgen `
+            --hidden-import reportlab.platypus `
+            --hidden-import lxml `
+            --collect-all apsw `
+            --noupx `
+            main.py
+
+      - name: Create archive (Linux)
+        if: runner.os == 'Linux'
         run: |
           cd reliatrack/dist
-          tar czf ReliaTrack-Linux-x86_64.tar.gz ReliaTrack/
+          tar czf ReliaTrack-${{ matrix.platform }}-x86_64.tar.gz ReliaTrack/
 
-      - name: Upload release asset
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd reliatrack/dist
+          Compress-Archive -Path ReliaTrack -DestinationPath ReliaTrack-${{ matrix.platform }}-x86_64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReliaTrack-${{ matrix.platform }}
+          path: reliatrack/dist/ReliaTrack-${{ matrix.platform }}-x86_64.${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release == 'true'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: reliatrack/dist/ReliaTrack-Linux-x86_64.tar.gz
+          files: artifacts/**/*
           generate_release_notes: true
+          draft: true

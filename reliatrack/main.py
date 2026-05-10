@@ -8,13 +8,13 @@ from __future__ import annotations
 import sys
 import os
 
-# 确保项目父目录在 Python 路径中（reliatrack/ 内的 src/ 通过此路径被找到）
-# 注意：只插入 reliatrack/ 的父目录，不会与 reliatrack/src/ 冲突
-# 但父级 xiangmu/kekaoxing-py/src/ 如存在同名模块会静默覆盖，勿在父级添加同名文件
-_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-_parent_dir = os.path.dirname(_PROJECT_ROOT)
-if _parent_dir not in sys.path:
-    sys.path.insert(0, _parent_dir)
+# 开发模式：将 reliatrack/ 的父目录加入 sys.path，使 from src.xxx 可用
+# PyInstaller 打包模式（sys.frozen）下跳过，因为依赖已内嵌
+if not getattr(sys, 'frozen', False):
+    _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    _parent_dir = os.path.dirname(_PROJECT_ROOT)
+    if _parent_dir not in sys.path:
+        sys.path.insert(0, _parent_dir)
 
 from PySide6.QtWidgets import (
     QApplication,
