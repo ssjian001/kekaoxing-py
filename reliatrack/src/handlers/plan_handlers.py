@@ -277,6 +277,7 @@ class PlanHandlers:
             # project_id 为 0 表示未选择项目，弹出提示
             if kwargs.get("project_id") == 0:
                 QMessageBox.warning(self._win, "校验失败", "请选择关联项目后再创建计划。")
+                dlg.deleteLater()
                 return
             exec_crud(
                 win=self._win,
@@ -310,6 +311,7 @@ class PlanHandlers:
             data = dlg.get_data()
             plan_id_from_data = data.get("id")
             if plan_id_from_data is None:
+                dlg.deleteLater()
                 return
             update_data = {k: v for k, v in data.items() if k != "id"}
             exec_crud(

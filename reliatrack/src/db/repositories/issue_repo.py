@@ -45,6 +45,11 @@ class IssueRepository(BaseRepository):
             logger.exception("list_all failed: table=issues, filters=%s", filters)
             return []
 
+    def count(self, **kwargs) -> int:
+        """计数 — 始终过滤 is_deleted=0。"""
+        kwargs["is_deleted"] = 0
+        return super().count(**kwargs)
+
     # ── 软删除方法 ──
 
     def soft_delete(self, issue_id: int) -> None:
@@ -102,34 +107,34 @@ class IssueRepository(BaseRepository):
         return row[0] if row else 0
 
     def count_by_severity(self, project_id: int | None = None) -> dict[str, int]:
-        """按严重度分组计数，可选按 project_id 过滤。"""
+        """按严重度分组计数，可选按 project_id 过滤。始终排除已软删除。"""
         if project_id:
             sql = (
                 "SELECT severity, COUNT(*) FROM [issues] "
-                "WHERE task_id IN (SELECT id FROM [test_tasks] "
+                "WHERE is_deleted = 0 AND task_id IN (SELECT id FROM [test_tasks] "
                 "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?)) "
                 "GROUP BY severity"
             )
             return dict(self._conn.execute(sql, (project_id,)).fetchall())
         return dict(
             self._conn.execute(
-                "SELECT severity, COUNT(*) FROM [issues] GROUP BY severity"
+                "SELECT severity, COUNT(*) FROM [issues] WHERE is_deleted = 0 GROUP BY severity"
             ).fetchall()
         )
 
     def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
-        """按状态分组计数，可选按 project_id 过滤。"""
+        """按状态分组计数，可选按 project_id 过滤。始终排除已软删除。"""
         if project_id:
             sql = (
                 "SELECT status, COUNT(*) FROM [issues] "
-                "WHERE task_id IN (SELECT id FROM [test_tasks] "
+                "WHERE is_deleted = 0 AND task_id IN (SELECT id FROM [test_tasks] "
                 "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?)) "
                 "GROUP BY status"
             )
             return dict(self._conn.execute(sql, (project_id,)).fetchall())
         return dict(
             self._conn.execute(
-                "SELECT status, COUNT(*) FROM [issues] GROUP BY status"
+                "SELECT status, COUNT(*) FROM [issues] WHERE is_deleted = 0 GROUP BY status"
             ).fetchall()
         )
 

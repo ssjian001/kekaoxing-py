@@ -296,6 +296,9 @@ class _FAPanel(QScrollArea):
             self._layout.addWidget(card)
 
 
+_UNSET = object()
+
+
 class IssueView(QWidget):
     """Issue 追踪视图 — Issue 列表 + FA 分析记录。"""
 
@@ -330,7 +333,7 @@ class IssueView(QWidget):
         self,
         *,
         projects: list | None = None,
-        default_project_id: int | None = None,
+        default_project_id: int | None = _UNSET,
         samples: list | None = None,
         knowledge: list | None = None,
         tasks: list | None = None,
@@ -338,11 +341,12 @@ class IssueView(QWidget):
     ) -> None:
         """批量设置 Issue 弹窗所需的上下文数据（替代直接写入私有属性）。
 
-        仅传入非 None 的参数会被更新。
+        仅传入非 None 的参数会被更新。default_project_id 使用哨兵对象，
+        允许显式传入 None 来清除默认项目。
         """
         if projects is not None:
             self._project_list = projects
-        if default_project_id is not None:
+        if default_project_id is not _UNSET:
             self._default_project_id = default_project_id
         if samples is not None:
             self._sample_list = samples
