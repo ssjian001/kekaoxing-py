@@ -125,8 +125,12 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 - `_TaskTable`：13 列（#, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成），# 列显示数据库 ID
 - `_GanttWidget`：支持预计/实际日期切换（`_task_day_range` 方法，RadioButton 切换），实际模式下禁拖拽；标签列 8pt 字体、260px 初始宽度、可拖拽分隔线调节、hover tooltip
-- `_ResultMatrixWidget`：任务×样品矩阵 + 行统计列（通过率）+ 列统计行 + 右下角总计
+- `_ResultMatrixWidget`：任务×样品矩阵 + 行统计列（通过率）+ 列统计行 + 右下角总计；3 种显示模式（符号/实测值/日期）+ 单元格 Tooltip
+- `_AnalysisWidget`（4th sub-tab "分析"）：按类别通过率柱条（QPainter 自绘 `_BarWidget`）+ 失效详情表（Top-N）+ 未关联 Issue 警告；每次 refresh 重建 widget 避免内存泄漏
+- 今日工作摘要栏：超期/到期/待录入计数（`_compute_summary` static method）
+- 一键总结报告按钮：`plan_handlers._on_summary_report` 组装数据 → `ExportService.export_to_word`
 - 依赖编辑：弹出式对话框（QListWidget checkbox 多选），按排程排序 + 当前任务参照行，保存时校验自依赖和 ID 有效性
+- 结果录入对话框（`test_result_dialog.py`）：pending 行蓝色高亮、判定准则显示、环境值批量填充、`_update_row_style()` 状态机
 
 ### 排程引擎
 
