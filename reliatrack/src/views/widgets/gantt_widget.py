@@ -14,6 +14,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
 )
+from src.styles.constants import FONT_FAMILY
 from src.models.test_plan import TestTask
 
 class _GanttWidget(QWidget):
@@ -134,7 +135,7 @@ class _GanttWidget(QWidget):
         self.update()
 
     def _chart_w(self) -> int:
-        return max(self.width() - self._LABEL_W, 100)
+        return max(self.width() - self._label_w, 100)
 
     def sizeHint(self) -> QSize:
         return QSize(800, max(200, len(self._tasks) * self._row_height + self._header_height + 20))
@@ -147,7 +148,7 @@ class _GanttWidget(QWidget):
         start_day, duration = self._task_day_range(task)
         if self._drag_task_idx == idx and not self._show_actual:
             start_day = self._drag_start_day + self._drag_preview_offset  # 拖拽预览
-        x = self._LABEL_W + start_day * self._day_w
+        x = self._label_w + start_day * self._day_w
         y = self._header_height + idx * self._row_height + (self._row_height - self._bar_height) / 2
         return QRect(int(x), int(y), int(duration * self._day_w), self._bar_height)
 
