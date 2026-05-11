@@ -250,6 +250,7 @@ class _AnalysisWidget(QWidget):
                 w.deleteLater()
             elif item.layout():
                 _AnalysisWidget._clear_sub_layout(item.layout())
+                item.layout().deleteLater()
 
     @staticmethod
     def _make_item(text: str, fg: str) -> QTableWidgetItem:
