@@ -6,6 +6,7 @@ from typing import Callable
 
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDateEdit,
     QFrame,
@@ -29,7 +30,7 @@ from src.styles.theme import (
 
 
 class _ResultRow(QFrame):
-    """单个样品的结果录入行。"""
+    """单个样品的结果录入行（双行布局）。"""
 
     _RESULT_OPTIONS = RESULT_OPTIONS
     _RESULT_COLORS: dict[str, str] = {
@@ -55,24 +56,28 @@ class _ResultRow(QFrame):
         self.setObjectName("_result_row")
         self._apply_normal_style()
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(8)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(8, 6, 8, 6)
+        outer.setSpacing(4)
+
+        # ── 第一行：样品 + 结果 + 日期 + 测试人 + 删除 ──
+        row1 = QHBoxLayout()
+        row1.setSpacing(6)
 
         # 样品信息
-        info_text = f"{sample.sn}"
+        info_text = sample.sn
         if sample.batch_no:
             info_text += f"  ({sample.batch_no})"
         if sample.spec:
             info_text += f"  {sample.spec}"
-        lbl = QLabel(info_text)
-        lbl.setMinimumWidth(160)
-        lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
-        layout.addWidget(lbl)
+        self._sample_lbl = QLabel(info_text)
+        self._sample_lbl.setMinimumWidth(120)
+        self._sample_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        row1.addWidget(self._sample_lbl)
 
         # 结果下拉
         self._combo = QComboBox()
-        self._combo.setFixedWidth(100)
+        self._combo.setFixedWidth(90)
         for label_text, value in self._RESULT_OPTIONS:
             self._combo.addItem(label_text, value)
         if existing_result:
@@ -80,11 +85,11 @@ class _ResultRow(QFrame):
             if idx >= 0:
                 self._combo.setCurrentIndex(idx)
         self._combo.currentIndexChanged.connect(self._on_result_changed)
-        layout.addWidget(self._combo)
+        row1.addWidget(self._combo)
 
         # 测试日期
         self._date_edit = QDateEdit()
-        self._date_edit.setFixedWidth(110)
+        self._date_edit.setFixedWidth(105)
         self._date_edit.setCalendarPopup(True)
         self._date_edit.setDisplayFormat("yyyy-MM-dd")
         if existing_result and existing_result.test_date:
@@ -95,83 +100,23 @@ class _ResultRow(QFrame):
                 self._date_edit.setDate(QDate.currentDate())
         else:
             self._date_edit.setDate(QDate.currentDate())
-        layout.addWidget(self._date_edit)
+        row1.addWidget(self._date_edit)
 
-        # 备注
-        self._notes_edit = QLineEdit()
-        self._notes_edit.setPlaceholderText("备注")
-        self._notes_edit.setFixedWidth(140)
-        self._notes_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
-        if existing_result and existing_result.notes:
-            self._notes_edit.setText(existing_result.notes)
-        layout.addWidget(self._notes_edit)
-
-        # 实测值
-        self._measured_edit = QLineEdit()
-        self._measured_edit.setPlaceholderText("实测值")
-        self._measured_edit.setFixedWidth(100)
-        self._measured_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
-        if existing_result and existing_result.measured_value:
-            self._measured_edit.setText(existing_result.measured_value)
-        layout.addWidget(self._measured_edit)
-
-        # 测试人（ISO 17025 可追溯性）
+        # 测试人
         self._tester_combo = QComboBox()
-        self._tester_combo.setFixedWidth(90)
+        self._tester_combo.setFixedWidth(80)
         self._tester_combo.addItem("（无）", None)
         if technician_list:
             for tech in technician_list:
                 if hasattr(tech, "id") and hasattr(tech, "name"):
                     self._tester_combo.addItem(tech.name, tech.id)
-        # 回显已有测试人
         if existing_result and existing_result.tester_id:
             idx = self._tester_combo.findData(existing_result.tester_id)
             if idx >= 0:
                 self._tester_combo.setCurrentIndex(idx)
-        layout.addWidget(self._tester_combo)
+        row1.addWidget(self._tester_combo)
 
-        # 环境参数（温度/湿度）
-        self._temp_edit = QLineEdit()
-        self._temp_edit.setPlaceholderText("温度°C")
-        self._temp_edit.setFixedWidth(72)
-        self._temp_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
-        self._humidity_edit = QLineEdit()
-        self._humidity_edit.setPlaceholderText("湿度%RH")
-        self._humidity_edit.setFixedWidth(72)
-        self._humidity_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
-
-        # 解析已有的 environment JSON
-        if existing_result and existing_result.environment:
-            import json
-            try:
-                env = json.loads(existing_result.environment)
-                if env.get("temperature"):
-                    self._temp_edit.setText(str(env["temperature"]))
-                if env.get("humidity"):
-                    self._humidity_edit.setText(str(env["humidity"]))
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-        layout.addWidget(self._temp_edit)
-        layout.addWidget(self._humidity_edit)
-
-        layout.addStretch()
-
-        # 自动创建 Issue 勾选框
-        from PySide6.QtWidgets import QCheckBox
-        self._create_issue_cb = QCheckBox("创建Issue")
-        self._create_issue_cb.setStyleSheet(
-            f"color: {RED}; font-size: 10px; border: none; background: transparent;"
-        )
-        self._create_issue_cb.setToolTip("不通过时自动创建 Issue 追踪")
-        layout.addWidget(self._create_issue_cb)
-
-        # 收集需要 disable/enable 的输入控件（不含 indicator 和 toggle 按钮）
-        self._widgets_to_toggle = [
-            self._combo, self._date_edit, self._notes_edit,
-            self._measured_edit, self._tester_combo,
-            self._temp_edit, self._humidity_edit, self._create_issue_cb,
-        ]
+        row1.addStretch()
 
         # 状态色块指示（新增行使用）
         self._indicator = QLabel()
@@ -190,15 +135,76 @@ class _ResultRow(QFrame):
         )
         self._toggle_btn.clicked.connect(self._on_toggle_delete)
 
-        # 根据是否有已有结果显示不同控件
         if self._result_id is not None:
-            # 已有结果：显示删除按钮，隐藏 indicator
-            layout.addWidget(self._toggle_btn)
+            row1.addWidget(self._toggle_btn)
             self._indicator.hide()
         else:
-            # 新增行：显示 indicator，隐藏删除按钮
-            layout.addWidget(self._indicator)
+            row1.addWidget(self._indicator)
             self._toggle_btn.hide()
+
+        outer.addLayout(row1)
+
+        # ── 第二行：备注 + 实测值 + 温湿度 + 创建Issue ──
+        row2 = QHBoxLayout()
+        row2.setSpacing(6)
+
+        self._notes_edit = QLineEdit()
+        self._notes_edit.setPlaceholderText("备注")
+        self._notes_edit.setMinimumWidth(60)
+        self._notes_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        if existing_result and existing_result.notes:
+            self._notes_edit.setText(existing_result.notes)
+        row2.addWidget(self._notes_edit, stretch=2)
+
+        self._measured_edit = QLineEdit()
+        self._measured_edit.setPlaceholderText("实测值")
+        self._measured_edit.setMinimumWidth(50)
+        self._measured_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        if existing_result and existing_result.measured_value:
+            self._measured_edit.setText(existing_result.measured_value)
+        row2.addWidget(self._measured_edit, stretch=1)
+
+        self._temp_edit = QLineEdit()
+        self._temp_edit.setPlaceholderText("温度°C")
+        self._temp_edit.setFixedWidth(68)
+        self._temp_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        row2.addWidget(self._temp_edit)
+
+        self._humidity_edit = QLineEdit()
+        self._humidity_edit.setPlaceholderText("湿度%RH")
+        self._humidity_edit.setFixedWidth(68)
+        self._humidity_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        row2.addWidget(self._humidity_edit)
+
+        # 解析已有的 environment JSON
+        if existing_result and existing_result.environment:
+            import json
+            try:
+                env = json.loads(existing_result.environment)
+                if env.get("temperature"):
+                    self._temp_edit.setText(str(env["temperature"]))
+                if env.get("humidity"):
+                    self._humidity_edit.setText(str(env["humidity"]))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        row2.addStretch()
+
+        self._create_issue_cb = QCheckBox("创建Issue")
+        self._create_issue_cb.setStyleSheet(
+            f"color: {RED}; font-size: 10px; border: none; background: transparent;"
+        )
+        self._create_issue_cb.setToolTip("不通过时自动创建 Issue 追踪")
+        row2.addWidget(self._create_issue_cb)
+
+        outer.addLayout(row2)
+
+        # 收集需要 disable/enable 的输入控件（不含 indicator 和 toggle 按钮）
+        self._widgets_to_toggle = [
+            self._combo, self._date_edit, self._notes_edit,
+            self._measured_edit, self._tester_combo,
+            self._temp_edit, self._humidity_edit, self._create_issue_cb,
+        ]
 
     def _apply_normal_style(self) -> None:
         self.setStyleSheet(f"""

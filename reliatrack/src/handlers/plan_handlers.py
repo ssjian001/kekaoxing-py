@@ -480,7 +480,7 @@ class PlanHandlers:
         # 用 QDialog 包装 TestResultDialog
         dlg = QDialog(self._win)
         dlg.setWindowTitle(f"录入结果 — {task.name}")
-        dlg.setMinimumSize(560, 400)
+        dlg.setMinimumSize(480, 400)
         dlg.setSizeGripEnabled(True)
         layout = QVBoxLayout(dlg)
         result_widget = TestResultDialog(
