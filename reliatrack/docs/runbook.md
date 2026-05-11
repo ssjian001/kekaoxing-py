@@ -16,17 +16,17 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack
 
 ## 备份
 
-应用内提供手动备份功能（文件 → 备份），备份文件存放在 `backups/` 目录。
+应用内提供手动备份功能（文件 → 备份），备份文件存放在 `data/backups/` 目录。
 
 手动备份：
 ```bash
-cp data/reliatrack.db "backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
+cp data/reliatrack.db "data/backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
 ```
 
 ## 测试
 
 ```bash
-# 单元测试（115 项）
+# 单元测试（216 项）
 .venv/bin/python -m pytest tests/ -v
 
 # E2E 测试（脚本式，需 offscreen 模式）
