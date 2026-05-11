@@ -52,9 +52,10 @@ class _ResultRow(QFrame):
         self._initial_result: str | None = existing_result.result if existing_result else None
         self._deleted = False
         self._on_change = on_change
+        self._needs_attention: bool = (existing_result is None)
 
         self.setObjectName("_result_row")
-        self._apply_normal_style()
+        self._update_row_style()
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(8, 6, 8, 6)
@@ -210,18 +211,17 @@ class _ResultRow(QFrame):
             self._temp_edit, self._humidity_edit, self._create_issue_cb,
         ]
 
-    def _apply_normal_style(self) -> None:
+    def _update_row_style(self) -> None:
+        """根据当前状态 (deleted > needs_attention > normal) 更新行样式。"""
+        if self._deleted:
+            bg, border = SURFACE2, RED
+        elif self._needs_attention:
+            bg, border = BLUE + "18", BLUE + "44"
+        else:
+            bg, border = SURFACE0, SURFACE1
         self.setStyleSheet(f"""
             QFrame#_result_row {{
-                background-color: {SURFACE0}; border: 1px solid {SURFACE1};
-                border-radius: 6px; padding: 4px;
-            }}
-        """)
-
-    def _apply_deleted_style(self) -> None:
-        self.setStyleSheet(f"""
-            QFrame#_result_row {{
-                background-color: {SURFACE2}; border: 1px solid {RED};
+                background-color: {bg}; border: 1px solid {border};
                 border-radius: 6px; padding: 4px;
             }}
         """)
@@ -235,6 +235,10 @@ class _ResultRow(QFrame):
 
     def _on_result_changed(self) -> None:
         self._update_indicator()
+        # 从 pending 首次改为有效结果 → 取消待测高亮
+        if self._needs_attention and self._combo.currentData() != "pending":
+            self._needs_attention = False
+            self._update_row_style()
         # 仅从非 fail 变为 fail 时自动勾选（编辑已有 fail 不重复触发）
         if self._combo.currentData() == "fail" and self._initial_result != "fail":
             self._create_issue_cb.setChecked(True)
@@ -244,16 +248,26 @@ class _ResultRow(QFrame):
         self._deleted = not self._deleted
         for w in self._widgets_to_toggle:
             w.setEnabled(not self._deleted)
+        self._update_row_style()
         if self._deleted:
-            self._apply_deleted_style()
             self._toggle_btn.setText("撤销")
             self._toggle_btn.setToolTip("撤销删除")
         else:
-            self._apply_normal_style()
             self._toggle_btn.setText("删除")
             self._toggle_btn.setToolTip("删除此结果")
         if self._on_change:
             self._on_change()
+
+    def set_env_if_empty(self, temp: str, humidity: str) -> None:
+        """仅当温湿度字段为空时填充（用于预填和"应用到全部"）。"""
+        if temp and not self._temp_edit.text().strip():
+            self._temp_edit.setText(temp)
+        if humidity and not self._humidity_edit.text().strip():
+            self._humidity_edit.setText(humidity)
+
+    def get_env_values(self) -> tuple[str, str]:
+        """返回当前温湿度文本。"""
+        return self._temp_edit.text().strip(), self._humidity_edit.text().strip()
 
     def get_data(self) -> dict:
         """返回录入数据。"""
@@ -315,6 +329,13 @@ class TestResultDialog(QWidget):
         header.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
         layout.addWidget(header)
 
+        # 判定准则（如有）
+        if self._task.accept_criteria:
+            criteria = QLabel(f"判定准则: {self._task.accept_criteria}")
+            criteria.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+            criteria.setWordWrap(True)
+            layout.addWidget(criteria)
+
         if not samples:
             lbl = QLabel("该任务未关联样品，请先在任务编辑中添加样品。")
             lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; padding: 16px;")
@@ -323,10 +344,23 @@ class TestResultDialog(QWidget):
             self._rows: list[_ResultRow] = []
             return
 
-        # 结果统计
+        # 结果统计 + 环境条件工具栏
+        stats_row = QHBoxLayout()
         self._stats_label = QLabel()
         self._stats_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px;")
-        layout.addWidget(self._stats_label)
+        stats_row.addWidget(self._stats_label, stretch=1)
+
+        self._btn_apply_env = QPushButton("温湿度应用到全部")
+        self._btn_apply_env.setFixedHeight(24)
+        self._btn_apply_env.setStyleSheet(
+            f"QPushButton {{ color: {SUBTEXT1}; font-size: 10px;"
+            f" border: 1px solid {SURFACE1}; background: {SURFACE0};"
+            f" border-radius: 4px; padding: 2px 8px; }}"
+            f"QPushButton:hover {{ background: {SURFACE1}; }}"
+        )
+        self._btn_apply_env.clicked.connect(self._apply_env_to_all)
+        stats_row.addWidget(self._btn_apply_env)
+        layout.addLayout(stats_row)
 
         # 分隔线
         sep = QFrame()
@@ -367,7 +401,41 @@ class TestResultDialog(QWidget):
         scroll.setWidget(container)
         layout.addWidget(scroll, stretch=1)
 
+        # 预填任务默认环境条件（仅未录入的行）
+        task_temp = self._task.temperature or ""
+        task_humid = self._task.humidity or ""
+        if task_temp or task_humid:
+            for row in self._rows:
+                if row._needs_attention:
+                    row.set_env_if_empty(task_temp, task_humid)
+
         self._update_stats()
+
+    def _apply_env_to_all(self) -> None:
+        """将首个非空行的温湿度值填充到所有空行。"""
+        # 优先用 task 默认值，fallback 到首个非空行
+        source_temp = self._task.temperature or ""
+        source_humid = self._task.humidity or ""
+        for row in self._rows:
+            if not row._deleted:
+                t, h = row.get_env_values()
+                if not source_temp and t:
+                    source_temp = t
+                if not source_humid and h:
+                    source_humid = h
+                break
+        if not source_temp and not source_humid:
+            return
+        count = 0
+        for row in self._rows:
+            if not row._deleted:
+                old_t, old_h = row.get_env_values()
+                row.set_env_if_empty(source_temp, source_humid)
+                new_t, new_h = row.get_env_values()
+                if (new_t, new_h) != (old_t, old_h):
+                    count += 1
+        if count:
+            self._btn_apply_env.setText(f"已应用 ({count})")
 
     def _update_stats(self) -> None:
         # 只统计未删除的行
