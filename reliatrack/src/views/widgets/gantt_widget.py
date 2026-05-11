@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Optional
 
 from PySide6.QtWidgets import QWidget, QScrollArea
 from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal
@@ -76,6 +75,7 @@ class _GanttWidget(QWidget):
 
         # 表头冻结：连接父级 QScrollArea 的垂直滚动
         self._scroll_v_offset: int = 0
+        self._scroll_area: QScrollArea | None = None
 
     def set_mode(self, actual: bool) -> None:
         """切换预计/实际显示模式。"""
@@ -119,6 +119,12 @@ class _GanttWidget(QWidget):
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
                   start_date: str = "",
                   equipment_map: dict[int, str] | None = None) -> None:
+        # 重置拖拽状态，防止 tasks 更新后索引越界
+        self._drag_task_idx = None
+        self._drag_preview_offset = 0
+        self._dragging_label = False
+        self._hover_task_idx = None
+
         self._tasks = tasks
         self._total_days = max(total_days, 1)
         self._start_date = start_date
@@ -133,9 +139,6 @@ class _GanttWidget(QWidget):
         self.setMinimumHeight(max(150, len(tasks) * self._row_height + self._header_height + 20))
         self.updateGeometry()
         self.update()
-
-    def _chart_w(self) -> int:
-        return max(self.width() - self._label_w, 100)
 
     def sizeHint(self) -> QSize:
         return QSize(800, max(200, len(self._tasks) * self._row_height + self._header_height + 20))
@@ -350,7 +353,6 @@ class _GanttWidget(QWidget):
         # ── 任务条 ──
         p.setFont(QFont(FONT_FAMILY, 8))
         # 画任务时排除冻结表头区域，防止任务内容覆盖表头
-        clip_rect = event.rect()
         if vy > 0:
             # 任务区域：表头下方
             task_region = QRegion(0, 0, w, vy) + QRegion(0, vy + self._header_height, w, self.height())
