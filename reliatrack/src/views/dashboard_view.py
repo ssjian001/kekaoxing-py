@@ -230,7 +230,7 @@ class _DonutChart(QFrame):
         super().__init__(parent)
         self._data: dict[str, int] = {}
         self.setStyleSheet(card_qss(16))
-        self.setMinimumHeight(180)
+        self.setMinimumHeight(120)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         add_shadow(self)
 
@@ -460,7 +460,9 @@ class _ProgressRing(QWidget):
         self._label = label
         self._color = color
         self._pct: float = 0.0
-        self.setFixedSize(100, 100)
+        self.setMinimumSize(80, 80)
+        self.setMaximumSize(120, 120)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def setPercent(self, pct: float) -> None:
         self._pct = max(0.0, min(100.0, pct))
@@ -725,7 +727,7 @@ class DashboardView(QWidget):
         # 进度环（居中）
         rings_card = QFrame()
         rings_card.setStyleSheet(card_qss(16))
-        rings_card.setFixedHeight(130)
+        rings_card.setFixedHeight(140)
         add_shadow(rings_card)
         rings_lay = QHBoxLayout(rings_card)
         rings_lay.setContentsMargins(16, 12, 16, 12)
