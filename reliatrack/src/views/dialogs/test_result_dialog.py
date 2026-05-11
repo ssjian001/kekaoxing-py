@@ -180,12 +180,13 @@ class _ResultRow(QFrame):
 
         # 删除/撤销按钮（已有结果行使用）
         self._toggle_btn = QPushButton("×")
-        self._toggle_btn.setFixedSize(24, 24)
+        self._toggle_btn.setFixedSize(28, 28)
         self._toggle_btn.setToolTip("删除此结果")
         self._toggle_btn.setStyleSheet(
-            f"QPushButton {{ color: {RED}; border: none; background: transparent;"
-            f" font-size: 14px; font-weight: bold; }}"
-            f"QPushButton:hover {{ background-color: {SURFACE1}; border-radius: 4px; }}"
+            f"QPushButton {{ color: {RED}; border: 1px solid {SURFACE1};"
+            f" background-color: {SURFACE1}; font-size: 15px; font-weight: bold;"
+            f" border-radius: 4px; }}"
+            f"QPushButton:hover {{ background-color: {RED}; color: white; }}"
         )
         self._toggle_btn.clicked.connect(self._on_toggle_delete)
 
