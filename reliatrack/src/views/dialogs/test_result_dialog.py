@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Callable
+
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QComboBox,
@@ -9,6 +11,8 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -38,19 +42,18 @@ class _ResultRow(QFrame):
         sample: Sample,
         existing_result: TestResult | None = None,
         technician_list: list | None = None,
+        on_change: Callable[[], None] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._sample = sample
         self._result_id: int | None = existing_result.id if existing_result else None
+        self._initial_result: str | None = existing_result.result if existing_result else None
+        self._deleted = False
+        self._on_change = on_change
 
         self.setObjectName("_result_row")
-        self.setStyleSheet(f"""
-            QFrame#_result_row {{
-                background-color: {SURFACE0}; border: 1px solid {SURFACE1};
-                border-radius: 6px; padding: 4px;
-            }}
-        """)
+        self._apply_normal_style()
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
@@ -95,7 +98,6 @@ class _ResultRow(QFrame):
         layout.addWidget(self._date_edit)
 
         # 备注
-        from PySide6.QtWidgets import QLineEdit
         self._notes_edit = QLineEdit()
         self._notes_edit.setPlaceholderText("备注")
         self._notes_edit.setFixedWidth(140)
@@ -162,16 +164,56 @@ class _ResultRow(QFrame):
             f"color: {RED}; font-size: 10px; border: none; background: transparent;"
         )
         self._create_issue_cb.setToolTip("不通过时自动创建 Issue 追踪")
-        # 仅 fail 时自动勾选
-        if existing_result and existing_result.result == "fail":
-            self._create_issue_cb.setChecked(True)
         layout.addWidget(self._create_issue_cb)
 
-        # 状态色块指示
+        # 收集需要 disable/enable 的输入控件（不含 indicator 和 toggle 按钮）
+        self._widgets_to_toggle = [
+            self._combo, self._date_edit, self._notes_edit,
+            self._measured_edit, self._tester_combo,
+            self._temp_edit, self._humidity_edit, self._create_issue_cb,
+        ]
+
+        # 状态色块指示（新增行使用）
         self._indicator = QLabel()
         self._indicator.setFixedSize(12, 12)
         self._update_indicator()
-        layout.addWidget(self._indicator)
+
+        # 删除/撤销按钮（已有结果行使用）
+        self._toggle_btn = QPushButton("×")
+        self._toggle_btn.setFixedSize(24, 24)
+        self._toggle_btn.setToolTip("删除此结果")
+        self._toggle_btn.setStyleSheet(
+            f"QPushButton {{ color: {RED}; border: none; background: transparent;"
+            f" font-size: 14px; font-weight: bold; }}"
+            f"QPushButton:hover {{ background-color: {SURFACE1}; border-radius: 4px; }}"
+        )
+        self._toggle_btn.clicked.connect(self._on_toggle_delete)
+
+        # 根据是否有已有结果显示不同控件
+        if self._result_id is not None:
+            # 已有结果：显示删除按钮，隐藏 indicator
+            layout.addWidget(self._toggle_btn)
+            self._indicator.hide()
+        else:
+            # 新增行：显示 indicator，隐藏删除按钮
+            layout.addWidget(self._indicator)
+            self._toggle_btn.hide()
+
+    def _apply_normal_style(self) -> None:
+        self.setStyleSheet(f"""
+            QFrame#_result_row {{
+                background-color: {SURFACE0}; border: 1px solid {SURFACE1};
+                border-radius: 6px; padding: 4px;
+            }}
+        """)
+
+    def _apply_deleted_style(self) -> None:
+        self.setStyleSheet(f"""
+            QFrame#_result_row {{
+                background-color: {SURFACE2}; border: 1px solid {RED};
+                border-radius: 6px; padding: 4px;
+            }}
+        """)
 
     def _update_indicator(self) -> None:
         result = self._combo.currentData()
@@ -182,9 +224,25 @@ class _ResultRow(QFrame):
 
     def _on_result_changed(self) -> None:
         self._update_indicator()
-        # 选 fail 时自动勾选创建 Issue
-        if self._combo.currentData() == "fail":
+        # 仅从非 fail 变为 fail 时自动勾选（编辑已有 fail 不重复触发）
+        if self._combo.currentData() == "fail" and self._initial_result != "fail":
             self._create_issue_cb.setChecked(True)
+
+    def _on_toggle_delete(self) -> None:
+        """切换删除/撤销状态。"""
+        self._deleted = not self._deleted
+        for w in self._widgets_to_toggle:
+            w.setEnabled(not self._deleted)
+        if self._deleted:
+            self._apply_deleted_style()
+            self._toggle_btn.setText("↩")
+            self._toggle_btn.setToolTip("撤销删除")
+        else:
+            self._apply_normal_style()
+            self._toggle_btn.setText("×")
+            self._toggle_btn.setToolTip("删除此结果")
+        if self._on_change:
+            self._on_change()
 
     def get_data(self) -> dict:
         """返回录入数据。"""
@@ -206,6 +264,8 @@ class _ResultRow(QFrame):
             "tester_id": self._tester_combo.currentData(),
             "create_issue": self._create_issue_cb.isChecked(),
             "sample_name": self._sample.sn,
+            "result_id": self._result_id,
+            "deleted": self._deleted,
         }
 
     @property
@@ -283,7 +343,12 @@ class TestResultDialog(QWidget):
         self._rows = []
         for sample in samples:
             existing = result_map.get(sample.id) if sample.id else None
-            row = _ResultRow(sample, existing, technician_list=self._technician_list, parent=self)
+            row = _ResultRow(
+                sample, existing,
+                technician_list=self._technician_list,
+                on_change=self._update_stats,
+                parent=self,
+            )
             self._rows.append(row)
             container_layout.addWidget(row)
 
@@ -294,21 +359,27 @@ class TestResultDialog(QWidget):
         self._update_stats()
 
     def _update_stats(self) -> None:
-        total = len(self._rows)
+        # 只统计未删除的行
+        active_rows = [r for r in self._rows if not r._deleted]
+        total = len(active_rows)
         if total == 0:
             self._stats_label.setText("")
             return
-        results = [r._combo.currentData() for r in self._rows]
+        results = [r._combo.currentData() for r in active_rows]
         pass_count = sum(1 for r in results if r == "pass")
         fail_count = sum(1 for r in results if r == "fail")
         cond_count = sum(1 for r in results if r == "conditional")
         pending_count = sum(1 for r in results if r == "pending")
         skip_count = sum(1 for r in results if r == "skip")
-        self._stats_label.setText(
+        deleted_count = sum(1 for r in self._rows if r._deleted)
+        text = (
             f"共 {total} 个样品: "
             f"通过 {pass_count}  |  不通过 {fail_count}  |  "
             f"条件通过 {cond_count}  |  待定 {pending_count}  |  跳过 {skip_count}"
         )
+        if deleted_count:
+            text += f"  (已标记删除 {deleted_count})"
+        self._stats_label.setText(text)
 
     def get_all_data(self) -> list[dict]:
         """返回所有样品的录入结果。"""

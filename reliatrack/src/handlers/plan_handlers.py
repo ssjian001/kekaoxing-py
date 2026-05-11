@@ -508,9 +508,15 @@ class PlanHandlers:
         if dlg.exec():
             all_data = result_widget.get_all_data()
             saved = 0
+            deleted_count = 0
             issue_count = 0
             for item in all_data:
-                if item["sample_id"] is not None:
+                # 已有结果标记删除 → 删除
+                if item.get("deleted") and item.get("result_id"):
+                    ctrl.test_plan_service.delete_result(item["result_id"])
+                    deleted_count += 1
+                # 未删除且有效样品 → 保存
+                elif item["sample_id"] is not None and not item.get("deleted"):
                     ctrl.test_plan_service.save_result(
                         task_id=task.id,
                         sample_id=item["sample_id"],
@@ -544,12 +550,14 @@ class PlanHandlers:
                                 issue_count += 1
                             except Exception:
                                 pass  # 不阻断主流程
-            msg = f"已保存 {saved} 条测试结果（任务: {task.name}）"
-            if issue_count:
-                msg += f"，自动创建 {issue_count} 条 Issue"
-            self._win.toast(msg, "success")
-            self._win._ctrl.notify_data_changed("task")
-            if issue_count:
+            if saved > 0 or deleted_count > 0:
+                msg = f"已保存 {saved} 条测试结果（任务: {task.name}）"
+                if deleted_count:
+                    msg += f"，删除 {deleted_count} 条"
+                if issue_count:
+                    msg += f"，自动创建 {issue_count} 条 Issue"
+                self._win.toast(msg, "success")
+                self._win._ctrl.notify_data_changed("task")
                 self._win._ctrl.notify_data_changed("issue")
         dlg.deleteLater()
 

@@ -30,12 +30,13 @@ from src.views.dialogs.base_dialog import _BaseDialog
 
 
 class _EquipmentRow(QWidget):
-    """单行设备容量配置 (设备名 + 并行数)。"""
+    """单行设备容量配置 (设备名 + 资产号 + 并行数)。"""
 
     def __init__(
         self,
         equipment_id: int,
         equipment_name: str,
+        asset_no: str = "",
         capacity: int = 1,
         parent: Optional[QWidget] = None,
     ) -> None:
@@ -47,10 +48,13 @@ class _EquipmentRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        # 设备名（只读）
-        name_label = QLabel(equipment_name)
+        # 设备名（含资产号）
+        display = f"{equipment_name} ({asset_no})" if asset_no else equipment_name
+        name_label = QLabel(display)
         name_label.setMinimumWidth(120)
+        name_label.setMaximumWidth(200)
         name_label.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
+        name_label.setToolTip(f"{equipment_name}\n{asset_no}" if asset_no else equipment_name)
         layout.addWidget(name_label)
 
         # 并行数
@@ -133,7 +137,7 @@ class ScheduleConfigDialog(_BaseDialog):
             eq_name = getattr(eq, "name", str(eq_id))
             if eq_id is None:
                 continue
-            row = _EquipmentRow(eq_id, eq_name, capacity=1)
+            row = _EquipmentRow(eq_id, eq_name, asset_no=getattr(eq, "asset_no", ""), capacity=1)
             self._equipment_rows.append(row)
             self._form.addRow(row)
 
