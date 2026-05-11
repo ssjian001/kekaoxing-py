@@ -194,7 +194,7 @@ class _ResultRow(QFrame):
         self._create_issue_cb = QCheckBox("创建Issue")
         self._create_issue_cb.setStyleSheet(
             f"QCheckBox {{ color: {RED}; font-size: 10px;"
-            f" border: 1px solid {RED}33; background: {RED}11;"
+            f" border: 1px solid {RED}88; background: {SURFACE0};"
             f" border-radius: 4px; padding: 2px 6px; }}"
             f"QCheckBox:checked {{ background: {RED}22; }}"
         )
