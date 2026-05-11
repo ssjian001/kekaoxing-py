@@ -364,11 +364,20 @@ class PlanHandlers:
                         sample_map[r.sample_id] = s.sn
                     seen_sids.add(r.sample_id)
 
+        # 获取 Issue 数据（用于失效模式分析）
+        issues = []
+        if ctrl.issue_service and plan.project_id:
+            issues = [
+                iss for iss in ctrl.issue_service.get_by_project(plan.project_id)
+                if not iss.is_deleted and iss.plan_id == plan_id
+            ]
+
         self._win._test_plan_view.refresh(
             tasks, max_day, technician_map, result_map,
             start_date=plan.start_date if plan else "",
             matrix_results=matrix_results,
             sample_map=sample_map,
+            issues=issues,
         )
 
     def _get_project_samples(self, ctrl: object) -> list:

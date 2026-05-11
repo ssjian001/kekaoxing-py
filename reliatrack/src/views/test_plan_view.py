@@ -199,6 +199,15 @@ class TestPlanView(QWidget):
         tab_matrix_layout.addWidget(self._result_matrix)
         self._sub_tabs.addTab(tab_matrix, "结果矩阵")
 
+        # Tab 4: 失效模式分析
+        from src.views.widgets.analysis_widget import _AnalysisWidget
+        tab_analysis = QWidget()
+        tab_analysis_layout = QVBoxLayout(tab_analysis)
+        tab_analysis_layout.setContentsMargins(0, 0, 0, 0)
+        self._analysis = _AnalysisWidget()
+        tab_analysis_layout.addWidget(self._analysis)
+        self._sub_tabs.addTab(tab_analysis, "分析")
+
         layout.addWidget(self._sub_tabs, stretch=1)
 
         # 全量任务缓存（用于搜索过滤）
@@ -240,6 +249,7 @@ class TestPlanView(QWidget):
         matrix_results: list | None = None,
         sample_map: dict[int, str] | None = None,
         equipment_map: dict[int, str] | None = None,
+        issues: list | None = None,
     ) -> None:
         self._all_tasks_for_filter = tasks
         self._last_technician_map = technician_map or {}
@@ -251,6 +261,8 @@ class TestPlanView(QWidget):
                               equipment_map=equipment_map)
         # 结果矩阵
         self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
+        # 失效模式分析
+        self._analysis.refresh(tasks, matrix_results or [], issues or [], sample_map)
         self._update_summary_bar()
 
     @staticmethod
