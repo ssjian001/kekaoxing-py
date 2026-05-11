@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtGui import QColor, QPainter
 
 from src.styles.theme import (
     BASE, SURFACE0, SURFACE1, SURFACE2,
@@ -62,24 +62,6 @@ class _AnalysisWidget(QWidget):
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._layout.addWidget(self._placeholder)
 
-        # 按类别统计区
-        self._category_section = QLabel()
-        self._category_section.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
-        self._category_layout = QVBoxLayout()
-        self._category_layout.setSpacing(4)
-
-        # 失效 Top-N 表格
-        self._fail_table = QTableWidget()
-        self._fail_table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=SURFACE0, header_bg=SURFACE0, header_text=TEXT,
-            font_size=11,
-        ))
-        self._fail_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._fail_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self._fail_table.verticalHeader().setVisible(False)
-        self._fail_table.horizontalHeader().setStretchLastSection(True)
-
         # 未关联 Issue 提示
         self._unlinked_label = QLabel()
         self._unlinked_label.setWordWrap(True)
@@ -104,7 +86,9 @@ class _AnalysisWidget(QWidget):
         while self._layout.count():
             item = self._layout.takeAt(0)
             if item.widget():
-                item.widget().setParent(None)
+                w = item.widget()
+                w.setParent(None)
+                w.deleteLater()
             elif item.layout():
                 # 递归清空子 layout
                 self._clear_layout(item.layout())
@@ -195,32 +179,36 @@ class _AnalysisWidget(QWidget):
             section2.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
             self._layout.addWidget(section2)
 
-            self._fail_table.setRowCount(len(fail_entries))
-            self._fail_table.setColumnCount(5)
-            self._fail_table.setHorizontalHeaderLabels(
-                ["任务", "类别", "样品", "Issue", "严重度"]
-            )
-            header = self._fail_table.horizontalHeader()
-            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            tbl = QTableWidget(len(fail_entries), 5)
+            tbl.setStyleSheet(TABLE_QSS.format(
+                bg=BASE, text=TEXT, gridline=SURFACE1,
+                alt_row=SURFACE0, header_bg=SURFACE0, header_text=TEXT,
+                font_size=11,
+            ))
+            tbl.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            tbl.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+            tbl.verticalHeader().setVisible(False)
+            tbl.setHorizontalHeaderLabels(["任务", "类别", "样品", "Issue", "严重度"])
+            tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
             for c in range(1, 5):
-                header.setSectionResizeMode(c, QHeaderView.ResizeMode.Fixed)
+                tbl.horizontalHeader().setSectionResizeMode(c, QHeaderView.ResizeMode.Fixed)
                 widths = [0, 80, 80, 60, 70]
-                self._fail_table.setColumnWidth(c, widths[c])
+                tbl.setColumnWidth(c, widths[c])
 
             for row, entry in enumerate(fail_entries):
-                self._fail_table.setItem(row, 0, self._make_item(entry["task_name"], TEXT))
-                self._fail_table.setItem(row, 1, self._make_item(entry["category"], SUBTEXT1))
-                self._fail_table.setItem(row, 2, self._make_item(entry["sample_sn"], SUBTEXT1))
+                tbl.setItem(row, 0, self._make_item(entry["task_name"], TEXT))
+                tbl.setItem(row, 1, self._make_item(entry["category"], SUBTEXT1))
+                tbl.setItem(row, 2, self._make_item(entry["sample_sn"], SUBTEXT1))
                 if entry["has_issue"]:
                     issue_item = self._make_item(f"{entry['issue_count']}个", GREEN)
                 else:
                     issue_item = self._make_item("未创建", RED)
-                self._fail_table.setItem(row, 3, issue_item)
+                tbl.setItem(row, 3, issue_item)
                 sev = entry["severity"]
                 sev_color = RED if sev == "critical" else YELLOW if sev == "major" else SUBTEXT1
-                self._fail_table.setItem(row, 4, self._make_item(sev, sev_color))
+                tbl.setItem(row, 4, self._make_item(sev, sev_color))
 
-            self._layout.addWidget(self._fail_table)
+            self._layout.addWidget(tbl)
 
         # ── 区块 3: 未关联 Issue ──
         unlinked = [e for e in fail_entries if not e["has_issue"]]
@@ -253,6 +241,8 @@ class _AnalysisWidget(QWidget):
         while layout.count():
             item = layout.takeAt(0)
             if item.widget():
-                item.widget().setParent(None)
+                w = item.widget()
+                w.setParent(None)
+                w.deleteLater()
             elif item.layout():
                 _AnalysisWidget._clear_layout(item.layout())

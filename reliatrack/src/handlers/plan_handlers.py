@@ -638,8 +638,7 @@ class PlanHandlers:
             path = svc.export_to_word(plan, tasks, issues, samples, results=results)
             self._win.toast(f"总结报告已导出: {path}", "success")
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).exception("Summary report export failed")
+            logger.exception("Summary report export failed")
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self._win, "导出失败", f"总结报告导出出错:\n{e}")
         finally:
