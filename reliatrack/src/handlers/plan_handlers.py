@@ -350,9 +350,25 @@ class PlanHandlers:
         if task_ids:
             result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
 
+        # 获取结果矩阵数据
+        matrix_results = []
+        sample_map: dict[int, str] = {}
+        if task_ids and ctrl.sample_service:
+            matrix_results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids)
+            # 从结果和任务中收集 sample_id → sn
+            seen_sids: set[int] = set()
+            for r in matrix_results:
+                if r.sample_id and r.sample_id not in seen_sids:
+                    s = ctrl.sample_service.get(r.sample_id)
+                    if s:
+                        sample_map[r.sample_id] = s.sn
+                    seen_sids.add(r.sample_id)
+
         self._win._test_plan_view.refresh(
             tasks, max_day, technician_map, result_map,
             start_date=plan.start_date if plan else "",
+            matrix_results=matrix_results,
+            sample_map=sample_map,
         )
 
     def _get_project_samples(self, ctrl: object) -> list:

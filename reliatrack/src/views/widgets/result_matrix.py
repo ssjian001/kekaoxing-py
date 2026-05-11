@@ -5,6 +5,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QPushButton, QButtonGroup,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -12,7 +13,7 @@ from PySide6.QtGui import QColor
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
-    GREEN, RED, YELLOW,
+    GREEN, RED, YELLOW, BLUE,
 )
 from src.styles.constants import FONT_FAMILY, TABLE_QSS
 
@@ -42,10 +43,41 @@ class _ResultMatrixWidget(QWidget):
         "skip": "S",
     }
 
+    _DISPLAY_MODES = ["符号", "实测值", "日期"]
+    _MODE_SYMBOL = 0
+    _MODE_MEASURED = 1
+    _MODE_DATE = 2
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
+
+        # 显示模式切换栏
+        mode_bar = QHBoxLayout()
+        mode_bar.setContentsMargins(4, 2, 4, 2)
+        mode_label = QLabel("显示模式:")
+        mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        mode_bar.addWidget(mode_label)
+        self._mode_group = QButtonGroup(self)
+        for i, label in enumerate(self._DISPLAY_MODES):
+            btn = QPushButton(label)
+            btn.setFixedHeight(22)
+            btn.setCheckable(True)
+            btn.setStyleSheet(
+                f"QPushButton {{ color: {SUBTEXT1}; font-size: 10px;"
+                f" border: 1px solid {SURFACE1}; background: {SURFACE0};"
+                f" border-radius: 3px; padding: 1px 8px; }}"
+                f"QPushButton:checked {{ color: {TEXT}; background: {BLUE}22;"
+                f" border-color: {BLUE}66; }}"
+                f"QPushButton:hover {{ background: {SURFACE1}; }}"
+            )
+            self._mode_group.addButton(btn, i)
+            mode_bar.addWidget(btn)
+        self._mode_group.button(0).setChecked(True)
+        self._mode_group.idClicked.connect(self._on_mode_changed)
+        mode_bar.addStretch()
+        self._layout.addLayout(mode_bar)
 
         self._table = QTableWidget()
         self._table.setStyleSheet(TABLE_QSS.format(
@@ -70,6 +102,11 @@ class _ResultMatrixWidget(QWidget):
         self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
         self._layout.addWidget(self._summary_label)
 
+        # 缓存数据用于模式切换时重新渲染
+        self._last_tasks: list[TestTask] = []
+        self._last_results: list = []
+        self._last_sample_map: dict[int, str] = {}
+
     def _make_stat_item(self, text: str, fg: str, bg_alpha: int = 30) -> QTableWidgetItem:
         """创建统计单元格。"""
         item = QTableWidgetItem(text)
@@ -82,6 +119,10 @@ class _ResultMatrixWidget(QWidget):
         font.setBold(True)
         item.setFont(font)
         return item
+
+    def _on_mode_changed(self, btn_id: int) -> None:
+        """切换显示模式后重新渲染。"""
+        self.refresh(self._last_tasks, self._last_results, self._last_sample_map)
 
     def refresh(
         self,
@@ -102,6 +143,13 @@ class _ResultMatrixWidget(QWidget):
             self._summary_label.setText("当前计划无测试任务")
             return
 
+        # 缓存数据
+        self._last_tasks = tasks
+        self._last_results = results
+        self._last_sample_map = sample_map
+
+        mode = self._mode_group.checkedId()
+
         # 收集所有涉及到的 sample_id（按 id 排序）
         sample_ids_set: set[int] = set()
         for r in results:
@@ -109,11 +157,11 @@ class _ResultMatrixWidget(QWidget):
                 sample_ids_set.add(r.sample_id)
         sample_ids = sorted(sample_ids_set)
 
-        # 构建 (task_id, sample_id) → result 的映射
-        lookup: dict[tuple[int, int], str] = {}
+        # 构建 (task_id, sample_id) → TestResult 的映射
+        lookup: dict[tuple[int, int], object] = {}
         for r in results:
             if r.task_id and r.sample_id is not None:
-                lookup[(r.task_id, r.sample_id)] = r.result
+                lookup[(r.task_id, r.sample_id)] = r
 
         # 建立行映射 task_id → row
         task_id_to_row: dict[int, int] = {}
@@ -140,7 +188,8 @@ class _ResultMatrixWidget(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for c in range(1, cols):
             header.setSectionResizeMode(c, QHeaderView.ResizeMode.Fixed)
-            self._table.setColumnWidth(c, 55 if c < cols - 1 else 70)
+            col_w = 70 if c < cols - 1 else 70  # 稍宽以容纳实测值和日期
+            self._table.setColumnWidth(c, col_w)
 
         # 列统计累加器
         col_stats: dict[int, dict[str, int]] = {sid: {"pass": 0, "total": 0} for sid in sample_ids}
@@ -162,9 +211,17 @@ class _ResultMatrixWidget(QWidget):
             for col_idx, sid in enumerate(sample_ids):
                 col = col_idx + 1
                 tid = task.id
-                result_str = lookup.get((tid, sid), "") if tid else ""
-                label = self._RESULT_LABELS.get(result_str, "")
+                result_obj = lookup.get((tid, sid)) if tid else None
+                result_str = result_obj.result if result_obj else ""
                 color = self._RESULT_COLORS.get(result_str, SURFACE2)
+
+                # 根据模式选择显示文本
+                if mode == self._MODE_MEASURED and result_obj and hasattr(result_obj, "measured_value"):
+                    label = result_obj.measured_value or ""
+                elif mode == self._MODE_DATE and result_obj and hasattr(result_obj, "test_date"):
+                    label = result_obj.test_date[:10] if result_obj.test_date else ""
+                else:
+                    label = self._RESULT_LABELS.get(result_str, "")
 
                 item = QTableWidgetItem(label)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -179,6 +236,18 @@ class _ResultMatrixWidget(QWidget):
                     item.setForeground(QColor(RED))
                 else:
                     item.setForeground(QColor(SUBTEXT0))
+
+                # Tooltip: 始终显示完整信息（不受模式影响）
+                if result_obj:
+                    tip_parts = [f"结果: {result_str or '未录入'}"]
+                    if hasattr(result_obj, "measured_value") and result_obj.measured_value:
+                        tip_parts.append(f"实测值: {result_obj.measured_value}")
+                    if hasattr(result_obj, "test_date") and result_obj.test_date:
+                        tip_parts.append(f"日期: {result_obj.test_date[:10]}")
+                    if hasattr(result_obj, "notes") and result_obj.notes:
+                        tip_parts.append(f"备注: {result_obj.notes}")
+                    item.setToolTip("\n".join(tip_parts))
+
                 self._table.setItem(row, col, item)
 
                 if result_str:
