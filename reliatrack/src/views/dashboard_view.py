@@ -687,15 +687,17 @@ class DashboardView(QWidget):
         left.setSpacing(12)
         left.addWidget(self._mk_section_title("测试执行概览"))
 
-        # KPI 3 卡（已完成 / 进行中 / 待开始）
+        # KPI 4 卡（已完成 / 进行中 / 待开始 / Fail）
         ga = QHBoxLayout()
         ga.setSpacing(10)
         self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3)
         self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3)
         self._card_wait   = _StatCard("待开始", "0", DASH_NEUTRAL, 3)
+        self._card_fail   = _StatCard("Fail", "0", DASH_DANGER, 3)
         ga.addWidget(self._card_done)
         ga.addWidget(self._card_active)
         ga.addWidget(self._card_wait)
+        ga.addWidget(self._card_fail)
         left.addLayout(ga)
 
         # 环形图
@@ -709,17 +711,15 @@ class DashboardView(QWidget):
         right.setSpacing(12)
         right.addWidget(self._mk_section_title("质量与问题概览"))
 
-        # KPI 4 卡
-        gb = QGridLayout()
+        # KPI 3 卡
+        gb = QHBoxLayout()
         gb.setSpacing(10)
-        self._card_fail_task   = _StatCard("Fail 结果", "0", DASH_DANGER, 3)
         self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4)
         self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4)
         self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4)
-        gb.addWidget(self._card_fail_task, 0, 0)
-        gb.addWidget(self._card_issues, 0, 1)
-        gb.addWidget(self._card_issue_close, 1, 0)
-        gb.addWidget(self._card_capa, 1, 1)
+        gb.addWidget(self._card_issues)
+        gb.addWidget(self._card_issue_close)
+        gb.addWidget(self._card_capa)
         right.addLayout(gb)
 
         # 进度环（居中）
@@ -783,6 +783,7 @@ class DashboardView(QWidget):
         self._card_done.set_value(str(data.task_completed))
         self._card_active.set_value(str(data.task_in_progress))
         self._card_wait.set_value(str(data.task_pending))
+        self._card_fail.set_value(str(data.fail_count or 0))
 
         # 环形图
         task_map = {
@@ -794,7 +795,6 @@ class DashboardView(QWidget):
         )
 
         # 右栏 KPI
-        self._card_fail_task.set_value(str(data.fail_count or 0))
         self._card_issues.set_value(str(data.issue_count))
         self._card_issue_close.set_value(str(data.issue_closed_count))
         cr = data.capa_completion_rate
