@@ -131,6 +131,15 @@ class TestPlanView(QWidget):
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
+        # 今日工作摘要
+        self._summary_label = QLabel()
+        self._summary_label.setStyleSheet(
+            f"color: {SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
+            f" background: {SURFACE0}; border-radius: 4px;"
+        )
+        self._summary_label.setWordWrap(True)
+        layout.addWidget(self._summary_label)
+
         # 子 Tab: 测试项 / 甘特图
         from PySide6.QtWidgets import QTabWidget
         self._sub_tabs = QTabWidget()
@@ -242,6 +251,88 @@ class TestPlanView(QWidget):
                               equipment_map=equipment_map)
         # 结果矩阵
         self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
+        self._update_summary_bar()
+
+    @staticmethod
+    def _compute_summary(
+        tasks: list[TestTask],
+        result_map: dict[int, tuple[int, int]],
+        start_date: str,
+    ) -> tuple[int, int, int]:
+        """计算摘要指标: (到期数, 待录入数, 超期数)。
+
+        到期: 预计结束日期 <= 今天且未完成。
+        待录入: 有样品但结果数不足。
+        超期: 预计结束日期 < 今天且未完成。
+        """
+        import json as _json
+
+        if not start_date:
+            return 0, 0, 0
+
+        try:
+            base = date.fromisoformat(start_date)
+        except ValueError:
+            return 0, 0, 0
+
+        today = date.today()
+        due_count = 0
+        overdue_count = 0
+        pending_result_count = 0
+
+        for task in tasks:
+            if task.status in ("completed", "skipped"):
+                continue
+            end_day = task.start_day + task.duration
+            end_date = base + timedelta(days=end_day)
+
+            # 超期
+            if end_date < today:
+                overdue_count += 1
+            # 到期（含超期和今天到期）
+            elif end_date == today:
+                due_count += 1
+
+            # 待录入: sample_ids 有内容但结果数不足
+            if task.id is not None:
+                try:
+                    sids = _json.loads(task.sample_ids) if task.sample_ids else []
+                except (ValueError, TypeError):
+                    sids = []
+                if sids:
+                    pass_cnt, total_cnt = result_map.get(task.id, (0, 0))
+                    if total_cnt < len(sids):
+                        pending_result_count += 1
+
+        return due_count, pending_result_count, overdue_count
+
+    def _update_summary_bar(self) -> None:
+        """更新今日工作摘要。"""
+        tasks = self._all_tasks_for_filter
+        if not tasks:
+            self._summary_label.clear()
+            return
+
+        due, pending, overdue = self._compute_summary(
+            tasks, self._last_result_map, self._last_start_date,
+        )
+
+        if not self._last_start_date:
+            self._summary_label.setText("待办: 设定计划开始日期后显示摘要")
+            return
+
+        parts: list[str] = []
+        if overdue > 0:
+            parts.append(f'<span style="color:{RED}">{overdue} 个超期</span>')
+        if due > 0:
+            parts.append(f'<span style="color:{YELLOW}">{due} 个今天到期</span>')
+        if pending > 0:
+            parts.append(f'{pending} 个结果待录入')
+
+        if not parts:
+            self._summary_label.setText("待办: 全部正常")
+        else:
+            self._summary_label.setText("待办: " + " | ".join(parts))
 
     def set_plans(self, plan_names: list[str], plan_ids: list[int] | None = None) -> None:
         """设置计划下拉选项。"""
