@@ -7,7 +7,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QWidget, QScrollArea
 from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal
-from PySide6.QtGui import QPainter, QColor, QFont, QPen, QMouseEvent, QWheelEvent
+from PySide6.QtGui import QPainter, QColor, QFont, QPen, QMouseEvent, QWheelEvent, QRegion
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
