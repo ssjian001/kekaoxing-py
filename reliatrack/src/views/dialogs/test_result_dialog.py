@@ -124,12 +124,13 @@ class _ResultRow(QFrame):
         self._update_indicator()
 
         # 删除/撤销按钮（已有结果行使用）
-        self._toggle_btn = QPushButton("×")
-        self._toggle_btn.setFixedSize(28, 28)
+        self._toggle_btn = QPushButton("删除")
+        self._toggle_btn.setMinimumWidth(48)
+        self._toggle_btn.setFixedHeight(26)
         self._toggle_btn.setToolTip("删除此结果")
         self._toggle_btn.setStyleSheet(
             f"QPushButton {{ color: {RED}; border: 1px solid {SURFACE1};"
-            f" background-color: {SURFACE1}; font-size: 15px; font-weight: bold;"
+            f" background-color: {SURFACE1}; font-size: 12px; font-weight: bold;"
             f" border-radius: 4px; }}"
             f"QPushButton:hover {{ background-color: {RED}; color: white; }}"
         )
@@ -192,7 +193,10 @@ class _ResultRow(QFrame):
 
         self._create_issue_cb = QCheckBox("创建Issue")
         self._create_issue_cb.setStyleSheet(
-            f"color: {RED}; font-size: 10px; border: none; background: transparent;"
+            f"QCheckBox {{ color: {RED}; font-size: 10px;"
+            f" border: 1px solid {RED}33; background: {RED}11;"
+            f" border-radius: 4px; padding: 2px 6px; }}"
+            f"QCheckBox:checked {{ background: {RED}22; }}"
         )
         self._create_issue_cb.setToolTip("不通过时自动创建 Issue 追踪")
         row2.addWidget(self._create_issue_cb)
@@ -242,11 +246,11 @@ class _ResultRow(QFrame):
             w.setEnabled(not self._deleted)
         if self._deleted:
             self._apply_deleted_style()
-            self._toggle_btn.setText("↩")
+            self._toggle_btn.setText("撤销")
             self._toggle_btn.setToolTip("撤销删除")
         else:
             self._apply_normal_style()
-            self._toggle_btn.setText("×")
+            self._toggle_btn.setText("删除")
             self._toggle_btn.setToolTip("删除此结果")
         if self._on_change:
             self._on_change()
