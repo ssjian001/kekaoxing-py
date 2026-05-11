@@ -724,21 +724,26 @@ class DashboardView(QWidget):
         gb.addWidget(self._card_capa)
         right.addLayout(gb)
 
-        # 进度环（居中）
-        rings_card = QFrame()
-        rings_card.setStyleSheet(card_qss(16))
-        rings_card.setFixedHeight(170)
-        add_shadow(rings_card)
-        rings_lay = QHBoxLayout(rings_card)
-        rings_lay.setContentsMargins(16, 12, 16, 12)
-        rings_lay.setSpacing(40)
-        rings_lay.addStretch()
-        self._ring_issue = _ProgressRing("Issue 闭环率", DASH_PRIMARY)
-        self._ring_capa  = _ProgressRing("CAPA 完成率", DASH_SUCCESS)
-        rings_lay.addWidget(self._ring_issue)
-        rings_lay.addWidget(self._ring_capa)
-        rings_lay.addStretch()
-        right.addWidget(rings_card)
+        # 进度环（两个独立卡片）
+        ring_row = QHBoxLayout()
+        ring_row.setSpacing(10)
+
+        for ring_widget in (
+            _ProgressRing("Issue 闭环率", DASH_PRIMARY),
+            _ProgressRing("CAPA 完成率", DASH_SUCCESS),
+        ):
+            card = QFrame()
+            card.setStyleSheet(card_qss(16))
+            card.setFixedHeight(170)
+            add_shadow(card)
+            cl = QHBoxLayout(card)
+            cl.setContentsMargins(16, 12, 16, 12)
+            cl.addWidget(ring_widget)
+            ring_row.addWidget(card, 1)
+
+        self._ring_issue = ring_row.itemAt(0).widget().layout().itemAt(0).widget()
+        self._ring_capa  = ring_row.itemAt(1).widget().layout().itemAt(0).widget()
+        right.addLayout(ring_row)
 
         right.addStretch()
         cols.addLayout(right, 1)
