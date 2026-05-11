@@ -230,7 +230,7 @@ class _DonutChart(QFrame):
         super().__init__(parent)
         self._data: dict[str, int] = {}
         self.setStyleSheet(card_qss(16))
-        self.setMinimumHeight(120)
+        self.setMinimumHeight(160)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         add_shadow(self)
 
@@ -452,7 +452,7 @@ class _HProgressBar(QWidget):
 class _ProgressRing(QWidget):
     """圆弧进度指示器。"""
 
-    _ARC_W = 10
+    _ARC_W = 12
 
     def __init__(self, label: str, color: str = DASH_PRIMARY,
                  parent: QWidget | None = None):
@@ -460,8 +460,8 @@ class _ProgressRing(QWidget):
         self._label = label
         self._color = color
         self._pct: float = 0.0
-        self.setMinimumSize(80, 80)
-        self.setMaximumSize(120, 120)
+        self.setMinimumSize(100, 100)
+        self.setMaximumSize(150, 150)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def setPercent(self, pct: float) -> None:
@@ -489,7 +489,7 @@ class _ProgressRing(QWidget):
 
         # 中心数字
         p.setPen(QColor("#1E293B"))
-        p.setFont(QFont(_FAMILY, 14, QFont.Weight.Bold))
+        p.setFont(QFont(_FAMILY, 16, QFont.Weight.Bold))
         p.drawText(QRectF(cx - 30, cy - 10, 60, 20),
                    Qt.AlignmentFlag.AlignCenter, f"{self._pct:.0f}%")
 
@@ -727,11 +727,11 @@ class DashboardView(QWidget):
         # 进度环（居中）
         rings_card = QFrame()
         rings_card.setStyleSheet(card_qss(16))
-        rings_card.setFixedHeight(140)
+        rings_card.setFixedHeight(170)
         add_shadow(rings_card)
         rings_lay = QHBoxLayout(rings_card)
         rings_lay.setContentsMargins(16, 12, 16, 12)
-        rings_lay.setSpacing(24)
+        rings_lay.setSpacing(40)
         rings_lay.addStretch()
         self._ring_issue = _ProgressRing("Issue 闭环率", DASH_PRIMARY)
         self._ring_capa  = _ProgressRing("CAPA 完成率", DASH_SUCCESS)
