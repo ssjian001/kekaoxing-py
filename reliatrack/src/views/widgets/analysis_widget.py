@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
 from src.styles.theme import (
-    BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1,
+    BASE, SURFACE0, SURFACE1,
+    TEXT, SUBTEXT1,
     GREEN, RED, YELLOW,
 )
-from src.styles.constants import FONT_FAMILY, TABLE_QSS
+from src.styles.constants import TABLE_QSS
 from src.models.test_plan import TestTask
 
 
@@ -48,7 +48,11 @@ class _BarWidget(QWidget):
 
 
 class _AnalysisWidget(QWidget):
-    """失效模式分析 — 按类别统计 + 失效 Top-N + 未关联 Issue。"""
+    """失效模式分析 — 按类别统计 + 失效 Top-N + 未关联 Issue。
+
+    采用纯重建模式：__init__ 只创建空 layout，所有内容由 refresh()
+    按需创建。避免实例成员 widget 与渲染生命周期冲突导致的僵尸引用。
+    """
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -56,47 +60,38 @@ class _AnalysisWidget(QWidget):
         self._layout.setContentsMargins(8, 8, 8, 8)
         self._layout.setSpacing(12)
 
-        # 占位
-        self._placeholder = QLabel("选择测试计划后显示失效模式分析")
-        self._placeholder.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; padding: 24px;")
-        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._layout.addWidget(self._placeholder)
+        # 初始占位
+        ph = self._make_placeholder("选择测试计划后显示失效模式分析")
+        self._layout.addWidget(ph)
 
-        # 未关联 Issue 提示
-        self._unlinked_label = QLabel()
-        self._unlinked_label.setWordWrap(True)
-        self._unlinked_label.setStyleSheet(f"color: {YELLOW}; font-size: 11px; padding: 4px 8px;")
+    # ── 工厂方法（每次 refresh 创建新实例） ──────────────
+
+    @staticmethod
+    def _make_placeholder(text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; padding: 24px;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return lbl
 
     def refresh(
         self,
         tasks: list[TestTask],
-        results: list,
-        issues: list,
+        results: list | None = None,
+        issues: list | None = None,
         sample_map: dict[int, str] | None = None,
     ) -> None:
-        """根据数据更新分析视图。
-
-        Args:
-            tasks: 任务列表
-            results: TestResult 列表
-            issues: Issue 列表（当前计划关联的）
-            sample_map: {sample_id: sn}
-        """
-        # 清空旧内容
-        while self._layout.count():
-            item = self._layout.takeAt(0)
-            if item.widget():
-                w = item.widget()
-                w.setParent(None)
-                w.deleteLater()
-            elif item.layout():
-                # 递归清空子 layout
-                self._clear_layout(item.layout())
-
+        """根据数据更新分析视图（完全重建）。"""
+        results = results or []
+        issues = issues or []
         sample_map = sample_map or {}
 
+        # 清空旧内容（包括 spacer）
+        self._rebuild_layout()
+
         if not tasks:
-            self._layout.addWidget(self._placeholder)
+            self._layout.addWidget(
+                self._make_placeholder("选择测试计划后显示失效模式分析")
+            )
             return
 
         # 按 task_id 收集结果
@@ -112,7 +107,7 @@ class _AnalysisWidget(QWidget):
                 task_issues.setdefault(iss.task_id, []).append(iss)
 
         # ── 区块 1: 按类别统计 ──
-        category_stats: dict[str, dict[str, int]] = {}  # {category: {pass, fail, total}}
+        category_stats: dict[str, dict[str, int]] = {}
         for task in tasks:
             cat = task.category or "未分类"
             if cat not in category_stats:
@@ -139,10 +134,7 @@ class _AnalysisWidget(QWidget):
                 cat_label.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
                 row.addWidget(cat_label)
 
-                if stats["total"] > 0:
-                    rate = stats["pass"] / stats["total"] * 100
-                else:
-                    rate = 0
+                rate = stats["pass"] / stats["total"] * 100 if stats["total"] > 0 else 0
                 color = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
                 bar = _BarWidget(rate, color)
                 bar.setFixedHeight(18)
@@ -157,7 +149,6 @@ class _AnalysisWidget(QWidget):
                 self._layout.addLayout(row)
 
         # ── 区块 2: 失效 Top-N ──
-        # 收集所有 fail 结果
         fail_entries: list[dict] = []
         for task in tasks:
             if task.id is None or task.id not in task_results:
@@ -216,10 +207,10 @@ class _AnalysisWidget(QWidget):
             names = ", ".join(f'{e["task_name"]}/{e["sample_sn"]}' for e in unlinked[:8])
             if len(unlinked) > 8:
                 names += f" ... 共 {len(unlinked)} 条"
-            self._unlinked_label.setText(
-                f"⚠ {len(unlinked)} 条失败结果未创建 Issue: {names}"
-            )
-            self._layout.addWidget(self._unlinked_label)
+            warn = QLabel(f"⚠ {len(unlinked)} 条失败结果未创建 Issue: {names}")
+            warn.setWordWrap(True)
+            warn.setStyleSheet(f"color: {YELLOW}; font-size: 11px; padding: 4px 8px;")
+            self._layout.addWidget(warn)
 
         # 没有任何结果
         if not category_stats and not fail_entries:
@@ -230,19 +221,38 @@ class _AnalysisWidget(QWidget):
 
         self._layout.addStretch()
 
+    # ── 内部工具 ──────────────────────────────────────
+
+    def _rebuild_layout(self) -> None:
+        """完全清空 layout 中所有项目（widget/layout/spacer），为重建做准备。"""
+        while self._layout.count():
+            item = self._layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.setParent(None)
+                w.deleteLater()
+                continue
+            sub = item.layout()
+            if sub:
+                self._clear_sub_layout(sub)
+                sub.setParent(None)  # type: ignore[arg-type]
+                sub.deleteLater()  # type: ignore[attr-defined]
+            # QSpacerItem: takeAt 转移所有权给调用者，直接丢弃即可
+
+    @staticmethod
+    def _clear_sub_layout(layout) -> None:
+        """递归清空子 layout 中的所有 widget。"""
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.setParent(None)
+                w.deleteLater()
+            elif item.layout():
+                _AnalysisWidget._clear_sub_layout(item.layout())
+
     @staticmethod
     def _make_item(text: str, fg: str) -> QTableWidgetItem:
         item = QTableWidgetItem(text)
         item.setForeground(QColor(fg))
         return item
-
-    @staticmethod
-    def _clear_layout(layout) -> None:
-        while layout.count():
-            item = layout.takeAt(0)
-            if item.widget():
-                w = item.widget()
-                w.setParent(None)
-                w.deleteLater()
-            elif item.layout():
-                _AnalysisWidget._clear_layout(item.layout())
