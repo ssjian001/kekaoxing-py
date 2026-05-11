@@ -712,7 +712,7 @@ class DashboardView(QWidget):
         # KPI 4 卡
         gb = QGridLayout()
         gb.setSpacing(10)
-        self._card_fail_task   = _StatCard("Fail 项", "0", DASH_DANGER, 3)
+        self._card_fail_task   = _StatCard("Fail 结果", "0", DASH_DANGER, 3)
         self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4)
         self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4)
         self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4)
@@ -794,7 +794,7 @@ class DashboardView(QWidget):
         )
 
         # 右栏 KPI
-        self._card_fail_task.set_value(str(data.failed_task_count))
+        self._card_fail_task.set_value(str(data.fail_count or 0))
         self._card_issues.set_value(str(data.issue_count))
         self._card_issue_close.set_value(str(data.issue_closed_count))
         cr = data.capa_completion_rate
