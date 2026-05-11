@@ -139,12 +139,12 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **布局**: QScrollArea + 浅灰背景(#F7F8FC) + 白底圆角卡片(16px)
 - **Header**: 项目/计划筛选标签 + 最后更新时间
 - **测试进度卡片**(`_TestProgressCard`): `_StackedBar` 堆叠条(PASS绿+FAIL红+进行中黄+待开始灰) + 图例 + 2辅助(通过率/最后更新)
-- **左栏(测试执行)**: 3 KPI `_StatCard`(已完成/进行中/待开始) + `_DonutChart`环形图(右侧垂直图例)
-- **右栏(质量与问题)**: 4 KPI `_StatCard` + 2× `_ProgressRing`(100px) + `_SeverityBar`严重度分段条
+- **左栏(测试执行)**: 4 KPI `_StatCard`(已完成/进行中/待开始/Fail) + `_DonutChart`环形图(minHeight 160, 右侧垂直图例)
+- **右栏(质量与问题)**: 3 KPI `_StatCard`(Issue数/Issue闭环/CAPA率) + 2 独立进度环卡片(各170px, `_ProgressRing` min100/max150, arc宽12, 间距10)
 - **配色**: 5 语义色映射 Catppuccin Latte (PRIMARY/SUCCESS/WARNING/DANGER/NEUTRAL)
 - **卡片样式**: `card_qss()`/`add_shadow()` 提升至 `constants.py` 全局复用
-- **组件**: `_StatCard` / `_TestProgressCard` / `_StackedBar` / `_DonutChart` / `_ProgressRing` / `_SeverityBar`
-- **DashboardData**: 22 字段，含 pass_count / fail_count / last_update
+- **组件**: `_StatCard` / `_TestProgressCard` / `_StackedBar` / `_DonutChart` / `_ProgressRing` / `_SeverityBar`(已定义但未使用)
+- **DashboardData**: 含 pass_count / fail_count / last_update
 - **自动创建 Issue**: 测试结果为 fail 时可选自动创建（title=任务名, severity=MAJOR）
 - **刷新机制**: FA/CAPA 增删改后 `notify_data_changed("issue")` 触发仪表盘刷新
 
