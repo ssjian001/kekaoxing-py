@@ -44,6 +44,7 @@ class PlanHandlers:
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
         v.btn_import_tasks.clicked.connect(self._on_task_batch_import)
         v.btn_record_result.clicked.connect(self._on_record_result)
+        v.btn_summary_report.clicked.connect(self._on_summary_report)
         v.setup_task_callbacks(
             on_add=self._on_task_add,
             on_edit=self._on_task_edit,
@@ -585,6 +586,64 @@ class PlanHandlers:
                 self._win._ctrl.notify_data_changed("task")
                 self._win._ctrl.notify_data_changed("issue")
         dlg.deleteLater()
+
+    def _on_summary_report(self) -> None:
+        """一键导出当前计划 Word 总结报告。"""
+        import os
+        from pathlib import Path
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QApplication
+
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self._win.toast("请先选择测试计划", "info")
+            return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        if not plan or not tasks:
+            self._win.toast("当前计划无任务", "info")
+            return
+
+        try:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+
+            task_ids = [t.id for t in tasks if t.id is not None]
+            results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
+            issues = []
+            if ctrl.issue_service and plan.project_id:
+                issues = [
+                    iss for iss in ctrl.issue_service.get_by_project(plan.project_id)
+                    if not iss.is_deleted
+                ]
+            samples = []
+            if ctrl.sample_service and plan.project_id:
+                samples = ctrl.sample_service.get_by_project(plan.project_id)
+
+            export_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                "exports",
+            )
+            os.makedirs(export_dir, exist_ok=True)
+
+            svc = ctrl.export_service
+            if svc is None:
+                from src.services.export import ExportService
+                svc = ExportService(output_dir=export_dir)
+            else:
+                svc._output_dir = Path(export_dir)
+
+            path = svc.export_to_word(plan, tasks, issues, samples, results=results)
+            self._win.toast(f"总结报告已导出: {path}", "success")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception("Summary report export failed")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self._win, "导出失败", f"总结报告导出出错:\n{e}")
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def _on_task_delete(self, task) -> None:
         """删除测试任务。"""

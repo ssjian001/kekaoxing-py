@@ -128,6 +128,18 @@ class TestPlanView(QWidget):
         self._btn_record_result.setToolTip("录入测试结果")
         toolbar.addWidget(self._btn_record_result)
 
+        # 分隔线
+        sep3 = QFrame()
+        sep3.setFrameShape(QFrame.Shape.VLine)
+        sep3.setStyleSheet(f"color: {SURFACE1};")
+        toolbar.addWidget(sep3)
+
+        self._btn_summary_report = QPushButton("总结报告")
+        self._btn_summary_report.setProperty("class", "action")
+        self._btn_summary_report.setFixedHeight(28)
+        self._btn_summary_report.setToolTip("一键导出当前计划 Word 总结报告")
+        toolbar.addWidget(self._btn_summary_report)
+
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
@@ -427,6 +439,10 @@ class TestPlanView(QWidget):
     @property
     def btn_record_result(self) -> QPushButton:
         return self._btn_record_result
+
+    @property
+    def btn_summary_report(self) -> QPushButton:
+        return self._btn_summary_report
 
     def setup_task_callbacks(
         self,
