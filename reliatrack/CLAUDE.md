@@ -201,8 +201,8 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景（CI-only 已知问题：tables=0，本地正常，CI 中 `--ignore` 跳过）
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- `tests/test_issue_jira_workflow.py` — 12 项 Jira-style Issue 工作流（resolution 枚举、状态转换、reopen、reporter）
-- 共 **225 个 pytest 测试**，全量通过
+- `tests/test_issue_jira_workflow.py` — 25 项 Jira-style Issue 工作流（全路径转换、resolution 枚举、FA/CAPA 联动、reopen、reporter）
+- 共 **238 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
