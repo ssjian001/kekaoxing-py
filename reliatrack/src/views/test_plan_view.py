@@ -122,6 +122,12 @@ class TestPlanView(QWidget):
         self._btn_import_tasks.setToolTip("从 Excel 批量导入任务")
         toolbar.addWidget(self._btn_import_tasks)
 
+        self._btn_import_from_plan = QPushButton("从计划导入")
+        self._btn_import_from_plan.setProperty("class", "action")
+        self._btn_import_from_plan.setFixedHeight(28)
+        self._btn_import_from_plan.setToolTip("从同项目其他计划复制任务")
+        toolbar.addWidget(self._btn_import_from_plan)
+
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
         self._btn_record_result.setFixedHeight(28)

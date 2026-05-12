@@ -43,6 +43,7 @@ class PlanHandlers:
         v.btn_edit_plan.clicked.connect(self._on_plan_edit)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
         v.btn_import_tasks.clicked.connect(self._on_task_batch_import)
+        v.btn_import_from_plan.clicked.connect(self._on_import_from_plan)
         v.btn_record_result.clicked.connect(self._on_record_result)
         v.btn_summary_report.clicked.connect(self._on_summary_report)
         v.setup_task_callbacks(
@@ -182,6 +183,70 @@ class PlanHandlers:
             MoveTaskCommand(ctrl.test_tasks, task_id, old_day, new_start_day)
         )
         self._win._ctrl.notify_data_changed("task")
+
+    def _on_import_from_plan(self) -> None:
+        """从同项目其他计划导入任务。"""
+        from PySide6.QtWidgets import QInputDialog
+        from src.views.dialogs.import_tasks_from_plan_dialog import ImportTasksFromPlanDialog
+
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+
+        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self._win.statusBar().showMessage("请先创建并选择测试计划", 5000)
+            return
+
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if not plan:
+            return
+
+        # 获取同项目下其他计划
+        all_plans = ctrl.test_plan_service.get_plans_by_project(plan.project_id)
+        other_plans = [p for p in all_plans if p.id != plan_id and p.id is not None]
+
+        if not other_plans:
+            self._win.toast("当前项目下没有其他测试计划可导入", "info")
+            return
+
+        # 选择来源计划
+        plan_names = [p.name for p in other_plans]
+        choice, ok = QInputDialog.getItem(
+            self._win, "选择来源计划",
+            f"从以下计划导入任务到「{plan.name}」：",
+            plan_names, 0, False,
+        )
+        if not ok or not choice:
+            return
+
+        source_plan = other_plans[plan_names.index(choice)]
+        source_tasks = ctrl.test_plan_service.get_tasks(source_plan.id)
+
+        if not source_tasks:
+            self._win.toast(f"计划「{source_plan.name}」没有任务", "info")
+            return
+
+        # 勾选任务弹窗
+        dlg = ImportTasksFromPlanDialog(
+            tasks=source_tasks,
+            source_plan_name=source_plan.name,
+            parent=self._win,
+        )
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            selected = dlg.get_selected_tasks()
+            if not selected:
+                dlg.deleteLater()
+                return
+            try:
+                count = ctrl.test_plan_service.import_tasks_from_plan(plan_id, selected)
+                self._win.statusBar().showMessage(
+                    f"已从「{source_plan.name}」导入 {count} 个任务", 5000
+                )
+                ctrl.notify_data_changed("task")
+            except Exception as e:
+                QMessageBox.critical(self._win, "导入失败", str(e))
+        dlg.deleteLater()
 
     def _on_task_batch_import(self) -> None:
         """测试任务批量导入。"""
