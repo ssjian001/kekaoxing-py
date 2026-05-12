@@ -215,11 +215,13 @@ def export_report_pdf(
                                                textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
                   for h in task_headers]
 
+    prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
+        task_id_display = f"{prefix}-{idx:03d}" if prefix else str(idx)
         cat = CATEGORY_MAP.get(task.category, task.category)
         status = STATUS_MAP.get(task.status, task.status)
         task_data = [
-            Paragraph(str(idx), cell_style),
+            Paragraph(task_id_display, cell_style),
             Paragraph(task.name[:25], cell_style),
             Paragraph(cat, cell_style),
             Paragraph(str(task.duration), cell_style),
@@ -522,9 +524,10 @@ def export_dvpr_pdf(
     header_row = [Paragraph(h, th_style) for h in dvpr_headers]
     dvpr_data = [header_row]
 
+    prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
         row = [
-            Paragraph(str(idx), cell_style),
+            Paragraph(f"{prefix}-{idx:03d}" if prefix else str(idx), cell_style),
             Paragraph((task.name or "")[:20], cell_left),
             Paragraph((task.accept_criteria or "")[:20], cell_left),
         ]

@@ -50,6 +50,11 @@ class PlanEditDialog(_BaseDialog):
             default=plan.name if plan else "",
             placeholder="必填",
         )
+        self._prefix_edit = self._add_text_field(
+            "任务编号前缀",
+            default=plan.task_prefix if plan else "",
+            placeholder="留空则用默认编号",
+        )
         self._standard_edit = self._add_text_field(
             "测试标准",
             default=plan.test_standard if plan else "",
@@ -117,7 +122,27 @@ class PlanEditDialog(_BaseDialog):
             default=current_status,
         )
 
+        # 自动建议前缀
+        if not is_edit or not (plan and plan.task_prefix):
+            self._name_edit.textChanged.connect(self._auto_suggest_prefix)
+
     # ── 公开 API ───────────────────────────────────────────────
+
+    def _auto_suggest_prefix(self, name: str) -> None:
+        """计划名称变化时自动生成前缀建议（仅当前缀为空时）。"""
+        if self._prefix_edit.text().strip():
+            return  # 用户已手动输入，不覆盖
+        import re
+        name = name.strip()
+        if not name:
+            return
+        eng_words = re.findall(r'[A-Za-z]+', name)
+        if eng_words:
+            prefix = ''.join(w[0].upper() for w in eng_words)[:4]
+        else:
+            prefix = re.sub(r'[^\w]', '', name)[:3].upper()
+        if prefix:
+            self._prefix_edit.setText(prefix)
 
     def get_data(self) -> dict:
         """返回表单数据字典。
@@ -143,6 +168,7 @@ class PlanEditDialog(_BaseDialog):
 
         data: dict = {
             "name": self._name_edit.text().strip(),
+            "task_prefix": self._prefix_edit.text().strip().upper(),
             "test_standard": self._standard_edit.text().strip(),
             "apqp_phase": self._apqp_combo.currentText() if self._apqp_combo.currentText() != "(无)" else "",
             "start_date": self._start_date_edit.date().toString("yyyy-MM-dd"),

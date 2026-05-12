@@ -371,6 +371,7 @@ class RefreshHandlers:
                 matrix_results=matrix_results,
                 sample_map=sample_map,
                 equipment_map=equipment_map,
+                task_prefix=all_plans[restore_idx].task_prefix,
             )
 
     def _refresh_issues(self) -> None:

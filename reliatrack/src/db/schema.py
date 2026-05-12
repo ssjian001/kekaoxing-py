@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 20
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -910,6 +910,16 @@ def _migrate_v19(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (19)")
 
 
+def _migrate_v20(conn: apsw.Connection) -> None:
+    """v19→v20: test_plans 加 task_prefix 列（任务编号前缀）。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(test_plans)").fetchall()}
+    if "task_prefix" not in cols:
+        conn.execute(
+            "ALTER TABLE test_plans ADD COLUMN task_prefix TEXT NOT NULL DEFAULT ''"
+        )
+    conn.execute("INSERT INTO schema_version (version) VALUES (20)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -930,6 +940,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (17, _migrate_v17),
     (18, _migrate_v18),
     (19, _migrate_v19),
+    (20, _migrate_v20),
 ]
 
 
@@ -1094,6 +1105,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v19 failed")
+            raise
+
+    # v20: test_plans 加 task_prefix 列
+    if current < 20:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v20(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v20 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）

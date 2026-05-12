@@ -184,6 +184,7 @@ class _TaskTable(QTableWidget):
         technician_map: dict[int, str] | None = None,
         result_map: dict[int, tuple[int, int]] | None = None,
         start_date: str = "",
+        task_prefix: str = "",
     ) -> None:
         from datetime import date, timedelta
         self._tasks = tasks
@@ -213,7 +214,7 @@ class _TaskTable(QTableWidget):
                 planned_start = str(task.start_day) if task.start_day else "—"
                 planned_end = "—"
             values = [
-                task.id or (row + 1),
+                f"{task_prefix}-{row + 1:03d}" if task_prefix else (task.id or (row + 1)),
                 task.name,
                 task.category,
                 task.duration,

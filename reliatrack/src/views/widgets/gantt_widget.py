@@ -118,7 +118,8 @@ class _GanttWidget(QWidget):
 
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
                   start_date: str = "",
-                  equipment_map: dict[int, str] | None = None) -> None:
+                  equipment_map: dict[int, str] | None = None,
+                  task_prefix: str = "") -> None:
         # 重置拖拽状态，防止 tasks 更新后索引越界
         self._drag_task_idx = None
         self._drag_preview_offset = 0
@@ -128,6 +129,7 @@ class _GanttWidget(QWidget):
         self._tasks = tasks
         self._total_days = max(total_days, 1)
         self._start_date = start_date
+        self._task_prefix = task_prefix
         if equipment_map is not None:
             self._equipment_map = equipment_map
             # 按 equipment_id 分配颜色
@@ -368,7 +370,9 @@ class _GanttWidget(QWidget):
             p.setPen(QColor(TEXT))
             p.setFont(QFont(FONT_FAMILY, 8))
             fm = p.fontMetrics()
-            display = f"{i + 1}. {task.name}"
+            prefix = getattr(self, '_task_prefix', '')
+            seq_label = f"{prefix}-{i + 1:03d}" if prefix else str(i + 1)
+            display = f"{seq_label}. {task.name}"
             name = fm.elidedText(display, Qt.TextElideMode.ElideRight, label_w - 16)
             p.drawText(8, y, label_w - 16, self._row_height,
                        Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,

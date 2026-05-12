@@ -51,6 +51,7 @@ class TestPlan:
     end_date: str = ""
     status: str = TestPlanStatus.DRAFT.value
     apqp_phase: str = ""       # APQP 阶段: P1/P2/P3/P4/P5
+    task_prefix: str = ""      # 任务编号前缀 (如 "HTG" → HTG-001)
     created_at: str = ""
     updated_at: str = ""
 

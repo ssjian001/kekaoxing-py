@@ -68,7 +68,10 @@ def export_tasks_excel(
     headers = ["#", "名称", "类别", "天数", "预计开始", "预计结束", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
     excel_write_headers(ws, 4, headers, s)
 
-    for row_idx, task in enumerate(tasks, 5):
+    prefix = getattr(plan, 'task_prefix', '') or ''
+    for seq, task in enumerate(tasks, 1):
+        task_id_display = f"{prefix}-{seq:03d}" if prefix else (task.id or seq)
+        row_idx = seq + 4
         if plan_start and task.start_day is not None:
             planned_start = (plan_start + timedelta(days=task.start_day)).isoformat()
             planned_end = (plan_start + timedelta(days=task.start_day + task.duration - 1)).isoformat()
@@ -80,7 +83,7 @@ def export_tasks_excel(
         tech_name = (technician_names or {}).get(task.technician_id, "") if task.technician_id else ""
 
         values = [
-            task.id or (row_idx - 4),
+            task_id_display,
             task.name,
             CATEGORY_MAP.get(task.category, task.category),
             task.duration,

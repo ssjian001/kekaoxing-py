@@ -234,6 +234,7 @@ class TestPlanView(QWidget):
         self._last_result_map: dict[int, tuple[int, int]] = {}
         self._last_start_date: str = ""
         self._last_equipment_map: dict[int, str] = {}
+        self._last_task_prefix: str = ""
 
     def _on_gantt_mode_toggled(self, btn_id: int, checked: bool) -> None:
         """甘特图预计/实际模式切换。"""
@@ -253,9 +254,11 @@ class TestPlanView(QWidget):
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
             start_date=self._last_start_date,
+            task_prefix=self._last_task_prefix,
         )
         self._gantt.set_tasks(filtered, start_date=self._last_start_date,
-                              equipment_map=self._last_equipment_map)
+                              equipment_map=self._last_equipment_map,
+                              task_prefix=self._last_task_prefix)
 
     def refresh(
         self,
@@ -268,15 +271,18 @@ class TestPlanView(QWidget):
         sample_map: dict[int, str] | None = None,
         equipment_map: dict[int, str] | None = None,
         issues: list | None = None,
+        task_prefix: str = "",
     ) -> None:
         self._all_tasks_for_filter = tasks
         self._last_technician_map = technician_map or {}
         self._last_result_map = result_map or {}
         self._last_start_date = start_date
         self._last_equipment_map = equipment_map or {}
+        self._last_task_prefix = task_prefix
         self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days, start_date,
-                              equipment_map=equipment_map)
+                              equipment_map=equipment_map,
+                              task_prefix=task_prefix)
         # 结果矩阵
         self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
         # 失效模式分析

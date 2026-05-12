@@ -449,6 +449,7 @@ class PlanHandlers:
             matrix_results=matrix_results,
             sample_map=sample_map,
             issues=issues,
+            task_prefix=plan.task_prefix if plan else "",
         )
 
     def _get_project_samples(self, ctrl: object) -> list:

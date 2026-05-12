@@ -253,11 +253,13 @@ def export_to_word(
     _fill_row_cells(task_table.rows[0]._tr, task_headers, bold=True,
                     color="FFFFFF", shade="2B579A", center_cols=set(range(len(task_headers))))
 
+    _prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
+        _task_id_display = f"{_prefix}-{idx:03d}" if _prefix else idx
         equipment_name = f"ID:{task.equipment_id}" if task.equipment_id else "—"
         technician_name = f"ID:{task.technician_id}" if task.technician_id else "—"
         _fill_row_cells(task_table.rows[idx]._tr, [
-            idx, task.name,
+            _task_id_display, task.name,
             CATEGORY_MAP.get(task.category, task.category),
             STATUS_MAP.get(task.status, task.status),
             task.duration, equipment_name, technician_name,
@@ -431,9 +433,12 @@ def export_dvpr_excel(
     _pass_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
     _fail_fill = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
 
+    _prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 2):
+        seq = idx - 1
+        _task_id_display = f"{_prefix}-{seq:03d}" if _prefix else seq
         row_data = [
-            idx - 1,
+            _task_id_display,
             task.name or "",
             task.accept_criteria or "",
         ]
@@ -602,10 +607,12 @@ def export_dvpr_docx(
     _fill_row_cells(dvpr_table.rows[0]._tr, dvpr_headers, bold=True,
                     color="FFFFFF", shade="2B579A", center_cols=set(range(len(dvpr_headers))))
 
+    _prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
+        _task_id_display = f"{_prefix}-{idx:03d}" if _prefix else str(idx)
         task_sample_ids = sorted({r.sample_id for r in results if r.task_id == task.id and r.sample_id})
         task_sns = ", ".join(sample_map.get(sid, f"#{sid}") for sid in task_sample_ids)
-        row_vals = [str(idx), task.name or "", task.accept_criteria or "", task_sns or "—"]
+        row_vals = [_task_id_display, task.name or "", task.accept_criteria or "", task_sns or "—"]
         task_pass = task_fail = task_conditional = 0
         for sid in sample_ids:
             res = lookup.get((task.id, sid), "")
