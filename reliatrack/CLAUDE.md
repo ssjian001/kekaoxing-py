@@ -200,7 +200,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景（CI-only 已知问题：tables=0，本地正常，CI 中 `--ignore` 跳过）
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- 共 **201 个 pytest 测试**，全量通过
+- 共 **213 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
