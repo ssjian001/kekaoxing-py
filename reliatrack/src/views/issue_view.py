@@ -49,6 +49,7 @@ _ISSUE_SPECS = [
     ("DRI", "interactive", 80),
     ("解决结果", "interactive", 80),
     ("根因", "interactive", 120),
+    ("改善对策", "interactive", 120),
     ("创建时间", "interactive", 100),
 ]
 
@@ -96,6 +97,7 @@ class _IssueTable(QTableWidget):
                 getattr(issue, "dri_name", "") or "",
                 RESOLUTION_LABELS.get(getattr(issue, "resolution", ""), getattr(issue, "resolution", "") or ""),
                 (issue.root_cause or "")[:15],
+                (issue.improvement_measures or "")[:40],
                 (issue.created_at or "")[:10],
             ]):
                 item = QTableWidgetItem(str(val))

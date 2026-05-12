@@ -250,7 +250,7 @@ def export_report_pdf(
         story.append(PageBreak())
         story.append(Paragraph("Issue 追踪", style_section_red))
 
-        issue_headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "改善对策"]
         issue_header_row = [Paragraph(h, ParagraphStyle("IH", fontName=_FN_B, fontSize=9,
                                                          textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
                             for h in issue_headers]
@@ -269,9 +269,10 @@ def export_report_pdf(
                 Paragraph((issue.dri_name or "")[:15], cell_style),
                 Paragraph((issue.reporter_name or "")[:15], cell_style),
                 Paragraph(resolution_text, cell_style),
+                Paragraph((issue.improvement_measures or "")[:80], cell_style),
             ])
 
-        issue_table = Table(issue_data, colWidths=[18, 120, 45, 45, 40, 55, 55, 60])
+        issue_table = Table(issue_data, colWidths=[18, 120, 45, 45, 40, 55, 55, 60, 80])
         issue_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), _RED),
             ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
@@ -596,7 +597,7 @@ def export_dvpr_pdf(
     if issues:
         story.append(PageBreak())
         story.append(Paragraph("Issue 追踪汇总", style_section))
-        issue_headers = ["ID", "Issue描述", "严重度", "状态", "DRI", "报告人", "解决结果"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "DRI", "报告人", "解决结果", "改善对策"]
         issue_data = [[Paragraph(h, th_style) for h in issue_headers]]
         for issue in issues:
             resolution_text = RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""
@@ -608,8 +609,9 @@ def export_dvpr_pdf(
                 Paragraph((issue.dri_name or "")[:15], cell_style),
                 Paragraph((issue.reporter_name or "")[:15], cell_style),
                 Paragraph(resolution_text, cell_style),
+                Paragraph((issue.improvement_measures or "")[:80], cell_left),
             ])
-        issue_table = Table(issue_data, colWidths=[25, 120, 50, 50, 55, 55, 60])
+        issue_table = Table(issue_data, colWidths=[25, 120, 50, 50, 55, 55, 60, 80])
         issue_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), _RED),
             ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
@@ -925,7 +927,7 @@ def export_8d_pdf(
         ("D2", "问题描述 (Describe the Problem)", d2_content),
         ("D3", "临时遏制措施 (Interim Containment Actions)", d3_content),
         ("D4", "根因分析 (Root Cause Analysis)", _build_d4_content(issue, fa_records)),
-        ("D5", "纠正措施 (Corrective Actions)", RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""),
+        ("D5", "纠正措施 (Corrective Actions)", (issue.improvement_measures or "") or RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""),
         ("D6", "实施验证 (Implement & Validate)", _build_d6_content(capa_records)),
         ("D7", "预防再发 (Prevent Recurrence)", "(手写区)"),
         ("D8", "结论与签字 (Congratulate the Team)", "(签字区)"),

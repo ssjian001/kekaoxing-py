@@ -238,13 +238,13 @@ class TestSyncIssueFromFA:
 class TestSyncIssueFromCAPA:
     """CAPA 记录变更 → Issue 联动规则。"""
 
-    def test_capa_action_updates_resolution(
+    def test_capa_action_updates_improvement_measures(
         self,
         handlers: IssueHandlers,
         issue_service: IssueService,
         sample_issue: int,
     ) -> None:
-        """CAPA1: CAPA action → Issue.resolution 被更新。"""
+        """CAPA1: CAPA action → Issue.improvement_measures 被更新。"""
         issue_service.add_capa_record(
             sample_issue,
             action="更换供应商",
@@ -254,7 +254,7 @@ class TestSyncIssueFromCAPA:
 
         issue = issue_service.get(sample_issue)
         assert issue is not None
-        assert issue.resolution == "更换供应商"
+        assert issue.improvement_measures == "更换供应商"
 
     def test_multiple_capas_actions_joined(
         self,
@@ -277,7 +277,7 @@ class TestSyncIssueFromCAPA:
 
         issue = issue_service.get(sample_issue)
         assert issue is not None
-        assert issue.resolution == "更换供应商; 加强来料检验"
+        assert issue.improvement_measures == "更换供应商; 加强来料检验"
 
     def test_all_capas_completed_verifies_status(
         self,
@@ -303,23 +303,23 @@ class TestSyncIssueFromCAPA:
         assert issue is not None
         assert issue.status == "verified"
 
-    def test_all_capas_deleted_clears_resolution(
+    def test_all_capas_deleted_clears_improvement_measures(
         self,
         handlers: IssueHandlers,
         issue_service: IssueService,
         sample_issue: int,
     ) -> None:
-        """CAPA4: 所有 CAPA 被删空 → resolution 被清空。"""
+        """CAPA4: 所有 CAPA 被删空 → improvement_measures 被清空。"""
         capa_id = issue_service.add_capa_record(
             sample_issue,
             action="临时措施",
             status="pending",
         )
-        # 先同步一次，让 resolution 有值
+        # 先同步一次，让 improvement_measures 有值
         handlers._sync_issue_from_capa(sample_issue)
         issue = issue_service.get(sample_issue)
         assert issue is not None
-        assert issue.resolution != ""
+        assert issue.improvement_measures != ""
 
         # 删除所有 CAPA
         issue_service.delete_capa_record(capa_id)
@@ -327,21 +327,21 @@ class TestSyncIssueFromCAPA:
 
         issue = issue_service.get(sample_issue)
         assert issue is not None
-        assert issue.resolution == ""
+        assert issue.improvement_measures == ""
 
-    def test_capas_exist_actions_all_empty_clears_resolution(
+    def test_capas_exist_actions_all_empty_clears_improvement_measures(
         self,
         handlers: IssueHandlers,
         issue_service: IssueService,
         sample_issue: int,
     ) -> None:
-        """CAPA5: CAPA 存在但 action 全为空 → resolution 被清空。
+        """CAPA5: CAPA 存在但 action 全为空 → improvement_measures 被清空。
 
         注：action 列为 NOT NULL，所以空字符串代表空 action。
         通过直接插入空 action 来测试此场景。
         """
-        # 先设置 resolution 有值
-        issue_service.update(sample_issue, resolution="旧解决方案")
+        # 先设置 improvement_measures 有值
+        issue_service.update(sample_issue, improvement_measures="旧解决方案")
         # 添加一条 action 为空的 CAPA
         issue_service.add_capa_record(
             sample_issue,
@@ -352,7 +352,7 @@ class TestSyncIssueFromCAPA:
 
         issue = issue_service.get(sample_issue)
         assert issue is not None
-        assert issue.resolution == ""
+        assert issue.improvement_measures == ""
 
     def test_not_analyzing_status_unchanged_even_if_all_capas_done(
         self,
@@ -499,10 +499,10 @@ class TestHandleCAPARecordAdded:
         assert len(capa_records) == 1
         assert capa_records[0].action == "更换供应商"
 
-        # 验证联动：resolution 应被更新
+        # 验证联动：improvement_measures 应被更新
         issue = issue_service.get(sample_issue)
         assert issue is not None
-        assert issue.resolution == "更换供应商"
+        assert issue.improvement_measures == "更换供应商"
 
         # 验证 toast 被调用
         mock_win.toast.assert_called_once_with("CAPA 措施已添加", "success")
@@ -570,7 +570,7 @@ class TestEdgeCases:
         assert issue.status == "analyzing"
         assert issue.root_cause == "PCB 焊盘设计缺陷"
 
-        # 3. 添加 CAPA → resolution 更新
+        # 3. 添加 CAPA → improvement_measures 更新
         issue_service.add_capa_record(
             sample_issue,
             action="修订 PCB 焊盘设计规范",
@@ -580,7 +580,7 @@ class TestEdgeCases:
         issue = issue_service.get(sample_issue)
         assert issue is not None
         assert issue.status == "verified"
-        assert issue.resolution == "修订 PCB 焊盘设计规范"
+        assert issue.improvement_measures == "修订 PCB 焊盘设计规范"
 
     def test_handler_ctrl_none_graceful(
         self,

@@ -117,12 +117,14 @@ class IssueHandlers:
             root_cause = issue_or_data.get("root_cause", "")
             resolution = issue_or_data.get("resolution", "")
             description = issue_or_data.get("description", "")
+            improvement_measures = issue_or_data.get("improvement_measures", "")
         else:
             title = getattr(issue_or_data, "title", "")
             failure_mode = getattr(issue_or_data, "failure_mode", "")
             root_cause = getattr(issue_or_data, "root_cause", "")
             resolution = getattr(issue_or_data, "resolution", "")
             description = getattr(issue_or_data, "description", "")
+            improvement_measures = getattr(issue_or_data, "improvement_measures", "")
 
         reply = QMessageBox.question(
             self._win,
@@ -136,7 +138,7 @@ class IssueHandlers:
                     "category": "其他",
                     "failure_mode": failure_mode,
                     "cause_analysis": root_cause,
-                    "improvement": resolution,
+                    "improvement": improvement_measures,
                     "keywords": failure_mode,
                     "summary": f"{title}: {description[:100]}",
                     "root_cause": root_cause,
@@ -408,7 +410,7 @@ class IssueHandlers:
         """CAPA 记录变更后自动回写 Issue。
 
         规则:
-        1. 所有 CAPA action 汇总 → 回写 Issue.resolution
+        1. 所有 CAPA action 汇总 → 回写 Issue.improvement_measures
         2. 所有 CAPA 都 completed/verified → 状态改为 'verified'
         """
         ctrl = self._win._ctrl
@@ -422,18 +424,18 @@ class IssueHandlers:
             capa_records = ctrl.issue_service.get_capa_records(issue_id)
             updates: dict = {}
 
-            # 解决方案联动: 汇总所有 CAPA action
+            # 改进措施联动: 汇总所有 CAPA action
             actions = [rec.action for rec in capa_records if rec.action]
             if actions:
                 resolution = "; ".join(actions)
-                if resolution != issue.resolution:
-                    updates["resolution"] = resolution
-            elif not capa_records and issue.resolution:
-                # 所有 CAPA 被删空，清空 resolution
-                updates["resolution"] = ""
-            elif capa_records and not actions and issue.resolution:
-                # CAPA 存在但 action 全为空，清空旧 resolution
-                updates["resolution"] = ""
+                if resolution != issue.improvement_measures:
+                    updates["improvement_measures"] = resolution
+            elif not capa_records and issue.improvement_measures:
+                # 所有 CAPA 被删空，清空 improvement_measures
+                updates["improvement_measures"] = ""
+            elif capa_records and not actions and issue.improvement_measures:
+                # CAPA 存在但 action 全为空，清空旧 improvement_measures
+                updates["improvement_measures"] = ""
 
             # 状态联动: 全部完成/验证 → verified（仅当状态为 analyzing 时）
             if capa_records and issue.status == "analyzing":

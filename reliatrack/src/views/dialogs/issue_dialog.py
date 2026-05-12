@@ -207,6 +207,11 @@ class IssueEditDialog(_BaseDialog):
         self._root_cause_edit = self._add_text_area(
             "根因分析", default=issue.root_cause if issue else "",
         )
+        self._improvement_edit = self._add_text_area(
+            "改善对策",
+            default=issue.improvement_measures if issue else "",
+            height=60,
+        )
 
     # ── 公开 API ───────────────────────────────────────────────
 
@@ -252,6 +257,7 @@ class IssueEditDialog(_BaseDialog):
             "dri_name": self._dri_edit.text().strip(),
             "reporter_name": self._reporter_edit.text().strip(),
             "root_cause": self._root_cause_edit.toPlainText().strip(),
+            "improvement_measures": self._improvement_edit.toPlainText().strip(),
             "resolution": self._resolution_combo.currentData(Qt.ItemDataRole.UserRole) or "",
         }
 

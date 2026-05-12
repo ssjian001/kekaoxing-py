@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -891,6 +891,25 @@ def _migrate_v18(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (18)")
 
 
+def _migrate_v19(conn: apsw.Connection) -> None:
+    """v18→v19: issues 加 improvement_measures 列；迁移 resolution 中的非枚举文本。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(issues)").fetchall()}
+    if "improvement_measures" not in cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN improvement_measures TEXT NOT NULL DEFAULT ''"
+        )
+    # 迁移：把 resolution 中的非枚举值（旧 CAPA 汇总文本）搬到 improvement_measures
+    valid_resolutions = {"", "fixed", "wont_fix", "duplicate", "cannot_reproduce", "not_an_issue"}
+    rows = conn.execute("SELECT id, resolution FROM issues").fetchall()
+    for row_id, res_value in rows:
+        if res_value and res_value not in valid_resolutions:
+            conn.execute(
+                "UPDATE issues SET improvement_measures = ?, resolution = '' WHERE id = ?",
+                (res_value, row_id),
+            )
+    conn.execute("INSERT INTO schema_version (version) VALUES (19)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -910,6 +929,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (16, _migrate_v16),
     (17, _migrate_v17),
     (18, _migrate_v18),
+    (19, _migrate_v19),
 ]
 
 
@@ -1063,6 +1083,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v18 failed")
+            raise
+
+    # v19: issues 加 improvement_measures 列 + 迁移旧 resolution 文本
+    if current < 19:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v19(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v19 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）

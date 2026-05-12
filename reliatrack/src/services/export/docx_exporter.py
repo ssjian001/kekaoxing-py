@@ -267,7 +267,7 @@ def export_to_word(
     # ── Issue 列表表格 ──
     if issues:
         doc.add_heading("Issue 追踪", level=2)
-        issue_headers = ["#", "Issue描述", "优先级", "状态", "DRI", "报告人", "解决结果", "根因"]
+        issue_headers = ["#", "Issue描述", "优先级", "状态", "DRI", "报告人", "解决结果", "根因", "改善对策"]
         issue_table = doc.add_table(
             rows=1 + len(issues), cols=len(issue_headers), style="Table Grid"
         )
@@ -284,6 +284,7 @@ def export_to_word(
                 issue.reporter_name or "",
                 resolution_text,
                 (issue.root_cause or "")[:80] if issue.root_cause else "",
+                (issue.improvement_measures or "")[:80] if issue.improvement_measures else "",
             ], center_cols={0})
 
     # ── 测试结果汇总 ──
@@ -477,7 +478,7 @@ def export_dvpr_excel(
     # ── Sheet 3: Issue 汇总 ──
     if issues:
         ws3 = wb.create_sheet("Issue 汇总")
-        issue_headers = ["ID", "Issue描述", "严重度", "状态", "DRI", "报告人", "解决结果"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "DRI", "报告人", "解决结果", "改善对策"]
         excel_write_headers(ws3, 1, issue_headers, s)
         for ri, issue in enumerate(issues, 2):
             resolution_text = RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""
@@ -487,6 +488,7 @@ def export_dvpr_excel(
                 issue.dri_name or "",
                 issue.reporter_name or "",
                 resolution_text,
+                issue.improvement_measures or "",
             ], s)
         ws3.column_dimensions["A"].width = 6
         ws3.column_dimensions["B"].width = 30
@@ -637,11 +639,11 @@ def export_dvpr_docx(
     # ── Issue 汇总 ──
     if issues:
         doc.add_heading("Issue 追踪汇总", level=2)
-        issue_headers = ["ID", "Issue描述", "严重度", "状态", "DRI", "报告人", "解决结果"]
-        issue_table = doc.add_table(rows=1 + len(issues), cols=7, style="Table Grid")
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "DRI", "报告人", "解决结果", "改善对策"]
+        issue_table = doc.add_table(rows=1 + len(issues), cols=8, style="Table Grid")
         issue_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         _fill_row_cells(issue_table.rows[0]._tr, issue_headers, bold=True,
-                        color="FFFFFF", shade="C0504D", center_cols=set(range(7)))
+                        color="FFFFFF", shade="C0504D", center_cols=set(range(8)))
         for i, issue in enumerate(issues, 1):
             resolution_text = RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""
             _fill_row_cells(issue_table.rows[i]._tr, [
@@ -650,6 +652,7 @@ def export_dvpr_docx(
                 issue.dri_name or "",
                 issue.reporter_name or "",
                 resolution_text,
+                (issue.improvement_measures or "")[:80],
             ], center_cols={0})
 
     # ── 签字栏 ──
@@ -890,7 +893,7 @@ def export_8d_docx(
         ("D2", "问题描述 (Describe the Problem)", d2_content),
         ("D3", "临时遏制措施 (Interim Containment Actions)", d3_content),
         ("D4", "根因分析 (Root Cause Analysis)", _build_d4_content_docx(issue, fa_records)),
-        ("D5", "纠正措施 (Corrective Actions)", RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""),
+        ("D5", "纠正措施 (Corrective Actions)", (issue.improvement_measures or "") or RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""),
         ("D6", "实施验证 (Implement & Validate)", _build_d6_content_docx(capa_records)),
         ("D7", "预防再发 (Prevent Recurrence)", "(手写区)"),
         ("D8", "结论与签字 (Congratulate the Team)", "(签字区)"),

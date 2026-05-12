@@ -143,7 +143,7 @@ def export_issues_excel(
             issue.reporter_name or "",
             RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or "",
             (issue.root_cause or "")[:100],
-            capa_actions,
+            issue.improvement_measures or "",
             capa_statuses,
         ]
         for col, val in enumerate(values, 1):

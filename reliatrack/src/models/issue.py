@@ -68,6 +68,7 @@ class Issue:
     dri_name: str = ""              # DRI 责任人（自由输入）
     root_cause: str = ""
     resolution: str = ""
+    improvement_measures: str = ""  # 改善对策（CAPA 自动汇总 + 手动编辑）
     reporter_name: str = ""         # 报告人（自由文本）
     failure_code: str = ""      # 失效代码 (如 GJB/Z 1391 编码)
     occurrence_count: int = 1   # 发生次数
