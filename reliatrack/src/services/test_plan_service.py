@@ -148,21 +148,20 @@ class TestPlanService:
         existing = self.get_tasks(target_plan_id)
         max_sort = max((t.sort_order for t in existing), default=0)
 
-        count = 0
-        for i, t in enumerate(source_tasks, 1):
-            self._task_repo.insert(
-                plan_id=target_plan_id,
-                name=t.name,
-                category=t.category,
-                test_standard=t.test_standard,
-                duration=t.duration,
-                priority=t.priority,
-                temperature=t.temperature,
-                humidity=t.humidity,
-                accept_criteria=t.accept_criteria,
-                notes=t.notes,
-                environment=t.environment,
-                sort_order=max_sort + i,
-            )
-            count += 1
-        return count
+        with self._task_repo.transaction():
+            for i, t in enumerate(source_tasks, 1):
+                self._task_repo.insert(
+                    plan_id=target_plan_id,
+                    name=t.name,
+                    category=t.category,
+                    test_standard=t.test_standard,
+                    duration=t.duration,
+                    priority=t.priority,
+                    temperature=t.temperature,
+                    humidity=t.humidity,
+                    accept_criteria=t.accept_criteria,
+                    notes=t.notes,
+                    environment=t.environment,
+                    sort_order=max_sort + i,
+                )
+        return len(source_tasks)

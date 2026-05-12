@@ -7,6 +7,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QHBoxLayout,
     QMessageBox,
@@ -186,6 +187,7 @@ class PlanHandlers:
 
     def _on_import_from_plan(self) -> None:
         """从同项目其他计划导入任务。"""
+        from PySide6.QtCore import Qt
         from PySide6.QtWidgets import QInputDialog
         from src.views.dialogs.import_tasks_from_plan_dialog import ImportTasksFromPlanDialog
 
@@ -239,6 +241,7 @@ class PlanHandlers:
                 dlg.deleteLater()
                 return
             try:
+                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
                 count = ctrl.test_plan_service.import_tasks_from_plan(plan_id, selected)
                 self._win.statusBar().showMessage(
                     f"已从「{source_plan.name}」导入 {count} 个任务", 5000
@@ -246,6 +249,8 @@ class PlanHandlers:
                 ctrl.notify_data_changed("task")
             except Exception as e:
                 QMessageBox.critical(self._win, "导入失败", str(e))
+            finally:
+                QApplication.restoreOverrideCursor()
         dlg.deleteLater()
 
     def _on_task_batch_import(self) -> None:

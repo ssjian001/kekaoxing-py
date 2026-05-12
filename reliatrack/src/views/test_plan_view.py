@@ -450,6 +450,10 @@ class TestPlanView(QWidget):
     def btn_summary_report(self) -> QPushButton:
         return self._btn_summary_report
 
+    @property
+    def btn_import_from_plan(self) -> QPushButton:
+        return self._btn_import_from_plan
+
     def setup_task_callbacks(
         self,
         on_add: Callable[[], None] | None = None,
