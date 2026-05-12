@@ -113,7 +113,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### Issue 视图
 
-- 表格 9 列：ID/标题/严重度/状态/优先级/DRI/根因/解决方案/创建时间
+- 表格 9 列：ID/Issue描述/严重度/状态/优先级/DRI/根因/解决方案/创建时间
 - FA + CAPA 面板左右等宽排列（`QHBoxLayout`），各带标题标签
 - **Issue ↔ FA/CAPA 双向联动**（`issue_handlers._sync_issue_from_fa` / `_sync_issue_from_capa`）：
   - FA 添加 → 状态 `open`→`analyzing`；确认的根因（confirmed=1）回写 `root_cause`
@@ -130,6 +130,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - 今日工作摘要栏：超期/到期/待录入计数（`_compute_summary` static method）
 - 一键总结报告按钮：`plan_handlers._on_summary_report` 组装数据 → `ExportService.export_to_word`
 - 依赖编辑：弹出式对话框（QListWidget checkbox 多选），按排程排序 + 当前任务参照行，保存时校验自依赖和 ID 有效性
+- 从计划导入：`plan_handlers._on_import_from_plan` → 选来源计划（QInputDialog）→ 勾选任务（ImportTasksFromPlanDialog）→ `service.import_tasks_from_plan` 批量复制模板字段
 - 结果录入对话框（`test_result_dialog.py`）：pending 行蓝色高亮、判定准则显示、环境值批量填充、`_update_row_style()` 状态机
 
 ### 排程引擎
@@ -199,7 +200,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景（CI-only 已知问题：tables=0，本地正常，CI 中 `--ignore` 跳过）
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
-- 共 **216 个 pytest 测试**，全量通过
+- 共 **201 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
