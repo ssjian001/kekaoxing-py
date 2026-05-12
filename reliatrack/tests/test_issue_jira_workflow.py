@@ -185,3 +185,112 @@ class TestSchemaV18Migration:
         col_names = {row[1] for row in rows}  # row[1] 是列名
         assert "resolution" in col_names
         assert "reporter_name" in col_names
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  6. 全路径状态转换覆盖
+# ═══════════════════════════════════════════════════════════════════
+
+class TestAllTransitionPaths:
+    """参数化测试 ISSUE_TRANSITIONS 中所有合法路径。"""
+
+    @pytest.mark.parametrize("from_status,to_status", [
+        ("open", "analyzing"),
+        ("open", "closed"),
+        ("analyzing", "open"),
+        ("analyzing", "verified"),
+        ("analyzing", "closed"),
+        ("verified", "open"),
+        ("verified", "closed"),
+        ("closed", "open"),
+    ])
+    def test_legal_transition(self, db_conn, from_status, to_status):
+        """合法转换 from→to 成功执行。"""
+        svc = _make_service(db_conn)
+        iid = _create_issue(svc, status="open")
+        # 先推到 from_status
+        path_to = _path_to_status(from_status)
+        for s in path_to:
+            svc.update(iid, status=s)
+        assert svc.get(iid).status == from_status
+
+        svc.update(iid, status=to_status)
+        assert svc.get(iid).status == to_status
+
+    def test_open_to_closed_direct(self, db_conn):
+        """open→closed 直接关闭（跳过 analyzing/verified）。"""
+        svc = _make_service(db_conn)
+        iid = _create_issue(svc, status="open")
+        svc.update(iid, status="closed")
+        assert svc.get(iid).status == "closed"
+
+    def test_analyzing_to_open_rollback(self, db_conn):
+        """analyzing→open 回退到待处理。"""
+        svc = _make_service(db_conn)
+        iid = _create_issue(svc, status="open")
+        svc.update(iid, status="analyzing")
+        svc.update(iid, status="open")
+        assert svc.get(iid).status == "open"
+
+    def test_analyzing_to_closed(self, db_conn):
+        """analyzing→closed 直接关闭。"""
+        svc = _make_service(db_conn)
+        iid = _create_issue(svc, status="open")
+        svc.update(iid, status="analyzing")
+        svc.update(iid, status="closed")
+        assert svc.get(iid).status == "closed"
+
+
+def _path_to_status(target: str) -> list[str]:
+    """返回从 open 到达 target 状态的最短路径。"""
+    paths = {
+        "open": [],
+        "analyzing": ["analyzing"],
+        "verified": ["analyzing", "verified"],
+        "closed": ["analyzing", "verified", "closed"],
+    }
+    return paths.get(target, [])
+
+
+class _no_warning:
+    """Context manager: no-op fallback for pytest.warns."""
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        pass
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  7. FA/CAPA 联动不受 ISSUE_TRANSITIONS 限制
+# ═══════════════════════════════════════════════════════════════════
+
+class TestFACAPABypassTransitions:
+    """FA/CAPA 自动状态推进绕过 ISSUE_TRANSITIONS 规则。"""
+
+    def test_fa_auto_push_open_to_analyzing(self, db_conn, caplog):
+        """添加 FA 记录后 Issue 自动从 open→analyzing（无需经过转换规则）。"""
+        svc = _make_service(db_conn)
+        iid = _create_issue(svc, status="open")
+
+        # 模拟 FA 联动：直接 update 状态（实际由 handler 调用）
+        # 此处验证 service 层不阻断自动转换
+        with caplog.at_level(logging.WARNING, logger="src.services.issue_service"):
+            svc.update(iid, status="analyzing")
+
+        # open→analyzing 是合法转换，不应有 warning
+        assert not any("not in allowed set" in r.message for r in caplog.records)
+        assert svc.get(iid).status == "analyzing"
+
+    def test_capa_auto_push_analyzing_to_verified(self, db_conn, caplog):
+        """全部 CAPA 完成后 Issue 自动从 analyzing→verified。"""
+        svc = _make_service(db_conn)
+        iid = _create_issue(svc, status="open")
+        svc.update(iid, status="analyzing")
+
+        # 模拟 CAPA 联动：直接 update 到 verified
+        with caplog.at_level(logging.WARNING, logger="src.services.issue_service"):
+            svc.update(iid, status="verified")
+
+        # analyzing→verified 是合法转换，不应有 warning
+        assert not any("not in allowed set" in r.message for r in caplog.records)
+        assert svc.get(iid).status == "verified"
