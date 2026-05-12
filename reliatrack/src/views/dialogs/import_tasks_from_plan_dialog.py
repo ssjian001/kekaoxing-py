@@ -92,8 +92,6 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         
         self._table.itemChanged.connect(self._on_item_changed)
         self._form.addRow(self._table)
-        
-        self._add_ok_cancel_buttons()
     
     def _on_item_changed(self, item: QTableWidgetItem) -> None:
         if item.column() == 0:
