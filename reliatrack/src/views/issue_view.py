@@ -42,7 +42,7 @@ from src.views.dialogs.base_dialog import _BaseDialog
 #   fixed=固定 / content=按内容 / stretch=填满 / interactive=可拖拽
 _ISSUE_SPECS = [
     ("ID", "fixed", 50),
-    ("标题", "interactive", 200),
+    ("Issue描述", "interactive", 200),
     ("严重度", "interactive", 70),
     ("状态", "interactive", 80),
     ("优先级", "interactive", 70),
@@ -364,7 +364,7 @@ class IssueView(QWidget):
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("搜索 Issue 标题 / 根因…")
+        self._search_input.setPlaceholderText("搜索 Issue 描述 / 根因…")
         self._search_input.setMinimumWidth(160)
         toolbar.addWidget(self._search_input)
 

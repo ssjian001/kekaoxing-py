@@ -69,6 +69,10 @@ class BaseRepository:
         self._columns_cache = [str(r[1]) for r in rows]
         return self._columns_cache
 
+    def table_exists(self) -> bool:
+        """检查表是否实际存在（至少有一列）。"""
+        return bool(self._columns())
+
     def _columns_sql(self) -> str:
         """返回显式列名列表字符串，如 '[id], [name], [status]'。"""
         return ", ".join(f"[{c}]" for c in self._columns())

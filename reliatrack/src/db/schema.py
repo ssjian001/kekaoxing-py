@@ -875,6 +875,27 @@ def _migrate_v17(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (17)")
 
 
+# 按版本号排列的迁移函数列表（用于完整性修复时回放）
+_MIGRATORS: list[tuple[int, object]] = [
+    (2, _migrate_v2),
+    (3, _migrate_v3),
+    (4, _migrate_v4),
+    (5, _migrate_v5),
+    (6, _migrate_v6),
+    (7, _migrate_v7),
+    (8, _migrate_v8),
+    (9, _migrate_v9),
+    (10, _migrate_v10),
+    (11, _migrate_v11),
+    (12, _migrate_v12),
+    (13, _migrate_v13),
+    (14, _migrate_v14),
+    (15, _migrate_v15),
+    (16, _migrate_v16),
+    (17, _migrate_v17),
+]
+
+
 def init_schema(conn: apsw.Connection) -> int:
     """初始化数据库 schema，按需执行迁移。
 
@@ -1016,4 +1037,37 @@ def init_schema(conn: apsw.Connection) -> int:
             logger.exception("Schema migration v17 failed")
             raise
 
+    # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）
+    _validate_schema_integrity(conn)
+
     return _get_current_version(conn)
+
+
+def _validate_schema_integrity(conn: apsw.Connection) -> None:
+    """验证核心表存在。如果 schema_version 正确但表缺失，强制从 v1 重建。"""
+    core_tables = ["projects", "samples", "knowledge_entries"]
+    missing = []
+    for t in core_tables:
+        cols = conn.execute(f"PRAGMA table_info([{t}])").fetchall()
+        if not cols:
+            missing.append(t)
+
+    if missing:
+        logger.warning(
+            "Schema integrity check failed — tables missing: %s. Rebuilding from v1.",
+            missing,
+        )
+        # 清除版本记录，强制全量重建
+        try:
+            conn.execute("DELETE FROM schema_version")
+        except Exception:
+            pass
+        _migrate_v1(conn)
+        # 重新执行 v2-v17 迁移（幂等，ALTER TABLE IF NOT EXISTS 模式）
+        for ver, migrator in _MIGRATORS:
+            try:
+                migrator(conn)
+            except Exception:
+                logger.exception("Rebuild migration v%d failed", ver)
+                raise
+        logger.info("Schema rebuild completed successfully")

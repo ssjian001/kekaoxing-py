@@ -54,7 +54,7 @@ class IssueEditDialog(_BaseDialog):
 
         # ── 基本信息 ──
         self._title_edit = self._add_text_field(
-            "标题 *", default=issue.title if issue else "",
+            "Issue描述 *", default=issue.title if issue else "",
             placeholder="必填",
         )
         self._failure_mode_edit = self._add_text_field(
@@ -285,7 +285,7 @@ class IssueEditDialog(_BaseDialog):
 
         data = self.get_data()
         if not data["title"]:
-            QMessageBox.warning(self, "校验失败", "标题为必填项，请输入。")
+            QMessageBox.warning(self, "校验失败", "Issue描述为必填项，请输入。")
             self._title_edit.setFocus()
             return
         super().accept()

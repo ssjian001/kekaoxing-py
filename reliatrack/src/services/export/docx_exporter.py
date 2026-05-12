@@ -266,7 +266,7 @@ def export_to_word(
     # ── Issue 列表表格 ──
     if issues:
         doc.add_heading("Issue 追踪", level=2)
-        issue_headers = ["#", "标题", "优先级", "状态", "根因"]
+        issue_headers = ["#", "Issue描述", "优先级", "状态", "DRI", "根因"]
         issue_table = doc.add_table(
             rows=1 + len(issues), cols=len(issue_headers), style="Table Grid"
         )
@@ -278,6 +278,7 @@ def export_to_word(
             _fill_row_cells(issue_table.rows[idx]._tr, [
                 idx, issue.title, issue.priority,
                 STATUS_MAP.get(issue.status, issue.status),
+                issue.dri_name or "",
                 (issue.root_cause or "")[:80] if issue.root_cause else "",
             ], center_cols={0})
 
@@ -472,13 +473,14 @@ def export_dvpr_excel(
     # ── Sheet 3: Issue 汇总 ──
     if issues:
         ws3 = wb.create_sheet("Issue 汇总")
-        issue_headers = ["ID", "标题", "严重度", "状态", "失效模式"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "失效模式", "DRI"]
         excel_write_headers(ws3, 1, issue_headers, s)
         for ri, issue in enumerate(issues, 2):
             excel_write_row(ws3, ri, [
                 issue.id, (issue.title or "")[:30], issue.severity,
                 STATUS_MAP.get(issue.status, issue.status),
                 (issue.failure_mode or "")[:20],
+                issue.dri_name or "",
             ], s)
         ws3.column_dimensions["A"].width = 6
         ws3.column_dimensions["B"].width = 30
@@ -629,16 +631,17 @@ def export_dvpr_docx(
     # ── Issue 汇总 ──
     if issues:
         doc.add_heading("Issue 追踪汇总", level=2)
-        issue_headers = ["ID", "标题", "严重度", "状态", "失效模式"]
-        issue_table = doc.add_table(rows=1 + len(issues), cols=5, style="Table Grid")
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "失效模式", "DRI"]
+        issue_table = doc.add_table(rows=1 + len(issues), cols=6, style="Table Grid")
         issue_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         _fill_row_cells(issue_table.rows[0]._tr, issue_headers, bold=True,
-                        color="FFFFFF", shade="C0504D", center_cols=set(range(5)))
+                        color="FFFFFF", shade="C0504D", center_cols=set(range(6)))
         for i, issue in enumerate(issues, 1):
             _fill_row_cells(issue_table.rows[i]._tr, [
                 str(issue.id), (issue.title or "")[:30], issue.severity,
                 STATUS_MAP.get(issue.status, issue.status),
                 (issue.failure_mode or "")[:20],
+                issue.dri_name or "",
             ], center_cols={0})
 
     # ── 签字栏 ──
@@ -799,12 +802,13 @@ def export_8d_docx(
     sev_text = severity_labels.get(issue.severity, issue.severity)
     status_text = STATUS_MAP.get(issue.status, issue.status)
 
-    info = doc.add_table(rows=3, cols=4)
+    info = doc.add_table(rows=4, cols=4)
     info.alignment = WD_TABLE_ALIGNMENT.CENTER
     info_data = [
         ["Issue 编号", str(issue.id), "严重度", sev_text],
-        ["标题", issue.title, "状态", status_text],
+        ["Issue描述", issue.title, "状态", status_text],
         ["报告日期", datetime.now().strftime("%Y-%m-%d"), "优先级", str(issue.priority)],
+        ["DRI", issue.dri_name or "", "失效模式", issue.failure_mode or ""],
     ]
     for ri, row_data in enumerate(info_data):
         for ci, cell_text in enumerate(row_data):

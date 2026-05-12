@@ -249,7 +249,7 @@ def export_report_pdf(
         story.append(PageBreak())
         story.append(Paragraph("Issue 追踪", style_section_red))
 
-        issue_headers = ["ID", "标题", "严重度", "状态", "优先级", "失效模式"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "失效模式", "DRI"]
         issue_header_row = [Paragraph(h, ParagraphStyle("IH", fontName=_FN_B, fontSize=9,
                                                          textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
                             for h in issue_headers]
@@ -265,9 +265,10 @@ def export_report_pdf(
                 Paragraph(status, cell_style),
                 Paragraph(str(issue.priority), cell_style),
                 Paragraph((issue.failure_mode or "")[:20], cell_style),
+                Paragraph((issue.dri_name or "")[:15], cell_style),
             ])
 
-        issue_table = Table(issue_data, colWidths=[18, 140, 45, 45, 40, 100])
+        issue_table = Table(issue_data, colWidths=[18, 140, 45, 45, 40, 100, 60])
         issue_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), _RED),
             ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
@@ -592,7 +593,7 @@ def export_dvpr_pdf(
     if issues:
         story.append(PageBreak())
         story.append(Paragraph("Issue 追踪汇总", style_section))
-        issue_headers = ["ID", "标题", "严重度", "状态", "失效模式"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "失效模式", "DRI"]
         issue_data = [[Paragraph(h, th_style) for h in issue_headers]]
         for issue in issues:
             issue_data.append([
@@ -601,8 +602,9 @@ def export_dvpr_pdf(
                 Paragraph(issue.severity, cell_style),
                 Paragraph(STATUS_MAP.get(issue.status, issue.status), cell_style),
                 Paragraph((issue.failure_mode or "")[:20], cell_left),
+                Paragraph((issue.dri_name or "")[:15], cell_style),
             ])
-        issue_table = Table(issue_data, colWidths=[25, 160, 50, 50, 120])
+        issue_table = Table(issue_data, colWidths=[25, 140, 50, 50, 100, 60])
         issue_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), _RED),
             ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
@@ -834,7 +836,7 @@ def export_8d_pdf(
             Paragraph(sev_text, style_cell_center),
         ],
         [
-            Paragraph("标题", style_cell_bold),
+            Paragraph("Issue描述", style_cell_bold),
             Paragraph(issue.title, style_cell),
             Paragraph("状态", style_cell_bold),
             Paragraph(status_text, style_cell_center),
@@ -844,6 +846,12 @@ def export_8d_pdf(
             Paragraph(datetime.now().strftime("%Y-%m-%d"), style_cell_center),
             Paragraph("优先级", style_cell_bold),
             Paragraph(str(issue.priority), style_cell_center),
+        ],
+        [
+            Paragraph("DRI", style_cell_bold),
+            Paragraph(issue.dri_name or "", style_cell_center),
+            Paragraph("失效模式", style_cell_bold),
+            Paragraph(issue.failure_mode or "", style_cell),
         ],
     ]
     info_table = Table(info_data, colWidths=[page_w * 0.15, page_w * 0.35, page_w * 0.15, page_w * 0.35])
