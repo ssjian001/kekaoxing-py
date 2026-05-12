@@ -125,7 +125,7 @@ def export_issues_excel(
         "A2:J2", "C0504D", s,
     )
 
-    headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "失效模式", "根因分析", "DRI", "改善对策", "CAPA 状态"]
+    headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "失效模式", "DRI", "根因分析", "改善对策", "CAPA 状态"]
     excel_write_headers(ws, 4, headers, s)
 
     for row_idx, issue in enumerate(issues, 5):
@@ -139,8 +139,8 @@ def export_issues_excel(
             STATUS_MAP.get(issue.status, issue.status),
             issue.priority,
             issue.failure_mode or "",
-            (issue.root_cause or "")[:100],
             issue.dri_name or "",
+            (issue.root_cause or "")[:100],
             capa_actions,
             capa_statuses,
         ]
@@ -150,7 +150,7 @@ def export_issues_excel(
             cell.alignment = wrap if col in (2, 6, 7, 9, 10) else s["center"]
             cell.border = s["thin_border"]
 
-    widths = [5, 25, 10, 10, 8, 15, 35, 12, 35, 15]
+    widths = [5, 25, 10, 10, 8, 15, 12, 35, 35, 15]
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
