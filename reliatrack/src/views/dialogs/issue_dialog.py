@@ -210,7 +210,6 @@ class IssueEditDialog(_BaseDialog):
         self._improvement_edit = self._add_text_area(
             "改善对策",
             default=issue.improvement_measures if issue else "",
-            height=60,
         )
 
     # ── 公开 API ───────────────────────────────────────────────
