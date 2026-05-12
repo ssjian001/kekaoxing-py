@@ -1044,7 +1044,7 @@ def init_schema(conn: apsw.Connection) -> int:
 
 
 def _validate_schema_integrity(conn: apsw.Connection) -> None:
-    """验证核心表存在。如果 schema_version 正确但表缺失，强制从 v1 重建。"""
+    """验证核心表存在。如果 schema_version 正确但表缺失，用 DDL 重建缺失表。"""
     core_tables = ["projects", "samples", "knowledge_entries"]
     missing = []
     for t in core_tables:
@@ -1054,20 +1054,20 @@ def _validate_schema_integrity(conn: apsw.Connection) -> None:
 
     if missing:
         logger.warning(
-            "Schema integrity check failed — tables missing: %s. Rebuilding from v1.",
+            "Schema integrity check failed — tables missing: %s. Rebuilding with DDL.",
             missing,
         )
-        # 清除版本记录，强制全量重建
-        try:
-            conn.execute("DELETE FROM schema_version")
-        except Exception:
-            pass
-        _migrate_v1(conn)
-        # 重新执行 v2-v17 迁移（幂等，ALTER TABLE IF NOT EXISTS 模式）
-        for ver, migrator in _MIGRATORS:
+        # 只执行 DDL（CREATE TABLE IF NOT EXISTS），不回放迁移
+        for ddl in _DDL_TABLES:
             try:
-                migrator(conn)
+                conn.execute(ddl)
             except Exception:
-                logger.exception("Rebuild migration v%d failed", ver)
+                logger.exception("DDL rebuild failed for: %s", ddl[:60])
+                raise
+        for ddl in _DDL_INDEXES:
+            try:
+                conn.execute(ddl)
+            except Exception:
+                logger.exception("Index rebuild failed for: %s", ddl[:60])
                 raise
         logger.info("Schema rebuild completed successfully")
