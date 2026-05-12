@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.constants import SEVERITY_OPTIONS
+from src.constants import SEVERITY_OPTIONS, ISSUE_STATUS_LABELS, RESOLUTION_OPTIONS
 from src.models.issue import Issue
 from src.views.dialogs.base_dialog import _BaseDialog
 
@@ -93,11 +93,23 @@ class IssueEditDialog(_BaseDialog):
             default=issue.priority if issue else 3,
             min_val=1, max_val=5,
         )
-        self._status_combo = self._add_combo_field(
-            "状态",
-            items=["open", "analyzing", "verified", "closed"],
-            default=issue.status if issue else "open",
+        self._status_combo = self._add_combo_field("状态", items=list(ISSUE_STATUS_LABELS.values()))
+        for i, (eng, chn) in enumerate(ISSUE_STATUS_LABELS.items()):
+            self._status_combo.setItemData(i, eng, Qt.ItemDataRole.UserRole)
+            if eng == (issue.status if issue else "open"):
+                self._status_combo.setCurrentIndex(i)
+
+        # ── 解决结果下拉 ──
+        self._resolution_combo = self._add_combo_field(
+            "解决结果",
+            items=[label for label, _ in RESOLUTION_OPTIONS],
         )
+        for i, (_, value) in enumerate(RESOLUTION_OPTIONS):
+            self._resolution_combo.setItemData(i, value, Qt.ItemDataRole.UserRole)
+        default_resolution = issue.resolution if issue else ""
+        for i, (_, value) in enumerate(RESOLUTION_OPTIONS):
+            if value == default_resolution:
+                self._resolution_combo.setCurrentIndex(i)
 
         # ── 关联项目 ──
         project_names = ["（无）"]
@@ -184,12 +196,16 @@ class IssueEditDialog(_BaseDialog):
             placeholder="输入责任人姓名",
         )
 
+        # ── 报告人 ──
+        self._reporter_edit = self._add_text_field(
+            "报告人",
+            default=getattr(issue, "reporter_name", "") or "" if issue else "",
+            placeholder="发现问题的人",
+        )
+
         # ── 根因 & 解决方案 ──
         self._root_cause_edit = self._add_text_area(
             "根因分析", default=issue.root_cause if issue else "",
-        )
-        self._resolution_edit = self._add_text_area(
-            "解决方案", default=issue.resolution if issue else "",
         )
 
     # ── 公开 API ───────────────────────────────────────────────
@@ -227,15 +243,16 @@ class IssueEditDialog(_BaseDialog):
             "description": self._description_edit.toPlainText().strip(),
             "severity": self._severity_combo.currentData(Qt.ItemDataRole.UserRole) or self._severity_combo.currentText(),
             "priority": self._priority_spin.value(),
-            "status": self._status_combo.currentText(),
+            "status": self._status_combo.currentData(Qt.ItemDataRole.UserRole) or self._status_combo.currentText(),
             "project_id": project_id,
             "task_id": task_id,
             "sample_id": sample_id,
             "failure_code": self._failure_code_edit.text().strip(),
             "occurrence_count": self._occurrence_spin.value(),
             "dri_name": self._dri_edit.text().strip(),
+            "reporter_name": self._reporter_edit.text().strip(),
             "root_cause": self._root_cause_edit.toPlainText().strip(),
-            "resolution": self._resolution_edit.toPlainText().strip(),
+            "resolution": self._resolution_combo.currentData(Qt.ItemDataRole.UserRole) or "",
         }
 
     # ── 知识库推荐 ───────────────────────────────────────────

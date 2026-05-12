@@ -105,3 +105,29 @@ PROJECT_STATUS_MAP: dict[str, str] = {
     "已关闭": "closed",
 }
 PROJECT_STATUS_REVERSE: dict[str, str] = {v: k for k, v in PROJECT_STATUS_MAP.items()}
+
+# ═══════════════════════════════════════════════════════════════════
+#  Issue 解决结果
+# ═══════════════════════════════════════════════════════════════════
+
+RESOLUTION_OPTIONS: list[tuple[str, str]] = [
+    ("未解决", ""),
+    ("已修复", "fixed"),
+    ("不修复", "wont_fix"),
+    ("重复", "duplicate"),
+    ("无法复现", "cannot_reproduce"),
+    ("非问题", "not_an_issue"),
+]
+
+RESOLUTION_LABELS: dict[str, str] = {v: k for k, v in RESOLUTION_OPTIONS}
+
+# ═══════════════════════════════════════════════════════════════════
+#  Issue 状态转换规则
+# ═══════════════════════════════════════════════════════════════════
+
+ISSUE_TRANSITIONS: dict[str, set[str]] = {
+    "open": {"analyzing", "closed"},
+    "analyzing": {"open", "verified", "closed"},
+    "verified": {"open", "closed"},
+    "closed": {"open"},
+}

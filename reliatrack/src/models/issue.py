@@ -19,6 +19,16 @@ class IssueStatus(str, Enum):
     CLOSED = "closed"
 
 
+class IssueResolution(str, Enum):
+    """Issue 解决结果（参考 Jira Resolution）。"""
+    UNRESOLVED = ""
+    FIXED = "fixed"
+    WONT_FIX = "wont_fix"
+    DUPLICATE = "duplicate"
+    CANNOT_REPRODUCE = "cannot_reproduce"
+    NOT_AN_ISSUE = "not_an_issue"
+
+
 class IssueSeverity(str, Enum):
     """Issue 严重度。"""
     CRITICAL = "critical"
@@ -58,6 +68,7 @@ class Issue:
     dri_name: str = ""              # DRI 责任人（自由输入）
     root_cause: str = ""
     resolution: str = ""
+    reporter_name: str = ""         # 报告人（自由文本）
     failure_code: str = ""      # 失效代码 (如 GJB/Z 1391 编码)
     occurrence_count: int = 1   # 发生次数
     is_deleted: int = 0         # 软删除标记: 0=正常, 1=已删除

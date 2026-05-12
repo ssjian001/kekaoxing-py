@@ -36,6 +36,23 @@ class IssueService:
         return self._repo.get_by_task(task_id)
 
     def update(self, issue_id: int, **kwargs: object) -> None:
+        """更新 Issue，含状态转换校验与 reopen 清空 resolution。"""
+        from src.constants import ISSUE_TRANSITIONS
+
+        new_status = kwargs.get("status")
+        if new_status is not None:
+            current = self._repo.get_by_id(issue_id)
+            if current and current.status != new_status:
+                allowed = ISSUE_TRANSITIONS.get(current.status, set())
+                if new_status not in allowed:
+                    # 不抛异常，只 logger.warning — 自动转换和 FA/CAPA 联动不受限制
+                    logger.warning(
+                        "Status transition %s → %s not in allowed set %s",
+                        current.status, new_status, allowed
+                    )
+                # reopen 时清空 resolution
+                if new_status == "open" and current.status in ("closed", "verified"):
+                    kwargs.setdefault("resolution", "")
         self._repo.update(issue_id, **kwargs)
 
     def update_status(self, issue_id: int, status: str) -> None:

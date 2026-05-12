@@ -18,6 +18,7 @@ from src.services.export.export_utils import (
     CATEGORY_MAP, STATUS_MAP, excel_styles, excel_write_title_block,
     excel_write_headers, excel_write_row, excel_save,
 )
+from src.constants import RESOLUTION_LABELS
 
 if TYPE_CHECKING:
     from openpyxl import Workbook
@@ -120,12 +121,12 @@ def export_issues_excel(
     ws.title = "Issue 追踪"
 
     excel_write_title_block(
-        ws, "Issue 追踪报告", "A1:J1",
+        ws, "Issue 追踪报告", "A1:K1",
         f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(issues)} 个 Issue",
-        "A2:J2", "C0504D", s,
+        "A2:K2", "C0504D", s,
     )
 
-    headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "失效模式", "DRI", "根因分析", "改善对策", "CAPA 状态"]
+    headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "根因分析", "改善对策", "CAPA 状态"]
     excel_write_headers(ws, 4, headers, s)
 
     for row_idx, issue in enumerate(issues, 5):
@@ -138,8 +139,9 @@ def export_issues_excel(
             issue.severity,
             STATUS_MAP.get(issue.status, issue.status),
             issue.priority,
-            issue.failure_mode or "",
             issue.dri_name or "",
+            issue.reporter_name or "",
+            RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or "",
             (issue.root_cause or "")[:100],
             capa_actions,
             capa_statuses,
@@ -147,10 +149,10 @@ def export_issues_excel(
         for col, val in enumerate(values, 1):
             cell = ws.cell(row=row_idx, column=col, value=val)
             cell.font = s["cell_font"]
-            cell.alignment = wrap if col in (2, 6, 7, 9, 10) else s["center"]
+            cell.alignment = wrap if col in (2, 8, 9, 10, 11) else s["center"]
             cell.border = s["thin_border"]
 
-    widths = [5, 25, 10, 10, 8, 15, 12, 35, 35, 15]
+    widths = [5, 25, 10, 10, 8, 12, 12, 12, 35, 35, 15]
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 

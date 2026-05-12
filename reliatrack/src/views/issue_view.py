@@ -35,7 +35,7 @@ from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS, apply_column_specs
-from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
+from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS, RESOLUTION_LABELS
 from src.views.dialogs.base_dialog import _BaseDialog
 
 # Issue 表列规格: (表头, 模式, 默认宽度)
@@ -47,8 +47,8 @@ _ISSUE_SPECS = [
     ("状态", "interactive", 80),
     ("优先级", "interactive", 70),
     ("DRI", "interactive", 80),
+    ("解决结果", "interactive", 80),
     ("根因", "interactive", 120),
-    ("解决方案", "interactive", 140),
     ("创建时间", "interactive", 100),
 ]
 
@@ -94,8 +94,8 @@ class _IssueTable(QTableWidget):
                 status_labels.get(issue.status, issue.status),
                 issue.priority,
                 getattr(issue, "dri_name", "") or "",
+                RESOLUTION_LABELS.get(getattr(issue, "resolution", ""), getattr(issue, "resolution", "") or ""),
                 (issue.root_cause or "")[:15],
-                (issue.resolution or "")[:20],
                 (issue.created_at or "")[:10],
             ]):
                 item = QTableWidgetItem(str(val))
@@ -501,12 +501,13 @@ class IssueView(QWidget):
         self._issue_table.set_issues(filtered)
         open_count = sum(1 for i in filtered if i.status == "open")
         analyzing = sum(1 for i in filtered if i.status == "analyzing")
+        resolved = sum(1 for i in filtered if getattr(i, "resolution", ""))
         total = len(self._all_issues)
         shown = len(filtered)
         if total == shown:
-            self._stats_label.setText(f"{total} 个 Issue（{open_count} 待处理，{analyzing} 分析中）")
+            self._stats_label.setText(f"{total} 个 Issue（{open_count} 待处理，{analyzing} 分析中，{resolved} 已解决）")
         else:
-            self._stats_label.setText(f"{shown}/{total} 个 Issue（{open_count} 待处理，{analyzing} 分析中）")
+            self._stats_label.setText(f"{shown}/{total} 个 Issue（{open_count} 待处理，{analyzing} 分析中，{resolved} 已解决）")
         self._update_empty_state()
 
     def refresh_fa(self, records: list[FARecord]) -> None:

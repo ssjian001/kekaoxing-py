@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -173,6 +173,7 @@ _DDL_TABLES: list[str] = [
         assignee_id     INTEGER REFERENCES technicians(id),
         root_cause      TEXT    NOT NULL DEFAULT '',
         resolution      TEXT    NOT NULL DEFAULT '',
+        reporter_name   TEXT    NOT NULL DEFAULT '',
         failure_code    TEXT    NOT NULL DEFAULT '',
         occurrence_count INTEGER NOT NULL DEFAULT 1,
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
@@ -691,6 +692,7 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             assignee_id     INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
             root_cause      TEXT    NOT NULL DEFAULT '',
             resolution      TEXT    NOT NULL DEFAULT '',
+            reporter_name   TEXT    NOT NULL DEFAULT '',
             failure_code    TEXT    NOT NULL DEFAULT '',
             occurrence_count INTEGER NOT NULL DEFAULT 1,
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
@@ -875,6 +877,20 @@ def _migrate_v17(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (17)")
 
 
+def _migrate_v18(conn: apsw.Connection) -> None:
+    """v17→v18: issues 加 resolution（幂等）+ reporter_name 列。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(issues)").fetchall()}
+    if "resolution" not in cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN resolution TEXT NOT NULL DEFAULT ''"
+        )
+    if "reporter_name" not in cols:
+        conn.execute(
+            "ALTER TABLE issues ADD COLUMN reporter_name TEXT NOT NULL DEFAULT ''"
+        )
+    conn.execute("INSERT INTO schema_version (version) VALUES (18)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -893,6 +909,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (15, _migrate_v15),
     (16, _migrate_v16),
     (17, _migrate_v17),
+    (18, _migrate_v18),
 ]
 
 
@@ -1035,6 +1052,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v17 failed")
+            raise
+
+    # v18: issues 加 resolution + reporter_name 列
+    if current < 18:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v18(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v18 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）

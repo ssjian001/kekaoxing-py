@@ -117,6 +117,15 @@ ISSUE_SEVERITY_COLORS: dict[str, str] = {
     "cosmetic": STATUS_OVERLAY,
 }
 
+ISSUE_RESOLUTION_COLORS: dict[str, str] = {
+    "": "#1E293B",
+    "fixed": STATUS_GREEN,
+    "wont_fix": STATUS_OVERLAY,
+    "duplicate": STATUS_OVERLAY,
+    "cannot_reproduce": STATUS_YELLOW,
+    "not_an_issue": STATUS_OVERLAY,
+}
+
 # 设备状态
 EQUIPMENT_STATUS_COLORS: dict[str, str] = {
     "available": STATUS_GREEN,
