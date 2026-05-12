@@ -159,9 +159,9 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 
-### Schema（v18）
+### Schema（v19）
 
-- **v16**：Issue 加 `dri_name`（DRI 责任人）；CAPA 加 `verifier_name`（验证人）；测试结果保存时可自动创建 Issue
+- **v19**：Issue `improvement_measures`（改善对策，CAPA 自动汇总 + 手动编辑）；`resolution` 专职做枚举值，不再承载 CAPA 汇总文本；旧数据自动迁移
 - **v18**：Issue `resolution`（Jira-style 解决结果枚举：fixed/wont_fix/duplicate/cannot_reproduce/not_an_issue）+ `reporter_name`（报告人）；状态转换规则 `ISSUE_TRANSITIONS`（open→analyzing→verified→closed, closed→open reopen）；状态/解决结果下拉中文化
 - **v17**：Issue 软删除试点（`is_deleted`/`deleted_at` 列，`list_all` 过滤，`soft_delete`/`restore`/`purge_old`）
 - **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up` 三字段；CAPA 编辑/删除 UI；`count_capa_done` SQL bug 修复（`'done'`→`'completed'`）
@@ -202,7 +202,8 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
 - `tests/test_issue_jira_workflow.py` — 25 项 Jira-style Issue 工作流（全路径转换、resolution 枚举、FA/CAPA 联动、reopen、reporter）
-- 共 **238 个 pytest 测试**，全量通过
+- `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
+- 共 **246 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
