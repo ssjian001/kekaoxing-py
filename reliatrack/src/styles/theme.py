@@ -324,7 +324,8 @@ QCheckBox::indicator {{
     background-color: {BG_INPUT};
 }}
 QCheckBox::indicator:checked {{
-    /* checked 由 CheckboxProxyStyle 绘制 ✓ */
+    background-color: {ACCENT};
+    border-color: {ACCENT};
 }}
 QCheckBox::indicator:hover {{
     border-color: {ACCENT};
@@ -344,7 +345,8 @@ QRadioButton::indicator {{
     background-color: {BG_INPUT};
 }}
 QRadioButton::indicator:checked {{
-    /* checked 由 CheckboxProxyStyle 绘制圆点 */
+    background-color: {BG_INPUT};
+    border-color: {ACCENT};
 }}
 QRadioButton::indicator:hover {{
     border-color: {ACCENT};
@@ -433,6 +435,42 @@ QMessageBox {{
 _COMPILED_STYLESHEET: str | None = None
 
 
+def _ensure_indicator_icons() -> tuple[str, str]:
+    """确保 indicator 图标文件存在，返回 (check_svg_path, radio_svg_path)。"""
+    import os
+    import tempfile
+
+    cache_dir = os.path.join(tempfile.gettempdir(), "reliatrack_assets")
+    os.makedirs(cache_dir, exist_ok=True)
+
+    check_path = os.path.join(cache_dir, "check.svg")
+    radio_path = os.path.join(cache_dir, "radio.svg")
+
+    if not os.path.exists(check_path):
+        with open(check_path, "w") as f:
+            f.write(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"'
+                ' viewBox="0 0 16 16">'
+                f'<rect width="16" height="16" rx="3" fill="{ACCENT}"/>'
+                '<path d="M4 8.5L7 11.5L12 5" stroke="white" stroke-width="2"'
+                ' fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+                '</svg>'
+            )
+
+    if not os.path.exists(radio_path):
+        with open(radio_path, "w") as f:
+            f.write(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"'
+                ' viewBox="0 0 16 16">'
+                f'<circle cx="8" cy="8" r="7" fill="{BG_INPUT}"'
+                f' stroke="{ACCENT}" stroke-width="1.5"/>'
+                f'<circle cx="8" cy="8" r="3.5" fill="{ACCENT}"/>'
+                '</svg>'
+            )
+
+    return check_path, radio_path
+
+
 def get_stylesheet() -> str:
     """获取完整的应用 QSS 样式表。
 
@@ -441,7 +479,17 @@ def get_stylesheet() -> str:
     """
     global _COMPILED_STYLESHEET
     if _COMPILED_STYLESHEET is None:
-        _COMPILED_STYLESHEET = _BASE_QSS
+        check_svg, radio_svg = _ensure_indicator_icons()
+        _COMPILED_STYLESHEET = _BASE_QSS + f"""
+/* ── CheckBox indicator: checked image ── */
+QCheckBox::indicator:checked {{
+    image: url({check_svg});
+}}
+/* ── RadioButton indicator: checked image ── */
+QRadioButton::indicator:checked {{
+    image: url({radio_svg});
+}}
+"""
     return _COMPILED_STYLESHEET
 
 
