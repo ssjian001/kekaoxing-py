@@ -123,8 +123,8 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 测试计划视图
 
-- `_TaskTable`：13 列（#, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成），# 列显示数据库 ID
-- `_GanttWidget`：支持预计/实际日期切换（`_task_day_range` 方法，RadioButton 切换），实际模式下禁拖拽；标签列 8pt 字体、260px 初始宽度、可拖拽分隔线调节、hover tooltip
+- `_TaskTable`：13 列（序号, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成），序号列显示 task_prefix + ID
+- `_GanttWidget`：支持预计/实际日期切换（`_task_day_range` 方法，RadioButton 切换），实际模式下禁拖拽；标签列 8pt 字体、260px 初始宽度、可拖拽分隔线调节、hover tooltip；节假日列浅红半透明标记
 - `_ResultMatrixWidget`：任务×样品矩阵 + 行统计列（通过率）+ 列统计行 + 右下角总计；3 种显示模式（符号/实测值/日期）+ 单元格 Tooltip
 - `_AnalysisWidget`（4th sub-tab "分析"）：按类别通过率柱条（QPainter 自绘 `_BarWidget`）+ 失效详情表（Top-N）+ 未关联 Issue 警告；每次 refresh 重建 widget 避免内存泄漏
 - 今日工作摘要栏：超期/到期/待录入计数（`_compute_summary` static method）
@@ -135,8 +135,13 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 排程引擎
 
-- `scheduler.py`（571行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
-- `scheduler_service.py`：DB 读写封装，支持 skip_weekends/skip_holidays/lock_existing
+- `scheduler.py`（598行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
+  - `ScheduleConfig.daily_start_limit`：每天最多启动新任务数（0=不限）
+  - `starts: dict[int, int]`：每日启动计数器，贯穿 place/remove/find/compress 全链路
+  - `find_earliest_slot`：先跳过非工作日（周末+节假日），再做设备容量检查
+- `scheduler_service.py`：DB 读写封装，支持 skip_weekends/skip_holidays/lock_existing/daily_start_limit
+- 排程参数对话框（`schedule_config_dialog.py`）：跳过周末/节假日 + 管理节假日按钮 + 每日启动上限 QSpinBox + 锁定已有排期 + 截止日期 + 设备并行数
+- 节假日管理弹窗（`holiday_manage_dialog.py`）：按年份查看/添加/删除自定义节假日，调用 `HolidayService`
 - 排程报告弹窗：`schedule_report_dialog.py`（利用率条形图+瓶颈+建议）
 
 ### 仪表盘（v2 — 现代企业 SaaS 风格）
@@ -159,7 +164,9 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 
-### Schema（v19）
+### Schema（v20）
+
+- **v20**：test_tasks 加 `task_prefix`（任务编号前缀，如 "1."），影响导出 header `#` → `序号`、task_table 列交互化
 
 - **v19**：Issue `improvement_measures`（改善对策，CAPA 自动汇总 + 手动编辑）；`resolution` 专职做枚举值，不再承载 CAPA 汇总文本；旧数据自动迁移
 - **v18**：Issue `resolution`（Jira-style 解决结果枚举：fixed/wont_fix/duplicate/cannot_reproduce/not_an_issue）+ `reporter_name`（报告人）；状态转换规则 `ISSUE_TRANSITIONS`（open→analyzing→verified→closed, closed→open reopen）；状态/解决结果下拉中文化
@@ -203,7 +210,8 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
 - `tests/test_issue_jira_workflow.py` — 25 项 Jira-style Issue 工作流（全路径转换、resolution 枚举、FA/CAPA 联动、reopen、reporter）
 - `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
-- 共 **246 个 pytest 测试**，全量通过
+- `tests/test_scheduler_limit.py` — 22 项排程引擎（daily_start_limit、starts 增减、周末/节假日跳过、compress、locked tasks）
+- 共 **268 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
