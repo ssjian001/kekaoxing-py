@@ -6,7 +6,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QProxyStyle, QStyle
 
-from src.styles.theme import ACCENT, BG_INPUT
+from src.styles.theme import ACCENT, SURFACE2
 
 
 class CheckboxProxyStyle(QProxyStyle):
@@ -31,6 +31,8 @@ class CheckboxProxyStyle(QProxyStyle):
     @staticmethod
     def _draw_checkbox(option: QStyleOptionButton, painter: QPainter) -> None:
         r = QRectF(option.rect)
+        # 留 2px 内边距，让 ✓ 不贴边
+        r.adjust(2, 2, -2, -2)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -45,9 +47,9 @@ class CheckboxProxyStyle(QProxyStyle):
             painter.drawRoundedRect(r, 3, 3)
 
             if checked:
-                # 白色 ✓
+                # 白色 ✓ — 粗笔宽 + 圆角端点
                 pen = QPen(QColor("#ffffff"))
-                pen.setWidth(2)
+                pen.setWidthF(3.5)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
                 painter.setPen(pen)
@@ -55,14 +57,14 @@ class CheckboxProxyStyle(QProxyStyle):
                 path = QPainterPath()
                 x0, y0 = r.x(), r.y()
                 w, h = r.width(), r.height()
-                path.moveTo(x0 + w * 0.22, y0 + h * 0.52)
-                path.lineTo(x0 + w * 0.40, y0 + h * 0.72)
-                path.lineTo(x0 + w * 0.78, y0 + h * 0.28)
+                path.moveTo(x0 + w * 0.20, y0 + h * 0.52)
+                path.lineTo(x0 + w * 0.40, y0 + h * 0.74)
+                path.lineTo(x0 + w * 0.80, y0 + h * 0.26)
                 painter.drawPath(path)
             elif no_change:
                 # 白色 — (半选)
                 pen = QPen(QColor("#ffffff"))
-                pen.setWidth(2)
+                pen.setWidthF(3.0)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 painter.setPen(pen)
                 painter.drawLine(
@@ -72,11 +74,11 @@ class CheckboxProxyStyle(QProxyStyle):
                     r.center().y(),
                 )
         else:
-            # 未选中
-            border_color = ACCENT if hover else "#CAC8CF"
-            painter.setPen(QPen(QColor(border_color), 1.2))
-            painter.setBrush(QBrush(QColor(BG_INPUT)))
-            painter.drawRoundedRect(r, 3, 3)
+            # 未选中 — 透明填充 + 可见边框
+            border_color = QColor(ACCENT) if hover else QColor(SURFACE2)
+            painter.setPen(QPen(border_color, 1.6))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(r, 4, 4)
 
         painter.restore()
 
@@ -84,15 +86,16 @@ class CheckboxProxyStyle(QProxyStyle):
     @staticmethod
     def _draw_radio(option: QStyleOptionButton, painter: QPainter) -> None:
         r = QRectF(option.rect)
+        r.adjust(1, 1, -1, -1)
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         checked = bool(option.state & QStyle.StateFlag.State_On)
         hover = bool(option.state & QStyle.StateFlag.State_MouseOver)
 
-        border_color = ACCENT if (checked or hover) else "#CAC8CF"
-        painter.setPen(QPen(QColor(border_color), 1.2))
-        painter.setBrush(QBrush(QColor(BG_INPUT)))
+        border_color = QColor(ACCENT) if (checked or hover) else QColor(SURFACE2)
+        painter.setPen(QPen(border_color, 1.6))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(r)
 
         if checked:

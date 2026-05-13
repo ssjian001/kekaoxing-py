@@ -314,40 +314,14 @@ QLabel {{
 QCheckBox {{
     color: {FG_PRIMARY};
     background: transparent;
-    spacing: 6px;
-}}
-QCheckBox::indicator {{
-    width: 16px;
-    height: 16px;
-    border: 1px solid {BORDER};
-    border-radius: 3px;
-    background-color: {BG_INPUT};
-}}
-QCheckBox::indicator:checked {{
-    border-color: {ACCENT};
-}}
-QCheckBox::indicator:hover {{
-    border-color: {ACCENT};
+    spacing: 8px;
 }}
 
 /* ── 单选按钮 ── */
 QRadioButton {{
     color: {FG_PRIMARY};
     background: transparent;
-    spacing: 6px;
-}}
-QRadioButton::indicator {{
-    width: 16px;
-    height: 16px;
-    border: 1px solid {BORDER};
-    border-radius: 8px;
-    background-color: {BG_INPUT};
-}}
-QRadioButton::indicator:checked {{
-    border-color: {ACCENT};
-}}
-QRadioButton::indicator:hover {{
-    border-color: {ACCENT};
+    spacing: 8px;
 }}
 
 /* ── 状态栏 ── */
