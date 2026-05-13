@@ -33,11 +33,11 @@ PLAN_STATUS_OPTIONS: list[tuple[str, str]] = [
 # ═══════════════════════════════════════════════════════════════════
 
 RESULT_OPTIONS: list[tuple[str, str]] = [
-    ("通过", "pass"),
-    ("不通过", "fail"),
-    ("条件通过", "conditional"),
-    ("待定", "pending"),
-    ("跳过", "skip"),
+    ("pass", "通过"),
+    ("fail", "不通过"),
+    ("conditional", "条件通过"),
+    ("pending", "待定"),
+    ("skip", "跳过"),
 ]
 
 # ═══════════════════════════════════════════════════════════════════
@@ -101,10 +101,11 @@ SAMPLE_STATUS_LABELS: dict[str, str] = {
     "scrapped": "已报废",
 }
 
-SAMPLE_STATUS_OPTIONS = ["在库", "测试中", "已归还", "已报废"]
+SAMPLE_STATUS_OPTIONS = ["在库", "测试中", "已出库", "已归还", "已报废"]
 SAMPLE_STATUS_MAP: dict[str, str] = {
     "在库": "in_stock",
     "测试中": "in_test",
+    "已出库": "checked_out",
     "已归还": "returned",
     "已报废": "scrapped",
 }

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import logging
+from copy import deepcopy
 from dataclasses import replace
 from typing import Optional
 

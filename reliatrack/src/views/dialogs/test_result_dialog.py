@@ -79,7 +79,7 @@ class _ResultRow(QFrame):
         # 结果下拉
         self._combo = QComboBox()
         self._combo.setFixedWidth(90)
-        for label_text, value in self._RESULT_OPTIONS:
+        for value, label_text in self._RESULT_OPTIONS:
             self._combo.addItem(label_text, value)
         if existing_result:
             idx = self._combo.findData(existing_result.result)

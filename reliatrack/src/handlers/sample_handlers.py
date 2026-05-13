@@ -107,7 +107,7 @@ class SampleHandlers:
                     task_list.extend(ctrl.test_plan_service.get_tasks(p.id))
         dlg = SampleCheckoutDialog(
             sample=sample,
-            technicians=[],
+            technicians=ctrl.technician_service.list_all() if ctrl.technician_service else [],
             task_list=task_list,
             parent=self._win,
         )
