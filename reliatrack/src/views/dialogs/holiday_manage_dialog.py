@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.styles.theme import BASE, SURFACE0, TEXT, SUBTEXT0, BLUE, RED
+from src.styles.theme import TEXT, SUBTEXT0, RED
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:

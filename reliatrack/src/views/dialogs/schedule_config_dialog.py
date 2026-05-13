@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from PySide6.QtWidgets import (
@@ -71,6 +72,9 @@ class _EquipmentRow(QWidget):
     @property
     def capacity(self) -> int:
         return self._spin.value()
+
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleConfigDialog(_BaseDialog):
