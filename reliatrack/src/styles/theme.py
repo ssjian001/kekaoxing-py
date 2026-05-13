@@ -324,7 +324,6 @@ QCheckBox::indicator {{
     background-color: {BG_INPUT};
 }}
 QCheckBox::indicator:checked {{
-    background-color: {ACCENT};
     border-color: {ACCENT};
 }}
 QCheckBox::indicator:hover {{
@@ -345,7 +344,6 @@ QRadioButton::indicator {{
     background-color: {BG_INPUT};
 }}
 QRadioButton::indicator:checked {{
-    background-color: {BG_INPUT};
     border-color: {ACCENT};
 }}
 QRadioButton::indicator:hover {{
@@ -436,39 +434,9 @@ _COMPILED_STYLESHEET: str | None = None
 
 
 def _ensure_indicator_icons() -> tuple[str, str]:
-    """确保 indicator 图标文件存在，返回 (check_svg_path, radio_svg_path)。"""
-    import os
-    import tempfile
-
-    cache_dir = os.path.join(tempfile.gettempdir(), "reliatrack_assets")
-    os.makedirs(cache_dir, exist_ok=True)
-
-    check_path = os.path.join(cache_dir, "check.svg")
-    radio_path = os.path.join(cache_dir, "radio.svg")
-
-    if not os.path.exists(check_path):
-        with open(check_path, "w") as f:
-            f.write(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"'
-                ' viewBox="0 0 16 16">'
-                f'<rect width="16" height="16" rx="3" fill="{ACCENT}"/>'
-                '<path d="M4 8.5L7 11.5L12 5" stroke="white" stroke-width="2"'
-                ' fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-                '</svg>'
-            )
-
-    if not os.path.exists(radio_path):
-        with open(radio_path, "w") as f:
-            f.write(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"'
-                ' viewBox="0 0 16 16">'
-                f'<circle cx="8" cy="8" r="7" fill="{BG_INPUT}"'
-                f' stroke="{ACCENT}" stroke-width="1.5"/>'
-                f'<circle cx="8" cy="8" r="3.5" fill="{ACCENT}"/>'
-                '</svg>'
-            )
-
-    return check_path, radio_path
+    """确保 indicator PNG 图标存在，返回 (check_png, radio_png)。"""
+    from src.styles.indicator_icons import ensure_indicator_icons
+    return ensure_indicator_icons()
 
 
 def get_stylesheet() -> str:
@@ -479,15 +447,15 @@ def get_stylesheet() -> str:
     """
     global _COMPILED_STYLESHEET
     if _COMPILED_STYLESHEET is None:
-        check_svg, radio_svg = _ensure_indicator_icons()
+        check_png, radio_png = _ensure_indicator_icons()
         _COMPILED_STYLESHEET = _BASE_QSS + f"""
-/* ── CheckBox indicator: checked image ── */
+/* ── CheckBox indicator: checked with ✓ PNG ── */
 QCheckBox::indicator:checked {{
-    image: url({check_svg});
+    image: url({check_png});
 }}
-/* ── RadioButton indicator: checked image ── */
+/* ── RadioButton indicator: checked with dot PNG ── */
 QRadioButton::indicator:checked {{
-    image: url({radio_svg});
+    image: url({radio_png});
 }}
 """
     return _COMPILED_STYLESHEET
