@@ -324,7 +324,9 @@ QCheckBox::indicator {{
     background-color: {BG_INPUT};
 }}
 QCheckBox::indicator:checked {{
-    background-color: {ACCENT};
+    /* checked 由 CheckboxProxyStyle 绘制 ✓ */
+}}
+QCheckBox::indicator:hover {{
     border-color: {ACCENT};
 }}
 
@@ -333,6 +335,19 @@ QRadioButton {{
     color: {FG_PRIMARY};
     background: transparent;
     spacing: 6px;
+}}
+QRadioButton::indicator {{
+    width: 16px;
+    height: 16px;
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    background-color: {BG_INPUT};
+}}
+QRadioButton::indicator:checked {{
+    /* checked 由 CheckboxProxyStyle 绘制圆点 */
+}}
+QRadioButton::indicator:hover {{
+    border-color: {ACCENT};
 }}
 
 /* ── 状态栏 ── */

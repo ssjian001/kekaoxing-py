@@ -514,6 +514,11 @@ def main() -> int:
     app.setApplicationName("ReliaTrack")
     app.setApplicationVersion("2.0.0")
     app.setOrganizationName("ReliaTrack")
+
+    # 自定义 proxy style — 绘制带 ✓ 的 CheckBox / 带 • 的 RadioButton
+    from src.styles.proxy_style import CheckboxProxyStyle
+    app.setStyle(CheckboxProxyStyle())
+
     app.setStyleSheet(get_stylesheet())
 
     # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗

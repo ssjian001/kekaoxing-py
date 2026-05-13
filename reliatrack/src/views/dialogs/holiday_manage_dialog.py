@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
-    QComboBox,
     QDateEdit,
     QHBoxLayout,
     QHeaderView,
@@ -14,6 +13,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QWidget,
@@ -44,13 +44,12 @@ class HolidayManageDialog(_BaseDialog):
         year_label.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
         year_row.addWidget(year_label)
 
-        self._year_combo = QComboBox()
-        self._year_combo.setMinimumWidth(100)
-        for y in range(self._current_year - 1, self._current_year + 3):
-            self._year_combo.addItem(str(y), y)
-        self._year_combo.setCurrentText(str(self._current_year))
-        self._year_combo.currentIndexChanged.connect(self._load_list)
-        year_row.addWidget(self._year_combo)
+        self._year_spin = QSpinBox()
+        self._year_spin.setRange(2020, 2099)
+        self._year_spin.setValue(self._current_year)
+        self._year_spin.setMinimumWidth(80)
+        self._year_spin.valueChanged.connect(self._load_list)
+        year_row.addWidget(self._year_spin)
         year_row.addStretch()
         self._form.addRow(year_row)
 
@@ -109,9 +108,7 @@ class HolidayManageDialog(_BaseDialog):
 
     def _load_list(self) -> None:
         """重新加载节假日列表。"""
-        idx = self._year_combo.currentData()
-        if idx is not None:
-            self._current_year = int(idx)
+        self._current_year = self._year_spin.value()
         records = self._svc.get_holidays(year=self._current_year)
         self._table.setRowCount(len(records))
         for row, rec in enumerate(records):
@@ -143,9 +140,7 @@ class HolidayManageDialog(_BaseDialog):
         self._name_edit.clear()
         # 切换到对应年份
         year = int(date_str[:4])
-        idx = self._year_combo.findData(year)
-        if idx >= 0:
-            self._year_combo.setCurrentIndex(idx)
+        self._year_spin.setValue(year)
         self._load_list()
 
     def _on_delete(self) -> None:
