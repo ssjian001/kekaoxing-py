@@ -55,6 +55,7 @@ from src.handlers import (
     KnowledgeHandlers,
     ExportHandlers,
     RefreshHandlers,
+    BackupHandlers,
 )
 
 
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
         self._knowledge_handlers = KnowledgeHandlers(self)
         self._export_handlers = ExportHandlers(self)
         self._refresh_handlers = RefreshHandlers(self)
+        self._backup_handlers = BackupHandlers(self)
 
         # 跨 handler 引用
         self._refresh_handlers._sample_handlers = self._sample_handlers
@@ -241,6 +243,12 @@ class MainWindow(QMainWindow):
         act_export.setToolTip("导出报告 (Ctrl+E)")
         act_export.triggered.connect(self._export_handlers._on_export)
         toolbar.addAction(act_export)
+
+        # 数据管理
+        act_backup = QAction("💾 数据管理", self)
+        act_backup.setToolTip("数据库备份与恢复")
+        act_backup.triggered.connect(self._backup_handlers._on_data_manage)
+        toolbar.addAction(act_backup)
 
     def _setup_status_bar(self) -> None:
         """创建状态栏。"""
