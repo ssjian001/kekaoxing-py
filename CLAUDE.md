@@ -16,7 +16,7 @@ python3 -m venv .venv  # 首次
 
 ## 技术栈
 
-- Python 3.11 + PySide6 + apsw (SQLite) + openpyxl / reportlab
+- Python 3.11+（CI: 3.11/3.12, 本地开发: 3.13）+ PySide6 6.11.1 + apsw (SQLite) + openpyxl / reportlab
 - 架构：MVC 变体 — Controller → Handlers → Services → Repos → DB
 - DB 版本：schema v21（17 张表）
 - 主题：Catppuccin Latte 明亮 (theme.py)
@@ -68,7 +68,7 @@ src/
     equipment_view.py, issue_view.py, knowledge_view.py,
     project_view.py, sample_view.py, technician_view.py,
     test_plan_view.py
-    dialogs/            # 对话框（15+ 编辑/配置对话框）
+    dialogs/            # 对话框（22 编辑/配置对话框）
     widgets/            # 自定义控件
       analysis_widget.py, gantt_widget.py,
       result_matrix.py, task_table.py
