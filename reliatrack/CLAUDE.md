@@ -113,7 +113,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### Issue 视图
 
-- 表格 9 列：ID/Issue描述/严重度/状态/优先级/DRI/解决结果/根因/创建时间
+- 表格 10 列：ID/Issue描述/严重度/状态/类别/优先级/DRI/解决结果/根因/创建时间；状态筛选支持多选（QMenu checkable actions）
 - FA + CAPA 面板左右等宽排列（`QHBoxLayout`），各带标题标签
 - **Issue ↔ FA/CAPA 双向联动**（`issue_handlers._sync_issue_from_fa` / `_sync_issue_from_capa`）：
   - FA 添加 → 状态 `open`→`analyzing`；确认的根因（confirmed=1）回写 `root_cause`
@@ -135,7 +135,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 排程引擎
 
-- `scheduler.py`（598行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
+- `scheduler.py`（607行）：3阶段算法（greedy → left-shift → report），拓扑排序+资源约束
   - `ScheduleConfig.daily_start_limit`：每天最多启动新任务数（0=不限）
   - `starts: dict[int, int]`：每日启动计数器，贯穿 place/remove/find/compress 全链路
   - `find_earliest_slot`：先跳过非工作日（周末+节假日），再做设备容量检查
@@ -164,9 +164,10 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 
-### Schema（v20）
+### Schema（v21）
 
-- **v20**：test_tasks 加 `task_prefix`（任务编号前缀，如 "1."），影响导出 header `#` → `序号`、task_table 列交互化
+- **v21**：issues 加 `category`（责任类别 ME/EE/AE/SW/NPI/QE/Other），Issue 表格加类别列，状态筛选改多选；CheckBox/QRadioButton 用 QProxyStyle 绘制 ✓ 和圆点
+- **v20**：test_tasks 加 `task_prefix`（任务编号前缀），影响导出 header `#` → `序号`、task_table 列交互化
 
 - **v19**：Issue `improvement_measures`（改善对策，CAPA 自动汇总 + 手动编辑）；`resolution` 专职做枚举值，不再承载 CAPA 汇总文本；旧数据自动迁移
 - **v18**：Issue `resolution`（Jira-style 解决结果枚举：fixed/wont_fix/duplicate/cannot_reproduce/not_an_issue）+ `reporter_name`（报告人）；状态转换规则 `ISSUE_TRANSITIONS`（open→analyzing→verified→closed, closed→open reopen）；状态/解决结果下拉中文化
@@ -211,7 +212,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_issue_jira_workflow.py` — 25 项 Jira-style Issue 工作流（全路径转换、resolution 枚举、FA/CAPA 联动、reopen、reporter）
 - `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
 - `tests/test_scheduler_limit.py` — 22 项排程引擎（daily_start_limit、starts 增减、周末/节假日跳过、compress、locked tasks）
-- 共 **268 个 pytest 测试**，全量通过
+- 共 **289 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）

@@ -19,7 +19,7 @@ python3 -m venv .venv
 - **项目管理** — 创建/管理可靠性测试项目
 - **样品追踪** — 全生命周期样品状态跟踪 + Excel 批量导入
 - **测试计划** — 定义测试任务（13列含预计日期）、自动排程（3阶段算法）、甘特图可视化（预计/实际切换+设备颜色编码）、结果矩阵（3种显示模式+Tooltip）、失效模式分析Tab（类别统计+失效TopN+未关联Issue警告）、今日摘要栏、一键总结报告按钮、导出按项目筛选、依赖弹出式选择
-- **Issue 跟踪** — FA 分析步骤 + CAPA 纠正预防（自由文本负责人）+ 8D PDF/Word 报告导出 + 状态/严重度筛选
+- **Issue 跟踪** — FA 分析步骤 + CAPA 纠正预防（自由文本负责人）+ 8D PDF/Word 报告导出 + 状态/严重度/类别筛选（状态多选）
 - **设备管理** — 测试设备台账（资产编号、制造商、精度、校准信息）+ 技术员管理
 - **知识库** — 失效模式经验沉淀
 
@@ -44,7 +44,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   └── schema.py        # SQLite schema（v17）
+│   └── schema.py        # SQLite schema（v21）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -69,7 +69,7 @@ src/
 │   └── technician_handlers.py
 ├── models/          # 数据模型
 ├── services/        # 业务逻辑层
-│   ├── scheduler.py          # 3阶段排程引擎（571行）
+│   ├── scheduler.py          # 3阶段排程引擎（607行）
 │   ├── scheduler_service.py  # 排程服务（DB 读写）
 │   ├── export_service.py     # 8D/计划导出（reportlab + python-docx）
 │   ├── import_service.py     # Excel 批量导入
@@ -104,7 +104,7 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。201 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。289 个 pytest 测试全通过。
 
 ## CI/CD
 
@@ -115,7 +115,7 @@ E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tes
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v17：Issue 软删除试点；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
+- Schema v21：Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可
