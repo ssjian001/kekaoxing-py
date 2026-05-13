@@ -6,6 +6,7 @@ import logging
 from typing import Optional
 
 from PySide6.QtWidgets import (
+    QPushButton,
     QCheckBox,
     QFormLayout,
     QHBoxLayout,
