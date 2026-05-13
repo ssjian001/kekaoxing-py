@@ -83,12 +83,19 @@ class PlanHandlers:
             equipment_list=equipment_list,
             parent=self._win,
         )
+        if ctrl.holiday_service:
+            dlg.set_holiday_service(ctrl.holiday_service)
         if dlg.exec() != dlg.DialogCode.Accepted:
             dlg.deleteLater()
             return
         dlg.deleteLater()
 
         config = dlg.get_config()
+        # 注入节假日集合供预览对话框冲突检测使用
+        if ctrl.holiday_service:
+            config["holidays"] = ctrl.holiday_service.get_holidays_set()
+        else:
+            config["holidays"] = set()
         user_locked_days: dict[int, int] = {}
 
         # -- 预览循环（支持重新排程） --
@@ -104,6 +111,7 @@ class PlanHandlers:
                     deadline=config["deadline"],
                     equipment_capacity=config["equipment_capacity"],
                     user_locked_days=user_locked_days or None,
+                    daily_start_limit=config.get("daily_start_limit", 0),
                 )
             except Exception as e:
                 self._win.statusBar().showMessage(f"排程失败: {e}", 10000)

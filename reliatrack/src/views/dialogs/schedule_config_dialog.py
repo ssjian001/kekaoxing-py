@@ -100,14 +100,46 @@ class ScheduleConfigDialog(_BaseDialog):
         self._form.addRow(self._chk_skip_weekends)
 
         # -- skip_holidays --
+        skip_holiday_row = QHBoxLayout()
         self._chk_skip_holidays = QCheckBox("跳过法定节假日")
         self._chk_skip_holidays.setChecked(True)
-        self._form.addRow(self._chk_skip_holidays)
+        skip_holiday_row.addWidget(self._chk_skip_holidays)
+
+        self._btn_manage_holidays = QPushButton("管理...")
+        self._btn_manage_holidays.setProperty("class", "action")
+        self._btn_manage_holidays.setStyleSheet(
+            f"QPushButton {{ color: {BLUE}; border: 1px solid {BLUE}; "
+            f"border-radius: 4px; padding: 2px 8px; font-size: 11px; }}"
+        )
+        self._btn_manage_holidays.clicked.connect(self._on_manage_holidays)
+        skip_holiday_row.addWidget(self._btn_manage_holidays)
+        skip_holiday_row.addStretch()
+        self._form.addRow(skip_holiday_row)
 
         # -- lock_existing --
         self._chk_lock_existing = QCheckBox("锁定已有排期")
         self._chk_lock_existing.setChecked(False)
         self._form.addRow(self._chk_lock_existing)
+
+        # -- daily_start_limit --
+        limit_row = QHBoxLayout()
+        limit_label = QLabel("每日启动上限：")
+        limit_label.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
+        limit_row.addWidget(limit_label)
+
+        self._spin_daily_limit = QSpinBox()
+        self._spin_daily_limit.setRange(0, 999)
+        self._spin_daily_limit.setValue(0)
+        self._spin_daily_limit.setSpecialValueText("不限")
+        self._spin_daily_limit.setToolTip("每天最多启动的新测试项数，0 表示不限制")
+        self._spin_daily_limit.setMinimumWidth(80)
+        limit_row.addWidget(self._spin_daily_limit)
+
+        limit_hint = QLabel("（0 = 不限制）")
+        limit_hint.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        limit_row.addWidget(limit_hint)
+        limit_row.addStretch()
+        self._form.addRow(limit_row)
 
         # -- deadline --
         self._deadline_edit = QLineEdit()
@@ -143,6 +175,22 @@ class ScheduleConfigDialog(_BaseDialog):
 
     # -- public API --
 
+    def set_holiday_service(self, svc: object) -> None:
+        """注入 HolidayService，供「管理...」按钮打开节假日管理弹窗。"""
+        self._holiday_service = svc
+
+    def _on_manage_holidays(self) -> None:
+        """打开节假日管理弹窗。"""
+        svc = getattr(self, "_holiday_service", None)
+        if svc is None:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "提示", "节假日服务不可用。")
+            return
+        from src.views.dialogs.holiday_manage_dialog import HolidayManageDialog
+        dlg = HolidayManageDialog(svc, parent=self)
+        dlg.exec()
+        dlg.deleteLater()
+
     def get_config(self) -> dict:
         """返回排程配置字典。
 
@@ -162,6 +210,7 @@ class ScheduleConfigDialog(_BaseDialog):
             "skip_weekends": self._chk_skip_weekends.isChecked(),
             "skip_holidays": self._chk_skip_holidays.isChecked(),
             "lock_existing": self._chk_lock_existing.isChecked(),
+            "daily_start_limit": self._spin_daily_limit.value(),
             "deadline": self._deadline_edit.text().strip(),
             "equipment_capacity": equipment_capacity,
         }

@@ -209,7 +209,7 @@ def export_report_pdf(
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph("测试任务", style_section))
 
-    task_headers = ["#", "名称", "类别", "工期", "开始", "进度", "状态", "优先级"]
+    task_headers = ["序号", "名称", "类别", "工期", "开始", "进度", "状态", "优先级"]
     task_col_widths = [18, 130, 55, 40, 40, 40, 50, 40]
     header_row = [Paragraph(h, ParagraphStyle("TH", fontName=_FN_B, fontSize=9,
                                                textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
@@ -318,7 +318,7 @@ def export_report_pdf(
             textColor=_BLUE, spaceAfter=2 * mm, spaceBefore=3 * mm,
         )))
 
-        res_headers = ["#", "任务名", "样品SN", "结果", "判定"]
+        res_headers = ["序号", "任务名", "样品SN", "结果", "判定"]
         res_col_widths = [18, 120, 100, 50, 50]
         res_header_row = [Paragraph(h, ParagraphStyle("RH", fontName=_FN_B, fontSize=9,
                                                        textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
@@ -516,7 +516,7 @@ def export_dvpr_pdf(
             lookup[(r.task_id, r.sample_id)] = r.result
 
     # 表头
-    dvpr_headers = ["#", "测试项", "判定准则", "样品 SN"]
+    dvpr_headers = ["序号", "测试项", "判定准则", "样品 SN"]
     for sid in sample_ids:
         dvpr_headers.append(sample_map.get(sid, f"#{sid}"))
     dvpr_headers.append("结论")

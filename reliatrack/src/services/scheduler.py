@@ -39,6 +39,8 @@ class ScheduleConfig:
     equipment_capacity: dict[int, int] = field(default_factory=dict)
     # 法定节假日集合 {"2025-01-01", "2025-01-28", ...}
     holidays: set[str] = field(default_factory=set)
+    # 每天最多启动的新任务数，0 = 不限
+    daily_start_limit: int = 0
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -220,9 +222,15 @@ def can_place_at(
     start_day: int,
     timeline: dict[int, dict[int, int]],  # day → {eq_id: count}
     config: ScheduleConfig,
+    starts: dict[int, int] | None = None,  # day → 当天已启动任务数
 ) -> bool:
     """Check whether *task* can begin at *start_day* without exceeding
     any equipment capacity on every working day."""
+    # 每日启动数上限
+    if config.daily_start_limit > 0 and starts is not None:
+        if starts.get(start_day, 0) >= config.daily_start_limit:
+            return False
+
     work_days = _iterate_work_days(
         start_day, task.duration, config.skip_weekends, config.start_date,
         config.skip_holidays, config.holidays,
@@ -245,10 +253,19 @@ def find_earliest_slot(
     timeline: dict[int, dict[int, int]],
     config: ScheduleConfig,
     max_scan: int = 365,
+    starts: dict[int, int] | None = None,
 ) -> int:
-    """Scan forward from *from_day* and return first valid placement day."""
+    """Scan forward from *from_day* and return first valid placement day.
+    
+    Skips non-working days (weekends/holidays when configured) so that
+    ``task.start_day`` always falls on a working day.
+    """
     for day in range(from_day, from_day + max_scan):
-        if can_place_at(task, day, timeline, config):
+        if _is_non_working(day, config.start_date,
+                           config.skip_weekends, config.skip_holidays,
+                           config.holidays):
+            continue
+        if can_place_at(task, day, timeline, config, starts):
             return day
     return from_day + max_scan
 
@@ -258,6 +275,7 @@ def place_task(
     start_day: int,
     timeline: dict[int, dict[int, int]],
     config: ScheduleConfig,
+    starts: dict[int, int] | None = None,
 ) -> None:
     """Allocate equipment resource in *timeline* for *task*."""
     work_days = _iterate_work_days(
@@ -269,6 +287,9 @@ def place_task(
             timeline[day] = {}
         eq_id = task.equipment_id if task.equipment_id is not None else -1
         timeline[day][eq_id] = timeline[day].get(eq_id, 0) + 1
+    # 每日启动数计数
+    if starts is not None and config.daily_start_limit > 0:
+        starts[start_day] = starts.get(start_day, 0) + 1
 
 
 def remove_task_from_timeline(
@@ -276,6 +297,7 @@ def remove_task_from_timeline(
     start_day: int,
     timeline: dict[int, dict[int, int]],
     config: ScheduleConfig,
+    starts: dict[int, int] | None = None,
 ) -> None:
     """Release equipment resource previously allocated."""
     work_days = _iterate_work_days(
@@ -291,6 +313,9 @@ def remove_task_from_timeline(
             timeline[day].pop(eq_id, None)
         if not timeline[day]:
             del timeline[day]
+    # 每日启动数减计数
+    if starts is not None and config.daily_start_limit > 0:
+        starts[start_day] = max(0, starts.get(start_day, 0) - 1)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -304,6 +329,7 @@ def compress_schedule(
     dep_map: dict[int, list[int]],
     locked_ids: set[int] | None = None,
     all_tasks: list[TestTask] | None = None,
+    starts: dict[int, int] | None = None,
 ) -> None:
     """Left-shift each non-locked, non-done task to the earliest possible
     slot, respecting dependencies and equipment constraints."""
@@ -324,7 +350,7 @@ def compress_schedule(
 
         # Remove from current position
         remove_task_from_timeline(
-            task, task.start_day, timeline, config,
+            task, task.start_day, timeline, config, starts,
         )
 
         # Earliest allowed day from dependencies
@@ -340,9 +366,9 @@ def compress_schedule(
                 earliest = max(earliest, dep_end)
 
         # Find & place at earliest valid slot
-        new_start = find_earliest_slot(task, earliest, timeline, config)
+        new_start = find_earliest_slot(task, earliest, timeline, config, starts=starts)
         task.start_day = new_start
-        place_task(task, new_start, timeline, config)
+        place_task(task, new_start, timeline, config, starts)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -431,11 +457,12 @@ def run_auto_schedule(
     # Phase 1 – Greedy placement
     # ════════════════════════════════════════════════════════════
     timeline: dict[int, dict[int, int]] = {}
+    starts: dict[int, int] = {}  # day → 当天已启动任务数
 
     # 1a. Place locked tasks first
     for t in valid_tasks:
         if t.id in locked_ids:
-            place_task(t, t.start_day, timeline, config)
+            place_task(t, t.start_day, timeline, config, starts)
 
     # 1b. Clear start_day for non-locked, non-completed tasks
     for t in valid_tasks:
@@ -461,9 +488,9 @@ def run_auto_schedule(
             config.skip_weekends, config.start_date,
             config.skip_holidays, config.holidays,
         )
-        slot = find_earliest_slot(task, earliest, timeline, config)
+        slot = find_earliest_slot(task, earliest, timeline, config, starts=starts)
         task.start_day = slot
-        place_task(task, slot, timeline, config)
+        place_task(task, slot, timeline, config, starts)
 
     # ════════════════════════════════════════════════════════════
     # Phase 2 – Compress (left-shift)
@@ -475,7 +502,7 @@ def run_auto_schedule(
     )
     compress_schedule(
         compress_order, timeline, config, dep_map, locked_ids,
-        all_tasks=valid_tasks,
+        all_tasks=valid_tasks, starts=starts,
     )
 
     # ════════════════════════════════════════════════════════════

@@ -365,6 +365,11 @@ class RefreshHandlers:
                     if eq.id is not None:
                         equipment_map[eq.id] = eq.name
 
+            # 节假日集合
+            holidays: set[str] = set()
+            if ctrl.holiday_service:
+                holidays = ctrl.holiday_service.get_holidays_set()
+
             self._win._test_plan_view.refresh(
                 tasks, max_day, technician_map, result_map,
                 start_date=all_plans[restore_idx].start_date,
@@ -372,6 +377,7 @@ class RefreshHandlers:
                 sample_map=sample_map,
                 equipment_map=equipment_map,
                 task_prefix=all_plans[restore_idx].task_prefix,
+                holidays=holidays,
             )
 
     def _refresh_issues(self) -> None:

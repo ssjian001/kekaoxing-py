@@ -247,7 +247,7 @@ def export_to_word(
 
     # ── 任务列表表格 ──
     doc.add_heading("测试任务", level=2)
-    task_headers = ["#", "名称", "类别", "状态", "天数", "设备", "技术员", "进度"]
+    task_headers = ["序号", "名称", "类别", "状态", "天数", "设备", "技术员", "进度"]
     task_table = doc.add_table(rows=1 + len(tasks), cols=len(task_headers), style="Table Grid")
     task_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     _fill_row_cells(task_table.rows[0]._tr, task_headers, bold=True,
@@ -269,7 +269,7 @@ def export_to_word(
     # ── Issue 列表表格 ──
     if issues:
         doc.add_heading("Issue 追踪", level=2)
-        issue_headers = ["#", "Issue描述", "优先级", "状态", "DRI", "报告人", "解决结果", "根因", "改善对策"]
+        issue_headers = ["序号", "Issue描述", "优先级", "状态", "DRI", "报告人", "解决结果", "根因", "改善对策"]
         issue_table = doc.add_table(
             rows=1 + len(issues), cols=len(issue_headers), style="Table Grid"
         )
@@ -314,7 +314,7 @@ def export_to_word(
             p.paragraph_format.space_after = Pt(2)
 
         doc.add_heading("结果明细", level=3)
-        res_headers = ["#", "任务名", "样品SN", "结果", "判定"]
+        res_headers = ["序号", "任务名", "样品SN", "结果", "判定"]
         res_table = doc.add_table(
             rows=1 + len(_results), cols=len(res_headers), style="Table Grid"
         )
@@ -345,7 +345,7 @@ def export_to_word(
     # ── 样品列表表格 ──
     if samples:
         doc.add_heading("样品台账", level=2)
-        sample_headers = ["#", "SN", "批次号", "规格型号", "状态"]
+        sample_headers = ["序号", "SN", "批次号", "规格型号", "状态"]
         sample_table = doc.add_table(
             rows=1 + len(samples), cols=len(sample_headers), style="Table Grid"
         )
@@ -425,7 +425,7 @@ def export_dvpr_excel(
         if r.task_id and r.sample_id:
             lookup[(r.task_id, r.sample_id)] = r.result
 
-    headers = ["#", "测试项", "判定准则", "样品 SN"] + [
+    headers = ["序号", "测试项", "判定准则", "样品 SN"] + [
         sample_map.get(sid, f"#{sid}") for sid in sample_ids
     ] + ["结论"]
     excel_write_headers(ws2, 1, headers, s)
@@ -598,7 +598,7 @@ def export_dvpr_docx(
             lookup[(r.task_id, r.sample_id)] = r.result
 
     col_count = 4 + len(sample_ids) + 1
-    dvpr_headers = ["#", "测试项", "判定准则", "样品 SN"] + [
+    dvpr_headers = ["序号", "测试项", "判定准则", "样品 SN"] + [
         sample_map.get(sid, f"#{sid}") for sid in sample_ids
     ] + ["结论"]
     dvpr_table = doc.add_table(rows=1 + len(tasks), cols=col_count, style="Table Grid")

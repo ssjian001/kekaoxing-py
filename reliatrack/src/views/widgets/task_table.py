@@ -29,7 +29,7 @@ from src.models.common import Equipment, Technician
 
 # 任务表列规格
 _TASK_SPECS = [
-    ("#", "fixed", 40),
+    ("序号", "interactive", 70),
     ("名称", "interactive", 200),
     ("类别", "interactive", 80),
     ("天数", "interactive", 60),

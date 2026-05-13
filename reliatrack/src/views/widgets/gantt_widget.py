@@ -72,6 +72,7 @@ class _GanttWidget(QWidget):
         self._equipment_map: dict[int, str] = {}  # {equipment_id: equipment_name}
         self._equipment_colors: dict[int, str] = {}  # {equipment_id: color_hex}
         self._palette = [BLUE, GREEN, PEACH, MAUVE, LAVENDER, YELLOW, TEAL]
+        self._holidays: set[str] = set()  # 节假日日期集合
 
         # 表头冻结：连接父级 QScrollArea 的垂直滚动
         self._scroll_v_offset: int = 0
@@ -119,7 +120,8 @@ class _GanttWidget(QWidget):
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
                   start_date: str = "",
                   equipment_map: dict[int, str] | None = None,
-                  task_prefix: str = "") -> None:
+                  task_prefix: str = "",
+                  holidays: set[str] | None = None) -> None:
         # 重置拖拽状态，防止 tasks 更新后索引越界
         self._drag_task_idx = None
         self._drag_preview_offset = 0
@@ -130,6 +132,7 @@ class _GanttWidget(QWidget):
         self._total_days = max(total_days, 1)
         self._start_date = start_date
         self._task_prefix = task_prefix
+        self._holidays = holidays or set()
         if equipment_map is not None:
             self._equipment_map = equipment_map
             # 按 equipment_id 分配颜色
@@ -313,15 +316,23 @@ class _GanttWidget(QWidget):
             x = label_w + d * self._day_w
             # 判断是否周末
             is_weekend = False
+            is_holiday = False
             if base_date is not None:
                 real_date = base_date + timedelta(days=d)
                 if real_date.weekday() >= 5:  # 5=Sat, 6=Sun
                     is_weekend = True
                     weekend_days.add(d)
+                if real_date.isoformat() in self._holidays:
+                    is_holiday = True
             if is_weekend:
                 # 周末列浅色背景
                 p.fillRect(int(x), self._header_height, int(self._day_w) + 1,
                            self.height() - self._header_height, QColor(MANTLE))
+            if is_holiday:
+                # 节假日列浅红背景（叠加在周末之上，独立可见）
+                holiday_color = QColor(255, 220, 220, 80)  # 浅红半透明
+                p.fillRect(int(x), self._header_height, int(self._day_w) + 1,
+                           self.height() - self._header_height, holiday_color)
 
             if d % step == 0:
                 p.setPen(QColor(SUBTEXT1))

@@ -340,6 +340,8 @@ class SchedulePreviewDialog(QDialog):
         # 构建 timeline（简化：只检测设备重叠）
         # day_index → {eq_id: count}
         timeline: dict[int, dict[int, int]] = {}
+        _holidays: set[str] = self._config.get("holidays", set())
+        _skip_holidays: bool = self._config.get("skip_holidays", True)
         for task in self._tasks:
             if task.status == "completed" or task.start_day <= 0 or task.equipment_id is None:
                 continue
@@ -347,8 +349,8 @@ class SchedulePreviewDialog(QDialog):
                 task.start_day, task.duration,
                 self._config.get("skip_weekends", True),
                 self._start_date,
-                self._config.get("skip_holidays", True),
-                set(),  # 简化：不传 holidays，冲突检测不需要精确到节假日
+                _skip_holidays,
+                _holidays,
             )
             for d in days:
                 if d not in timeline:
@@ -371,6 +373,8 @@ class SchedulePreviewDialog(QDialog):
                         dep_task.start_day, dep_task.duration,
                         self._config.get("skip_weekends", True),
                         self._start_date,
+                        _skip_holidays,
+                        _holidays,
                     )
                     if task.start_day < dep_end:
                         has_dep_conflict = True
@@ -383,6 +387,8 @@ class SchedulePreviewDialog(QDialog):
                     task.start_day, task.duration,
                     self._config.get("skip_weekends", True),
                     self._start_date,
+                    _skip_holidays,
+                    _holidays,
                 )
                 for d in days:
                     usage = timeline.get(d, {}).get(eq_id, 0)

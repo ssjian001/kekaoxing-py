@@ -65,7 +65,7 @@ def export_tasks_excel(
         "A2:M2", "2B579A", s,
     )
 
-    headers = ["#", "名称", "类别", "天数", "预计开始", "预计结束", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
+    headers = ["序号", "名称", "类别", "天数", "预计开始", "预计结束", "进度", "优先级", "状态", "技术员", "通过率", "实际开始", "实际完成"]
     excel_write_headers(ws, 4, headers, s)
 
     prefix = getattr(plan, 'task_prefix', '') or ''
