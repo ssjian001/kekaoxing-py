@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 from PySide6.QtWidgets import (
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -112,11 +114,10 @@ class ScheduleConfigDialog(_BaseDialog):
 
         self._btn_manage_holidays = QPushButton("管理...")
         self._btn_manage_holidays.setProperty("class", "action")
-        self._btn_manage_holidays.setStyleSheet(
-            f"QPushButton {{ color: {BLUE}; border: 1px solid {BLUE}; "
-            f"border-radius: 4px; padding: 2px 8px; font-size: 11px; }}"
-        )
         self._btn_manage_holidays.clicked.connect(self._on_manage_holidays)
+        self._chk_skip_holidays.toggled.connect(
+            lambda checked: self._btn_manage_holidays.setEnabled(checked)
+        )
         skip_holiday_row.addWidget(self._btn_manage_holidays)
         skip_holiday_row.addStretch()
         self._form.addRow(skip_holiday_row)
@@ -225,10 +226,8 @@ class ScheduleConfigDialog(_BaseDialog):
         deadline = self._deadline_edit.text().strip()
         if deadline:
             try:
-                from datetime import datetime
                 datetime.strptime(deadline, "%Y-%m-%d")
             except ValueError:
-                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self, "格式错误",
                     "截止日期格式不正确，请使用 YYYY-MM-DD 格式。",

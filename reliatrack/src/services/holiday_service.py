@@ -69,12 +69,14 @@ class HolidayService:
         ]
 
     def add_holiday(self, date_str: str, name: str, source: str = "custom") -> int:
-        """添加自定义节假日。返回记录 ID（已存在时返回已有 ID）。"""
-        self._conn.execute(
+        """添加自定义节假日。返回记录 ID；已存在时返回 0。"""
+        cur = self._conn.execute(
             "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
             (date_str, name, source),
         )
-        # INSERT OR IGNORE 重复时 last_insert_rowid 不可靠，直接查 ID
+        if cur.getconnection().execute("SELECT changes()").fetchone()[0] == 0:
+            # INSERT 被忽略 — 日期已存在
+            return 0
         row = self._conn.execute(
             "SELECT id FROM [holidays] WHERE date = ?", (date_str,)
         ).fetchone()

@@ -584,6 +584,15 @@ def run_auto_schedule(
             "💡 当前排期因资源冲突被延长，建议检查可并行的任务并增加资源"
         )
 
+    # ── Daily start limit utilization ──────────────────────────
+    if config.daily_start_limit > 0 and starts:
+        capped_days = [d for d, c in starts.items() if c >= config.daily_start_limit]
+        if capped_days:
+            suggestions.append(
+                f"📊 每日启动上限 {config.daily_start_limit}："
+                f"共 {len(capped_days)} 天达到上限"
+            )
+
     return {
         "report": {
             "total_days": new_days,

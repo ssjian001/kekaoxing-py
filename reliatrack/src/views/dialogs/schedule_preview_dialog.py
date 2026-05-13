@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
+    QFormLayout,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -42,6 +43,7 @@ from src.services.scheduler import (
     ScheduleConfig,
     build_dependency_map,
     can_place_at,
+    _is_non_working,
     _iterate_work_days,
     _work_day_end,
 )
@@ -332,7 +334,7 @@ class SchedulePreviewDialog(QDialog):
     # ── 冲突检测 ──
 
     def _detect_conflicts(self) -> None:
-        """检查所有任务的依赖和设备冲突，更新冲突列。"""
+        """检查所有任务的依赖、设备、非工作日和启动上限冲突，更新冲突列。"""
         # 构建依赖图
         dep_map = build_dependency_map(self._tasks)
         id_to_task = {t.id: t for t in self._tasks if t.id is not None}
@@ -342,12 +344,19 @@ class SchedulePreviewDialog(QDialog):
         timeline: dict[int, dict[int, int]] = {}
         _holidays: set[str] = self._config.get("holidays", set())
         _skip_holidays: bool = self._config.get("skip_holidays", True)
+        _skip_weekends: bool = self._config.get("skip_weekends", True)
+        _daily_limit: int = self._config.get("daily_start_limit", 0)
+        # 构建 starts 计数（用于 daily_start_limit 检查）
+        starts: dict[int, int] = {}
         for task in self._tasks:
-            if task.status == "completed" or task.start_day <= 0 or task.equipment_id is None:
+            if task.status == "completed" or task.start_day <= 0:
+                continue
+            starts[task.start_day] = starts.get(task.start_day, 0) + 1
+            if task.equipment_id is None:
                 continue
             days = _iterate_work_days(
                 task.start_day, task.duration,
-                self._config.get("skip_weekends", True),
+                _skip_weekends,
                 self._start_date,
                 _skip_holidays,
                 _holidays,
@@ -364,6 +373,17 @@ class SchedulePreviewDialog(QDialog):
 
             has_dep_conflict = False
             has_eq_conflict = False
+            has_non_working = False
+            has_start_limit = False
+
+            # 检查非工作日
+            if _is_non_working(task.start_day, self._start_date,
+                               _skip_weekends, _skip_holidays, _holidays):
+                has_non_working = True
+
+            # 检查每日启动上限
+            if _daily_limit > 0 and starts.get(task.start_day, 0) > _daily_limit:
+                has_start_limit = True
 
             # 检查依赖冲突
             for dep_id in dep_map.get(task.id or 0, []):
@@ -371,7 +391,7 @@ class SchedulePreviewDialog(QDialog):
                 if dep_task and dep_task.status != "completed" and dep_task.start_day > 0:
                     dep_end = _work_day_end(
                         dep_task.start_day, dep_task.duration,
-                        self._config.get("skip_weekends", True),
+                        _skip_weekends,
                         self._start_date,
                         _skip_holidays,
                         _holidays,
@@ -385,7 +405,7 @@ class SchedulePreviewDialog(QDialog):
                 eq_id = task.equipment_id
                 days = _iterate_work_days(
                     task.start_day, task.duration,
-                    self._config.get("skip_weekends", True),
+                    _skip_weekends,
                     self._start_date,
                     _skip_holidays,
                     _holidays,
@@ -396,7 +416,7 @@ class SchedulePreviewDialog(QDialog):
                         has_eq_conflict = True
                         break
 
-            # 更新冲突列
+            # 更新冲突列（按严重程度排序）
             conflict_item = self._table.item(row, self._COL_CONFLICT)
             if conflict_item:
                 if has_dep_conflict:
@@ -404,6 +424,12 @@ class SchedulePreviewDialog(QDialog):
                     conflict_item.setForeground(QColor(RED))
                 elif has_eq_conflict:
                     conflict_item.setText("⚠ 设备冲突")
+                    conflict_item.setForeground(QColor(YELLOW))
+                elif has_non_working:
+                    conflict_item.setText("⚠ 非工作日")
+                    conflict_item.setForeground(QColor(PEACH))
+                elif has_start_limit:
+                    conflict_item.setText("⚠ 启动数超限")
                     conflict_item.setForeground(QColor(YELLOW))
                 else:
                     conflict_item.setText("✓ 无冲突")
@@ -508,7 +534,6 @@ class _StartDayEditDialog(QDialog):
         layout.addWidget(current_label)
 
         # 输入
-        from PySide6.QtWidgets import QFormLayout
         form = QFormLayout()
         self._spin = QSpinBox()
         self._spin.setRange(0, 365)

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -18,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.styles.theme import TEXT, SUBTEXT0, RED
+from src.styles.theme import TEXT, SUBTEXT0
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:
@@ -76,7 +77,6 @@ class HolidayManageDialog(_BaseDialog):
         self._form.addRow(add_row)
 
         input_row = QHBoxLayout()
-        from PySide6.QtWidgets import QDateEdit
         self._date_edit = QDateEdit()
         self._date_edit.setCalendarPopup(True)
         self._date_edit.setDisplayFormat("yyyy-MM-dd")
@@ -100,10 +100,6 @@ class HolidayManageDialog(_BaseDialog):
         btn_del_row.addStretch()
         self._btn_delete = QPushButton("删除选中")
         self._btn_delete.setProperty("class", "action")
-        self._btn_delete.setStyleSheet(
-            f"QPushButton {{ color: {RED}; border: 1px solid {RED}; "
-            f"border-radius: 4px; padding: 4px 12px; }}"
-        )
         self._btn_delete.clicked.connect(self._on_delete)
         btn_del_row.addWidget(self._btn_delete)
         self._form.addRow(btn_del_row)
@@ -140,7 +136,10 @@ class HolidayManageDialog(_BaseDialog):
         if not name:
             QMessageBox.warning(self, "提示", "请输入假日名称。")
             return
-        self._svc.add_holiday(date_str, name, source="custom")
+        new_id = self._svc.add_holiday(date_str, name, source="custom")
+        if new_id == 0:
+            QMessageBox.warning(self, "添加失败", f"日期 {date_str} 已存在。")
+            return
         self._name_edit.clear()
         # 切换到对应年份
         year = int(date_str[:4])
