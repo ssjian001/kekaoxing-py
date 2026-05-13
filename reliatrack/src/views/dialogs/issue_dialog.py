@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.constants import SEVERITY_OPTIONS, ISSUE_STATUS_LABELS, RESOLUTION_OPTIONS
+from src.constants import SEVERITY_OPTIONS, ISSUE_STATUS_LABELS, RESOLUTION_OPTIONS, ISSUE_CATEGORY_OPTIONS
 from src.models.issue import Issue
 from src.views.dialogs.base_dialog import _BaseDialog
 
@@ -98,6 +98,20 @@ class IssueEditDialog(_BaseDialog):
             self._status_combo.setItemData(i, eng, Qt.ItemDataRole.UserRole)
             if eng == (issue.status if issue else "open"):
                 self._status_combo.setCurrentIndex(i)
+
+        # ── 责任类别 ──
+        self._category_combo = self._add_combo_field(
+            "责任类别",
+            items=["（未指定）"] + [label for _, label in ISSUE_CATEGORY_OPTIONS],
+        )
+        self._category_combo.setItemData(0, "", Qt.ItemDataRole.UserRole)
+        for i, (value, _) in enumerate(ISSUE_CATEGORY_OPTIONS, start=1):
+            self._category_combo.setItemData(i, value, Qt.ItemDataRole.UserRole)
+        default_category = issue.category if issue else ""
+        for i in range(self._category_combo.count()):
+            if self._category_combo.itemData(i, Qt.ItemDataRole.UserRole) == default_category:
+                self._category_combo.setCurrentIndex(i)
+                break
 
         # ── 解决结果下拉 ──
         self._resolution_combo = self._add_combo_field(
@@ -248,6 +262,7 @@ class IssueEditDialog(_BaseDialog):
             "severity": self._severity_combo.currentData(Qt.ItemDataRole.UserRole) or self._severity_combo.currentText(),
             "priority": self._priority_spin.value(),
             "status": self._status_combo.currentData(Qt.ItemDataRole.UserRole) or self._status_combo.currentText(),
+            "category": self._category_combo.currentData(Qt.ItemDataRole.UserRole) or "",
             "project_id": project_id,
             "task_id": task_id,
             "sample_id": sample_id,

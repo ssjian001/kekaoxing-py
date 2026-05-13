@@ -65,6 +65,7 @@ class Issue:
     status: str = IssueStatus.OPEN.value
     priority: int = 3
     assignee_id: Optional[int] = None
+    category: str = ""              # 责任类别: ME/EE/AE/SW/NPI/QE/Other
     dri_name: str = ""              # DRI 责任人（自由输入）
     root_cause: str = ""
     resolution: str = ""

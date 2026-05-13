@@ -433,11 +433,6 @@ QMessageBox {{
 _COMPILED_STYLESHEET: str | None = None
 
 
-def _ensure_indicator_icons() -> tuple[str, str]:
-    """确保 indicator PNG 图标存在，返回 (check_png, radio_png)。"""
-    from src.styles.indicator_icons import ensure_indicator_icons
-    return ensure_indicator_icons()
-
 
 def get_stylesheet() -> str:
     """获取完整的应用 QSS 样式表。
@@ -447,17 +442,7 @@ def get_stylesheet() -> str:
     """
     global _COMPILED_STYLESHEET
     if _COMPILED_STYLESHEET is None:
-        check_png, radio_png = _ensure_indicator_icons()
-        _COMPILED_STYLESHEET = _BASE_QSS + f"""
-/* ── CheckBox indicator: checked with ✓ PNG ── */
-QCheckBox::indicator:checked {{
-    image: url({check_png});
-}}
-/* ── RadioButton indicator: checked with dot PNG ── */
-QRadioButton::indicator:checked {{
-    image: url({radio_png});
-}}
-"""
+        _COMPILED_STYLESHEET = _BASE_QSS
     return _COMPILED_STYLESHEET
 
 

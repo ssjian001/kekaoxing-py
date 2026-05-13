@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QAction
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -35,7 +35,7 @@ from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS, apply_column_specs
-from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS, RESOLUTION_LABELS
+from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS, RESOLUTION_LABELS, ISSUE_CATEGORY_OPTIONS
 from src.views.dialogs.base_dialog import _BaseDialog
 
 # Issue 表列规格: (表头, 模式, 默认宽度)
@@ -45,6 +45,7 @@ _ISSUE_SPECS = [
     ("Issue描述", "interactive", 200),
     ("严重度", "interactive", 70),
     ("状态", "interactive", 80),
+    ("类别", "interactive", 70),
     ("优先级", "interactive", 70),
     ("DRI", "interactive", 80),
     ("解决结果", "interactive", 80),
@@ -87,12 +88,14 @@ class _IssueTable(QTableWidget):
         self.setRowCount(len(issues))
         severity_labels = SEVERITY_LABELS
         status_labels = ISSUE_STATUS_LABELS
+        category_labels = {v: k for k, v in ISSUE_CATEGORY_OPTIONS}
         for row, issue in enumerate(issues):
             for col, val in enumerate([
                 issue.id,
                 issue.title,
                 severity_labels.get(issue.severity, issue.severity),
                 status_labels.get(issue.status, issue.status),
+                category_labels.get(issue.category, issue.category or ""),
                 issue.priority,
                 getattr(issue, "dri_name", "") or "",
                 RESOLUTION_LABELS.get(getattr(issue, "resolution", ""), getattr(issue, "resolution", "") or ""),
@@ -370,12 +373,22 @@ class IssueView(QWidget):
         self._search_input.setMinimumWidth(160)
         toolbar.addWidget(self._search_input)
 
-        # 状态筛选
-        self._status_filter = QComboBox()
-        self._status_filter.addItems(["全部状态", "待处理", "分析中", "已验证", "已关闭"])
-        self._status_filter.setFixedWidth(100)
-        self._status_filter.setToolTip("按状态筛选")
-        toolbar.addWidget(self._status_filter)
+        # 状态筛选（多选）
+        self._status_filter_btn = QPushButton("状态筛选")
+        self._status_filter_btn.setProperty("class", "action")
+        self._status_filter_btn.setFixedWidth(100)
+        self._status_filter_btn.setToolTip("按状态筛选（可多选）")
+        self._status_filter_menu = QMenu(self._status_filter_btn)
+        self._status_filter_actions: dict[str, QAction] = {}
+        for chn, eng in [("待处理", "open"), ("分析中", "analyzing"), ("已验证", "verified"), ("已关闭", "closed")]:
+            act = self._status_filter_menu.addAction(chn)
+            act.setCheckable(True)
+            act.setChecked(True)
+            act.setData(eng)
+            act.toggled.connect(self._apply_filters)
+            self._status_filter_actions[eng] = act
+        self._status_filter_btn.setMenu(self._status_filter_menu)
+        toolbar.addWidget(self._status_filter_btn)
 
         # 严重度筛选
         self._severity_filter = QComboBox()
@@ -470,7 +483,6 @@ class IssueView(QWidget):
         self._issue_table.itemSelectionChanged.connect(self._on_issue_selection_changed)
         # 筛选联动
         self._search_input.textChanged.connect(self._apply_filters)
-        self._status_filter.currentIndexChanged.connect(self._apply_filters)
         self._severity_filter.currentIndexChanged.connect(self._apply_filters)
 
     # ── 数据刷新 ──────────────────────────────────────────────
@@ -480,18 +492,19 @@ class IssueView(QWidget):
         self._apply_filters()
 
     def _apply_filters(self) -> None:
-        """根据搜索文本 + 状态 + 严重度筛选 Issue 列表。"""
-        # 状态映射
-        _STATUS_MAP = {"待处理": "open", "分析中": "analyzing", "已验证": "verified", "已关闭": "closed"}
+        """根据搜索文本 + 状态（多选）+ 严重度筛选 Issue 列表。"""
+        # 状态多选：收集所有勾选的状态
+        selected_statuses = {
+            eng for eng, act in self._status_filter_actions.items() if act.isChecked()
+        }
+        # 严重度
         _SEVERITY_MAP = {"严重": "critical", "主要": "major", "次要": "minor", "外观": "cosmetic"}
-
-        status_val = _STATUS_MAP.get(self._status_filter.currentText())
         severity_val = _SEVERITY_MAP.get(self._severity_filter.currentText())
         search_text = self._search_input.text().strip().lower()
 
         filtered = self._all_issues
-        if status_val:
-            filtered = [i for i in filtered if i.status == status_val]
+        if selected_statuses and len(selected_statuses) < 4:
+            filtered = [i for i in filtered if i.status in selected_statuses]
         if severity_val:
             filtered = [i for i in filtered if i.severity == severity_val]
         if search_text:
