@@ -405,12 +405,15 @@ class MainWindow(QMainWindow):
         self._refresh_all()
 
     def _refresh_plan_combo(self) -> None:
-        """根据当前选中的项目更新计划筛选 combo。"""
+        """根据当前选中的项目更新计划筛选 combo（保留之前选中项）。"""
         project_id = self._project_filter_combo.currentData()
         ctrl = self._ctrl
         if not ctrl or not ctrl.test_plan_service:
             self._plan_filter_combo.setEnabled(False)
             return
+
+        # 记住当前选中
+        _current_plan_id = self._plan_filter_combo.currentData()
 
         self._plan_filter_combo.blockSignals(True)
         self._plan_filter_combo.clear()
@@ -425,6 +428,12 @@ class MainWindow(QMainWindow):
             for p in plans:
                 self._plan_filter_combo.addItem(p.name, p.id)
             self._plan_filter_combo.setEnabled(True)
+
+            # 恢复之前选中的计划
+            for i in range(self._plan_filter_combo.count()):
+                if self._plan_filter_combo.itemData(i) == _current_plan_id:
+                    self._plan_filter_combo.setCurrentIndex(i)
+                    break
 
         self._plan_filter_combo.blockSignals(False)
 
