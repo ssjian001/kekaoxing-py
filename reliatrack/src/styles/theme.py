@@ -160,6 +160,7 @@ QPushButton[class="primary"] {{
     background-color: #40a02b;
     color: #ffffff;
     border-color: #358524;
+    padding: 2px 12px;
 }}
 QPushButton[class="primary"]:hover {{
     background-color: #358524;
@@ -176,17 +177,23 @@ QPushButton[class="danger"]:hover {{
 }}
 
 /* ── 操作按钮 ── */
-QPushButton[class="action"] {{
+QPushButton[class="action"],
+QToolButton[class="action"] {{
     background-color: {BG_INPUT};
     color: {ACCENT};
     border: 1px solid {ACCENT};
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 2px 12px;
     font-weight: bold;
     font-size: 13px;
 }}
-QPushButton[class="action"]:hover {{
+QPushButton[class="action"]:hover,
+QToolButton[class="action"]:hover {{
     background-color: {BG_HOVER};
+}}
+QToolButton[class="action"]::menu-indicator {{
+    image: none;
+    width: 0;
 }}
 
 /* ── 列表 ── */
