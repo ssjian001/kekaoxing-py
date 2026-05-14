@@ -55,13 +55,13 @@ class TestPlanView(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(6)
 
-        # ── 计划操作组 ──
+        # ── 计划下拉 ──
         toolbar.addWidget(QLabel("计划:"))
         self._plan_combo = QComboBox()
         self._plan_combo.setFixedWidth(180)
         toolbar.addWidget(self._plan_combo)
 
-        # 计划管理下拉菜单
+        # ── 计划管理 ──
         self._plan_menu = QMenu(self)
         self._act_add_plan = self._plan_menu.addAction("新建计划")
         self._act_edit_plan = self._plan_menu.addAction("编辑计划")
@@ -77,20 +77,7 @@ class TestPlanView(QWidget):
         self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除")
         toolbar.addWidget(self._btn_plan_manage)
 
-        self._btn_schedule = QPushButton("自动排程")
-        self._btn_schedule.setProperty("class", "action")
-        self._btn_schedule.setFixedHeight(28)
-        self._btn_schedule.setToolTip("自动排程（资源约束优化）")
-        toolbar.addWidget(self._btn_schedule)
-
-        # ── 分隔线 ──
-        sep1 = QFrame()
-        sep1.setFrameShape(QFrame.Shape.VLine)
-        sep1.setStyleSheet(f"color: {SURFACE1};")
-        toolbar.addWidget(sep1)
-
-        # ── 任务操作组 ──
-        # 任务管理下拉菜单
+        # ── 任务管理 ──
         self._task_menu = QMenu(self)
         self._act_add_task = self._task_menu.addAction("添加任务")
         self._act_edit_task = self._task_menu.addAction("编辑任务")
@@ -108,7 +95,14 @@ class TestPlanView(QWidget):
         self._btn_task_manage.setToolTip("任务管理：增删改、导入")
         toolbar.addWidget(self._btn_task_manage)
 
-        # ── 搜索框 ──
+        # ── 自动排程 ──
+        self._btn_schedule = QPushButton("自动排程")
+        self._btn_schedule.setProperty("class", "action")
+        self._btn_schedule.setFixedHeight(28)
+        self._btn_schedule.setToolTip("自动排程（资源约束优化）")
+        toolbar.addWidget(self._btn_schedule)
+
+        # ── 搜索任务 ──
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("🔍 搜索任务名...")
         self._search_edit.setClearButtonEnabled(True)
@@ -116,24 +110,14 @@ class TestPlanView(QWidget):
         self._search_edit.textChanged.connect(self._on_task_search)
         toolbar.addWidget(self._search_edit)
 
-        # ── 分隔线 ──
-        sep2 = QFrame()
-        sep2.setFrameShape(QFrame.Shape.VLine)
-        sep2.setStyleSheet(f"color: {SURFACE1};")
-        toolbar.addWidget(sep2)
-
+        # ── 录入结果 ──
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
         self._btn_record_result.setFixedHeight(28)
         self._btn_record_result.setToolTip("录入测试结果")
         toolbar.addWidget(self._btn_record_result)
 
-        # 分隔线
-        sep3 = QFrame()
-        sep3.setFrameShape(QFrame.Shape.VLine)
-        sep3.setStyleSheet(f"color: {SURFACE1};")
-        toolbar.addWidget(sep3)
-
+        # ── 总结报告 ──
         self._btn_summary_report = QPushButton("总结报告")
         self._btn_summary_report.setProperty("class", "action")
         self._btn_summary_report.setFixedHeight(28)
