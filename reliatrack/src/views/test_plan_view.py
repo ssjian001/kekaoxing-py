@@ -59,6 +59,7 @@ class TestPlanView(QWidget):
         toolbar.addWidget(QLabel("计划:"))
         self._plan_combo = QComboBox()
         self._plan_combo.setFixedWidth(180)
+        self._plan_combo.setFixedHeight(28)
         toolbar.addWidget(self._plan_combo)
 
         # ── 计划管理 ──
@@ -106,7 +107,7 @@ class TestPlanView(QWidget):
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("🔍 搜索任务名...")
         self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setMaximumWidth(160)
+        self._search_edit.setFixedSize(160, 28)
         self._search_edit.textChanged.connect(self._on_task_search)
         toolbar.addWidget(self._search_edit)
 
