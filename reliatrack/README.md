@@ -57,7 +57,7 @@ src/
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
 │       └── settings_repo.py
-├── handlers/        # 信号处理（10个Handler类，含export_handlers）
+├── handlers/        # 信号处理（11个Handler类，含export_handlers、backup_handlers）
 │   ├── project_handlers.py
 │   ├── sample_handlers.py
 │   ├── plan_handlers.py
@@ -104,7 +104,7 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。289 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。274 个 pytest 测试全通过。
 
 ## CI/CD
 

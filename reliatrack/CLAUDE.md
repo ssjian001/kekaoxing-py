@@ -74,7 +74,7 @@ src/
 │   ├── connection.py
 │   ├── repositories/   # 数据访问层（repo 模式）
 │   └── schema.py        # SQLite schema 初始化
-├── handlers/      # 信号处理器（10个 Handler 类，含 export_handlers）
+├── handlers/      # 信号处理器（11个 Handler 类，含 export_handlers、backup_handlers）
 ├── models/        # 数据模型
 ├── services/      # 业务逻辑层
 ├── styles/        # QSS 样式
@@ -95,7 +95,7 @@ src/
 | 5 | 🔧 设备管理 | equipment_view.py + technician_view.py |
 | 6 | 📚 知识库 | knowledge_view.py |
 
-### Handler 层（10 个 Handler）
+### Handler 层（11 个 Handler）
 
 project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局快捷键在 main.py
 
@@ -212,7 +212,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_issue_jira_workflow.py` — 25 项 Jira-style Issue 工作流（全路径转换、resolution 枚举、FA/CAPA 联动、reopen、reporter）
 - `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
 - `tests/test_scheduler_limit.py` — 22 项排程引擎（daily_start_limit、starts 增减、周末/节假日跳过、compress、locked tasks）
-- 共 **289 个 pytest 测试**，全量通过
+- 共 **274 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）

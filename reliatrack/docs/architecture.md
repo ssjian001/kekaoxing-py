@@ -34,7 +34,7 @@ Project ──< TestPlan ──< TestTask >── Sample
 ```
 View (Qt UI)
   ↓ Signal
-Handler (信号处理器, 10个类)
+Handler (信号处理器, 11个类)
   ↓ 调用
 Service (业务逻辑)
   ↓ 调用
