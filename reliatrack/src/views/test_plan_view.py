@@ -5,14 +5,17 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Callable, Optional
 
+from PySide6.QtGui import QAction, QFont
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
+    QToolButton,
     QLabel,
     QComboBox,
     QFrame,
+    QMenu,
     QMessageBox,
     QLineEdit,
     QScrollArea,
@@ -20,7 +23,6 @@ from PySide6.QtWidgets import (
     QButtonGroup,
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
@@ -59,17 +61,21 @@ class TestPlanView(QWidget):
         self._plan_combo.setFixedWidth(180)
         toolbar.addWidget(self._plan_combo)
 
-        self._btn_add_plan = QPushButton("新建计划")
-        self._btn_add_plan.setProperty("class", "action")
-        self._btn_add_plan.setFixedHeight(28)
-        self._btn_add_plan.setToolTip("新建测试计划")
-        toolbar.addWidget(self._btn_add_plan)
+        # 计划管理下拉菜单
+        self._plan_menu = QMenu(self)
+        self._act_add_plan = self._plan_menu.addAction("新建计划")
+        self._act_edit_plan = self._plan_menu.addAction("编辑计划")
+        self._plan_menu.addSeparator()
+        self._act_delete_plan = self._plan_menu.addAction("删除计划")
 
-        self._btn_edit_plan = QPushButton("编辑计划")
-        self._btn_edit_plan.setProperty("class", "action")
-        self._btn_edit_plan.setFixedHeight(28)
-        self._btn_edit_plan.setToolTip("编辑当前计划")
-        toolbar.addWidget(self._btn_edit_plan)
+        self._btn_plan_manage = QToolButton()
+        self._btn_plan_manage.setText("计划管理")
+        self._btn_plan_manage.setMenu(self._plan_menu)
+        self._btn_plan_manage.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._btn_plan_manage.setProperty("class", "action")
+        self._btn_plan_manage.setFixedHeight(28)
+        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除")
+        toolbar.addWidget(self._btn_plan_manage)
 
         self._btn_schedule = QPushButton("自动排程")
         self._btn_schedule.setProperty("class", "action")
@@ -84,23 +90,23 @@ class TestPlanView(QWidget):
         toolbar.addWidget(sep1)
 
         # ── 任务操作组 ──
-        self._btn_add_task = QPushButton("添加任务")
-        self._btn_add_task.setProperty("class", "action")
-        self._btn_add_task.setFixedHeight(28)
-        self._btn_add_task.setToolTip("添加测试任务")
-        toolbar.addWidget(self._btn_add_task)
+        # 任务管理下拉菜单
+        self._task_menu = QMenu(self)
+        self._act_add_task = self._task_menu.addAction("添加任务")
+        self._act_edit_task = self._task_menu.addAction("编辑任务")
+        self._act_delete_task = self._task_menu.addAction("删除任务")
+        self._task_menu.addSeparator()
+        self._act_import_tasks = self._task_menu.addAction("导入任务")
+        self._act_import_from_plan = self._task_menu.addAction("从计划导入")
 
-        self._btn_edit_task = QPushButton("编辑任务")
-        self._btn_edit_task.setProperty("class", "action")
-        self._btn_edit_task.setFixedHeight(28)
-        self._btn_edit_task.setToolTip("编辑选中任务")
-        toolbar.addWidget(self._btn_edit_task)
-
-        self._btn_delete_task = QPushButton("删除任务")
-        self._btn_delete_task.setProperty("class", "action")
-        self._btn_delete_task.setFixedHeight(28)
-        self._btn_delete_task.setToolTip("删除选中任务")
-        toolbar.addWidget(self._btn_delete_task)
+        self._btn_task_manage = QToolButton()
+        self._btn_task_manage.setText("任务管理")
+        self._btn_task_manage.setMenu(self._task_menu)
+        self._btn_task_manage.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._btn_task_manage.setProperty("class", "action")
+        self._btn_task_manage.setFixedHeight(28)
+        self._btn_task_manage.setToolTip("任务管理：增删改、导入")
+        toolbar.addWidget(self._btn_task_manage)
 
         # ── 搜索框 ──
         self._search_edit = QLineEdit()
@@ -115,18 +121,6 @@ class TestPlanView(QWidget):
         sep2.setFrameShape(QFrame.Shape.VLine)
         sep2.setStyleSheet(f"color: {SURFACE1};")
         toolbar.addWidget(sep2)
-
-        self._btn_import_tasks = QPushButton("导入任务")
-        self._btn_import_tasks.setProperty("class", "action")
-        self._btn_import_tasks.setFixedHeight(28)
-        self._btn_import_tasks.setToolTip("从 Excel 批量导入任务")
-        toolbar.addWidget(self._btn_import_tasks)
-
-        self._btn_import_from_plan = QPushButton("从计划导入")
-        self._btn_import_from_plan.setProperty("class", "action")
-        self._btn_import_from_plan.setFixedHeight(28)
-        self._btn_import_from_plan.setToolTip("从同项目其他计划复制任务")
-        toolbar.addWidget(self._btn_import_from_plan)
 
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
@@ -425,33 +419,42 @@ class TestPlanView(QWidget):
     def task_table(self) -> _TaskTable:
         return self._task_table
 
+    # ── 菜单 action 属性（供 handler 连接） ──
     @property
-    def btn_add_plan(self) -> QPushButton:
-        return self._btn_add_plan
+    def act_add_plan(self) -> QAction:
+        return self._act_add_plan
 
     @property
-    def btn_edit_plan(self) -> QPushButton:
-        return self._btn_edit_plan
+    def act_edit_plan(self) -> QAction:
+        return self._act_edit_plan
+
+    @property
+    def act_delete_plan(self) -> QAction:
+        return self._act_delete_plan
 
     @property
     def btn_schedule(self) -> QPushButton:
         return self._btn_schedule
 
     @property
-    def btn_add_task(self) -> QPushButton:
-        return self._btn_add_task
+    def act_add_task(self) -> QAction:
+        return self._act_add_task
 
     @property
-    def btn_edit_task(self) -> QPushButton:
-        return self._btn_edit_task
+    def act_edit_task(self) -> QAction:
+        return self._act_edit_task
 
     @property
-    def btn_delete_task(self) -> QPushButton:
-        return self._btn_delete_task
+    def act_delete_task(self) -> QAction:
+        return self._act_delete_task
 
     @property
-    def btn_import_tasks(self) -> QPushButton:
-        return self._btn_import_tasks
+    def act_import_tasks(self) -> QAction:
+        return self._act_import_tasks
+
+    @property
+    def act_import_from_plan(self) -> QAction:
+        return self._act_import_from_plan
 
     @property
     def btn_record_result(self) -> QPushButton:
@@ -460,10 +463,6 @@ class TestPlanView(QWidget):
     @property
     def btn_summary_report(self) -> QPushButton:
         return self._btn_summary_report
-
-    @property
-    def btn_import_from_plan(self) -> QPushButton:
-        return self._btn_import_from_plan
 
     def setup_task_callbacks(
         self,
@@ -480,45 +479,12 @@ class TestPlanView(QWidget):
         self._on_edit_task = on_edit
         self._on_delete_task = on_delete
 
-        # 工具栏按钮 — 先 disconnect 防止重复调用
-        import warnings
-        for btn in (self._btn_add_task, self._btn_edit_task, self._btn_delete_task):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                try:
-                    btn.clicked.disconnect()
-                except RuntimeError:
-                    pass
-        self._btn_add_task.clicked.connect(lambda: on_add() if on_add else None)
-        self._btn_edit_task.clicked.connect(self._handle_toolbar_edit)
-        self._btn_delete_task.clicked.connect(self._handle_toolbar_delete)
-
         # 表格右键 & 双击
         self._task_table.set_callbacks(
             on_edit=self._handle_table_edit,
             on_delete=self._handle_table_delete,
             on_status_advance=on_status_advance,
         )
-
-    def _handle_toolbar_edit(self) -> None:
-        row = self._task_table.currentRow()
-        task = self._task_table.get_task_at_row(row)
-        if task and self._on_edit_task:
-            self._on_edit_task(task)
-        elif not task:
-            QMessageBox.information(
-                self._task_table, "提示", "请先选中一行任务。"
-            )
-
-    def _handle_toolbar_delete(self) -> None:
-        row = self._task_table.currentRow()
-        task = self._task_table.get_task_at_row(row)
-        if task:
-            self._confirm_and_delete(task)
-        else:
-            QMessageBox.information(
-                self._task_table, "提示", "请先选中一行任务。"
-            )
 
     def _handle_table_edit(self, task: TestTask) -> None:
         if self._on_edit_task:

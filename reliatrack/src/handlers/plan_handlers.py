@@ -40,13 +40,21 @@ class PlanHandlers:
         v = win._test_plan_view
         v.btn_schedule.clicked.connect(self._on_auto_schedule)
         v.task_moved.connect(self._on_gantt_task_moved)
-        v.btn_add_plan.clicked.connect(self._on_plan_add)
-        v.btn_edit_plan.clicked.connect(self._on_plan_edit)
+        # 计划管理菜单
+        v.act_add_plan.triggered.connect(self._on_plan_add)
+        v.act_edit_plan.triggered.connect(self._on_plan_edit)
+        v.act_delete_plan.triggered.connect(self._on_plan_delete)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
-        v.btn_import_tasks.clicked.connect(self._on_task_batch_import)
-        v.btn_import_from_plan.clicked.connect(self._on_import_from_plan)
+        # 任务管理菜单
+        v.act_add_task.triggered.connect(self._on_task_add)
+        v.act_edit_task.triggered.connect(self._on_task_edit_menu)
+        v.act_delete_task.triggered.connect(self._on_task_delete_menu)
+        v.act_import_tasks.triggered.connect(self._on_task_batch_import)
+        v.act_import_from_plan.triggered.connect(self._on_import_from_plan)
+        # 独立按钮
         v.btn_record_result.clicked.connect(self._on_record_result)
         v.btn_summary_report.clicked.connect(self._on_summary_report)
+        # 表格回调（右键/双击）
         v.setup_task_callbacks(
             on_add=self._on_task_add,
             on_edit=self._on_task_edit,
@@ -404,6 +412,42 @@ class PlanHandlers:
             )
         dlg.deleteLater()
 
+    def _on_plan_delete(self) -> None:
+        """删除当前选中的测试计划（不可撤销）。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self._win.toast("请先选中一个测试计划", "info")
+            return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if plan is None:
+            return
+        # 统计关联数据
+        tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        task_count = len(tasks) if tasks else 0
+        reply = QMessageBox.question(
+            self._win,
+            "确认删除",
+            f"确定要删除计划「{plan.name}」吗？\n"
+            f"关联任务: {task_count} 项（含结果、Issue 等将一并删除）\n"
+            f"此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.delete_plan,
+            action_args=(plan_id,),
+            toast_msg=f"计划「{plan.name}」已删除",
+            entity="plan",
+            error_title="删除失败",
+            catch_value_error=True,
+        )
+
     def _on_plan_changed(self, index: int) -> None:
         """切换测试计划时刷新任务列表。"""
         ctrl = self._win._ctrl
@@ -511,6 +555,26 @@ class PlanHandlers:
                 error_title="创建失败",
             )
         dlg.deleteLater()
+
+    def _on_task_edit_menu(self) -> None:
+        """菜单触发：选中行后编辑任务。"""
+        table = self._win._test_plan_view.task_table
+        row = table.currentRow()
+        task = table.get_task_at_row(row)
+        if task is None:
+            self._win.toast("请先选中一行任务", "info")
+            return
+        self._on_task_edit(task)
+
+    def _on_task_delete_menu(self) -> None:
+        """菜单触发：选中行后删除任务。"""
+        table = self._win._test_plan_view.task_table
+        row = table.currentRow()
+        task = table.get_task_at_row(row)
+        if task is None:
+            self._win.toast("请先选中一行任务", "info")
+            return
+        self._on_task_delete(task)
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""

@@ -265,7 +265,7 @@ class MainWindow(QMainWindow):
         elif idx == 2:
             self._sample_handlers._on_sample_checkin()
         elif idx == 3:
-            self._test_plan_view._btn_add_task.click()
+            self._plan_handlers._on_task_add()
         elif idx == 4:
             self._issue_view._btn_add.click()
         elif idx == 5:
@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
         if idx == 1:
             self._project_handlers._on_project_delete()
         elif idx == 3:
-            self._test_plan_view._btn_delete_task.click()
+            self._plan_handlers._on_task_delete_menu()
         elif idx == 5:
             self._equipment_handlers._on_equipment_delete()
         elif idx == 6:
@@ -291,7 +291,7 @@ class MainWindow(QMainWindow):
         if idx == 1:
             self._project_handlers._on_project_edit()
         elif idx == 3:
-            self._test_plan_view._btn_edit_task.click()
+            self._plan_handlers._on_task_edit_menu()
         elif idx == 5:
             self._equipment_handlers._on_equipment_edit()
         elif idx == 6:
