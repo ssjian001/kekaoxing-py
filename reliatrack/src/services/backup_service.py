@@ -71,7 +71,6 @@ class BackupService:
                 backup.step()
             logger.info("备份已创建: %s", dest_path)
         except Exception:
-            dest_conn.close()
             if dest_path.exists():
                 dest_path.unlink(missing_ok=True)
             raise RuntimeError("备份失败") from None

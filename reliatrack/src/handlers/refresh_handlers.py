@@ -23,6 +23,7 @@ class RefreshHandlers:
         # 全量刷新时的共享数据缓存（避免重复 DB 查询）
         self._cached_projects: list | None = None
         self._cached_samples: list | None = None
+        self._need_plan_combo_refresh: bool = False
 
     def _get_filter_project_id(self):
         """获取当前筛选的项目 ID（None = 全部）。"""
@@ -92,7 +93,7 @@ class RefreshHandlers:
         self._refresh_undo_state()
 
         # 按需刷新顶部计划筛选 combo
-        if getattr(self, "_need_plan_combo_refresh", False):
+        if self._need_plan_combo_refresh:
             self._win._refresh_plan_combo()
             self._need_plan_combo_refresh = False
 
