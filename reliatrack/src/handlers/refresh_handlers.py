@@ -49,6 +49,7 @@ class RefreshHandlers:
 
         if need_all:
             pending.clear()
+            self._need_plan_combo_refresh = True
 
         # 全量刷新时预取共享数据，避免重复 DB 查询
         if need_all:
