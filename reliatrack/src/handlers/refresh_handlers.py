@@ -67,12 +67,14 @@ class RefreshHandlers:
             _need_dashboard = False
             if "project" in pending:
                 self._refresh_projects()
+                self._need_plan_combo_refresh = True
                 _need_dashboard = True
             if "sample" in pending:
                 self._refresh_samples()
                 _need_dashboard = True
             if "task" in pending or "plan" in pending:
                 self._refresh_plans()
+                self._need_plan_combo_refresh = True
                 _need_dashboard = True
             if "issue" in pending:
                 self._refresh_issues()
@@ -88,6 +90,11 @@ class RefreshHandlers:
 
         # 撤销/重做按钮始终更新
         self._refresh_undo_state()
+
+        # 按需刷新顶部计划筛选 combo
+        if getattr(self, "_need_plan_combo_refresh", False):
+            self._win._refresh_plan_combo()
+            self._need_plan_combo_refresh = False
 
         pending.clear()
         # 清除缓存
