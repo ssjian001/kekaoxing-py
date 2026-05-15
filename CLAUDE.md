@@ -68,7 +68,7 @@ src/
     equipment_view.py, issue_view.py, knowledge_view.py,
     project_view.py, sample_view.py, technician_view.py,
     test_plan_view.py
-    dialogs/            # 对话框（22 编辑/配置对话框）
+    dialogs/            # 对话框（23 编辑/配置对话框）
     widgets/            # 自定义控件
       analysis_widget.py, gantt_widget.py,
       result_matrix.py, task_table.py
@@ -110,3 +110,6 @@ bd dolt push          # 同步
 - 全局 QSS padding 侵占 QSpinBox 按钮 → QSpinBox 必须单独处理，padding 2px 4px
 - QPushButton 设 `background: transparent; border: none` 在 Windows 上不可见 → 必须有可见背景和边框
 - QLockFile: Qt5 `setStaleLockTimeout(ms)` → PySide6 6.x `setStaleLockTime(ms)`
+- **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`
+- **`QSS ::indicator` 与 QProxyStyle 不能共存** → 必须从 theme.py 删除所有 `::indicator` 块让 ProxyStyle 全权绘制
+- **QToolButton class 选择器**：`QPushButton[class="action"]` 不匹配 QToolButton，需逗号分隔同时写两个

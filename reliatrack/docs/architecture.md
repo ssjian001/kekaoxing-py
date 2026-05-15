@@ -19,10 +19,12 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v17
+### Schema 版本：v21
 
-- **v16**：Issue 加 `dri_name`（DRI 责任人）；CAPA 加 `verifier_name`（验证人）；测试结果保存时可自动创建 Issue
+- **v21**：Issue 责任类别（ME/EE/AE/SW/NPI/QE/Other）+ 状态多选筛选 + CheckBox QProxyStyle
+- **v20**：任务编号前缀
 - **v17**：Issue 软删除试点（`is_deleted`/`deleted_at` 列，`list_all` 过滤）
+- **v16**：Issue 加 `dri_name`（DRI 责任人）；CAPA 加 `verifier_name`（验证人）；测试结果保存时可自动创建 Issue
 - **v15**：CAPA PDCA 扩展 — capa_records 加 `root_cause`/`effectiveness`/`follow_up`；CAPA 编辑/删除 UI；`count_capa_done` bug 修复
 - **v14**：capa_records 加 assignee_name（责任人自由文本，与 assignee_id 并存）；test_tasks 安全补列
 - **FK 策略**：核心关联表（issues/fa_records/capa_records/attachments）使用 `ON DELETE CASCADE`，级联删除由 DB 层保证一致性；保留孤立记录的字段（如 assignee_id）使用 `ON DELETE SET NULL`

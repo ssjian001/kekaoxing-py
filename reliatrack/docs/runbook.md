@@ -10,7 +10,7 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack
 ## 数据库
 
 - **位置**：`data/reliatrack.db`（自动创建）
-- **Schema 版本**：v17
+- **Schema 版本**：v21
 - **备份**：`data/backups/` 目录下自动/手动备份
 - **迁移**：`.venv/bin/python3 migrate.py`（运行 pending migrations）
 
