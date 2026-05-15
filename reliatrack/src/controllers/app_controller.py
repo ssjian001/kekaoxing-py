@@ -141,7 +141,7 @@ class AppController:
         if not backup_path.exists():
             try:
                 dest = apsw.Connection(str(backup_path))
-                with self._conn.backup("main", dest, "main") as backup:
+                with dest.backup("main", self._conn, "main") as backup:
                     backup.step()
                 dest.close()
                 logger.info("Backup created: %s", backup_path)

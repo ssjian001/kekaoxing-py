@@ -67,7 +67,7 @@ class BackupService:
         src_conn = get_connection(self._db_path)
         dest_conn = apsw.Connection(str(dest_path))
         try:
-            with src_conn.backup("main", dest_conn, "main") as backup:
+            with dest_conn.backup("main", src_conn, "main") as backup:
                 backup.step()
             logger.info("备份已创建: %s", dest_path)
         except Exception:
