@@ -53,7 +53,7 @@ class TestPlanView(QWidget):
 
         # 工具栏
         toolbar = QHBoxLayout()
-        toolbar.setSpacing(6)
+        toolbar.setSpacing(8)
 
         # ── 计划下拉 ──
         toolbar.addWidget(QLabel("计划:"))
@@ -105,7 +105,7 @@ class TestPlanView(QWidget):
 
         # ── 搜索任务 ──
         self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("🔍 搜索任务名...")
+        self._search_edit.setPlaceholderText("搜索任务名...")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setFixedSize(160, 28)
         self._search_edit.textChanged.connect(self._on_task_search)
@@ -140,11 +140,6 @@ class TestPlanView(QWidget):
         # 子 Tab: 测试项 / 甘特图
         from PySide6.QtWidgets import QTabWidget
         self._sub_tabs = QTabWidget()
-        self._sub_tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ border: 1px solid {SURFACE1}; border-radius: 4px; background: {BASE}; }}
-            QTabBar::tab {{ padding: 4px 16px; background: {SURFACE0}; color: {TEXT}; border: 1px solid {SURFACE1}; border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 2px; }}
-            QTabBar::tab:selected {{ background: {BASE}; font-weight: bold; }}
-        """)
 
         # Tab 1: 任务表格
         tab_table = QWidget()

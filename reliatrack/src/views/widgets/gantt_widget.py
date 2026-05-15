@@ -9,11 +9,11 @@ from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QMouseEvent, QWheelEvent, QRegion
 
 from src.styles.theme import (
-    CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
+    MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
 )
-from src.styles.constants import FONT_FAMILY
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL
 from src.models.test_plan import TestTask
 
 class _GanttWidget(QWidget):
@@ -359,12 +359,12 @@ class _GanttWidget(QWidget):
                 p.drawLine(int(tx), vy + self._header_height, int(tx), self.height())
                 # "今天" 标签
                 p.setPen(QColor(PEACH))
-                p.setFont(QFont(FONT_FAMILY, 8))
+                p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
                 p.drawText(int(tx) - 20, vy, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, "今天")
 
         # ── 任务条 ──
-        p.setFont(QFont(FONT_FAMILY, 8))
+        p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
         # 画任务时排除冻结表头区域，防止任务内容覆盖表头
         if vy > 0:
             # 任务区域：表头下方
@@ -379,7 +379,7 @@ class _GanttWidget(QWidget):
 
             # 序号 + 任务名称标签 — 8pt 字体，根据可用宽度自动省略
             p.setPen(QColor(TEXT))
-            p.setFont(QFont(FONT_FAMILY, 8))
+            p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
             fm = p.fontMetrics()
             prefix = getattr(self, '_task_prefix', '')
             seq_label = f"{prefix}-{i + 1:03d}" if prefix else str(i + 1)
@@ -422,7 +422,7 @@ class _GanttWidget(QWidget):
 
             # 进度文字
             if bar_w > 30:
-                p.setPen(QColor(CRUST))
+                p.setPen(QColor(TEXT))
                 p.drawText(QRect(int(bar_x), int(bar_y), int(bar_w), self._bar_height),
                            Qt.AlignmentFlag.AlignCenter, f"{task.progress:.0f}%")
 

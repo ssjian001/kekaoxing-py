@@ -553,12 +553,12 @@ def run_auto_schedule(
 
     if cycle_task_ids:
         suggestions.append(
-            f"⚠️ {len(cycle_task_ids)} 个任务因循环依赖被跳过（ID: {cycle_task_ids[:5]}）"
+            f"注意: {len(cycle_task_ids)} 个任务因循环依赖被跳过（ID: {cycle_task_ids[:5]}）"
         )
 
     for b in bottlenecks:
         suggestions.append(
-            f"⚠️ {b['name']} 利用率 {b['utilization']}%，建议增加设备以缓解瓶颈"
+            f"注意: {b['name']} 利用率 {b['utilization']}%，建议增加设备以缓解瓶颈"
         )
 
     if config.deadline and config.start_date and new_days > 0:
@@ -571,17 +571,17 @@ def run_auto_schedule(
             end_dt = datetime.strptime(end_date, "%Y-%m-%d")
             if end_dt > deadline_dt:
                 suggestions.append(
-                    f"⚠️ 排期结束日 {end_date} 超出截止日期 {config.deadline}，"
+                    f"注意: 排期结束日 {end_date} 超出截止日期 {config.deadline}，"
                     f"请调整优先级或增加资源"
                 )
         except ValueError:
             logger.debug("排程截止日期解析失败", exc_info=True)
 
     if improvement > 20:
-        suggestions.append(f"✅ 自动排期相比原始方案优化了 {improvement}% 的工期")
+        suggestions.append(f"已完成: 自动排期相比原始方案优化了 {improvement}% 的工期")
     elif improvement < 0:
         suggestions.append(
-            "💡 当前排期因资源冲突被延长，建议检查可并行的任务并增加资源"
+            "提示: 当前排期因资源冲突被延长，建议检查可并行的任务并增加资源"
         )
 
     # ── Daily start limit utilization ──────────────────────────

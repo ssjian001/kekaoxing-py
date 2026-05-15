@@ -24,7 +24,7 @@ from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
 )
-from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS, apply_column_specs
+from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
 
 # 样品池列规格
@@ -129,7 +129,7 @@ class _SamplePoolTab(QWidget):
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("🔍 搜索 SN / 批次号...")
+        self._search_input.setPlaceholderText("搜索 SN / 批次号...")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_input)
@@ -287,7 +287,7 @@ class _SampleUsageTab(QWidget):
         toolbar = QHBoxLayout()
 
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("🔍 搜索 SN...")
+        self._search_input.setPlaceholderText("搜索 SN...")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._apply_filter)
         toolbar.addWidget(self._search_input)
@@ -461,7 +461,7 @@ class _SampleLedgerTab(QWidget):
         toolbar = QHBoxLayout()
 
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("🔍 搜索 SN / 批次号 / 规格...")
+        self._search_input.setPlaceholderText("搜索 SN / 批次号 / 规格...")
         self._search_input.setMinimumWidth(160)
         self._search_input.setClearButtonEnabled(True)
         self._search_input.textChanged.connect(self._on_search)
@@ -563,7 +563,7 @@ class SampleView(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(*VIEW_MARGINS)
 
         self._tabs = QTabWidget()
 

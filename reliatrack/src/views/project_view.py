@@ -21,10 +21,10 @@ from PySide6.QtGui import QColor
 from src.models.project import Project
 from src.styles.theme import (
     SURFACE1,
-    TEXT,
     OVERLAY0,
 )
 from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
+from src.constants import PROJECT_STATUS_LABELS
 
 _PROJECT_SPECS = [
     ("ID", "fixed", 50),
@@ -50,13 +50,7 @@ class ProjectView(QWidget):
     ]
 
     # 状态 → 显示文字
-    _STATUS_LABELS: dict[str, str] = {
-        "active": "进行中",
-        "paused": "暂停",
-        "completed": "已完成",
-        "archived": "已归档",
-        "closed": "已关闭",
-    }
+    _STATUS_LABELS: dict[str, str] = PROJECT_STATUS_LABELS
 
     # 状态 → 颜色（英文 key，与 constants.py PROJECT_STATUS_COLORS 一致）
     _STATUS_COLORS: dict[str, str] = PROJECT_STATUS_COLORS
@@ -168,7 +162,7 @@ class ProjectView(QWidget):
                 # 状态列着色
                 if attr == "status":
                     raw_status = str(getattr(proj, attr, ""))
-                    color = self._STATUS_COLORS.get(raw_status, TEXT)
+                    color = self._STATUS_COLORS.get(raw_status, OVERLAY0)
                     item.setForeground(QColor(color))
                 self._table.setItem(row, col, item)
         header.blockSignals(False)

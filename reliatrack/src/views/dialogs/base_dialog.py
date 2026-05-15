@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from src.styles.theme import SURFACE1
+
 
 class _BaseDialog(QDialog):
     """通用弹窗基类 — 继承全局主题样式，提供 QFormLayout 和 OK/Cancel 按钮。
@@ -153,6 +155,7 @@ class _BaseDialog(QDialog):
         line = QLabel()
         line.setFixedHeight(1)
         line.setObjectName("_separator")
+        line.setStyleSheet(f"background-color: {SURFACE1}; border: none;")
         self._form.addRow(line)
 
     def _add_text_area(

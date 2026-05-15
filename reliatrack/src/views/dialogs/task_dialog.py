@@ -332,7 +332,7 @@ class TaskEditDialog(_BaseDialog):
     # ── 环境参数分组框 ─────────────────────────────────────────
 
     def _add_env_group(self, task: TestTask | None) -> None:
-        """添加「🌡️ 环境参数」分组框（温度 + 湿度）。"""
+        """添加「环境参数」分组框（温度 + 湿度）。"""
         group = QGroupBox("环境参数")
         form = QHBoxLayout(group)
         form.setContentsMargins(8, 14, 8, 8)

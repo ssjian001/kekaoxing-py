@@ -104,7 +104,7 @@ class ScheduleConfigDialog(_BaseDialog):
         # -- skip_weekends --
         self._chk_skip_weekends = QCheckBox("跳过周末")
         self._chk_skip_weekends.setChecked(True)
-        self._form.addRow(self._chk_skip_weekends)
+        self._form.addRow("排班规则", self._chk_skip_weekends)
 
         # -- skip_holidays --
         skip_holiday_row = QHBoxLayout()
@@ -125,7 +125,7 @@ class ScheduleConfigDialog(_BaseDialog):
         # -- lock_existing --
         self._chk_lock_existing = QCheckBox("锁定已有排期")
         self._chk_lock_existing.setChecked(False)
-        self._form.addRow(self._chk_lock_existing)
+        self._form.addRow("锁定规则", self._chk_lock_existing)
 
         # -- daily_start_limit --
         limit_row = QHBoxLayout()

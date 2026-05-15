@@ -63,7 +63,7 @@ class BatchImportDialog(_BaseDialog):
         self,
         parent: QWidget | None = None,
         on_import: Callable[[list[dict]], tuple[int, int]] | None = None,
-        title: str = "📥 批量导入样品",
+        title: str = "批量导入样品",
         field_map: list[tuple[str, str]] | None = None,
         required_fields: list[str] | None = None,
         guess_keywords: dict[str, list[str]] | None = None,
@@ -108,7 +108,7 @@ class BatchImportDialog(_BaseDialog):
         mapping_layout.setContentsMargins(0, 0, 0, 0)
         mapping_layout.setSpacing(8)
 
-        lbl_map = QLabel("📌 列映射 — 请为每个字段选择对应的 Excel 列")
+        lbl_map = QLabel("列映射 — 请为每个字段选择对应的 Excel 列")
         lbl_map.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         mapping_layout.addWidget(lbl_map)
 
@@ -164,7 +164,7 @@ class BatchImportDialog(_BaseDialog):
         btn_bar = QHBoxLayout()
         btn_bar.addStretch()
 
-        self._btn_import = QPushButton("📥 开始导入")
+        self._btn_import = QPushButton("开始导入")
         self._btn_import.setProperty("class", "primary")
         self._btn_import.setEnabled(False)
         self._btn_import.clicked.connect(self._on_import_clicked)
@@ -190,7 +190,7 @@ class BatchImportDialog(_BaseDialog):
         if not path:
             return
         self._wb_path = Path(path)
-        self._lbl_file.setText(f"📄 {self._wb_path.name}")
+        self._lbl_file.setText(f"{self._wb_path.name}")
         self._lbl_file.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
         self._load_preview()
 
@@ -354,7 +354,7 @@ class BatchImportDialog(_BaseDialog):
             except Exception as e:
                 QMessageBox.critical(self, "导入失败", f"导入过程中出错：\n{e}")
                 self._btn_import.setEnabled(True)
-                self._btn_import.setText("📥 开始导入")
+                self._btn_import.setText("开始导入")
                 return
         else:
             # 没有回调，仅显示解析结果

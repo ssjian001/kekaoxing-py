@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.services.backup_service import BackupInfo, BackupService
+from src.styles.theme import SUBTEXT0
 
 
 class BackupDialog(_BaseDialog):
@@ -51,7 +52,7 @@ class BackupDialog(_BaseDialog):
         # ── 备份详情 ──
         self._detail_label = QLabel("选择备份文件查看详情")
         self._detail_label.setWordWrap(True)
-        self._detail_label.setStyleSheet("color: #6c6f85; font-size: 12px; padding: 4px 0;")
+        self._detail_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 12px; padding: 4px 0;")
         self._root.insertWidget(self._root.count() - 1, self._detail_label)
 
         # ── 操作按钮区 ──

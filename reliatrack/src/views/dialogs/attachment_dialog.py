@@ -59,8 +59,8 @@ class AttachmentDialog(_BaseDialog):
 
     提供：
     - 已有附件列表（显示文件名 + 大小）
-    - ➕ 添加附件按钮 → QFileDialog 多选
-    - 🗑 删除按钮 → 删除选中附件
+    - 添加附件按钮 → QFileDialog 多选
+    - 删除按钮 → 删除选中附件
     - 双击附件 → QDesktopServices.openUrl 打开文件
     """
 
@@ -162,7 +162,7 @@ class AttachmentDialog(_BaseDialog):
             if att.file_path and os.path.isfile(att.file_path):
                 size_bytes = os.path.getsize(att.file_path)
                 size_str = f"  ({_format_file_size(size_bytes)})"
-            item_text = f"📎 {display_name}{size_str}"
+            item_text = f"{display_name}{size_str}"
             if att.description:
                 item_text += f"  — {att.description}"
             item = QListWidgetItem(item_text)

@@ -244,7 +244,6 @@ class _FAPanel(QScrollArea):
             # 编辑/删除按钮（参考 CAPA 纯文字样式）
             btn_edit = QPushButton("编辑")
             btn_edit.setFixedHeight(24)
-            btn_edit.setStyleSheet(f"color: {BLUE}; font-size: 11px; border: none; padding: 2px 6px;")
             btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
             rec_id = rec.id
             btn_edit.clicked.connect(lambda checked, rid=rec_id: self.fa_edit_requested.emit(rid))
@@ -252,7 +251,6 @@ class _FAPanel(QScrollArea):
 
             btn_del = QPushButton("删除")
             btn_del.setFixedHeight(24)
-            btn_del.setStyleSheet(f"color: {RED}; font-size: 11px; border: none; padding: 2px 6px;")
             btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_del.clicked.connect(lambda checked, rid=rec_id: self.fa_delete_requested.emit(rid))
             header.addWidget(btn_del)
@@ -557,7 +555,7 @@ class IssueView(QWidget):
 
     @property
     def btn_attachments(self) -> QPushButton:  # attachment management
-        """📎 附件管理按钮。"""
+        """附件管理按钮。"""
         return self._btn_attachments
 
     def get_selected_issue_id(self) -> Optional[int]:
@@ -812,14 +810,12 @@ class _CAPAPanel(QScrollArea):
             # 编辑/删除按钮
             btn_edit = QPushButton("编辑")
             btn_edit.setFixedHeight(24)
-            btn_edit.setStyleSheet(f"color: {BLUE}; font-size: 11px; border: none; padding: 2px 6px;")
             btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_edit.clicked.connect(lambda checked, r=rec: self._on_edit_capa(r))
             header.addWidget(btn_edit)
 
             btn_del = QPushButton("删除")
             btn_del.setFixedHeight(24)
-            btn_del.setStyleSheet(f"color: {RED}; font-size: 11px; border: none; padding: 2px 6px;")
             btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_del.clicked.connect(lambda checked, r=rec: self._on_delete_capa(r))
             header.addWidget(btn_del)

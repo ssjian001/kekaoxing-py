@@ -15,7 +15,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     GREEN, RED, YELLOW, BLUE,
 )
-from src.styles.constants import FONT_FAMILY, TABLE_QSS
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS
 
 from src.models.test_plan import TestTask
 
@@ -57,21 +57,13 @@ class _ResultMatrixWidget(QWidget):
         mode_bar = QHBoxLayout()
         mode_bar.setContentsMargins(4, 2, 4, 2)
         mode_label = QLabel("显示模式:")
-        mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
         mode_bar.addWidget(mode_label)
         self._mode_group = QButtonGroup(self)
         for i, label in enumerate(self._DISPLAY_MODES):
             btn = QPushButton(label)
             btn.setFixedHeight(22)
             btn.setCheckable(True)
-            btn.setStyleSheet(
-                f"QPushButton {{ color: {SUBTEXT1}; font-size: 10px;"
-                f" border: 1px solid {SURFACE1}; background: {SURFACE0};"
-                f" border-radius: 3px; padding: 1px 8px; }}"
-                f"QPushButton:checked {{ color: {TEXT}; background: {BLUE}22;"
-                f" border-color: {BLUE}66; }}"
-                f"QPushButton:hover {{ background: {SURFACE1}; }}"
-            )
             self._mode_group.addButton(btn, i)
             mode_bar.addWidget(btn)
         self._mode_group.button(0).setChecked(True)
@@ -99,7 +91,7 @@ class _ResultMatrixWidget(QWidget):
 
         # 统计摘要行
         self._summary_label = QLabel("选择测试计划后显示结果矩阵")
-        self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
+        self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
         self._layout.addWidget(self._summary_label)
 
         # 缓存数据用于模式切换时重新渲染
@@ -306,13 +298,13 @@ class _ResultMatrixWidget(QWidget):
             )
             self._summary_label.setStyleSheet(
                 f"color: {GREEN if rate >= 80 else YELLOW if rate >= 50 else RED}; "
-                f"font-size: 11px; padding: 4px 8px; font-weight: bold;"
+                f"font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px; font-weight: bold;"
             )
         elif sample_ids:
             self._summary_label.setText(
                 f"共 {len(tasks)} 项任务 × {len(sample_ids)} 个样品 — 暂无录入结果"
             )
-            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
+            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
         else:
             self._summary_label.setText("暂无测试结果数据")
-            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; padding: 4px 8px;")
+            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")

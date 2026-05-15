@@ -291,7 +291,7 @@ class _DonutChart(QFrame):
         p.drawEllipse(QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2))
 
         # 中心总数
-        p.setPen(QColor("#1E293B"))
+        p.setPen(QColor(TEXT))
         p.setFont(_FONT_XXL)
         p.drawText(QRectF(cx - 36, cy - 16, 72, 32),
                    Qt.AlignmentFlag.AlignCenter, str(total))
@@ -315,7 +315,7 @@ class _DonutChart(QFrame):
             p.drawRoundedRect(QRectF(legend_x, ly + 3, 10, 10), 2, 2)
 
             # 文字
-            p.setPen(QColor("#1E293B"))
+            p.setPen(QColor(TEXT))
             p.drawText(QRectF(legend_x + 16, ly - 1, 100, 16),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        label)
@@ -488,7 +488,7 @@ class _ProgressRing(QWidget):
             p.drawArc(rect, 90 * 16, -int(self._pct / 100 * 360 * 16))
 
         # 中心数字
-        p.setPen(QColor("#1E293B"))
+        p.setPen(QColor(TEXT))
         p.setFont(QFont(_FAMILY, 16, QFont.Weight.Bold))
         p.drawText(QRectF(cx - 30, cy - 10, 60, 20),
                    Qt.AlignmentFlag.AlignCenter, f"{self._pct:.0f}%")
@@ -575,7 +575,7 @@ class _SeverityBar(QWidget):
             p.drawRoundedRect(QRectF(lx, legend_y + 2, 8, 8), 2, 2)
 
             # 文字
-            p.setPen(QColor("#1E293B"))
+            p.setPen(QColor(TEXT))
             text = f"{label} {val}"
             p.drawText(QRectF(lx + 12, legend_y - 1, 70, 14),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -758,7 +758,7 @@ class DashboardView(QWidget):
     def _mk_section_title(text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
-            f"color: #1E293B; font-size: 13px; font-weight: bold;"
+            f"color: {TEXT}; font-size: 13px; font-weight: bold;"
             f"background: transparent; border: none;"
         )
         return lbl

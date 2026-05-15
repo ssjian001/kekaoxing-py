@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 from src.models.test_plan import TestTask
+from src.styles.theme import SUBTEXT0, LAVENDER
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:
@@ -26,7 +27,7 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         
         # ── 来源提示 ──
         hint = QLabel(f"来源计划: {source_plan_name}  |  共 {len(tasks)} 个任务")
-        hint.setStyleSheet("color: #6C7086; font-size: 11px; padding: 2px 0;")
+        hint.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; padding: 2px 0;")
         self._form.addRow(hint)
         
         # ── 搜索 + 全选/清空 ──
@@ -51,7 +52,7 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         desel_all.clicked.connect(self._deselect_all)
         
         self._count_label = QLabel("已选 0 项")
-        self._count_label.setStyleSheet("color: #7287FD; font-weight: bold;")
+        self._count_label.setStyleSheet(f"color: {LAVENDER}; font-weight: bold;")
         
         search_layout.addWidget(self._search, stretch=1)
         search_layout.addWidget(sel_all)

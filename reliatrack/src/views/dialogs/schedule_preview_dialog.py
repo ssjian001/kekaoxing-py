@@ -315,7 +315,7 @@ class SchedulePreviewDialog(QDialog):
             self._table.setItem(row, self._COL_DELTA, delta_item)
 
             # 冲突状态
-            conflict_item = QTableWidgetItem("✓ 无冲突")
+            conflict_item = QTableWidgetItem("无冲突")
             conflict_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             conflict_item.setForeground(QColor(GREEN))
             self._table.setItem(row, self._COL_CONFLICT, conflict_item)
@@ -420,19 +420,19 @@ class SchedulePreviewDialog(QDialog):
             conflict_item = self._table.item(row, self._COL_CONFLICT)
             if conflict_item:
                 if has_dep_conflict:
-                    conflict_item.setText("⚠ 依赖冲突")
+                    conflict_item.setText("! 依赖冲突")
                     conflict_item.setForeground(QColor(RED))
                 elif has_eq_conflict:
-                    conflict_item.setText("⚠ 设备冲突")
+                    conflict_item.setText("! 设备冲突")
                     conflict_item.setForeground(QColor(YELLOW))
                 elif has_non_working:
-                    conflict_item.setText("⚠ 非工作日")
+                    conflict_item.setText("! 非工作日")
                     conflict_item.setForeground(QColor(PEACH))
                 elif has_start_limit:
-                    conflict_item.setText("⚠ 启动数超限")
+                    conflict_item.setText("! 启动数超限")
                     conflict_item.setForeground(QColor(YELLOW))
                 else:
-                    conflict_item.setText("✓ 无冲突")
+                    conflict_item.setText("无冲突")
                     conflict_item.setForeground(QColor(GREEN))
 
     # ── 用户交互 ──

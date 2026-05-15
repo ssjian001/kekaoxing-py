@@ -6,7 +6,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QProxyStyle, QStyle
 
-from src.styles.theme import ACCENT, SURFACE2
+from src.styles.theme import ACCENT, MANTLE, SURFACE2
 
 
 class CheckboxProxyStyle(QProxyStyle):
@@ -48,7 +48,7 @@ class CheckboxProxyStyle(QProxyStyle):
 
             if checked:
                 # 白色 ✓ — 粗笔宽 + 圆角端点
-                pen = QPen(QColor("#ffffff"))
+                pen = QPen(QColor(MANTLE))
                 pen.setWidthF(3.5)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -63,7 +63,7 @@ class CheckboxProxyStyle(QProxyStyle):
                 painter.drawPath(path)
             elif no_change:
                 # 白色 — (半选)
-                pen = QPen(QColor("#ffffff"))
+                pen = QPen(QColor(MANTLE))
                 pen.setWidthF(3.0)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 painter.setPen(pen)

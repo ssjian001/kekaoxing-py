@@ -30,7 +30,7 @@ _TECHNICIAN_SPECS = [
     ("ID", "fixed", 50),
     ("工号", "interactive", 90),
     ("姓名", "interactive", 100),
-    ("部门", "interactive", 100),
+    ("部门", "stretch", 100),
     ("职位", "interactive", 100),
     ("联系方式", "interactive", 120),
     ("邮箱", "interactive", 200),

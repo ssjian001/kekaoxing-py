@@ -237,7 +237,7 @@ class SchedulerService:
             "improvement": 0.0,
             "equipment_utilization": [],
             "bottlenecks": [],
-            "suggestions": ["💡 没有待排程的任务"],
+            "suggestions": ["没有待排程的任务"],
             "task_count": 0,
             "updated_count": 0,
         }

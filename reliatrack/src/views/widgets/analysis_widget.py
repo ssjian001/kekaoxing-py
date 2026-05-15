@@ -14,7 +14,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT1,
     GREEN, RED, YELLOW,
 )
-from src.styles.constants import TABLE_QSS
+from src.styles.constants import TABLE_QSS, apply_column_specs
 from src.models.test_plan import TestTask
 
 
@@ -180,11 +180,13 @@ class _AnalysisWidget(QWidget):
             tbl.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             tbl.verticalHeader().setVisible(False)
             tbl.setHorizontalHeaderLabels(["任务", "类别", "样品", "Issue", "严重度"])
-            tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-            for c in range(1, 5):
-                tbl.horizontalHeader().setSectionResizeMode(c, QHeaderView.ResizeMode.Fixed)
-                widths = [0, 80, 80, 60, 70]
-                tbl.setColumnWidth(c, widths[c])
+            apply_column_specs(tbl, [
+                ("任务", "stretch", 0),
+                ("类别", "fixed", 80),
+                ("样品", "fixed", 80),
+                ("Issue", "fixed", 60),
+                ("严重度", "fixed", 70),
+            ])
 
             for row, entry in enumerate(fail_entries):
                 tbl.setItem(row, 0, self._make_item(entry["task_name"], TEXT))
@@ -207,7 +209,7 @@ class _AnalysisWidget(QWidget):
             names = ", ".join(f'{e["task_name"]}/{e["sample_sn"]}' for e in unlinked[:8])
             if len(unlinked) > 8:
                 names += f" ... 共 {len(unlinked)} 条"
-            warn = QLabel(f"⚠ {len(unlinked)} 条失败结果未创建 Issue: {names}")
+            warn = QLabel(f"{len(unlinked)} 条失败结果未创建 Issue: {names}")
             warn.setWordWrap(True)
             warn.setStyleSheet(f"color: {YELLOW}; font-size: 11px; padding: 4px 8px;")
             self._layout.addWidget(warn)

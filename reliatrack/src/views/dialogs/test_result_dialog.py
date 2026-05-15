@@ -129,12 +129,6 @@ class _ResultRow(QFrame):
         self._toggle_btn.setMinimumWidth(48)
         self._toggle_btn.setFixedHeight(26)
         self._toggle_btn.setToolTip("删除此结果")
-        self._toggle_btn.setStyleSheet(
-            f"QPushButton {{ color: {RED}; border: 1px solid {SURFACE1};"
-            f" background-color: {SURFACE1}; font-size: 12px; font-weight: bold;"
-            f" border-radius: 4px; }}"
-            f"QPushButton:hover {{ background-color: {RED}; color: white; }}"
-        )
         self._toggle_btn.clicked.connect(self._on_toggle_delete)
 
         if self._result_id is not None:
@@ -193,12 +187,6 @@ class _ResultRow(QFrame):
         row2.addStretch()
 
         self._create_issue_cb = QCheckBox("创建Issue")
-        self._create_issue_cb.setStyleSheet(
-            f"QCheckBox {{ color: {RED}; font-size: 10px;"
-            f" border: 1px solid {RED}88; background: {SURFACE0};"
-            f" border-radius: 4px; padding: 2px 6px; }}"
-            f"QCheckBox:checked {{ background: {RED}22; }}"
-        )
         self._create_issue_cb.setToolTip("不通过时自动创建 Issue 追踪")
         row2.addWidget(self._create_issue_cb)
 
@@ -352,12 +340,6 @@ class TestResultDialog(QWidget):
 
         self._btn_apply_env = QPushButton("温湿度应用到全部")
         self._btn_apply_env.setFixedHeight(24)
-        self._btn_apply_env.setStyleSheet(
-            f"QPushButton {{ color: {SUBTEXT1}; font-size: 10px;"
-            f" border: 1px solid {SURFACE1}; background: {SURFACE0};"
-            f" border-radius: 4px; padding: 2px 8px; }}"
-            f"QPushButton:hover {{ background: {SURFACE1}; }}"
-        )
         self._btn_apply_env.clicked.connect(self._apply_env_to_all)
         stats_row.addWidget(self._btn_apply_env)
         layout.addLayout(stats_row)

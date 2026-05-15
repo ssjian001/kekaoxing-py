@@ -16,6 +16,7 @@ from src.styles.theme import (
     BASE,
     GREEN,
     PEACH,
+    SURFACE1,
     TEXT,
 )
 
@@ -35,7 +36,7 @@ class ToastWidget(QWidget):
     _COLORS = {
         SUCCESS: GREEN,
         ERROR: PEACH,
-        INFO: BASE,
+        INFO: SURFACE1,
     }
 
     # 多 Toast 堆叠偏移计数

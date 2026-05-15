@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
 )
 
 from src.models.sample import Sample
+from src.styles.constants import TABLE_QSS
+from src.styles.theme import BASE, TEXT, SURFACE0, SURFACE1
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:
@@ -108,6 +110,11 @@ class SampleSelectDialog(_BaseDialog):
         self._table.setMinimumHeight(280)
         self._table.verticalHeader().setVisible(False)
         self._table.itemChanged.connect(self._on_item_changed)
+        self._table.setStyleSheet(TABLE_QSS.format(
+            bg=BASE, text=TEXT, gridline=SURFACE1,
+            alt_row=BASE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=12,
+        ))
 
         self._form.addRow(self._table)
 

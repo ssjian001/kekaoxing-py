@@ -63,6 +63,8 @@ STATUS_SURFACE = "#acb0be"  # 跳过/离线/最低
 PROJECT_STATUS_COLORS: dict[str, str] = {
     "active": STATUS_GREEN,
     "paused": STATUS_YELLOW,
+    "completed": STATUS_GREEN,
+    "archived": STATUS_OVERLAY,
     "closed": STATUS_OVERLAY,
 }
 
@@ -192,10 +194,6 @@ CHART_COLORS: list[str] = [
     STATUS_PEACH,   # 橙
     STATUS_TEAL,    # 青
 ]
-
-# ═══════════════════════════════════════════════════════════════════
-#  Dashboard 语义色（映射到 Catppuccin Latte 色板）
-# ═══════════════════════════════════════════════════════════════════
 
 DASH_PRIMARY = STATUS_BLUE       # #1e66f5
 DASH_SUCCESS = STATUS_GREEN      # #40a02b

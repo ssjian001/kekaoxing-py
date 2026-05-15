@@ -30,12 +30,13 @@ from src.styles.theme import (
     YELLOW,
 )
 from src.styles.constants import EQUIPMENT_STATUS_COLORS, VIEW_MARGINS, apply_column_specs
+from src.constants import EQUIPMENT_STATUS_LABELS
 
 _EQUIPMENT_SPECS = [
     ("ID", "fixed", 50),
     ("资产编号", "interactive", 120),
     ("型号", "interactive", 120),
-    ("名称", "interactive", 200),
+    ("名称", "stretch", 200),
     ("类型", "interactive", 80),
     ("制造商", "interactive", 120),
     ("精度/不确定度", "interactive", 110),
@@ -171,13 +172,8 @@ class EquipmentView(QWidget):
                 value = getattr(eq, attr, "")
                 # 格式化状态显示
                 if attr == "status":
-                    status_map = {
-                        "available": "正常",
-                        "maintenance": "维修中",
-                        "offline": "停用",
-                    }
                     raw_status = str(value)
-                    value = status_map.get(raw_status, raw_status)
+                    value = EQUIPMENT_STATUS_LABELS.get(raw_status, raw_status)
                 item = QTableWidgetItem(str(value) if value is not None else "")
                 item.setData(Qt.ItemDataRole.UserRole, eq.id)
                 # 居中对齐
