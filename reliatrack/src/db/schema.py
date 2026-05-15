@@ -580,12 +580,25 @@ def _migrate_v10(conn: apsw.Connection) -> None:
 def _rebuild_table(conn: apsw.Connection, name: str, new_ddl: str) -> None:
     """通过 DROP TABLE + RENAME 重建表（用于 SQLite 不支持的 ALTER CONSTRAINT）。
 
-    步骤：CREATE name_new → INSERT SELECT * → DROP name → RENAME name_new → name
+    步骤：CREATE name_new → INSERT 显式列名 → DROP name → RENAME name_new → name
     需在 PRAGMA foreign_keys = OFF 环境下调用。
+    使用新表列名显式映射，避免 SELECT * 在列顺序不一致时数据错乱。
     """
     conn.execute(f"DROP TABLE IF EXISTS {name}_new")
     conn.execute(new_ddl)
-    conn.execute(f"INSERT INTO {name}_new SELECT * FROM {name}")
+    # 获取新表列名（从 new_ddl 创建的表）
+    new_cols = [r[1] for r in conn.execute(f"PRAGMA table_info({name}_new)").fetchall()]
+    # 获取旧表列名
+    old_cols = [r[1] for r in conn.execute(f"PRAGMA table_info({name})").fetchall()]
+    # 只取新表中在旧表里也存在的列（交集），确保数据安全
+    common_cols = [c for c in new_cols if c in old_cols]
+    cols_str = ", ".join(f"[{c}]" for c in common_cols)
+    try:
+        conn.execute(f"INSERT INTO {name}_new ({cols_str}) SELECT {cols_str} FROM {name}")
+    except Exception:
+        # 迁移失败：清理 _new 表，保留原始数据不丢失
+        conn.execute(f"DROP TABLE IF EXISTS {name}_new")
+        raise
     conn.execute(f"DROP TABLE {name}")
     conn.execute(f"ALTER TABLE {name}_new RENAME TO {name}")
 
@@ -1149,8 +1162,13 @@ def init_schema(conn: apsw.Connection) -> int:
 
 
 def _validate_schema_integrity(conn: apsw.Connection) -> None:
-    """验证核心表存在。如果 schema_version 正确但表缺失，用 DDL 重建缺失表。"""
-    core_tables = ["projects", "samples", "knowledge_entries"]
+    """验证所有核心表存在。如果 schema_version 正确但表缺失，用 DDL 重建缺失表。"""
+    core_tables = [
+        "projects", "equipment", "technicians", "samples",
+        "sample_transactions", "test_plans", "test_tasks", "test_results",
+        "issues", "issue_attachments", "fa_records", "capa_records",
+        "knowledge_entries", "settings", "holidays",
+    ]
     missing = []
     for t in core_tables:
         cols = conn.execute(f"PRAGMA table_info([{t}])").fetchall()

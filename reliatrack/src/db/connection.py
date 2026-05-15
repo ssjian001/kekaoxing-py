@@ -92,8 +92,12 @@ def close_connection(db_path: str = "") -> None:
 
 
 def close_all_connections() -> None:
-    """关闭所有已打开的数据库连接。"""
+    """关闭所有已打开的数据库连接（先 checkpoint 再关闭）。"""
     with _lock:
         for conn in _connections.values():
+            try:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except Exception:
+                pass
             conn.close()
         _connections.clear()

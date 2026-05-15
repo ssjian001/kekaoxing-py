@@ -167,12 +167,22 @@ class BackupService:
             except Exception:
                 logger.warning("恢复前安全备份失败，继续恢复")
 
-        # 3. 关闭当前连接
+        # 3. 关闭当前连接（先 checkpoint 确保 WAL 写回主库）
+        try:
+            conn = get_connection(self._db_path)
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except Exception:
+            logger.warning("WAL checkpoint before restore failed")
         close_connection(self._db_path)
 
-        # 4. 替换文件
+        # 4. 替换文件（同时清理 WAL/SHM 避免旧日志污染恢复的数据库）
         try:
             shutil.copy2(str(backup_path), str(current_db))
+            for ext in ("-wal", "-shm"):
+                p = Path(str(current_db) + ext)
+                if p.exists():
+                    p.unlink()
+                    logger.info("已清理残留文件: %s", p.name)
             logger.info(
                 "数据库已恢复: %s → %s (schema v%d)",
                 backup_path, current_db, info.schema_version,
