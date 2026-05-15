@@ -67,9 +67,15 @@ class BackupService:
         src_conn = get_connection(self._db_path)
         dest_conn = apsw.Connection(str(dest_path))
         try:
+            # 方向：在 dest_conn 上调用 backup()，从 src_conn 复制到 dest_conn
             with dest_conn.backup("main", src_conn, "main") as backup:
                 backup.step()
-            logger.info("备份已创建: %s", dest_path)
+            # 验证备份非空
+            if dest_path.stat().st_size == 0:
+                dest_path.unlink(missing_ok=True)
+                raise RuntimeError("备份文件为空")
+            logger.info("备份已创建: %s (%d bytes)",
+                        dest_path, dest_path.stat().st_size)
         except Exception:
             if dest_path.exists():
                 dest_path.unlink(missing_ok=True)

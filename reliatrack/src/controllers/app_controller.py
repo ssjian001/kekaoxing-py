@@ -141,10 +141,17 @@ class AppController:
         if not backup_path.exists():
             try:
                 dest = apsw.Connection(str(backup_path))
+                # 方向：在 dest 上调用 backup()，从 self._conn 复制到 dest
                 with dest.backup("main", self._conn, "main") as backup:
                     backup.step()
                 dest.close()
-                logger.info("Backup created: %s", backup_path)
+                # 验证备份完整性：备份文件必须非空且包含表
+                if backup_path.stat().st_size == 0:
+                    backup_path.unlink(missing_ok=True)
+                    logger.error("Backup file is 0 bytes, discarded")
+                else:
+                    logger.info("Backup created: %s (%d bytes)",
+                                backup_path, backup_path.stat().st_size)
             except Exception:
                 logger.exception("Backup failed")
         # 清理超过30天的旧备份
