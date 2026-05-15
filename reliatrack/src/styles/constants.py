@@ -155,6 +155,8 @@ TABLE_QSS: str = (
     "background-color: {bg}; color: {text};"
     "gridline-color: {gridline}; border: 1px solid {gridline};"
     "border-radius: 8px; font-size: {font_size}px;"
+    "selection-background-color: rgba(30, 102, 245, 0.12);"
+    "selection-color: {text};"
     "}}"
     "QTableWidget::item {{ padding: 6px; }}"
     "QTableWidget::item:alternate {{ background-color: {alt_row}; }}"
