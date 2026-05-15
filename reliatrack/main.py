@@ -120,24 +120,24 @@ class MainWindow(QMainWindow):
 
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
-        self._tab_widget.addTab(self._dashboard, "📊 仪表盘")
+        self._tab_widget.addTab(self._dashboard, "仪表盘")
         self._dashboard.card_clicked.connect(self._tab_widget.setCurrentIndex)
 
         # Tab 1: 项目管理
         self._project_view = ProjectView()
-        self._tab_widget.addTab(self._project_view, "📁 项目管理")
+        self._tab_widget.addTab(self._project_view, "项目管理")
 
         # Tab 2: 样品管理
         self._sample_view = SampleView()
-        self._tab_widget.addTab(self._sample_view, "📦 样品管理")
+        self._tab_widget.addTab(self._sample_view, "样品管理")
 
         # Tab 3: 测试计划
         self._test_plan_view = TestPlanView()
-        self._tab_widget.addTab(self._test_plan_view, "📋 测试计划")
+        self._tab_widget.addTab(self._test_plan_view, "测试计划")
 
         # Tab 4: Issue 追踪
         self._issue_view = IssueView()
-        self._tab_widget.addTab(self._issue_view, "🐛 Issue 追踪")
+        self._tab_widget.addTab(self._issue_view, "Issue 追踪")
 
         # Tab 5: 设备 & 技术员管理（内部双 tab）
         self._equip_tech_tabs = QTabWidget()
@@ -145,11 +145,11 @@ class MainWindow(QMainWindow):
         self._equip_tech_tabs.addTab(self._equipment_view, "设备")
         self._technician_view = TechnicianView()
         self._equip_tech_tabs.addTab(self._technician_view, "技术员")
-        self._tab_widget.addTab(self._equip_tech_tabs, "🔧 设备管理")
+        self._tab_widget.addTab(self._equip_tech_tabs, "设备管理")
 
         # Tab 6: 知识库
         self._knowledge_view = KnowledgeView()
-        self._tab_widget.addTab(self._knowledge_view, "📚 知识库")
+        self._tab_widget.addTab(self._knowledge_view, "知识库")
 
         # 恢复上次选中的 Tab
         settings = QSettings()
@@ -169,15 +169,15 @@ class MainWindow(QMainWindow):
 
         # 全局项目筛选器 — 在 tab_widget 之前插入
         filter_bar = QHBoxLayout()
-        filter_label = QLabel("📁 项目筛选:")
+        filter_label = QLabel("项目筛选:")
         filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._project_filter_combo = QComboBox()
         self._project_filter_combo.setMinimumWidth(200)
         self._project_filter_combo.setStyleSheet(filter_combo_qss())
-        self._project_filter_combo.addItem("📋 全部项目", None)  # data=None means all
+        self._project_filter_combo.addItem("全部项目", None)  # data=None means all
 
         # 计划筛选 combo — 跟随项目联动
-        plan_filter_label = QLabel("📋 计划:")
+        plan_filter_label = QLabel("计划:")
         plan_filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._plan_filter_combo = QComboBox()
         self._plan_filter_combo.setMinimumWidth(180)
@@ -192,7 +192,7 @@ class MainWindow(QMainWindow):
         filter_bar.addStretch()
         filter_layout = QWidget()
         filter_layout.setLayout(filter_bar)
-        filter_layout.setStyleSheet(f"background-color: {BASE}; padding: 4px 20px; border-radius: 8px;")
+        filter_layout.setStyleSheet(f"background-color: {BASE}; padding: 6px 20px; border-radius: 8px;")
         layout.insertWidget(0, filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
@@ -216,14 +216,14 @@ class MainWindow(QMainWindow):
         self._shortcut_export.activated.connect(self._export_handlers._on_export)
 
         # 撤销 / 重做
-        self._act_undo = QAction("↩ 撤销", self)
+        self._act_undo = QAction("撤销", self)
         self._act_undo.setEnabled(False)
         self._act_undo.setShortcut("Ctrl+Z")
         self._act_undo.setToolTip("撤销 (Ctrl+Z)")
         self._act_undo.triggered.connect(self._on_undo)
         toolbar.addAction(self._act_undo)
 
-        self._act_redo = QAction("↪ 重做", self)
+        self._act_redo = QAction("重做", self)
         self._act_redo.setEnabled(False)
         self._act_redo.setShortcuts([QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")])
         self._act_redo.setToolTip("重做 (Ctrl+Y)")
@@ -233,19 +233,19 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # 刷新
-        act_refresh = QAction("🔄 刷新", self)
+        act_refresh = QAction("刷新", self)
         act_refresh.setToolTip("刷新所有数据")
         act_refresh.triggered.connect(self._refresh_all)
         toolbar.addAction(act_refresh)
 
         # 导出
-        act_export = QAction("📤 导出", self)
+        act_export = QAction("导出", self)
         act_export.setToolTip("导出报告 (Ctrl+E)")
         act_export.triggered.connect(self._export_handlers._on_export)
         toolbar.addAction(act_export)
 
         # 数据管理
-        act_backup = QAction("💾 数据管理", self)
+        act_backup = QAction("数据管理", self)
         act_backup.setToolTip("数据库备份与恢复")
         act_backup.triggered.connect(self._backup_handlers._on_data_manage)
         toolbar.addAction(act_backup)
@@ -348,9 +348,9 @@ class MainWindow(QMainWindow):
         combo.blockSignals(True)
         _current = current_id if current_id is not None else combo.currentData()
         combo.clear()
-        combo.addItem("📋 全部项目", None)
+        combo.addItem("全部项目", None)
         for p in projects:
-            combo.addItem(f"📁 {p.name}", p.id)
+            combo.addItem(p.name, p.id)
         # 恢复之前选中的筛选项
         for i in range(combo.count()):
             if combo.itemData(i) == _current:
@@ -390,9 +390,9 @@ class MainWindow(QMainWindow):
         self._act_undo.setEnabled(can_undo)
         self._act_redo.setEnabled(can_redo)
         if undo_desc:
-            self._act_undo.setText(f"↩ {undo_desc}")
+            self._act_undo.setText(undo_desc)
         if redo_desc:
-            self._act_redo.setText(f"↪ {redo_desc}")
+            self._act_redo.setText(redo_desc)
 
     def _on_project_filter_changed(self, index: int) -> None:
         """项目筛选变化时：更新计划 combo + 刷新所有视图。"""

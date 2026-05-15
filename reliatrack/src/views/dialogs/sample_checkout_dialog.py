@@ -24,7 +24,7 @@ class SampleCheckoutDialog(_BaseDialog):
         task_list: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__("📤 样品出库", parent, width=460)
+        super().__init__("样品出库", parent, width=460)
         self._sample = sample
         self._technicians = technicians or []
         self._task_list = task_list or []

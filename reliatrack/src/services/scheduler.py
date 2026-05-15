@@ -589,7 +589,7 @@ def run_auto_schedule(
         capped_days = [d for d, c in starts.items() if c >= config.daily_start_limit]
         if capped_days:
             suggestions.append(
-                f"📊 每日启动上限 {config.daily_start_limit}："
+                f"每日启动上限 {config.daily_start_limit}："
                 f"共 {len(capped_days)} 天达到上限"
             )
 

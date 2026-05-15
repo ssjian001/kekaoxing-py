@@ -215,19 +215,21 @@ QListWidget::item:alternate {{
 
 /* ── 表格 ── */
 QTableWidget, QTableView {{
-    background-color: {BG_DARK};
-    alternate-background-color: {BG_CARD};
+    background-color: {BG_CARD};
+    alternate-background-color: {BG_DARK};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     gridline-color: {BORDER};
-    selection-background-color: {BG_HOVER};
-    selection-color: {FG_PRIMARY};
+    selection-background-color: {ACCENT};
+    selection-color: #ffffff;
+    border-radius: 8px;
 }}
 QHeaderView::section {{
     background-color: {BG_INPUT};
     color: {TEXT};
-    border: 1px solid {BORDER};
-    padding: 6px 10px;
+    border: none;
+    border-bottom: 2px solid {SURFACE1};
+    padding: 8px 12px;
     font-weight: bold;
     font-size: 13px;
 }}
@@ -241,21 +243,25 @@ QTabWidget::pane {{
 }}
 QTabBar::tab {{
     background-color: {BG_INPUT};
-    color: {FG_PRIMARY};
-    border: 1px solid {BORDER};
-    border-bottom: none;
-    padding: 6px 16px;
+    color: {FG_SECONDARY};
+    border: 1px solid transparent;
+    border-bottom: 2px solid transparent;
+    padding: 8px 20px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     font-size: 13px;
+    font-weight: 500;
     margin-right: 2px;
 }}
 QTabBar::tab:selected {{
-    background-color: {BG_HOVER};
-    color: {FG_PRIMARY};
+    background-color: {BG_CARD};
+    color: {ACCENT};
+    border-bottom: 2px solid {ACCENT};
+    font-weight: bold;
 }}
 QTabBar::tab:hover:!selected {{
     background-color: {SURFACE1};
+    color: {FG_PRIMARY};
 }}
 
 /* ── 滚动条 ── */
@@ -333,18 +339,43 @@ QRadioButton {{
 
 /* ── 状态栏 ── */
 QStatusBar {{
-    background-color: {BG_INPUT};
+    background-color: {BG_CARD};
     color: {FG_SECONDARY};
     border-top: 1px solid {BORDER};
-    font-size: 13px;
+    font-size: 12px;
+    padding: 2px 12px;
 }}
 
 /* ── 工具栏 ── */
 QToolBar {{
     background-color: {BG_CARD};
     border-bottom: 1px solid {BORDER};
-    spacing: 6px;
-    padding: 3px 8px;
+    spacing: 8px;
+    padding: 4px 12px;
+}}
+QToolBar QToolButton {{
+    background-color: transparent;
+    color: {FG_PRIMARY};
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+}}
+QToolBar QToolButton:hover {{
+    background-color: {BG_HOVER};
+    border-color: {BORDER};
+}}
+QToolBar QToolButton:pressed {{
+    background-color: {SURFACE1};
+}}
+QToolBar QToolButton:disabled {{
+    color: {FG_MUTED};
+}}
+QToolBar::separator {{
+    width: 1px;
+    background-color: {BORDER};
+    margin: 4px 4px;
 }}
 
 /* ── 分割器 ── */

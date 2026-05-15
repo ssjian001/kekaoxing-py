@@ -34,7 +34,7 @@ class SampleCheckInDialog(_BaseDialog):
         project_list: list | None = None,
         default_project_id: int | None = None,
     ) -> None:
-        super().__init__("📦 样品入库", parent, width=460)
+        super().__init__("样品入库", parent, width=460)
         self._sn_exists_cb = sn_exists_cb or (lambda _: False)
         self._project_list = project_list or []
 

@@ -134,7 +134,7 @@ class BatchImportDialog(_BaseDialog):
         self._root.addWidget(self._mapping_widget)
 
         # 3. 预览表格
-        lbl_preview = QLabel("📊 数据预览（前 20 行）")
+        lbl_preview = QLabel("数据预览（前 20 行）")
         lbl_preview.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._root.addWidget(lbl_preview)
 
@@ -376,10 +376,10 @@ class BatchImportDialog(_BaseDialog):
 
         self._lbl_result.setVisible(True)
         self._lbl_result.setText(
-            f"📊 导入完成！\n"
+            f"导入完成！\n"
             f"  ✅ {self._result_msg_labels[0]}：{success_count} 条\n"
             f"  ⏭️ {self._result_msg_labels[1]}：{skip_count} 条\n"
-            f"  📋 总计解析：{len(parsed_list)} 条"
+            f"  总计解析：{len(parsed_list)} 条"
             + ("\n" + "\n".join(detail_lines) if detail_lines else "")
         )
         if skip_count > 0:
