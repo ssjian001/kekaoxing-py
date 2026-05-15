@@ -220,9 +220,8 @@ QTableWidget, QTableView {{
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     gridline-color: {BORDER};
-    selection-background-color: {ACCENT};
-    selection-color: #ffffff;
-    border-radius: 8px;
+    selection-background-color: {BG_HOVER};
+    selection-color: {FG_PRIMARY};
 }}
 QHeaderView::section {{
     background-color: {BG_INPUT};
