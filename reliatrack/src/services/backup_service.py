@@ -218,5 +218,8 @@ class BackupService:
 
     @staticmethod
     def delete_backup(backup_path: str | Path) -> None:
-        """删除指定备份文件。"""
-        Path(backup_path).unlink(missing_ok=True)
+        """删除指定备份文件（仅允许删除备份目录内的文件）。"""
+        p = Path(backup_path).resolve()
+        if not str(p).startswith(str(DEFAULT_BACKUPS_DIR.resolve())):
+            raise ValueError(f"不允许删除备份目录外的文件: {p}")
+        p.unlink(missing_ok=True)

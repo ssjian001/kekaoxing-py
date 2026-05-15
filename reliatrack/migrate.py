@@ -35,6 +35,7 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
         sys.exit(1)
 
     old = apsw.Connection(old_db_path)
+    old.execute("PRAGMA busy_timeout=5000")
 
     # 统计旧数据
     old_tables = [r[0] for r in old.execute(
@@ -52,11 +53,20 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
         os.makedirs(new_dir, exist_ok=True)
 
     if os.path.exists(new_db_path):
-        print(f"⚠️  新数据库已存在，备份为 {new_db_path}.bak")
-        shutil.copy2(new_db_path, new_db_path + ".bak")
-        os.remove(new_db_path)
+        bak_path = new_db_path + ".bak"
+        print(f"⚠️  新数据库已存在，备份为 {bak_path}")
+        shutil.copy2(new_db_path, bak_path)
+        # 不立即删除，等新库创建成功后再删
+        _old_new_db = new_db_path
+    else:
+        _old_new_db = None
 
-    new = apsw.Connection(new_db_path)
+    # 使用临时路径创建新库，成功后再替换
+    import tempfile
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db", dir=new_dir or ".")
+    os.close(tmp_fd)
+
+    new = apsw.Connection(tmp_path)
 
     # 读取并执行 schema
     schema_path = os.path.join(_SCRIPT_DIR, "src", "db", "schema.py")
@@ -194,6 +204,16 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
     new.close()
     old.close()
 
+    # 原子替换：临时文件 → 目标路径
+    if _old_new_db:
+        os.remove(_old_new_db)
+    shutil.move(tmp_path, new_db_path)
+    # 清理临时 WAL/SHM
+    for ext in ("-wal", "-shm"):
+        p = Path(tmp_path + ext)
+        if p.exists():
+            p.unlink()
+
     print(f"\n✅ 迁移完成！新数据库: {new_db_path}")
 
 
@@ -202,6 +222,8 @@ def _init_new_schema(conn: apsw.Connection) -> None:
     from src.db.schema import _DDL_TABLES, SCHEMA_VERSION, _DDL_INDEXES
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     for ddl in _DDL_TABLES:
         conn.execute(ddl)
     for ddl in _DDL_INDEXES:

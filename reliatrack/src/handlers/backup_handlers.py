@@ -23,12 +23,16 @@ class BackupHandlers:
             self._restart_app()
 
     def _restart_app(self) -> None:
-        """重启应用以加载恢复的数据库。"""
+        """重启应用以加载恢复的数据库。先执行 shutdown 确保数据安全。"""
+        # 先 shutdown — 确保 WAL checkpoint 和连接关闭
+        ctrl = getattr(self._main, "_ctrl", None)
+        if ctrl:
+            ctrl.shutdown()
+
         from PySide6.QtWidgets import QApplication
 
         app = QApplication.instance()
         if app:
-            # 关闭所有窗口后重启
             app.closeAllWindows()
             import sys
             import os
