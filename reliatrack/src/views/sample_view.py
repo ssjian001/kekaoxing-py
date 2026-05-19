@@ -497,6 +497,7 @@ class _SampleLedgerTab(QWidget):
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
+        self._table.viewport().installEventFilter(self)
 
     def _show_context_menu(self, pos) -> None:
         """在表格行上显示右键菜单。"""
@@ -518,10 +519,12 @@ class _SampleLedgerTab(QWidget):
         else:
             self._empty_label.hide()
 
-    def resizeEvent(self, event) -> None:  # type: ignore[override]
-        super().resizeEvent(event)
-        if self._empty_label.isVisible():
-            self._empty_label.setGeometry(self._table.viewport().rect())
+    def eventFilter(self, obj, event):
+        """表格 viewport resize 时同步空状态标签位置。"""
+        if obj is self._table.viewport() and event.type() == event.Type.Resize:
+            if self._empty_label.isVisible():
+                self._empty_label.setGeometry(self._table.viewport().rect())
+        return super().eventFilter(obj, event)
 
     def _on_search(self, text: str) -> None:
         """根据搜索关键词过滤样品列表。"""

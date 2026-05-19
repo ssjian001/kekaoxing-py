@@ -36,7 +36,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
-from src.styles.constants import FONT_FAMILY, TABLE_QSS
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment
 from src.services.scheduler import (
@@ -111,6 +111,7 @@ class SchedulePreviewDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("排程预览")
         self.setMinimumWidth(780)
+        self.setMaximumWidth(980)
         self.setMinimumHeight(500)
         self.setSizeGripEnabled(True)
 
@@ -522,6 +523,7 @@ class _StartDayEditDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"调整开始日期 — {task_name}")
         self.setMinimumWidth(320)
+        self.setMaximumWidth(520)
         self.setSizeGripEnabled(False)
 
         layout = QVBoxLayout(self)
@@ -530,7 +532,7 @@ class _StartDayEditDialog(QDialog):
 
         # 当前值提示
         current_label = QLabel(f"当前: {_day_label(start_date, current_day)}")
-        current_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 12px;")
+        current_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
         layout.addWidget(current_label)
 
         # 输入
@@ -542,7 +544,7 @@ class _StartDayEditDialog(QDialog):
         form.addRow("开始日 (Day 索引):", self._spin)
 
         self._date_preview = QLabel(_day_label(start_date, current_day))
-        self._date_preview.setStyleSheet(f"color: {BLUE}; font-size: 12px;")
+        self._date_preview.setStyleSheet(f"color: {BLUE}; font-size: {FONT_SIZE_SMALL}px;")
         form.addRow("对应日期:", self._date_preview)
 
         self._spin.valueChanged.connect(

@@ -45,12 +45,30 @@ from src.styles.theme import TEXT, SUBTEXT0, SURFACE1
 
 # ── 通用字体 ──
 _FAMILY = FONT_FAMILY.split(",")[0].strip()
-_FONT_SM = QFont(_FAMILY, 9)
-_FONT_MD = QFont(_FAMILY, 10)
-_FONT_LG = QFont(_FAMILY, 13, QFont.Weight.Bold)
-_FONT_XL = QFont(_FAMILY, 16, QFont.Weight.Bold)
-_FONT_XXL = QFont(_FAMILY, 28, QFont.Weight.Bold)
-_FONT_SCORE = QFont(_FAMILY, 36, QFont.Weight.Bold)
+
+
+def _mk_font(pixel_size: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
+    """用 pixel size 创建 QFont，避免 pt/px 混用。"""
+    f = QFont(_FAMILY)
+    f.setPixelSize(pixel_size)
+    if weight != QFont.Weight.Normal:
+        f.setWeight(weight)
+    return f
+
+
+_FONT_SM = _mk_font(12)
+_FONT_MD = _mk_font(13)
+_FONT_LG = _mk_font(17, QFont.Weight.Bold)
+_FONT_XL = _mk_font(21, QFont.Weight.Bold)
+_FONT_XXL = _mk_font(37, QFont.Weight.Bold)
+_FONT_SCORE = _mk_font(48, QFont.Weight.Bold)
+
+
+def _alpha(color_hex: str, alpha: int) -> QColor:
+    """从 hex 色值创建带 alpha 的 QColor（替代字符串拼接 8 位 hex）。"""
+    c = QColor(color_hex)
+    c.setAlpha(alpha)
+    return c
 
 # ═══════════════════════════════════════════════════════════════════
 #  KPI 卡片 — 替代旧 _KPICard
@@ -66,7 +84,8 @@ class _StatCard(QFrame):
         self._color = color
         self.setObjectName("stat-card")
         self.setStyleSheet(card_qss(16))
-        self.setFixedHeight(72)
+        self.setMinimumHeight(64)
+        self.setMaximumHeight(80)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         add_shadow(self)
@@ -272,7 +291,7 @@ class _DonutChart(QFrame):
 
         # 底环
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(DASH_NEUTRAL + "22"))
+        p.setBrush(_alpha(DASH_NEUTRAL, 34))
         p.drawEllipse(rect)
 
         # 扇形（白色间隔线模拟圆角感）
@@ -429,7 +448,7 @@ class _HProgressBar(QWidget):
         bar_y = (h - self._bar_h) / 2
         bg_rect = QRectF(0, bar_y, w, self._bar_h)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(DASH_NEUTRAL + "33"))
+        p.setBrush(_alpha(DASH_NEUTRAL, 51))
         p.drawRoundedRect(bg_rect, self._bar_h / 2, self._bar_h / 2)
 
         # 进度条（渐变）
@@ -477,7 +496,7 @@ class _ProgressRing(QWidget):
         rect = QRectF(cx - r, cy - r, r * 2, r * 2)
 
         # 背景弧
-        p.setPen(QPen(QColor(DASH_NEUTRAL + "33"), self._ARC_W,
+        p.setPen(QPen(_alpha(DASH_NEUTRAL, 51), self._ARC_W,
                       Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         p.drawArc(rect, 0, 360 * 16)
 
@@ -537,7 +556,7 @@ class _SeverityBar(QWidget):
         if total == 0:
             # 空态
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(DASH_NEUTRAL + "22"))
+            p.setBrush(_alpha(DASH_NEUTRAL, 34))
             p.drawRoundedRect(QRectF(bar_x, bar_y, w, bar_h), bar_h / 2, bar_h / 2)
             p.setPen(QColor(DASH_NEUTRAL))
             p.setFont(_FONT_SM)
@@ -728,10 +747,10 @@ class DashboardView(QWidget):
         ring_row = QHBoxLayout()
         ring_row.setSpacing(10)
 
-        for ring_widget in (
-            _ProgressRing("Issue 闭环率", DASH_PRIMARY),
-            _ProgressRing("CAPA 完成率", DASH_SUCCESS),
-        ):
+        self._ring_issue = _ProgressRing("Issue 闭环率", DASH_PRIMARY)
+        self._ring_capa  = _ProgressRing("CAPA 完成率", DASH_SUCCESS)
+
+        for ring_widget in (self._ring_issue, self._ring_capa):
             card = QFrame()
             card.setStyleSheet(card_qss(16))
             card.setFixedHeight(170)
@@ -740,9 +759,6 @@ class DashboardView(QWidget):
             cl.setContentsMargins(16, 12, 16, 12)
             cl.addWidget(ring_widget)
             ring_row.addWidget(card, 1)
-
-        self._ring_issue = ring_row.itemAt(0).widget().layout().itemAt(0).widget()
-        self._ring_capa  = ring_row.itemAt(1).widget().layout().itemAt(0).widget()
         right.addLayout(ring_row)
 
         right.addStretch()

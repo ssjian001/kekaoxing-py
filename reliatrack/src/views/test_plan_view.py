@@ -118,12 +118,18 @@ class TestPlanView(QWidget):
         self._btn_record_result.setToolTip("录入测试结果")
         toolbar.addWidget(self._btn_record_result)
 
-        # ── 总结报告 ──
-        self._btn_summary_report = QPushButton("总结报告")
-        self._btn_summary_report.setProperty("class", "action")
-        self._btn_summary_report.setFixedHeight(28)
-        self._btn_summary_report.setToolTip("一键导出当前计划 Word 总结报告")
-        toolbar.addWidget(self._btn_summary_report)
+        # ── 更多操作（收起低频按钮） ──
+        self._more_menu = QMenu(self)
+        self._act_summary_report = self._more_menu.addAction("总结报告")
+
+        self._btn_more = QToolButton()
+        self._btn_more.setText("更多")
+        self._btn_more.setMenu(self._more_menu)
+        self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._btn_more.setProperty("class", "action")
+        self._btn_more.setFixedHeight(28)
+        self._btn_more.setToolTip("总结报告等更多操作")
+        toolbar.addWidget(self._btn_more)
 
         toolbar.addStretch()
         layout.addLayout(toolbar)
@@ -441,8 +447,8 @@ class TestPlanView(QWidget):
         return self._btn_record_result
 
     @property
-    def btn_summary_report(self) -> QPushButton:
-        return self._btn_summary_report
+    def btn_summary_report(self) -> QAction:
+        return self._act_summary_report
 
     def setup_task_callbacks(
         self,

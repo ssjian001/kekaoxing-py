@@ -82,6 +82,7 @@ class _TaskTable(QTableWidget):
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self)
         self._empty_label.hide()
+        self.viewport().installEventFilter(self)
 
     def set_reference_data(
         self,
@@ -262,10 +263,12 @@ class _TaskTable(QTableWidget):
         else:
             self._empty_label.hide()
 
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        if self._empty_label.isVisible():
-            self._empty_label.setGeometry(self.viewport().rect())
+    def eventFilter(self, obj, event):
+        """viewport resize 时同步空状态标签位置。"""
+        if obj is self.viewport() and event.type() == event.Type.Resize:
+            if self._empty_label.isVisible():
+                self._empty_label.setGeometry(self.viewport().rect())
+        return super().eventFilter(obj, event)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
         """获取指定视觉行对应的任务对象（排序安全）。"""

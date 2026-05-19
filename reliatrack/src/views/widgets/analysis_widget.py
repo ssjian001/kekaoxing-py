@@ -14,7 +14,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT1,
     GREEN, RED, YELLOW,
 )
-from src.styles.constants import TABLE_QSS, apply_column_specs
+from src.styles.constants import FONT_SIZE_SMALL, TABLE_QSS, apply_column_specs
 from src.models.test_plan import TestTask
 
 
@@ -69,7 +69,7 @@ class _AnalysisWidget(QWidget):
     @staticmethod
     def _make_placeholder(text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; padding: 24px;")
+        lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 24px;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         return lbl
 
@@ -123,7 +123,7 @@ class _AnalysisWidget(QWidget):
 
         if category_stats:
             section_label = QLabel("按类别通过率")
-            section_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+            section_label.setStyleSheet(f"color: {TEXT}; font-size: {FONT_SIZE_SMALL}px; font-weight: bold;")
             self._layout.addWidget(section_label)
 
             for cat, stats in category_stats.items():
@@ -131,7 +131,7 @@ class _AnalysisWidget(QWidget):
                 row.setSpacing(8)
                 cat_label = QLabel(cat)
                 cat_label.setFixedWidth(80)
-                cat_label.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+                cat_label.setStyleSheet(f"color: {TEXT}; font-size: {FONT_SIZE_SMALL}px;")
                 row.addWidget(cat_label)
 
                 rate = stats["pass"] / stats["total"] * 100 if stats["total"] > 0 else 0
@@ -143,7 +143,7 @@ class _AnalysisWidget(QWidget):
                 detail = QLabel(f"{stats['pass']}/{stats['total']}")
                 detail.setFixedWidth(50)
                 detail.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                detail.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+                detail.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px;")
                 row.addWidget(detail)
 
                 self._layout.addLayout(row)
@@ -167,7 +167,7 @@ class _AnalysisWidget(QWidget):
 
         if fail_entries:
             section2 = QLabel(f"失效详情 ({len(fail_entries)} 条)")
-            section2.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+            section2.setStyleSheet(f"color: {TEXT}; font-size: {FONT_SIZE_SMALL}px; font-weight: bold;")
             self._layout.addWidget(section2)
 
             tbl = QTableWidget(len(fail_entries), 5)
@@ -211,13 +211,13 @@ class _AnalysisWidget(QWidget):
                 names += f" ... 共 {len(unlinked)} 条"
             warn = QLabel(f"{len(unlinked)} 条失败结果未创建 Issue: {names}")
             warn.setWordWrap(True)
-            warn.setStyleSheet(f"color: {YELLOW}; font-size: 11px; padding: 4px 8px;")
+            warn.setStyleSheet(f"color: {YELLOW}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
             self._layout.addWidget(warn)
 
         # 没有任何结果
         if not category_stats and not fail_entries:
             no_data = QLabel("暂无测试结果数据")
-            no_data.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; padding: 24px;")
+            no_data.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 24px;")
             no_data.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._layout.addWidget(no_data)
 

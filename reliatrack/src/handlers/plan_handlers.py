@@ -53,7 +53,7 @@ class PlanHandlers:
         v.act_import_from_plan.triggered.connect(self._on_import_from_plan)
         # 独立按钮
         v.btn_record_result.clicked.connect(self._on_record_result)
-        v.btn_summary_report.clicked.connect(self._on_summary_report)
+        v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
         v.setup_task_callbacks(
             on_add=self._on_task_add,

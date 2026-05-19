@@ -37,6 +37,7 @@ class _BaseDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setMinimumWidth(width)
+        self.setMaximumWidth(width + 200)
         self.setSizeGripEnabled(True)
         # 不再设置独立的 styleSheet — 继承全局主题
 

@@ -60,10 +60,21 @@ class _ResultMatrixWidget(QWidget):
         mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
         mode_bar.addWidget(mode_label)
         self._mode_group = QButtonGroup(self)
+        self._mode_checked_qss = (
+            f"QPushButton {{ background-color: {SURFACE1}; color: {TEXT}; "
+            f"border: 1px solid {BLUE}; border-radius: 4px; "
+            f"padding: 1px 8px; font-size: 12px; }}"
+        )
+        self._mode_unchecked_qss = (
+            f"QPushButton {{ background-color: transparent; color: {SUBTEXT0}; "
+            f"border: 1px solid {SURFACE1}; border-radius: 4px; "
+            f"padding: 1px 8px; font-size: 12px; }}"
+        )
         for i, label in enumerate(self._DISPLAY_MODES):
             btn = QPushButton(label)
             btn.setFixedHeight(22)
             btn.setCheckable(True)
+            btn.setStyleSheet(self._mode_unchecked_qss if i != 0 else self._mode_checked_qss)
             self._mode_group.addButton(btn, i)
             mode_bar.addWidget(btn)
         self._mode_group.button(0).setChecked(True)
@@ -114,6 +125,9 @@ class _ResultMatrixWidget(QWidget):
 
     def _on_mode_changed(self, btn_id: int) -> None:
         """切换显示模式后重新渲染。"""
+        # 更新按钮选中样式
+        for i, btn in enumerate(self._mode_group.buttons()):
+            btn.setStyleSheet(self._mode_checked_qss if i == btn_id else self._mode_unchecked_qss)
         self.refresh(self._last_tasks, self._last_results, self._last_sample_map)
 
     def refresh(

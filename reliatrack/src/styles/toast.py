@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 from src.styles.theme import (
     BASE,
     GREEN,
+    RED,
     PEACH,
     SURFACE1,
     TEXT,
@@ -27,15 +28,18 @@ class ToastWidget(QWidget):
     用法：
         ToastWidget.show_toast(parent, "操作成功", ToastWidget.SUCCESS)
         ToastWidget.show_toast(parent, "删除失败", ToastWidget.ERROR)
+        ToastWidget.show_toast(parent, "注意", ToastWidget.WARNING)
     """
 
     SUCCESS = "success"
     ERROR = "error"
+    WARNING = "warning"
     INFO = "info"
 
     _COLORS = {
         SUCCESS: GREEN,
-        ERROR: PEACH,
+        ERROR: RED,
+        WARNING: PEACH,
         INFO: SURFACE1,
     }
 

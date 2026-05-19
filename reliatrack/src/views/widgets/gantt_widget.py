@@ -330,9 +330,10 @@ class _GanttWidget(QWidget):
                            self.height() - self._header_height, QColor(MANTLE))
             if is_holiday:
                 # 节假日列浅红背景（叠加在周末之上，独立可见）
-                holiday_color = QColor(255, 220, 220, 80)  # 浅红半透明
+                _holiday_color = QColor(RED)
+                _holiday_color.setAlpha(30)
                 p.fillRect(int(x), self._header_height, int(self._day_w) + 1,
-                           self.height() - self._header_height, holiday_color)
+                           self.height() - self._header_height, _holiday_color)
 
             if d % step == 0:
                 p.setPen(QColor(SUBTEXT1))

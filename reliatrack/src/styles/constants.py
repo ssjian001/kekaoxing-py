@@ -202,10 +202,20 @@ DASH_PRIMARY = STATUS_BLUE       # #1e66f5
 DASH_SUCCESS = STATUS_GREEN      # #40a02b
 DASH_WARNING = STATUS_YELLOW     # #df8e1d
 DASH_DANGER  = STATUS_RED        # #d20f39
-DASH_NEUTRAL = "#64748B"         # Subtext0 — 中性灰（与全局一致）
-DASH_BG      = "#F7F8FC"         # 仪表盘背景（= 全局 BASE）
-DASH_CARD_BG = "#FFFFFF"         # 卡片白底（= 全局 MANTLE）
-DASH_CARD_BORDER = "#E2E8F0"     # 卡片边框（= 全局 SURFACE1）
+
+
+def _dash_theme_colors() -> tuple[str, str, str, str]:
+    """延迟导入 theme 常量，避免 constants ↔ theme 循环依赖。"""
+    from src.styles.theme import SUBTEXT0, BASE, MANTLE, SURFACE1
+    return SUBTEXT0, BASE, MANTLE, SURFACE1
+
+
+# 模块加载后立即解析（theme 此时已初始化完成）
+_DASH_NEUTRAL, _DASH_BG, _DASH_CARD_BG, _DASH_CARD_BORDER = _dash_theme_colors()
+DASH_NEUTRAL      = _DASH_NEUTRAL
+DASH_BG           = _DASH_BG
+DASH_CARD_BG      = _DASH_CARD_BG
+DASH_CARD_BORDER  = _DASH_CARD_BORDER
 
 
 # ═══════════════════════════════════════════════════════════════════

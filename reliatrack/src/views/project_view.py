@@ -22,8 +22,10 @@ from src.models.project import Project
 from src.styles.theme import (
     SURFACE1,
     OVERLAY0,
+    MANTLE, BASE, SURFACE0,
+    TEXT,
 )
-from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
+from src.styles.constants import TABLE_QSS, VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
 from src.constants import PROJECT_STATUS_LABELS
 
 _PROJECT_SPECS = [
@@ -114,6 +116,11 @@ class ProjectView(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
+        self._table.setStyleSheet(TABLE_QSS.format(
+            bg=BASE, text=TEXT, gridline=SURFACE1,
+            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+        ))
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)

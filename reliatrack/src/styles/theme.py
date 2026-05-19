@@ -29,6 +29,7 @@ RED      = "#d20f39"
 PEACH    = "#fe640b"
 YELLOW   = "#df8e1d"
 GREEN    = "#40a02b"
+GREEN_DARK = "#358524"   # primary hover / border
 BLUE     = "#1e66f5"
 LAVENDER = "#7287fd"
 MAUVE    = "#8839ef"
@@ -157,23 +158,23 @@ QPushButton:checked {{
 
 /* ── 主按钮 ── */
 QPushButton[class="primary"] {{
-    background-color: #40a02b;
-    color: #ffffff;
-    border-color: #358524;
+    background-color: {GREEN};
+    color: {MANTLE};
+    border-color: {GREEN_DARK};
     padding: 2px 12px;
 }}
 QPushButton[class="primary"]:hover {{
-    background-color: #358524;
+    background-color: {GREEN_DARK};
 }}
 
 /* ── 危险按钮 ── */
 QPushButton[class="danger"] {{
-    background-color: #fdf2f4;
-    color: #d20f39;
-    border-color: #d20f39;
+    background-color: rgba(210, 15, 57, 0.08);
+    color: {RED};
+    border-color: {RED};
 }}
 QPushButton[class="danger"]:hover {{
-    background-color: #fce4e8;
+    background-color: rgba(210, 15, 57, 0.14);
 }}
 
 /* ── 操作按钮 ── */

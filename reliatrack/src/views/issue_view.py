@@ -21,10 +21,12 @@ from PySide6.QtWidgets import (
 
     QTableWidget,
     QTableWidgetItem,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtGui import QAction
 
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
@@ -400,28 +402,26 @@ class IssueView(QWidget):
         self._btn_add.setToolTip("新建 Issue (Ctrl+N)")
         toolbar.addWidget(self._btn_add)
 
-        self._btn_add_fa = QPushButton("新建 FA 步骤")
-        self._btn_add_fa.setProperty("class", "action")
-        self._btn_add_fa.setToolTip("添加 FA 分析步骤")
-        toolbar.addWidget(self._btn_add_fa)
+        # ── 更多操作（收起低频按钮，防止 800px 溢出） ──
+        self._more_menu = QMenu(self)
+        self._act_add_fa = self._more_menu.addAction("新建 FA 步骤")
+        self._act_add_fa.setToolTip("添加 FA 分析步骤")
+        self._act_add_capa = self._more_menu.addAction("新建 CAPA")
+        self._act_add_capa.setToolTip("添加纠正预防措施")
+        self._more_menu.addSeparator()
+        self._act_export_8d = self._more_menu.addAction("导出 8D 报告")
+        self._act_export_8d.setToolTip("将选中的 Issue 导出为 8D 报告 (PDF)")
+        self._act_attachments = self._more_menu.addAction("附件")
+        self._act_attachments.setToolTip("管理附件")
 
-        # CAPA 按钮
-        self._btn_add_capa = QPushButton("新建 CAPA")
-        self._btn_add_capa.setProperty("class", "action")
-        self._btn_add_capa.setToolTip("添加纠正预防措施")
-        toolbar.addWidget(self._btn_add_capa)
-
-        # 导出 8D 报告按钮
-        self._btn_export_8d = QPushButton("导出 8D 报告")
-        self._btn_export_8d.setProperty("class", "action")
-        self._btn_export_8d.setToolTip("将选中的 Issue 导出为 8D 报告 (PDF)")
-        toolbar.addWidget(self._btn_export_8d)
-
-        # attachment management: 附件按钮
-        self._btn_attachments = QPushButton("附件")
-        self._btn_attachments.setProperty("class", "action")
-        self._btn_attachments.setToolTip("管理附件")
-        toolbar.addWidget(self._btn_attachments)
+        self._btn_more = QToolButton()
+        self._btn_more.setText("更多")
+        self._btn_more.setMenu(self._more_menu)
+        self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._btn_more.setProperty("class", "action")
+        self._btn_more.setFixedHeight(28)
+        self._btn_more.setToolTip("FA/CAPA/导出/附件等更多操作")
+        toolbar.addWidget(self._btn_more)
 
         toolbar.addStretch()
 
@@ -474,9 +474,9 @@ class IssueView(QWidget):
 
         # ── 信号连接 ──
         self._btn_add.clicked.connect(self._open_create_dialog)
-        self._btn_add_fa.clicked.connect(self._open_fa_dialog)
-        self._btn_add_capa.clicked.connect(self._open_capa_dialog)
-        self._btn_export_8d.clicked.connect(self._on_export_8d)
+        self._act_add_fa.triggered.connect(self._open_fa_dialog)
+        self._act_add_capa.triggered.connect(self._open_capa_dialog)
+        self._act_export_8d.triggered.connect(self._on_export_8d)
         # 选中 Issue 时自动加载 FA 记录
         self._issue_table.itemSelectionChanged.connect(self._on_issue_selection_changed)
         # 筛选联动
@@ -541,22 +541,22 @@ class IssueView(QWidget):
         return self._btn_add
 
     @property
-    def btn_add_fa(self) -> QPushButton:
-        return self._btn_add_fa
+    def btn_add_fa(self) -> QAction:
+        return self._act_add_fa
 
     @property
-    def btn_add_capa(self) -> QPushButton:
-        return self._btn_add_capa
+    def btn_add_capa(self) -> QAction:
+        return self._act_add_capa
 
     @property
-    def btn_export_8d(self) -> QPushButton:
+    def btn_export_8d(self) -> QAction:
         """8D 报告导出按钮。"""
-        return self._btn_export_8d
+        return self._act_export_8d
 
     @property
-    def btn_attachments(self) -> QPushButton:  # attachment management
+    def btn_attachments(self) -> QAction:
         """附件管理按钮。"""
-        return self._btn_attachments
+        return self._act_attachments
 
     def get_selected_issue_id(self) -> Optional[int]:
         return self._issue_table.get_selected_issue_id()

@@ -38,7 +38,7 @@ class IssueHandlers:
         v.capa_record_edited.connect(self._handle_edit_capa)
         v.capa_record_deleted.connect(self._handle_delete_capa)
         v.export_8d_requested.connect(self._handle_export_8d)
-        v.btn_attachments.clicked.connect(self._on_issue_attachments)
+        v.btn_attachments.triggered.connect(self._on_issue_attachments)
 
     def _on_issue_attachments(self) -> None:
         """打开 Issue 附件管理弹窗。"""

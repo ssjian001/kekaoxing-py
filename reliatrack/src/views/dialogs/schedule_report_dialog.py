@@ -119,6 +119,7 @@ class ScheduleReportDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("排程报告")
         self.setMinimumWidth(520)
+        self.setMaximumWidth(720)
         self.setMinimumHeight(400)
         self.setSizeGripEnabled(True)
 
