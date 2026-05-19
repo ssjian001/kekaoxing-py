@@ -18,7 +18,7 @@ python3 -m venv .venv  # 首次
 
 - Python 3.11+（CI: 3.11/3.12, 本地开发: 3.13）+ PySide6 6.11.1 + apsw (SQLite) + openpyxl / reportlab
 - 架构：MVC 变体 — Controller → Handlers → Services → Repos → DB
-- DB 版本：schema v21（17 张表）
+- DB 版本：schema v21（19 张表）
 - 主题：Catppuccin Latte 明亮 (theme.py)
 
 ## 项目结构
