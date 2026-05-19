@@ -203,19 +203,12 @@ DASH_SUCCESS = STATUS_GREEN      # #40a02b
 DASH_WARNING = STATUS_YELLOW     # #df8e1d
 DASH_DANGER  = STATUS_RED        # #d20f39
 
-
-def _dash_theme_colors() -> tuple[str, str, str, str]:
-    """延迟导入 theme 常量，避免 constants ↔ theme 循环依赖。"""
-    from src.styles.theme import SUBTEXT0, BASE, MANTLE, SURFACE1
-    return SUBTEXT0, BASE, MANTLE, SURFACE1
-
-
-# 模块加载后立即解析（theme 此时已初始化完成）
-_DASH_NEUTRAL, _DASH_BG, _DASH_CARD_BG, _DASH_CARD_BORDER = _dash_theme_colors()
-DASH_NEUTRAL      = _DASH_NEUTRAL
-DASH_BG           = _DASH_BG
-DASH_CARD_BG      = _DASH_CARD_BG
-DASH_CARD_BORDER  = _DASH_CARD_BORDER
+# 以下值与 theme.py 保持同步，不可延迟导入（constants ↔ theme 循环依赖）
+# 验证：grep DASH_NEUTRAL/DASH_BG/DASH_CARD_BG/DASH_CARD_BORDER 的值 == theme.py 对应常量
+DASH_NEUTRAL      = "#64748B"     # = theme.SUBTEXT0
+DASH_BG           = "#F7F8FC"     # = theme.BASE
+DASH_CARD_BG      = "#FFFFFF"     # = theme.MANTLE
+DASH_CARD_BORDER  = "#E2E8F0"     # = theme.SURFACE1
 
 
 # ═══════════════════════════════════════════════════════════════════
