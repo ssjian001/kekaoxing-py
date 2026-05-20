@@ -27,7 +27,7 @@ from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
 )
-from src.styles.constants import TABLE_QSS
+from src.styles.constants import TABLE_QSS, install_copy_handler
 
 
 class BatchImportDialog(_BaseDialog):
@@ -152,6 +152,7 @@ class BatchImportDialog(_BaseDialog):
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=12,
         ))
+        install_copy_handler(self._preview_table)
         self._root.addWidget(self._preview_table, 1)
 
         # 4. 结果统计（初始隐藏）

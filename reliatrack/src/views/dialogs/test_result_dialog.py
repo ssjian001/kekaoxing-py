@@ -204,7 +204,7 @@ class _ResultRow(QFrame):
         if self._deleted:
             bg, border = SURFACE2, RED
         elif self._needs_attention:
-            bg, border = BLUE + "18", BLUE + "44"
+            bg, border = "rgba(30, 102, 245, 0.09)", "rgba(30, 102, 245, 0.27)"
         else:
             bg, border = SURFACE0, SURFACE1
         self.setStyleSheet(f"""
@@ -342,6 +342,17 @@ class TestResultDialog(QWidget):
         self._btn_apply_env.setFixedHeight(24)
         self._btn_apply_env.clicked.connect(self._apply_env_to_all)
         stats_row.addWidget(self._btn_apply_env)
+
+        self._btn_pass_all = QPushButton("全部通过")
+        self._btn_pass_all.setFixedHeight(24)
+        self._btn_pass_all.setStyleSheet(
+            f"QPushButton {{ color: white; background-color: {GREEN};"
+            f" border: none; border-radius: 4px; padding: 2px 8px; }}"
+            f"QPushButton:hover {{ background-color: #2da44e; }}"
+            f"QPushButton:pressed {{ background-color: #238636; }}"
+        )
+        self._btn_pass_all.clicked.connect(self._pass_all)
+        stats_row.addWidget(self._btn_pass_all)
         layout.addLayout(stats_row)
 
         # 分隔线
@@ -418,6 +429,19 @@ class TestResultDialog(QWidget):
                     count += 1
         if count:
             self._btn_apply_env.setText(f"已应用 ({count})")
+
+    def _pass_all(self) -> None:
+        """将所有未删除行的结果设为「通过」。"""
+        count = 0
+        for row in self._rows:
+            if not row._deleted and row._combo.currentData() != "pass":
+                # 找到 "pass" 的 index
+                idx = row._combo.findData("pass")
+                if idx >= 0:
+                    row._combo.setCurrentIndex(idx)
+                    count += 1
+        if count:
+            self._btn_pass_all.setText(f"全部通过 ({count})")
 
     def _update_stats(self) -> None:
         # 只统计未删除的行

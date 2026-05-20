@@ -15,7 +15,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1,
     GREEN, RED, YELLOW, BLUE,
 )
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
 
 from src.models.test_plan import TestTask
 
@@ -91,6 +91,7 @@ class _ResultMatrixWidget(QWidget):
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self._table.setAlternatingRowColors(False)
+        install_copy_handler(self._table)
         self._table.verticalHeader().setVisible(True)
         self._table.horizontalHeader().setStretchLastSection(False)
         self._table.setStyleSheet(self._table.styleSheet() + f"""

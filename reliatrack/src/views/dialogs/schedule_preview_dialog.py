@@ -36,7 +36,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
 )
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
 from src.models.test_plan import TestTask
 from src.models.common import Equipment
 from src.services.scheduler import (
@@ -155,6 +155,7 @@ class SchedulePreviewDialog(QDialog):
         self._table.setHorizontalHeaderLabels(self.COLUMNS)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        install_copy_handler(self._table)
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(False)

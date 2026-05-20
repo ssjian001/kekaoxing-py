@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.styles.theme import TEXT, SUBTEXT0, SURFACE0, SURFACE1, BASE
-from src.styles.constants import TABLE_QSS
+from src.styles.constants import TABLE_QSS, install_copy_handler
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:
@@ -65,6 +65,7 @@ class HolidayManageDialog(_BaseDialog):
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
+        install_copy_handler(self._table)
         self._table.verticalHeader().setVisible(False)
         self._table.setMinimumHeight(250)
         self._table.setStyleSheet(TABLE_QSS.format(

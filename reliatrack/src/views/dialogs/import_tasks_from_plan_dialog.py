@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from src.models.test_plan import TestTask
 from src.styles.theme import SUBTEXT0, LAVENDER
+from src.styles.constants import install_copy_handler
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:
@@ -75,7 +76,7 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
-        
+        install_copy_handler(self._table)
         for row, task in enumerate(tasks):
             # checkbox
             chk = QTableWidgetItem()

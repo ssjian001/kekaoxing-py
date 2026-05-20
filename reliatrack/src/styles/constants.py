@@ -253,6 +253,50 @@ def add_shadow(widget, blur: int = 12, offset: int = 2,
 #   apply_column_specs(table, SPECS)
 #
 
+# ═══════════════════════════════════════════════════════════════════
+#  Ctrl+C 复制支持（事件过滤器方案）
+# ═══════════════════════════════════════════════════════════════════
+
+def install_copy_handler(table) -> None:
+    """为 QTableWidget 安装 Ctrl+C 复制事件过滤器。
+
+    选中单元格后按 Ctrl+C 将内容以 TSV 格式复制到剪贴板，
+    可直接粘贴到 Excel / WPS 等电子表格。
+    """
+    from PySide6.QtCore import QObject, QEvent
+    from PySide6.QtGui import QKeySequence
+    from PySide6.QtWidgets import QApplication
+
+    class _CopyFilter(QObject):
+        def eventFilter(self, obj, event):
+            if (event.type() == QEvent.Type.KeyPress
+                    and event.matches(QKeySequence.StandardKey.Copy)):
+                self._copy_selection(obj)
+                return True
+            return super().eventFilter(obj, event)
+
+        @staticmethod
+        def _copy_selection(table):
+            selected = table.selectedRanges()
+            if not selected:
+                return
+            rows: set[int] = set()
+            cols: set[int] = set()
+            for r in selected:
+                rows.update(range(r.topRow(), r.bottomRow() + 1))
+                cols.update(range(r.leftColumn(), r.rightColumn() + 1))
+            lines: list[str] = []
+            for row in sorted(rows):
+                cells: list[str] = []
+                for col in sorted(cols):
+                    item = table.item(row, col)
+                    cells.append(item.text() if item else "")
+                lines.append("\t".join(cells))
+            QApplication.clipboard().setText("\n".join(lines))
+
+    table.installEventFilter(_CopyFilter(table))
+
+
 def apply_column_specs(table, specs: list[tuple[str, str, int]],
                        table_key: str = "") -> None:
     """根据列规格自动设置表头模式和宽度。"""
@@ -293,3 +337,6 @@ def apply_column_specs(table, specs: list[tuple[str, str, int]],
         header.sectionResized.connect(
             lambda *_: save_column_widths_debounced(table, table_key)
         )
+
+    # Ctrl+C 复制支持
+    install_copy_handler(table)
