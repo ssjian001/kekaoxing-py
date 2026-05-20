@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 from src.styles.theme import SURFACE1
 
@@ -86,6 +86,35 @@ class _BaseDialog(QDialog):
         btn_layout.addWidget(self._btn_ok)
 
         self._root.addLayout(btn_layout)
+
+        # 延迟设置默认焦点到第一个可编辑控件
+        QTimer.singleShot(0, self._focus_first_edit)
+
+    # ── 键盘事件 ─────────────────────────────────────────────────
+
+    def keyPressEvent(self, event):
+        """Enter/Return 提交对话框，但 QTextEdit 中保留换行行为。"""
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            focus = self.focusWidget()
+            if isinstance(focus, QTextEdit):
+                super().keyPressEvent(event)
+                return
+            self._btn_ok.click()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
+    def _focus_first_edit(self):
+        """将焦点设到表单中第一个可编辑控件（QLineEdit/QComboBox/QSpinBox/QDateEdit）。"""
+        for i in range(self._form.rowCount()):
+            item = self._form.itemAt(i, QFormLayout.ItemRole.FieldRole)
+            if item and item.widget():
+                w = item.widget()
+                if isinstance(w, (QLineEdit, QComboBox, QSpinBox, QDateEdit)):
+                    w.setFocus()
+                    if hasattr(w, "selectAll"):  # type: ignore[union-attr]
+                        w.selectAll()  # type: ignore[union-attr]
+                    break
 
     # ── 辅助方法 ──────────────────────────────────────────────────
 

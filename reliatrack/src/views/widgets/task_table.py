@@ -67,9 +67,9 @@ class _TaskTable(QTableWidget):
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
         self.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=12,
-        ))
+           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+       ))
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -198,6 +198,7 @@ class _TaskTable(QTableWidget):
                 plan_start = date.fromisoformat(start_date)
             except ValueError:
                 plan_start = None
+        today = date.today()
         self.setSortingEnabled(False)
         self.setRowCount(len(tasks))
         for row, task in enumerate(tasks):
@@ -208,19 +209,30 @@ class _TaskTable(QTableWidget):
             pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
             rate_text = f"{pass_count}/{total}" if total > 0 else "—"
             # 计算预计日期
+            planned_start_str: str = ""
+            planned_end_str: str = ""
+            planned_end_date: date | None = None
             if plan_start and task.start_day is not None:
-                planned_start = (plan_start + timedelta(days=task.start_day)).isoformat()
-                planned_end = (plan_start + timedelta(days=task.start_day + task.duration - 1)).isoformat()
+                planned_start_date = plan_start + timedelta(days=task.start_day)
+                planned_end_date = plan_start + timedelta(days=task.start_day + task.duration - 1)
+                planned_start_str = planned_start_date.isoformat()
+                planned_end_str = planned_end_date.isoformat()
             else:
-                planned_start = str(task.start_day) if task.start_day else "—"
-                planned_end = "—"
+                planned_start_str = str(task.start_day) if task.start_day else "—"
+                planned_end_str = "—"
+            # 判断是否超期：未完成且预计结束日期 < 今天
+            is_overdue = (
+                task.status not in ("completed", "done")
+                and planned_end_date is not None
+                and planned_end_date < today
+            )
             values = [
                 f"{task_prefix}-{row + 1:03d}" if task_prefix else (task.id or (row + 1)),
                 task.name,
                 task.category,
                 task.duration,
-                planned_start,
-                planned_end,
+                planned_start_str,
+                planned_end_str,
                 f"{task.progress:.0f}%",
                 priority_text,
                 status_text,
@@ -238,6 +250,11 @@ class _TaskTable(QTableWidget):
                 # 名称列 tooltip (col 1)
                 if col == 1 and task.name:
                     item.setToolTip(task.name)
+                # 超期标记：预计开始(col4) 和 预计结束(col5) 文字标红
+                if is_overdue and col in (4, 5):
+                    item.setForeground(QColor(RED))
+                    if col == 5:
+                        item.setToolTip(f"已超期（预计结束: {planned_end_str}）")
                 # 状态颜色 (col 8)
                 if col == 8:
                     item.setForeground(QColor(self._STATUS_COLORS.get(task.status, TEXT)))

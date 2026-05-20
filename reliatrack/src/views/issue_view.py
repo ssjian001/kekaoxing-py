@@ -73,9 +73,9 @@ class _IssueTable(QTableWidget):
 
         self.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=12,
-        ))
+           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+       ))
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)
@@ -148,11 +148,43 @@ class _IssueTable(QTableWidget):
             self._act_delete = self._context_menu.addAction("删除 Issue")
             self._act_edit.triggered.connect(self._on_edit_action)
             self._act_delete.triggered.connect(self._on_delete_action)
+            # 跳转到关联任务/样品
+            self._context_menu.addSeparator()
+            self._act_goto_task = self._context_menu.addAction("跳转到关联任务")
+            self._act_goto_sample = self._context_menu.addAction("跳转到关联样品")
+            self._act_goto_task.triggered.connect(self._on_goto_task)
+            self._act_goto_sample.triggered.connect(self._on_goto_sample)
 
         issue_id = self.get_selected_issue_id()
         self._act_edit.setEnabled(issue_id is not None)
         self._act_delete.setEnabled(issue_id is not None)
+        # 仅当 issue 有关联 task_id / sample_id 时启用跳转
+        issue = self.get_selected_issue()
+        self._act_goto_task.setEnabled(issue is not None and issue.task_id is not None)
+        self._act_goto_sample.setEnabled(issue is not None and issue.sample_id is not None)
         self._context_menu.exec(self.viewport().mapToGlobal(pos))
+
+    def _on_goto_task(self) -> None:
+        """跳转到关联任务（Tab 3: 测试计划）。"""
+        issue = self.get_selected_issue()
+        if not issue or issue.task_id is None:
+            return
+        view = self.parent_issue_view()
+        if view:
+            win = view.parent()
+            if win and hasattr(win, "_tab_widget"):
+                win._tab_widget.setCurrentIndex(3)
+
+    def _on_goto_sample(self) -> None:
+        """跳转到关联样品（Tab 2: 样品管理）。"""
+        issue = self.get_selected_issue()
+        if not issue or issue.sample_id is None:
+            return
+        view = self.parent_issue_view()
+        if view:
+            win = view.parent()
+            if win and hasattr(win, "_tab_widget"):
+                win._tab_widget.setCurrentIndex(2)
 
     def _on_double_click(self) -> None:
         """双击行触发编辑。"""

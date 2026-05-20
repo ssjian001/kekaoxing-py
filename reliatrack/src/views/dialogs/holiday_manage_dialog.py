@@ -70,9 +70,9 @@ class HolidayManageDialog(_BaseDialog):
         self._table.setMinimumHeight(250)
         self._table.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=BASE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=12,
-        ))
+           alt_row=BASE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+       ))
         self._form.addRow(self._table)
 
         # ── 添加区 ──

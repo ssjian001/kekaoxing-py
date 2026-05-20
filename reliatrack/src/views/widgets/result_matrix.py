@@ -85,9 +85,9 @@ class _ResultMatrixWidget(QWidget):
         self._table = QTableWidget()
         self._table.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=12,
-        ))
+           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+       ))
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self._table.setAlternatingRowColors(False)

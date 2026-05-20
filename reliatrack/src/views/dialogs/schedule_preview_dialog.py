@@ -178,9 +178,9 @@ class SchedulePreviewDialog(QDialog):
 
         self._table.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=12,
-        ))
+           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+       ))
         self._table.setMinimumHeight(250)
         # 双击编辑
         self._table.cellDoubleClicked.connect(self._on_cell_double_click)

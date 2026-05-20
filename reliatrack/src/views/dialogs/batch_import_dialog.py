@@ -149,9 +149,9 @@ class BatchImportDialog(_BaseDialog):
         )
         self._preview_table.setStyleSheet(TABLE_QSS.format(
             bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=12,
-        ))
+           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
+            font_size=13,
+       ))
         install_copy_handler(self._preview_table)
         self._root.addWidget(self._preview_table, 1)
 
