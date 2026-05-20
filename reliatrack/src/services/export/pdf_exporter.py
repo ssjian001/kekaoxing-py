@@ -216,11 +216,12 @@ def export_report_pdf(
                   for h in task_headers]
 
     prefix = getattr(plan, 'task_prefix', '') or ''
+    task_data_rows: list[list[object]] = []
     for idx, task in enumerate(tasks, 1):
         task_id_display = f"{prefix}-{idx:03d}" if prefix else str(idx)
         cat = CATEGORY_MAP.get(task.category, task.category)
         status = STATUS_MAP.get(task.status, task.status)
-        task_data = [
+        task_data_rows.append([
             Paragraph(task_id_display, cell_style),
             Paragraph(task.name[:25], cell_style),
             Paragraph(cat, cell_style),
@@ -229,13 +230,12 @@ def export_report_pdf(
             Paragraph(f"{task.progress:.0f}%", cell_style),
             Paragraph(status, cell_style),
             Paragraph(str(task.priority), cell_style),
-        ]
-        if idx == 1:
-            task_table = Table([header_row] + [task_data], colWidths=task_col_widths)
-        else:
-            task_table._argW = task_col_widths
-            task_table._cellvalues.append(task_data)
+        ])
 
+    if not task_data_rows:
+        task_data_rows = [[Paragraph("—", cell_style)] * len(task_headers)]
+
+    task_table = Table([header_row] + task_data_rows, colWidths=task_col_widths)
     task_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
         ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
