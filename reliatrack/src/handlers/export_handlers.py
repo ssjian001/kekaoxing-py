@@ -257,10 +257,6 @@ class ExportHandlers:
                 self._win.toast(f"8D 报告已导出: {path}", "success")
 
         except Exception as e:
-            logger.exception("操作失败")
-            import traceback
-
-            traceback.print_exc()
             logger.exception("Export failed")
             QMessageBox.critical(self._win, "导出失败", f"导出时发生错误:\n{e}")
         finally:

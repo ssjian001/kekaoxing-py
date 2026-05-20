@@ -363,6 +363,7 @@ def export_report_pdf(
         ]))
         story.append(res_table)
 
+    output_dir.mkdir(parents=True, exist_ok=True)
     _validate_output_path(out, output_dir)
     try:
         doc_obj.build(story, onFirstPage=_build_header_footer, onLaterPages=_build_header_footer)

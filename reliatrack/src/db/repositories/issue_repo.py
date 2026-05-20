@@ -111,11 +111,12 @@ class IssueRepository(BaseRepository):
         if project_id:
             sql = (
                 "SELECT severity, COUNT(*) FROM [issues] "
-                "WHERE is_deleted = 0 AND task_id IN (SELECT id FROM [test_tasks] "
-                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?)) "
+                "WHERE is_deleted = 0 AND "
+                "(project_id = ? OR task_id IN (SELECT id FROM [test_tasks] "
+                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?))) "
                 "GROUP BY severity"
             )
-            return dict(self._conn.execute(sql, (project_id,)).fetchall())
+            return dict(self._conn.execute(sql, (project_id, project_id)).fetchall())
         return dict(
             self._conn.execute(
                 "SELECT severity, COUNT(*) FROM [issues] WHERE is_deleted = 0 GROUP BY severity"
@@ -127,11 +128,12 @@ class IssueRepository(BaseRepository):
         if project_id:
             sql = (
                 "SELECT status, COUNT(*) FROM [issues] "
-                "WHERE is_deleted = 0 AND task_id IN (SELECT id FROM [test_tasks] "
-                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?)) "
+                "WHERE is_deleted = 0 AND "
+                "(project_id = ? OR task_id IN (SELECT id FROM [test_tasks] "
+                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?))) "
                 "GROUP BY status"
             )
-            return dict(self._conn.execute(sql, (project_id,)).fetchall())
+            return dict(self._conn.execute(sql, (project_id, project_id)).fetchall())
         return dict(
             self._conn.execute(
                 "SELECT status, COUNT(*) FROM [issues] WHERE is_deleted = 0 GROUP BY status"
@@ -215,6 +217,16 @@ class IssueRepository(BaseRepository):
         rows = self._conn.execute(
             f"SELECT {col_str} FROM [issue_attachments] WHERE issue_id = ? ORDER BY created_at",
             (issue_id,),
+        ).fetchall()
+        return [IssueAttachment(**cast(dict[str, Any], dict(
+            zip(self._ATTACH_COLS, r)
+        ))) for r in rows]
+
+    def get_all_attachments(self) -> list[IssueAttachment]:
+        """获取所有附件（一次性查询，用于完整性扫描）。"""
+        col_str = ", ".join(self._ATTACH_COLS)
+        rows = self._conn.execute(
+            f"SELECT {col_str} FROM [issue_attachments] ORDER BY issue_id, created_at"
         ).fetchall()
         return [IssueAttachment(**cast(dict[str, Any], dict(
             zip(self._ATTACH_COLS, r)

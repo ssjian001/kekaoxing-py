@@ -17,6 +17,7 @@ class BackupHandlers:
         db_path = getattr(self._main, "_db_path", "")
         dlg = BackupDialog(parent=self._main, db_path=db_path)  # type: ignore[arg-type]
         dlg.exec()
+        dlg.deleteLater()
 
         if dlg.restored:
             # 恢复后需要重新初始化整个应用

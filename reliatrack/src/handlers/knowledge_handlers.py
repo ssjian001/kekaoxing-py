@@ -57,21 +57,23 @@ class KnowledgeHandlers:
             self._win.toast("请先选中一个知识条目", "info")
             return
         dlg = KnowledgeEditDialog(entry=entry, parent=self._win)
-        if dlg.exec():
-            data = dlg.get_data()
-            if entry.id is None:
-                QMessageBox.warning(self._win, "更新失败", "Knowledge entry id is None")
-                return
-            exec_crud(
-                win=self._win,
-                action=ctrl.knowledge_service.update,
-                action_args=(entry.id,),
-                action_kwargs=data,
-                toast_msg=f"知识条目「{data['failure_mode']}」已更新",
-                entity="knowledge",
-                error_title="更新失败",
-            )
-        dlg.deleteLater()
+        try:
+            if dlg.exec():
+                data = dlg.get_data()
+                if entry.id is None:
+                    QMessageBox.warning(self._win, "更新失败", "Knowledge entry id is None")
+                    return
+                exec_crud(
+                    win=self._win,
+                    action=ctrl.knowledge_service.update,
+                    action_args=(entry.id,),
+                    action_kwargs=data,
+                    toast_msg=f"知识条目「{data['failure_mode']}」已更新",
+                    entity="knowledge",
+                    error_title="更新失败",
+                )
+        finally:
+            dlg.deleteLater()
 
     def _on_knowledge_delete(self) -> None:
         """删除选中的知识条目。"""

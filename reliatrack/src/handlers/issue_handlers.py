@@ -68,11 +68,7 @@ class IssueHandlers:
                 old_issue = ctrl.issue_service.get(data["id"])
                 old_status = old_issue.status if old_issue else None
 
-                kwargs = {k: v for k, v in data.items() if k != "id"}
-                ctrl.issue_service.update(data["id"], **kwargs)
-                self._win.toast(f"Issue #{data['id']} 已更新", "success")
-
-                # 状态变更为 closed 时做 FRACAS 完整性检查
+                # 状态变更为 closed 时先做 FRACAS 完整性检查（在写入 DB 之前）
                 new_status = data.get("status")
                 if new_status == "closed" and old_status != "closed":
                     issue_id = data["id"]
@@ -94,8 +90,15 @@ class IssueHandlers:
                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                         )
                         if reply != QMessageBox.StandardButton.Yes:
+                            # 用户拒绝关闭 — 不写入 DB，直接刷新 UI 保持原状态
                             self._win._ctrl.notify_data_changed("issue")
                             return
+
+                kwargs = {k: v for k, v in data.items() if k != "id"}
+                ctrl.issue_service.update(data["id"], **kwargs)
+                self._win.toast(f"Issue #{data['id']} 已更新", "success")
+
+                if new_status == "closed" and old_status != "closed":
                     self._prompt_archive_to_knowledge(old_issue or data)
             else:
                 ctrl.issue_service.create(**data)

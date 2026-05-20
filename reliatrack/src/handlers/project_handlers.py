@@ -100,6 +100,9 @@ class ProjectHandlers:
         if proj is None:
             self._win.toast("请先选中一个项目", "info")
             return
+        if proj.id is None:
+            QMessageBox.warning(self._win, "删除失败", "Project id is None")
+            return
         reply = QMessageBox.question(
             self._win,
             "确认删除",
@@ -110,9 +113,6 @@ class ProjectHandlers:
             QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
-            return
-        if proj.id is None:
-            QMessageBox.warning(self._win, "删除失败", "Project id is None")
             return
         exec_crud(
             win=self._win,

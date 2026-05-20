@@ -148,13 +148,9 @@ class TestTaskRepository(BaseRepository):
             (plan_id,),
         ).fetchall()
         from pathlib import Path
+        from src.db.repositories.issue_repo import IssueRepository
         for (fp,) in attachment_paths:
-            try:
-                p = Path(fp)
-                if p.exists():
-                    p.unlink()
-            except OSError:
-                logger.warning("批量删除附件文件失败: %s", fp)
+            IssueRepository._remove_disk_file(fp)
         # FK CASCADE: test_tasks → issues → fa_records/capa_records/issue_attachments
         cursor = self._conn.execute(
             "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,),

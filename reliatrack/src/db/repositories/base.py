@@ -216,7 +216,7 @@ class BaseRepository:
             return self._rows_to_models(rows, cols=cols_list)
         except Exception:
             logger.exception("list_all failed: table=%s, filters=%s", self._table, filters)
-            return []
+            raise
 
     def search(self, keyword: str, columns: list[str] | None = None) -> list[Any]:
         """按关键词模糊搜索。"""

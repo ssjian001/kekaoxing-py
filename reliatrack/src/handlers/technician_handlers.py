@@ -60,21 +60,23 @@ class TechnicianHandlers:
             self._win.toast("请先选中一个技术员", "info")
             return
         dlg = TechnicianEditDialog(technician=tech, parent=self._win)
-        if dlg.exec():
-            data = dlg.get_data()
-            if tech.id is None:
-                QMessageBox.warning(self._win, "更新失败", "技术员 ID 不能为空")
-                return
-            exec_crud(
-                win=self._win,
-                action=ctrl.technician_service.update,
-                action_args=(tech.id,),
-                action_kwargs=data,
-                toast_msg=f"技术员「{data['name']}」已更新",
-                entity="technician",
-                error_title="更新失败",
-            )
-        dlg.deleteLater()
+        try:
+            if dlg.exec():
+                data = dlg.get_data()
+                if tech.id is None:
+                    QMessageBox.warning(self._win, "更新失败", "技术员 ID 不能为空")
+                    return
+                exec_crud(
+                    win=self._win,
+                    action=ctrl.technician_service.update,
+                    action_args=(tech.id,),
+                    action_kwargs=data,
+                    toast_msg=f"技术员「{data['name']}」已更新",
+                    entity="technician",
+                    error_title="更新失败",
+                )
+        finally:
+            dlg.deleteLater()
 
     def _on_technician_delete(self) -> None:
         """删除选中的技术员。"""

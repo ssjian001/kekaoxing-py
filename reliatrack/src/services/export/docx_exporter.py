@@ -548,9 +548,10 @@ def export_dvpr_docx(
 
     style = doc.styles["Normal"]
     font = style.font
-    font.name = "Microsoft YaHei"
+    _f = _get_cjk_font()
+    font.name = _f
     font.size = Pt(9)
-    style.element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")
+    style.element.rPr.rFonts.set(qn("w:eastAsia"), _f)
 
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -786,9 +787,10 @@ def export_8d_docx(
     # ── 默认字体 ──
     style = doc.styles["Normal"]
     font = style.font
-    font.name = "Microsoft YaHei"
+    _f = _get_cjk_font()
+    font.name = _f
     font.size = Pt(9)
-    style.element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")
+    style.element.rPr.rFonts.set(qn("w:eastAsia"), _f)
 
     # ── 标题 ──
     title = doc.add_paragraph()
