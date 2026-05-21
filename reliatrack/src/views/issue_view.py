@@ -698,7 +698,12 @@ class IssueView(QWidget):
         if issue_id is None:
             QMessageBox.information(self, "提示", "请先在左侧列表中选中一个 Issue。")
             return
-        dlg = _CAPADialog(technician_list=self._technician_list, parent=self)
+        issue = self._issue_table.get_selected_issue()
+        dlg = _CAPADialog(
+            technician_list=self._technician_list,
+            issue=issue,
+            parent=self,
+        )
         if dlg.exec():
             data = dlg.get_data()
             data["issue_id"] = issue_id
@@ -941,6 +946,7 @@ class _CAPADialog(_BaseDialog):
 
     def __init__(self, technician_list: list | None = None,
                  capa_record: CAPARecord | None = None,
+                 issue: Issue | None = None,
                  parent: QWidget | None = None):
         is_edit = capa_record is not None
         title = "编辑 CAPA 措施" if is_edit else "新建 CAPA 措施"
@@ -948,17 +954,43 @@ class _CAPADialog(_BaseDialog):
 
         self._capa_record = capa_record
         self._technician_list = technician_list or []
+
+        # 新建模式：显示关联 Issue 参考信息
+        if not is_edit and issue:
+            parts = [f"📌 {issue.title}"]
+            if getattr(issue, "failure_mode", ""):
+                parts.append(f"失效模式: {issue.failure_mode}")
+            desc = getattr(issue, "description", "")
+            if desc:
+                parts.append(desc[:120])
+            ref_text = "\n".join(parts)
+            ref_label = QLabel(ref_text)
+            ref_label.setWordWrap(True)
+            ref_label.setStyleSheet(
+                f"color: {SUBTEXT0}; font-size: 11px; padding: 4px 6px; "
+                f"background: {SURFACE0}; border-radius: 4px;"
+            )
+            self._form.addRow("关联 Issue", ref_label)
+
         self._action_edit = self._add_text_area(
             "措施描述",
             default=(capa_record.action or "") if is_edit else "",
             placeholder="描述纠正或预防措施",
         )
         self._due_date_edit = self._add_date_field("截止日期")
+        # 编辑模式：恢复已保存的截止日期
+        if is_edit and capa_record.due_date:
+            from PySide6.QtCore import QDate
+            d = QDate.fromString(capa_record.due_date, "yyyy-MM-dd")
+            if d.isValid():
+                self._due_date_edit.setDate(d)
 
         # 负责人（自由输入）
         self._assignee_edit = self._add_text_field(
             "负责人",
-            default=(capa_record.assignee_name or "") if is_edit else "",
+            default=(capa_record.assignee_name or "") if is_edit else (
+                getattr(issue, "dri_name", "") or "" if issue else ""
+            ),
             placeholder="输入负责人姓名",
         )
 
@@ -988,7 +1020,9 @@ class _CAPADialog(_BaseDialog):
         # PDCA 扩展字段
         self._root_cause_edit = self._add_text_area(
             "根因分析",
-            default=(capa_record.root_cause or "") if is_edit else "",
+            default=(capa_record.root_cause or "") if is_edit else (
+                getattr(issue, "root_cause", "") or "" if issue else ""
+            ),
             placeholder="Plan: 分析问题根因",
         )
         self._effectiveness_edit = self._add_text_area(

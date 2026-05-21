@@ -414,7 +414,10 @@ class IssueHandlers:
 
         规则:
         1. 所有 CAPA action 汇总 → 回写 Issue.improvement_measures
-        2. 所有 CAPA 都 completed/verified → 状态改为 'verified'
+        2. 所有 CAPA 都 completed/verified → 状态改为 verified + resolution="fixed"
+        3. 有未完成 CAPA 且当前 verified → 回退到 analyzing
+        4. Issue.root_cause 为空时，CAPA root_cause 汇总回写
+        5. Issue.dri_name 为空时，取第一条有 assignee 的 CAPA
         """
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.issue_service:
@@ -427,27 +430,43 @@ class IssueHandlers:
             capa_records = ctrl.issue_service.get_capa_records(issue_id)
             updates: dict = {}
 
-            # 改进措施联动: 汇总所有 CAPA action
+            # 1. 改进措施联动: 汇总所有 CAPA action
             actions = [rec.action for rec in capa_records if rec.action]
             if actions:
                 resolution = "; ".join(actions)
                 if resolution != issue.improvement_measures:
                     updates["improvement_measures"] = resolution
             elif not capa_records and issue.improvement_measures:
-                # 所有 CAPA 被删空，清空 improvement_measures
                 updates["improvement_measures"] = ""
             elif capa_records and not actions and issue.improvement_measures:
-                # CAPA 存在但 action 全为空，清空旧 improvement_measures
                 updates["improvement_measures"] = ""
 
-            # 状态联动: 全部完成/验证 → verified（仅当状态为 analyzing 时）
-            if capa_records and issue.status == "analyzing":
+            # 2. 状态联动: 双向
+            if capa_records:
                 all_done = all(
                     rec.status in ("completed", "verified")
                     for rec in capa_records
                 )
-                if all_done:
+                if all_done and issue.status == "analyzing":
                     updates["status"] = "verified"
+                    updates["resolution"] = "fixed"
+                elif not all_done and issue.status == "verified":
+                    updates["status"] = "analyzing"
+
+            # 3. root_cause 联动: 仅当 Issue.root_cause 为空时回写
+            if not issue.root_cause and capa_records:
+                capa_causes = [rec.root_cause for rec in capa_records if rec.root_cause]
+                if capa_causes:
+                    joined = "; ".join(capa_causes)
+                    updates["root_cause"] = joined
+
+            # 4. dri_name 联动: 仅当 Issue.dri_name 为空时回写
+            if not getattr(issue, "dri_name", "") and capa_records:
+                for rec in capa_records:
+                    name = getattr(rec, "assignee_name", "")
+                    if name:
+                        updates["dri_name"] = name
+                        break
 
             if updates:
                 ctrl.issue_service.update(issue_id, **updates)

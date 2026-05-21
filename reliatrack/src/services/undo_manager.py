@@ -263,6 +263,14 @@ class UndoManager:
             return cmd.description
         return None
 
+    def peek_undo(self) -> Command | None:
+        """查看 undo 栈顶命令但不弹出。"""
+        return self._undo_stack[-1] if self._undo_stack else None
+
+    def peek_redo(self) -> Command | None:
+        """查看 redo 栈顶命令但不弹出。"""
+        return self._redo_stack[-1] if self._redo_stack else None
+
     def can_undo(self) -> bool:
         return bool(self._undo_stack)
 

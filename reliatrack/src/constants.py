@@ -164,6 +164,6 @@ RESOLUTION_LABELS: dict[str, str] = {v: k for k, v in RESOLUTION_OPTIONS}
 ISSUE_TRANSITIONS: dict[str, set[str]] = {
     "open": {"analyzing", "closed"},
     "analyzing": {"open", "verified", "closed"},
-    "verified": {"open", "closed"},
+    "verified": {"open", "analyzing", "closed"},
     "closed": {"open"},
 }

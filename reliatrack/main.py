@@ -441,19 +441,43 @@ class MainWindow(QMainWindow):
         um = self._ctrl.undo_manager
         if not um:
             return
+        cmd = um.peek_undo()
         desc = um.undo()
         if desc:
             self.statusBar().showMessage(f"已撤销: {desc}", 3000)
-            self._ctrl.notify_data_changed("undo")
+            self._ctrl.notify_data_changed("issue")
+            # FA/CAPA 删除撤销后需要 re-sync Issue
+            self._replay_sync_after_undo_redo(cmd)
 
     def _on_redo(self) -> None:
         um = self._ctrl.undo_manager
         if not um:
             return
+        cmd = um.peek_redo()
         desc = um.redo()
         if desc:
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
-            self._ctrl.notify_data_changed("undo")
+            self._ctrl.notify_data_changed("issue")
+            self._replay_sync_after_undo_redo(cmd)
+
+    def _replay_sync_after_undo_redo(self, cmd: object) -> None:
+        """Undo/Redo FA/CAPA 删除后重新同步 Issue 关联字段。
+
+        DeleteEntityCommand.undo() 恢复 DB 记录但不触发业务 sync，
+        需要在这里手动调用 _sync_issue_from_capa / _sync_issue_from_fa。
+        """
+        from src.services.undo_manager import DeleteEntityCommand
+        if not isinstance(cmd, DeleteEntityCommand):
+            return
+        table = getattr(cmd._repo, "_table", "")
+        issue_id = cmd._saved_data.get("issue_id")
+        if not issue_id:
+            return
+        ih = self._issue_handlers
+        if table == "capa_records":
+            ih._sync_issue_from_capa(issue_id)
+        elif table == "fa_records":
+            ih._sync_issue_from_fa(issue_id)
 
     def toast(self, message: str, level: str = "success") -> None:
         """显示 Toast 提示（替代 statusBar 的成功/警告消息）。"""
