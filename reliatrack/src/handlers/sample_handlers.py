@@ -37,14 +37,15 @@ class SampleHandlers:
         v.usage_tab.set_refresh_callback(self._refresh_sample_usage)
 
     def _refresh_sample_usage(self) -> None:
-        """刷新出入库记录 Tab。"""
+        """刷新出入库记录 Tab。
+
+        始终从 DB 拉全量记录，前端过滤由 _apply_filter 独立完成。
+        避免双重过滤（DB 层过滤 + 前端过滤）导致数据源被污染。
+        """
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.sample_service:
             return
-        usage_tab = self._win._sample_view.usage_tab
-        sn_filter = usage_tab._search_input.text()
-        type_filter = usage_tab._type_combo.currentData() or ""
-        data = ctrl.sample_service.list_transactions(sn_filter, type_filter)
+        data = ctrl.sample_service.list_transactions("", "")
         self._win._sample_view.refresh_usage(data)
 
     def _on_sample_checkin(self) -> None:
