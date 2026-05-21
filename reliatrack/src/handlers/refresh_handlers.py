@@ -379,12 +379,22 @@ class RefreshHandlers:
             if ctrl.holiday_service:
                 holidays = ctrl.holiday_service.get_holidays_set()
 
+            # 关联 Issue（用于失效模式分析）
+            plan_issues: list = []
+            if ctrl.issue_service:
+                plan = all_plans[restore_idx]
+                if plan.project_id:
+                    plan_issues = ctrl.issue_service.get_by_project(plan.project_id)
+                else:
+                    plan_issues = ctrl.issue_service.list_all()
+
             self._win._test_plan_view.refresh(
                 tasks, max_day, technician_map, result_map,
                 start_date=all_plans[restore_idx].start_date,
                 matrix_results=matrix_results,
                 sample_map=sample_map,
                 equipment_map=equipment_map,
+                issues=plan_issues,
                 task_prefix=all_plans[restore_idx].task_prefix,
                 holidays=holidays,
             )
