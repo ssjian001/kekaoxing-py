@@ -201,18 +201,19 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 
 ### 测试覆盖
 
-- `tests/test_capa_pdca.py` — 9 项 CAPA PDCA（v15 迁移 + CRUD + count bug 修复）
+- `tests/test_capa_pdca.py` — 10 项 CAPA PDCA（v15 迁移 + CRUD + count bug 修复）
 - `tests/test_security_regression.py` — 36 项安全回归（P0/P1 修复点）
-- `tests/test_services.py` — 20 项 Service 层 CRUD
-- `tests/test_new_features.py` — 16 项新增功能
+- `tests/test_services.py` — 39 项 Service 层 CRUD
+- `tests/test_new_features.py` — 20 项新增功能（BaseRepository/TechnicianService/SampleService 引用检查、Model 校验、count_by_status、count_calibration_due、delete_by_project）
 - `tests/test_column_order.py` — 11 项列序映射
-- `tests/test_boundary.py` — 7 项 Dialog 构造 + 边界场景（CI-only 已知问题：tables=0，本地正常，CI 中 `--ignore` 跳过）
+- `tests/test_boundary.py` — 15 项 Dialog 构造 + 边界场景（CI-only 已知问题：tables=0，本地正常，CI 中 `--ignore` 跳过）
 - `tests/test_e2e_full.py` — 脚本式 E2E（需 `QT_QPA_PLATFORM=offscreen`，pytest 已 skip）
 - `tests/test_performance.py` — 性能基准（pytest 已 skip）
 - `tests/test_issue_jira_workflow.py` — 25 项 Jira-style Issue 工作流（全路径转换、resolution 枚举、FA/CAPA 联动、reopen、reporter）
 - `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
 - `tests/test_scheduler_limit.py` — 22 项排程引擎（daily_start_limit、starts 增减、周末/节假日跳过、compress、locked tasks）
-- 共 **289 个 pytest 测试**，全量通过（另有 test_boundary 7 项 CI-only 跳过）
+- `tests/test_sample_and_analysis.py` — 15 项样品管理增强（suspended 常量、TransactionType.RETURN、check_in/return transaction、JOIN task_name、失效详情 Issue 匹配）
+- 共 **304 个 pytest 测试**，全量通过（另有 test_boundary 15 项 CI-only 跳过）
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
