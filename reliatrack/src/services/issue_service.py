@@ -29,6 +29,10 @@ class IssueService:
     def get_by_project(self, project_id: int) -> list[Issue]:
         return self._repo.get_by_project(project_id)
 
+    def get_unassigned(self) -> list[Issue]:
+        """返回未关联任何项目 (project_id IS NULL) 的 Issue。"""
+        return self._repo.get_unassigned()
+
     def get_by_status(self, status: str) -> list[Issue]:
         return self._repo.get_by_status(status)
 

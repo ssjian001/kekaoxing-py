@@ -143,6 +143,18 @@ class IssueRepository(BaseRepository):
     def get_by_project(self, project_id: int) -> list[Issue]:
         return self.list_all(project_id=project_id)
 
+    def get_unassigned(self) -> list[Issue]:
+        """返回未关联项目 (project_id IS NULL) 且未软删除的 Issue。"""
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        sql = f"SELECT {cols_sql} FROM [issues] WHERE [project_id] IS NULL AND [is_deleted] = 0 ORDER BY id"
+        try:
+            rows = self._conn.execute(sql).fetchall()
+            return self._rows_to_models(rows, cols=cols_list)
+        except Exception:
+            logger.exception("get_unassigned failed")
+            return []
+
     def get_by_status(self, status: str) -> list[Issue]:
         return self.list_all(status=status)
 

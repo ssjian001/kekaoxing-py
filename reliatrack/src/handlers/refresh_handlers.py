@@ -396,7 +396,10 @@ class RefreshHandlers:
             return
         filter_project_id = self._get_filter_project_id()
         if filter_project_id:
-            all_issues = ctrl.issue_service.get_by_project(filter_project_id)
+            # 项目筛选时：显示属于该项目 + 未关联项目(project_id=NULL)的 Issue
+            project_issues = ctrl.issue_service.get_by_project(filter_project_id)
+            null_issues = ctrl.issue_service.get_unassigned()
+            all_issues = project_issues + null_issues
         else:
             all_issues = ctrl.issue_service.list_all()
         # 注入技术员列表供 CAPA 弹窗使用（通过公共方法）
