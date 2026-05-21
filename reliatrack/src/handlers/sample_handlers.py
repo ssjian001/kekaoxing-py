@@ -65,14 +65,15 @@ class SampleHandlers:
         )
         if dlg.exec():
             data = dlg.get_data()
-            exec_crud(
+            sample_project_id = data.get("project_id") or None
+            ok = exec_crud(
                 win=self._win,
                 action=ctrl.sample_service.create,
                 action_kwargs=dict(
                     sn=data["sn"],
                     batch_no=data.get("batch_no") or "",
                     spec=data.get("spec") or "",
-                    project_id=data.get("project_id") or None,
+                    project_id=sample_project_id,
                     location=data.get("location") or "",
                     test_hours=data.get("test_hours") or 0.0,
                     supplier=data.get("supplier") or "",
@@ -83,6 +84,12 @@ class SampleHandlers:
                 entity="sample",
                 error_title="入库失败",
             )
+            # 入库成功后，确保用户能看到新样品：
+            # 如果样品所属项目与当前筛选不同，切换到"全部项目"
+            if ok:
+                current_filter = self._win.get_project_filter_id()
+                if current_filter is not None and sample_project_id != current_filter:
+                    self._win._project_filter_combo.setCurrentIndex(0)
         dlg.deleteLater()
 
     def _on_sample_checkout(self) -> None:

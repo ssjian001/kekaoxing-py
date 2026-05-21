@@ -705,9 +705,15 @@ class PlanHandlers:
                                 title = task.name
                                 if sample_name:
                                     title += f" - {sample_name}"
+                                # 通过 plan_id 获取 project_id（TestTask 无 project_id 字段）
+                                issue_project_id: int | None = None
+                                if task.plan_id and ctrl.test_plan_service:
+                                    plan = ctrl.test_plan_service.get_plan(task.plan_id)
+                                    if plan:
+                                        issue_project_id = plan.project_id or None
                                 ctrl.issue_service.create(
                                     title=title,
-                                    project_id=task.project_id if hasattr(task, "project_id") else None,
+                                    project_id=issue_project_id,
                                     plan_id=task.plan_id if hasattr(task, "plan_id") else None,
                                     task_id=task.id,
                                     sample_id=item["sample_id"],
