@@ -957,7 +957,7 @@ class _CAPADialog(_BaseDialog):
 
         # 新建模式：显示关联 Issue 参考信息
         if not is_edit and issue:
-            parts = [f"📌 {issue.title}"]
+            parts = [issue.title]
             if getattr(issue, "failure_mode", ""):
                 parts.append(f"失效模式: {issue.failure_mode}")
             desc = getattr(issue, "description", "")
