@@ -241,6 +241,7 @@ class SampleHandlers:
                 entity="sample",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
 
     def _on_sample_return(self) -> None:
         """样品归还。"""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QWidget
 
 from src.models.sample import Sample
@@ -39,7 +40,6 @@ class SampleReturnDialog(_BaseDialog):
 
         # ── 归还表单 ──
         # 实际归还日期，默认为今天
-        from PySide6.QtCore import QDate
         self._actual_return_edit = self._add_date_field(
             label="实际归还日期 *",
         )
