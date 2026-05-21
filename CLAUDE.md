@@ -68,7 +68,7 @@ src/
     equipment_view.py, issue_view.py, knowledge_view.py,
     project_view.py, sample_view.py, technician_view.py,
     test_plan_view.py
-    dialogs/            # 对话框（23 编辑/配置对话框）
+    dialogs/            # 对话框（24 编辑/配置对话框）
     widgets/            # 自定义控件
       analysis_widget.py, gantt_widget.py,
       result_matrix.py, task_table.py
