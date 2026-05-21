@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from src.views.dialogs.sample_checkin_dialog import SampleCheckInDialog
 from src.views.dialogs.sample_checkout_dialog import SampleCheckoutDialog
+from src.views.dialogs.sample_return_dialog import SampleReturnDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.sample_edit_dialog import SampleEditDialog
 
@@ -34,6 +35,7 @@ class SampleHandlers:
         v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
         v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
+        v.ledger_tab.btn_return.clicked.connect(self._on_sample_return)
         v.usage_tab.set_refresh_callback(self._refresh_sample_usage)
 
     def _refresh_sample_usage(self) -> None:
@@ -91,6 +93,13 @@ class SampleHandlers:
                 current_filter = self._win.get_project_filter_id()
                 if current_filter is not None and sample_project_id != current_filter:
                     self._win._project_filter_combo.setCurrentIndex(0)
+                # 同步创建入库记录
+                created = ctrl.sample_service.get_by_sn(data["sn"])
+                if created is not None and created.id is not None:
+                    ctrl.sample_service.add_transaction(
+                        sample_id=created.id,
+                        txn_type="check_in",
+                    )
         dlg.deleteLater()
 
     def _on_sample_checkout(self) -> None:
@@ -232,4 +241,45 @@ class SampleHandlers:
                 entity="sample",
                 error_title="更新失败",
             )
+
+    def _on_sample_return(self) -> None:
+        """样品归还。"""
+        ctrl = self._win._ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        sample_id = self._win._sample_view.ledger_tab.table.get_selected_sample_id()
+        if sample_id is None:
+            self._win.toast("请先选中一个样品", "info")
+            return
+        sample = ctrl.sample_service.get(sample_id)
+        if sample is None:
+            return
+        if sample.status != "checked_out":
+            self._win.toast("只能归还已出库样品", "warning")
+            return
+        dlg = SampleReturnDialog(
+            sample=sample,
+            technicians=ctrl.technician_service.list_all() if ctrl.technician_service else [],
+            parent=self._win,
+        )
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                if sample.id is None:
+                    raise ValueError("Sample id is None")
+                # 归还操作包裹在事务中，保证原子性
+                with ctrl.sample_service.transaction():
+                    ctrl.sample_service.add_transaction(
+                        sample_id=sample.id,
+                        txn_type="return",
+                        actual_return=data.get("actual_return"),
+                        operator_id=data.get("operator_id"),
+                        notes=data.get("notes"),
+                    )
+                    ctrl.sample_service.update_status(sample.id, "in_stock")
+                self._win.toast(f"样品 {sample.sn} 归还成功", "success")
+                self._win._ctrl.notify_data_changed("sample")
+            except Exception as e:
+                logger.exception("归还失败")
+                QMessageBox.critical(self._win, "归还失败", f"保存失败: {e}")
         dlg.deleteLater()

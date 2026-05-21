@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QWidget
 
 from src.models.sample import Sample
 from src.views.dialogs.base_dialog import _BaseDialog
+from src.constants import SAMPLE_STATUS_LABELS
 
 
 class SampleCheckoutDialog(_BaseDialog):
@@ -33,7 +34,7 @@ class SampleCheckoutDialog(_BaseDialog):
         self._add_separator()
         self._add_label_field("SN", sample.sn)
         self._add_label_field("规格型号", sample.spec or "—")
-        self._add_label_field("当前状态", sample.status)
+        self._add_label_field("当前状态", SAMPLE_STATUS_LABELS.get(sample.status, sample.status))
         self._add_separator()
 
         # ── 出库表单 ──

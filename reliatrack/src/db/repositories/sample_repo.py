@@ -81,7 +81,7 @@ class SampleRepository(BaseRepository):
     def list_transactions(
         self, filter_sn: str = "", filter_type: str = ""
     ) -> list[dict]:
-        """查询所有出入库记录，JOIN 样品和操作人信息。
+        """查询所有出入库记录，JOIN 样品、操作人和测试任务信息。
 
         Args:
             filter_sn: 可选 SN 模糊搜索。
@@ -93,16 +93,18 @@ class SampleRepository(BaseRepository):
         st_cols = "st.id, st.sample_id, st.type, st.operator_id, st.purpose, st.related_task_id, st.expected_return, st.actual_return, st.notes, st.created_at"
         sql = f"""
             SELECT {st_cols}, s.sn as sample_sn, s.batch_no,
-                   t.name as operator_name
+                   t.name as operator_name,
+                   tk.name as task_name
             FROM sample_transactions st
             LEFT JOIN samples s ON st.sample_id = s.id
             LEFT JOIN technicians t ON st.operator_id = t.id
+            LEFT JOIN test_tasks tk ON st.related_task_id = tk.id
         """
         params: list[object] = []
         conditions: list[str] = []
 
         if filter_sn.strip():
-            conditions.append("s.sn LIKE ? ESCAPE '\\'")
+            conditions.append("s.sn LIKE ? ESCAPE '\\\\'")
             sn_escaped = filter_sn.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             params.append(f"%{sn_escaped}%")
         if filter_type.strip():
@@ -118,7 +120,7 @@ class SampleRepository(BaseRepository):
         cols = [
             "id", "sample_id", "type", "operator_id", "purpose",
             "related_task_id", "expected_return", "actual_return", "notes", "created_at",
-            "sample_sn", "batch_no", "operator_name",
+            "sample_sn", "batch_no", "operator_name", "task_name",
         ]
         return [dict(zip(cols, row)) for row in rows]
 

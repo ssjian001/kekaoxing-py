@@ -99,15 +99,17 @@ SAMPLE_STATUS_LABELS: dict[str, str] = {
     "checked_out": "已出库",
     "returned": "已归还",
     "scrapped": "已报废",
+    "suspended": "已暂停",
 }
 
-SAMPLE_STATUS_OPTIONS = ["在库", "测试中", "已出库", "已归还", "已报废"]
+SAMPLE_STATUS_OPTIONS = ["在库", "测试中", "已出库", "已归还", "已报废", "已暂停"]
 SAMPLE_STATUS_MAP: dict[str, str] = {
     "在库": "in_stock",
     "测试中": "in_test",
     "已出库": "checked_out",
     "已归还": "returned",
     "已报废": "scrapped",
+    "已暂停": "suspended",
 }
 SAMPLE_STATUS_REVERSE: dict[str, str] = {v: k for k, v in SAMPLE_STATUS_MAP.items()}
 

@@ -44,9 +44,11 @@ _LOG_SPECS = [
     ("操作类型", "interactive", 80),
     ("操作人", "interactive", 80),
     ("用途", "interactive", 120),
-    ("关联任务", "interactive", 80),
+    ("关联任务", "interactive", 120),
     ("预计归还", "interactive", 100),
-    ("操作时间", "interactive", 100),
+    ("实际归还", "interactive", 100),
+    ("备注", "interactive", 120),
+    ("操作时间", "interactive", 140),
 ]
 
 # 样品台账列规格
@@ -61,6 +63,9 @@ _LEDGER_SPECS = [
     ("累计测试(h)", "interactive", 80),
     ("创建时间", "interactive", 100),
 ]
+
+
+from src.constants import SAMPLE_STATUS_LABELS
 
 
 class _SampleTable(QTableWidget):
@@ -90,6 +95,12 @@ class _SampleTable(QTableWidget):
         for row_idx, sample in enumerate(samples):
             for col_idx, (_, field_name) in enumerate(self._columns):
                 value = getattr(sample, field_name, "")
+                # 状态列显示中文标签
+                if field_name == "status":
+                    value = SAMPLE_STATUS_LABELS.get(value, str(value))
+                # test_hours 去掉多余的 .0
+                elif field_name == "test_hours" and isinstance(value, float):
+                    value = f"{value:.1f}" if value != int(value) else str(int(value))
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 在第一列存储 sample ID，排序后仍可通过 item 取回
@@ -276,7 +287,7 @@ class _SampleUsageTab(QWidget):
 
     COLUMNS = [
         "样品SN", "批次号", "操作类型", "操作人",
-        "用途", "关联任务", "预计归还", "操作时间",
+        "用途", "关联任务", "预计归还", "实际归还", "备注", "操作时间",
     ]
 
     def __init__(self, parent: QWidget | None = None):
@@ -396,15 +407,27 @@ class _SampleUsageTab(QWidget):
             label = self._TYPE_LABELS.get(txn_type, txn_type)
             color = self._TYPE_COLORS.get(txn_type, TEXT)
 
+            # 关联任务：显示 #id 任务名
+            task_id = record.get("related_task_id")
+            task_name = record.get("task_name")
+            if task_id and task_name:
+                task_display = f"#{task_id} {task_name}"
+            elif task_id:
+                task_display = f"#{task_id}"
+            else:
+                task_display = ""
+
             values = [
-                record.get("sample_sn", ""),
-                record.get("batch_no", ""),
+                record.get("sample_sn") or "—",
+                record.get("batch_no") or "—",
                 label,
-                record.get("operator_name", ""),
-                record.get("purpose", ""),
-                str(record.get("related_task_id", "")) if record.get("related_task_id") else "",
-                record.get("expected_return", ""),
-                record.get("created_at", ""),
+                record.get("operator_name") or "—",
+                record.get("purpose") or "",
+                task_display,
+                record.get("expected_return") or "—",
+                record.get("actual_return") or "—",
+                record.get("notes") or "",
+                (record.get("created_at") or "")[:16],
             ]
 
             for col_idx, val in enumerate(values):
@@ -474,6 +497,12 @@ class _SampleLedgerTab(QWidget):
         self._btn_edit.setMinimumWidth(70)
         self._btn_edit.setToolTip("编辑选中样品")
         toolbar.addWidget(self._btn_edit)
+
+        self._btn_return = QPushButton("归还")
+        self._btn_return.setProperty("class", "action")
+        self._btn_return.setMinimumWidth(70)
+        self._btn_return.setToolTip("归还选中已出库样品")
+        toolbar.addWidget(self._btn_return)
 
         layout.addLayout(toolbar)
 
@@ -550,6 +579,11 @@ class _SampleLedgerTab(QWidget):
     def btn_edit(self) -> QPushButton:
         """编辑按钮。"""
         return self._btn_edit
+
+    @property
+    def btn_return(self) -> QPushButton:
+        """归还按钮。"""
+        return self._btn_return
 
     @property
     def table(self) -> _SampleTable:

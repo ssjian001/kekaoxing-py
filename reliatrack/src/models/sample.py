@@ -25,6 +25,7 @@ class TransactionType(str, Enum):
     """出入库类型。"""
     CHECK_OUT = "check_out"
     CHECK_IN = "check_in"
+    RETURN = "return"
     TRANSFER = "transfer"
 
 
