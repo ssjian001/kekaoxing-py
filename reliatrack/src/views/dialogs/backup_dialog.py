@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -23,6 +24,8 @@ from PySide6.QtWidgets import (
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.services.backup_service import BackupInfo, BackupService
 from src.styles.theme import SUBTEXT0
+
+logger = logging.getLogger(__name__)
 
 
 class BackupDialog(_BaseDialog):
@@ -155,6 +158,7 @@ class BackupDialog(_BaseDialog):
             )
             self._refresh_list()
         except Exception as exc:
+            logger.exception("备份失败")
             QMessageBox.critical(self, "备份失败", str(exc))
 
     def _on_restore_selected(self) -> None:
@@ -205,6 +209,7 @@ class BackupDialog(_BaseDialog):
             )
             self.accept()
         except Exception as exc:
+            logger.exception("恢复备份失败: %s", info.path)
             QMessageBox.critical(self, "恢复失败", str(exc))
 
     def _on_delete_selected(self) -> None:

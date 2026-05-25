@@ -122,6 +122,7 @@ class PlanHandlers:
                     daily_start_limit=config.get("daily_start_limit", 0),
                 )
             except Exception as e:
+                logger.exception("排程失败")
                 self._win.statusBar().showMessage(f"排程失败: {e}", 10000)
                 return
 
@@ -264,6 +265,7 @@ class PlanHandlers:
                 )
                 ctrl.notify_data_changed("task")
             except Exception as e:
+                logger.exception("导入失败")
                 QMessageBox.critical(self._win, "导入失败", str(e))
             finally:
                 QApplication.restoreOverrideCursor()

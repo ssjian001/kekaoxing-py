@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Callable
 
@@ -28,6 +29,8 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
 )
 from src.styles.constants import TABLE_QSS, install_copy_handler
+
+logger = logging.getLogger(__name__)
 
 
 class BatchImportDialog(_BaseDialog):
@@ -224,6 +227,7 @@ class BatchImportDialog(_BaseDialog):
 
             wb.close()
         except Exception as e:
+            logger.exception("读取 Excel 文件失败: %s", self._wb_path)
             QMessageBox.critical(self, "读取失败", f"无法读取 Excel 文件：\n{e}")
             return
 
@@ -353,6 +357,7 @@ class BatchImportDialog(_BaseDialog):
                 else:
                     success_count, skip_count = raw
             except Exception as e:
+                logger.exception("批量导入失败")
                 QMessageBox.critical(self, "导入失败", f"导入过程中出错：\n{e}")
                 self._btn_import.setEnabled(True)
                 self._btn_import.setText("开始导入")

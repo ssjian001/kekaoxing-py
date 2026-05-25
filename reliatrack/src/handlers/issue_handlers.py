@@ -105,6 +105,7 @@ class IssueHandlers:
                 self._win.toast("Issue 已创建", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
+            logger.exception("Issue save failed")
             QMessageBox.critical(self._win, "保存失败", f"Issue 保存失败: {e}")
 
     def _prompt_archive_to_knowledge(self, issue_or_data) -> None:
@@ -151,6 +152,7 @@ class IssueHandlers:
                 self._win.toast("已归档到知识库", "success")
                 self._win._ctrl.notify_data_changed("knowledge")
             except Exception as e:
+                logger.exception("Knowledge archive failed")
                 QMessageBox.warning(self._win, "归档失败", f"知识库归档失败: {e}")
 
     def _handle_issue_deleted(self, issue_id: int) -> None:
@@ -164,6 +166,7 @@ class IssueHandlers:
             self._win.toast(f"Issue #{issue_id} 已删除（可撤销）", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
+            logger.exception("Issue delete failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "删除失败", f"Issue 删除失败: {e}")
 
     def _handle_issue_selected(self, issue_id: int | None) -> None:
@@ -202,6 +205,7 @@ class IssueHandlers:
             self._win.toast(f"FA 步骤已添加", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
+            logger.exception("FA record add failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")
 
     def _handle_edit_fa(self, data: dict) -> None:
@@ -266,6 +270,7 @@ class IssueHandlers:
             self._win.toast("CAPA 措施已添加", "success")
             self._win._ctrl.notify_data_changed("issue")
         except Exception as e:
+            logger.exception("CAPA record add failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
 
     def _handle_edit_capa(self, data: dict) -> None:

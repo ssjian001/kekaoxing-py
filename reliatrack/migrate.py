@@ -66,6 +66,33 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db", dir=new_dir or ".")
     os.close(tmp_fd)
 
+    try:
+        _migrate_core(old, tmp_path, old_db_path, new_db_path, _old_new_db)
+    except BaseException:
+        # 迁移失败：清理临时文件
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        for ext in ("-wal", "-shm"):
+            try:
+                os.unlink(tmp_path + ext)
+            except OSError:
+                pass
+        raise
+    finally:
+        old.close()
+
+
+def _migrate_core(
+    old: apsw.Connection,
+    tmp_path: str,
+    old_db_path: str,
+    new_db_path: str,
+    _old_new_db: str | None,
+) -> None:
+    """迁移核心逻辑，由 migrate() 调用并在失败时清理临时文件。"""
+
     new = apsw.Connection(tmp_path)
 
     # 读取并执行 schema
@@ -202,7 +229,6 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
 
     new.execute("VACUUM")
     new.close()
-    old.close()
 
     # 原子替换：临时文件 → 目标路径
     if _old_new_db:

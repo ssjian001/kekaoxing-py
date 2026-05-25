@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.views.dialogs.backup_dialog import BackupDialog
+
+logger = logging.getLogger(__name__)
 
 
 class BackupHandlers:

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QUrl
@@ -225,6 +228,7 @@ class AttachmentDialog(_BaseDialog):
                 )
                 added += 1
             except Exception as e:
+                logger.exception("添加附件失败: %s", file_path)
                 QMessageBox.warning(self, "添加失败", f"添加文件失败: {file_path}\n{e}")
 
         if added > 0:
@@ -253,6 +257,7 @@ class AttachmentDialog(_BaseDialog):
             self._issue_service.delete_attachment(attachment_id)
             self._load_attachments()
         except Exception as e:
+            logger.exception("删除附件失败: id=%s", attachment_id)
             QMessageBox.warning(self, "删除失败", f"附件删除失败: {e}")
 
     def _on_item_double_clicked(self, item: QListWidgetItem) -> None:

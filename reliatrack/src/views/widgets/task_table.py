@@ -169,6 +169,7 @@ class _TaskTable(QTableWidget):
             menu.addAction(act_batch_complete)
         
         menu.exec(self.viewport().mapToGlobal(pos))
+        menu.deleteLater()
 
     def _batch_status_advance(self, tasks: list[TestTask], new_status: str) -> None:
         """批量推进多个任务的状态。"""

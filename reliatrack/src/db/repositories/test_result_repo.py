@@ -50,12 +50,16 @@ class TestResultRepository(BaseRepository):
         return self._row_to_model(row, cols=_COLS) if row else None
 
     def upsert(self, task_id: int, sample_id: int, **kwargs: object) -> int:
-        """插入或更新某任务+样品的测试结果，返回 id。"""
-        existing = self.get_task_result_for_sample(task_id, sample_id)
-        if existing and existing.id is not None:
-            self.update(existing.id, **kwargs)
-            return existing.id
-        return self.insert(task_id=task_id, sample_id=sample_id, **kwargs)
+        """插入或更新某任务+样品的测试结果，返回 id。
+
+        用事务包裹 SELECT + INSERT/UPDATE 防止并发竞态。
+        """
+        with self.transaction():
+            existing = self.get_task_result_for_sample(task_id, sample_id)
+            if existing and existing.id is not None:
+                self.update(existing.id, **kwargs)
+                return existing.id
+            return self.insert(task_id=task_id, sample_id=sample_id, **kwargs)
 
     def delete_by_task(self, task_id: int) -> int:
         """删除任务的所有测试结果，返回删除行数。"""
