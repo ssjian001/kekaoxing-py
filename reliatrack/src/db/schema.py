@@ -982,7 +982,7 @@ def init_schema(conn: apsw.Connection) -> int:
     # 确保迁移追踪表存在（DDL 自动提交，无需事务）
     conn.execute(
         """CREATE TABLE IF NOT EXISTS schema_version (
-            version     INTEGER NOT NULL,
+            version     INTEGER NOT NULL UNIQUE,
             applied_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         )"""
     )

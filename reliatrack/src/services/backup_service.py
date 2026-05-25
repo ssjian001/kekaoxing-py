@@ -76,10 +76,10 @@ class BackupService:
                 raise RuntimeError("备份文件为空")
             logger.info("备份已创建: %s (%d bytes)",
                         dest_path, dest_path.stat().st_size)
-        except Exception:
+        except Exception as exc:
             if dest_path.exists():
                 dest_path.unlink(missing_ok=True)
-            raise RuntimeError("备份失败") from None
+            raise RuntimeError("备份失败") from exc
         finally:
             dest_conn.close()
 
@@ -187,7 +187,7 @@ class BackupService:
                 "数据库已恢复: %s → %s (schema v%d)",
                 backup_path, current_db, info.schema_version,
             )
-        except Exception:
+        except Exception as exc:
             # 回滚: 恢复安全备份
             if safety_backup and safety_backup.exists():
                 try:
@@ -195,7 +195,9 @@ class BackupService:
                     logger.info("回滚成功，已恢复安全备份")
                 except Exception:
                     logger.exception("回滚失败！请手动恢复: %s", safety_backup)
-            raise RuntimeError("恢复失败") from None
+            raise RuntimeError(
+                f"恢复失败，原数据库安全备份位于: {safety_backup}"
+            ) from exc
 
         # 5. 如果备份 schema 版本低于当前，init_schema 会自动迁移
         # 重新获取连接即可，init_schema 在 AppController 中调用

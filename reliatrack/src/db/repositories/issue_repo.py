@@ -284,28 +284,34 @@ class IssueRepository(BaseRepository):
             logger.warning("附件磁盘文件删除失败: %s", file_path)
 
     def delete_attachments(self, issue_id: int) -> None:
-        """删除 Issue 的所有附件（DB 记录 + 磁盘文件）。"""
+        """删除 Issue 的所有附件（DB 记录 + 磁盘文件）。
+
+        先删 DB 记录再删磁盘文件，避免 SQL 失败时文件已被删除。
+        """
         rows = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] WHERE issue_id = ?",
             (issue_id,),
         ).fetchall()
-        for (fp,) in rows:
-            self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
         )
+        for (fp,) in rows:
+            self._remove_disk_file(fp)
 
     def delete_attachment(self, attachment_id: int) -> None:
-        """删除单条附件（DB 记录 + 磁盘文件）。"""
+        """删除单条附件（DB 记录 + 磁盘文件）。
+
+        先删 DB 记录再删磁盘文件，避免 SQL 失败时文件已被删除。
+        """
         row = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] WHERE id = ?",
             (attachment_id,),
         ).fetchone()
         if row:
+            self._conn.execute(
+                "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
+            )
             self._remove_disk_file(row[0])
-        self._conn.execute(
-            "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
-        )
 
     # ── CAPA 记录 ──
 

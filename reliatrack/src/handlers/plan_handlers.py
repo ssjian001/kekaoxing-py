@@ -794,12 +794,27 @@ class PlanHandlers:
             QApplication.restoreOverrideCursor()
 
     def _on_task_delete(self, task) -> None:
-        """删除测试任务。"""
+        """删除测试任务（不可撤销 — 级联子数据将一并删除）。"""
         ctrl = self._win._ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
+        if task.id is None:
+            QMessageBox.warning(self._win, "删除失败", "Task id is None")
+            return
         name = task.name
-        cmd = ctrl.test_plan_service.create_task_delete_command(task.id)
+        # 构建级联影响描述
+        cascade_msg = self._task_cascade_message(ctrl, task.id)
+        reply = QMessageBox.question(
+            self._win,
+            "确认删除",
+            f"确定要删除任务「{name}」吗？\n"
+            + cascade_msg
+            + "此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
         exec_crud(
             win=self._win,
             action=ctrl.test_plan_service.delete_task,
@@ -807,8 +822,31 @@ class PlanHandlers:
             toast_msg=f"任务「{name}」已删除",
             entity="task",
             error_title="删除失败",
-            undo_command=cmd,
         )
+
+    @staticmethod
+    def _task_cascade_message(ctrl: object, task_id: int) -> str:
+        """生成任务级联删除影响的统计描述。"""
+        parts: list[str] = []
+        try:
+            svc = getattr(ctrl, "test_plan_service", None)
+            if svc:
+                results = svc.get_task_results(task_id)
+                if results:
+                    parts.append(f"{len(results)} 条测试结果")
+        except Exception:
+            pass
+        try:
+            issue_svc = getattr(ctrl, "issue_service", None)
+            if issue_svc and hasattr(issue_svc, "get_by_task"):
+                issues = issue_svc.get_by_task(task_id)
+                if issues:
+                    parts.append(f"{len(issues)} 个 Issue")
+        except Exception:
+            pass
+        if not parts:
+            return ""
+        return f"将同时删除：{'、'.join(parts)}。\n"
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:
         """一键推进任务状态 — 自动填日期和进度。
