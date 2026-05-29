@@ -599,6 +599,40 @@ QWidget[class="container-base"] {{
     background-color: {BG_BASE};
 }}
 
+/* ── 统计卡片容器 ── */
+QFrame[class="stat-card"], QWidget[class="stat-card"] {{
+    background-color: {SURFACE0}; border-radius: 6px;
+}}
+
+/* ── 统计数值(大号) ── */
+QLabel[class="stat-value-lg"] {{
+    color: {FG_PRIMARY}; font-size: 18px; font-weight: bold;
+}}
+
+/* ── 附件列表 ── */
+QListWidget[class="attachment-list"] {{
+    border-radius: 6px; min-height: 280px; font-size: 13px;
+}}
+QListWidget[class="attachment-list"]::item {{
+    padding: 8px 10px; border-bottom: 1px solid {SURFACE0};
+}}
+
+/* ── 结果指示器（色块） ── */
+QLabel[class="result-indicator"] {{
+    border-radius: 6px; min-width: 12px; min-height: 12px; max-width: 12px; max-height: 12px;
+}}
+
+/* ── 警告注释 ── */
+QLabel[class="warning-note"] {{
+    color: {YELLOW}; font-size: 12px; padding: 4px 8px;
+}}
+
+/* ── 摘要栏 ── */
+QLabel[class="summary-bar"] {{
+    color: {SUBTEXT1}; font-size: 11px; padding: 2px 8px;
+    background: {SURFACE0}; border-radius: 4px;
+}}
+
 /* ── 分隔线 ── */
 QLabel[class="separator"] {{
     background-color: {BORDER}; border: none;
@@ -610,6 +644,100 @@ QWidget[class="card-container"] {{
 }}
 QWidget[class="card-container"]:hover {{
     background-color: {BG_HOVER};
+}}
+
+/* ── 步骤标签 ── */
+QLabel[class="step-label"] {{
+    color: {BLUE}; font-weight: bold; font-size: 12px;
+}}
+
+/* ── 警告文字 ── */
+QLabel[class="warning-text"] {{
+    color: {PEACH}; font-size: 12px;
+}}
+
+/* ── 危险强调标题（红色加粗） ── */
+QLabel[class="danger-title"] {{
+    color: {RED}; font-size: 13px; font-weight: bold;
+}}
+
+/* ── 原因文字 ── */
+QLabel[class="cause-text"] {{
+    color: {MAUVE}; font-size: 12px;
+}}
+
+/* ── 原因文字(小号) ── */
+QLabel[class="cause-text-sm"] {{
+    color: {MAUVE}; font-size: 11px;
+}}
+
+/* ── 成功文字 ── */
+QLabel[class="success-text"] {{
+    color: {GREEN}; font-size: 11px;
+}}
+
+/* ── 斜体提示 ── */
+QLabel[class="hint-italic"] {{
+    color: {SUBTEXT0}; font-size: 11px; font-style: italic;
+}}
+
+/* ── 追踪文字 ── */
+QLabel[class="track-text"] {{
+    color: {LAVENDER}; font-size: 11px;
+}}
+
+/* ── 正文(12px) ── */
+QLabel[class="body-text"] {{
+    color: {TEXT}; font-size: 12px;
+}}
+
+/* ── Issue 面板滚动区 ── */
+QScrollArea[class="issue-scroll"] {{
+    background-color: {BASE}; border: 1px solid {SURFACE1};
+    border-radius: 8px;
+}}
+
+/* ── Issue 卡片 ── */
+QFrame[class="issue-card"] {{
+    background-color: {SURFACE0}; border-radius: 8px;
+    border: 1px solid {SURFACE1};
+}}
+
+/* ── 参考信息块 ── */
+QLabel[class="ref-info"] {{
+    color: {SUBTEXT0}; font-size: 11px; padding: 4px 6px;
+    background: {SURFACE0}; border-radius: 4px;
+}}
+
+/* ── 小节标题 ── */
+QLabel[class="section-label"] {{
+    color: {TEXT}; font-size: 12px; font-weight: bold;
+}}
+
+/* ── 分类标签 ── */
+QLabel[class="cat-label"] {{
+    color: {TEXT}; font-size: 12px;
+}}
+
+/* ── 模式标签 ── */
+QLabel[class="mode-label"] {{
+    color: {SUBTEXT0}; font-size: 12px;
+}}
+
+/* ── 输入框文字 ── */
+QLineEdit[class="field-text"] {{
+    color: {TEXT}; font-size: 12px;
+}}
+QLineEdit[class="field-text-sm"] {{
+    color: {TEXT}; font-size: 11px;
+}}
+/* ── 详情文字 ── */
+QLabel[class="detail-text"] {{
+    color: {SUBTEXT0}; font-size: 12px; padding: 4px 0;
+}}
+/* ── 行背景 ── */
+QWidget[class="row-surface"] {{
+    background-color: {SURFACE0}; border-radius: 4px;
 }}
 """
 

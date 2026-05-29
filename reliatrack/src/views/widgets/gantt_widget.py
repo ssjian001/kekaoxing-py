@@ -54,7 +54,7 @@ class _GanttWidget(QWidget):
         self._label_w: int = self._LABEL_W_DEFAULT  # 当前标签列宽度
         self.setMinimumHeight(150)
         self.setMouseTracking(True)  # 悬浮提示需要
-        self.setStyleSheet(f"background-color: {_theme.BASE};")
+        self.setProperty("class", "bg-base")
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
         # 拖拽状态

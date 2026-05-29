@@ -38,7 +38,7 @@ from src.styles.theme import (
     SELECTION_BG,
 )
 import src.styles.theme as _t
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, install_copy_handler
+from src.styles.constants import FONT_FAMILY, install_copy_handler
 from src.models.test_plan import TestTask
 from src.models.common import Equipment
 from src.services.scheduler import (
@@ -230,10 +230,8 @@ class SchedulePreviewDialog(QDialog):
         ]
         for label, value, color in cards:
             card = QFrame()
-            card.setStyleSheet(
-                f"background-color: {_t.SURFACE0}; border-radius: 6px; "
-                f"border-left: 3px solid {color};"
-            )
+            card.setProperty("class", "stat-card")
+            card.setStyleSheet(f"border-left: 3px solid {color};")
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(10, 6, 10, 6)
             card_layout.setSpacing(1)
@@ -241,7 +239,7 @@ class SchedulePreviewDialog(QDialog):
             lbl.setProperty("class", "hint-label")
             card_layout.addWidget(lbl)
             val_lbl = QLabel(value)
-            val_lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 16px; font-weight: bold; border: none;")
+            val_lbl.setProperty("class", "stat-value")
             card_layout.addWidget(val_lbl)
             row.addWidget(card)
 
@@ -528,7 +526,7 @@ class _StartDayEditDialog(QDialog):
 
         # 当前值提示
         current_label = QLabel(f"当前: {_day_label(start_date, current_day)}")
-        current_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
+        current_label.setProperty("class", "subtext")
         layout.addWidget(current_label)
 
         # 输入

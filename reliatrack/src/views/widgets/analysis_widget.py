@@ -9,14 +9,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
-import src.styles.theme as _t
 from src.styles.theme import (
     BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT1,
     GREEN, RED, YELLOW,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_SIZE_SMALL, apply_column_specs
+from src.styles.constants import apply_column_specs
 from src.models.test_plan import TestTask
 
 
@@ -125,7 +124,7 @@ class _AnalysisWidget(QWidget):
 
         if category_stats:
             section_label = QLabel("按类别通过率")
-            section_label.setStyleSheet(f"color: {_t.TEXT}; font-size: {FONT_SIZE_SMALL}px; font-weight: bold;")
+            section_label.setProperty("class", "section-label")
             self._layout.addWidget(section_label)
 
             for cat, stats in category_stats.items():
@@ -133,7 +132,7 @@ class _AnalysisWidget(QWidget):
                 row.setSpacing(8)
                 cat_label = QLabel(cat)
                 cat_label.setFixedWidth(80)
-                cat_label.setStyleSheet(f"color: {_t.TEXT}; font-size: {FONT_SIZE_SMALL}px;")
+                cat_label.setProperty("class", "cat-label")
                 row.addWidget(cat_label)
 
                 rate = stats["pass"] / stats["total"] * 100 if stats["total"] > 0 else 0
@@ -169,7 +168,7 @@ class _AnalysisWidget(QWidget):
 
         if fail_entries:
             section2 = QLabel(f"失效详情 ({len(fail_entries)} 条)")
-            section2.setStyleSheet(f"color: {_t.TEXT}; font-size: {FONT_SIZE_SMALL}px; font-weight: bold;")
+            section2.setProperty("class", "section-label")
             self._layout.addWidget(section2)
 
             tbl = QTableWidget(len(fail_entries), 5)
@@ -208,7 +207,7 @@ class _AnalysisWidget(QWidget):
                 names += f" ... 共 {len(unlinked)} 条"
             warn = QLabel(f"{len(unlinked)} 条失败结果未创建 Issue: {names}")
             warn.setWordWrap(True)
-            warn.setStyleSheet(f"color: {_t.YELLOW}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
+            warn.setProperty("class", "warning-note")
             self._layout.addWidget(warn)
 
         # 没有任何结果

@@ -59,7 +59,7 @@ class _ResultMatrixWidget(QWidget):
         mode_bar = QHBoxLayout()
         mode_bar.setContentsMargins(4, 2, 4, 2)
         mode_label = QLabel("显示模式:")
-        mode_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
+        mode_label.setProperty("class", "mode-label")
         mode_bar.addWidget(mode_label)
         self._mode_group = QButtonGroup(self)
         for i, label in enumerate(self._DISPLAY_MODES):

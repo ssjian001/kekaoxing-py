@@ -186,7 +186,7 @@ class TestPlanView(QWidget):
         self._gantt_scroll.setWidget(self._gantt)
         self._gantt_scroll.setWidgetResizable(True)
         self._gantt_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._gantt_scroll.setStyleSheet(f"background-color: {_t.BASE}; border: none;")
+        self._gantt_scroll.setProperty("class", "scroll-base")
         self._gantt.bind_scroll_area(self._gantt_scroll)
         tab_gantt_layout.addWidget(self._gantt_scroll)
         self._sub_tabs.addTab(tab_gantt, "甘特图")

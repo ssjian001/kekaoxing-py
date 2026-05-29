@@ -30,7 +30,6 @@ from src.styles.theme import (
     TEXT,
     YELLOW,
 )
-import src.styles.theme as _t
 from src.styles.constants import FONT_FAMILY
 
 # ── 利用率条形图 ──────────────────────────────────────────
@@ -146,10 +145,8 @@ class ScheduleReportDialog(QDialog):
         ]
         for label, value, color in cards:
             card = QWidget()
-            card.setStyleSheet(
-                f"background-color: {_t.SURFACE0}; border-radius: 8px; "
-                f"border-left: 3px solid {color};"
-            )
+            card.setProperty("class", "stat-card")
+            card.setStyleSheet(f"border-left: 3px solid {color};")
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(12, 8, 12, 8)
             card_layout.setSpacing(2)
@@ -157,9 +154,7 @@ class ScheduleReportDialog(QDialog):
             lbl.setProperty("class", "hint-label")
             card_layout.addWidget(lbl)
             val_lbl = QLabel(value)
-            val_lbl.setStyleSheet(
-                f"color: {_t.TEXT}; font-size: 18px; font-weight: bold;"
-            )
+            val_lbl.setProperty("class", "stat-value-lg")
             card_layout.addWidget(val_lbl)
             summary_layout.addWidget(card)
 
@@ -176,7 +171,7 @@ class ScheduleReportDialog(QDialog):
 
         # ── 设备利用率图表 ──
         util_label = QLabel("设备利用率")
-        util_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold;")
+        util_label.setProperty("class", "text-bold")
         layout.addWidget(util_label)
 
         self._util_chart = _UtilBarChart()
@@ -188,35 +183,25 @@ class ScheduleReportDialog(QDialog):
         bottlenecks = report.get("bottlenecks", [])
         if bottlenecks:
             bn_label = QLabel("瓶颈设备（利用率 > 80%）")
-            bn_label.setStyleSheet(
-                f"color: {_t.RED}; font-size: 13px; font-weight: bold;"
-            )
+            bn_label.setProperty("class", "danger-title")
             layout.addWidget(bn_label)
             for bn in bottlenecks[:5]:
                 row = QLabel(
                     f"  {bn.get('name', '?')} — {bn.get('utilization', 0):.0f}%"
                 )
-                row.setStyleSheet(
-                    f"color: {_t.TEXT}; font-size: 12px; "
-                    f"background-color: {_t.SURFACE0}; border-radius: 4px; "
-                    f"padding: 4px 8px;"
-                )
+                row.setProperty("class", "row-surface")
                 layout.addWidget(row)
 
         # ── 建议 ──
         suggestions = report.get("suggestions", [])
         if suggestions:
             sug_label = QLabel("排程建议")
-            sug_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold;")
+            sug_label.setProperty("class", "text-bold")
             layout.addWidget(sug_label)
             for sug in suggestions:
                 row = QLabel(sug)
                 row.setWordWrap(True)
-                row.setStyleSheet(
-                    f"color: {_t.SUBTEXT0}; font-size: 12px; "
-                    f"background-color: {_t.SURFACE0}; border-radius: 4px; "
-                    f"padding: 6px 8px;"
-                )
+                row.setProperty("class", "row-surface")
                 layout.addWidget(row)
 
         layout.addStretch()

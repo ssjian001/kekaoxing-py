@@ -109,22 +109,7 @@ class AttachmentDialog(_BaseDialog):
         # 附件列表
         self._list_widget = QListWidget()
         self._list_widget.setAlternatingRowColors(True)
-        self._list_widget.setStyleSheet(f"""
-            QListWidget {{
-                background-color: {_t.BASE}; color: {_t.TEXT};
-                border: 1px solid {_t.SURFACE1}; border-radius: 6px;
-                min-height: 280px; font-size: 13px;
-            }}
-            QListWidget::item {{
-                padding: 8px 10px; border-bottom: 1px solid {_t.SURFACE0};
-            }}
-            QListWidget::item:alternate {{
-                background-color: {_t.MANTLE};
-            }}
-            QListWidget::item:selected {{
-                background-color: {SURFACE1};
-            }}
-        """)
+        self._list_widget.setProperty("class", "attachment-list")
         self._list_widget.itemDoubleClicked.connect(self._on_item_double_clicked)
         self._form.addRow(self._list_widget)
 

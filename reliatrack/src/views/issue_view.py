@@ -27,13 +27,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QEvent, Qt, Signal
 
-import src.styles.theme as _t
-from src.styles.theme import (
-    CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, PINK, OVERLAY0,
-    SELECTION_BG,
-)
+from src.styles.theme import TEXT, SUBTEXT0, BLUE, GREEN, YELLOW, RED
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
@@ -225,12 +219,7 @@ class _FAPanel(QScrollArea):
         self._layout = QVBoxLayout(self._container)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setWidget(self._container)
-        self.setStyleSheet(f"""
-            QScrollArea {{
-                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
-                border-radius: 8px;
-            }}
-        """)
+        self.setProperty("class", "issue-scroll")
 
     def set_fa_records(self, records: list[FARecord]) -> None:
         self._records = records
@@ -250,19 +239,14 @@ class _FAPanel(QScrollArea):
 
         for i, rec in enumerate(records):
             card = QFrame()
-            card.setStyleSheet(f"""
-                QFrame {{
-                    background-color: {_t.SURFACE0}; border-radius: 8px;
-                    border: 1px solid {_t.SURFACE1};
-                }}
-            """)
+            card.setProperty("class", "issue-card")
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(10, 8, 10, 8)
 
             # 标题行
             header = QHBoxLayout()
             step_label = QLabel(f"Step {rec.step_no}")
-            step_label.setStyleSheet(f"color: {_t.BLUE}; font-weight: bold; font-size: 12px;")
+            step_label.setProperty("class", "step-label")
             header.addWidget(step_label)
 
             method_label = QLabel(rec.method or "")
@@ -294,21 +278,21 @@ class _FAPanel(QScrollArea):
             # 描述
             desc = QLabel(rec.description or "")
             desc.setWordWrap(True)
-            desc.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
+            desc.setProperty("class", "body-text")
             card_layout.addWidget(desc)
 
             # 发现
             if rec.findings:
                 findings = QLabel(f"发现: {rec.findings}")
                 findings.setWordWrap(True)
-                findings.setStyleSheet(f"color: {_t.PEACH}; font-size: 12px;")
+                findings.setProperty("class", "warning-text")
                 card_layout.addWidget(findings)
 
             # 可能原因（鱼骨图分类）
             if rec.possible_cause:
                 cause = QLabel(f"可能原因: {rec.possible_cause}")
                 cause.setWordWrap(True)
-                cause.setStyleSheet(f"color: {_t.MAUVE}; font-size: 12px;")
+                cause.setProperty("class", "cause-text")
                 card_layout.addWidget(cause)
 
             # 原因分类 + 确认状态
@@ -322,6 +306,7 @@ class _FAPanel(QScrollArea):
             meta_parts.append(f"状态: {confirmed_label}")
             meta_text = "  |  ".join(meta_parts)
             meta = QLabel(meta_text)
+            # 动态颜色（confirmed_color 取决于运行时状态），保留内联
             meta.setStyleSheet(f"color: {confirmed_color}; font-size: 11px;")
             card_layout.addWidget(meta)
 
@@ -468,7 +453,7 @@ class IssueView(QWidget):
         fa_col = QVBoxLayout()
         fa_col.setSpacing(4)
         self._fa_label = QLabel("FA 失效分析")
-        self._fa_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
+        self._fa_label.setProperty("class", "panel-header")
         fa_col.addWidget(self._fa_label)
         self._fa_panel = _FAPanel()
         self._fa_panel.fa_edit_requested.connect(self._open_edit_fa_dialog)
@@ -479,7 +464,7 @@ class IssueView(QWidget):
         capa_col = QVBoxLayout()
         capa_col.setSpacing(4)
         self._capa_label = QLabel("CAPA 纠正预防措施")
-        self._capa_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
+        self._capa_label.setProperty("class", "panel-header")
         capa_col.addWidget(self._capa_label)
         self._capa_panel = _CAPAPanel()
         capa_col.addWidget(self._capa_panel, stretch=1)
@@ -785,12 +770,7 @@ class _CAPAPanel(QScrollArea):
         self._layout = QVBoxLayout(self._container)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setWidget(self._container)
-        self.setStyleSheet(f"""
-            QScrollArea {{
-                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
-                border-radius: 8px;
-            }}
-        """)
+        self.setProperty("class", "issue-scroll")
         # 初始占位
         label = QLabel("选择一个 Issue 查看 CAPA 记录")
         label.setProperty("class", "subtext")
@@ -814,12 +794,7 @@ class _CAPAPanel(QScrollArea):
 
         for rec in records:
             card = QFrame()
-            card.setStyleSheet(f"""
-                QFrame {{
-                    background-color: {_t.SURFACE0}; border-radius: 8px;
-                    border: 1px solid {_t.SURFACE1};
-                }}
-            """)
+            card.setProperty("class", "issue-card")
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(10, 8, 10, 8)
 
@@ -829,6 +804,7 @@ class _CAPAPanel(QScrollArea):
             )
             header = QHBoxLayout()
             status_lbl = QLabel(status_label_text)
+            # 动态颜色（status_color 取决于运行时状态），保留内联
             status_lbl.setStyleSheet(f"color: {status_color}; font-weight: bold; font-size: 12px;")
             header.addWidget(status_lbl)
             if rec.due_date:
@@ -855,7 +831,7 @@ class _CAPAPanel(QScrollArea):
             # 措施内容
             action_lbl = QLabel(rec.action or "")
             action_lbl.setWordWrap(True)
-            action_lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
+            action_lbl.setProperty("class", "body-text")
             card_layout.addWidget(action_lbl)
 
             # 负责人
@@ -870,10 +846,10 @@ class _CAPAPanel(QScrollArea):
             if root_cause:
                 rc_lbl = QLabel(f"根因分析: {root_cause}")
                 rc_lbl.setWordWrap(True)
-                rc_lbl.setStyleSheet(f"color: {_t.MAUVE}; font-size: 11px;")
+                rc_lbl.setProperty("class", "cause-text-sm")
             else:
                 rc_lbl = QLabel("根因分析: 待填写")
-                rc_lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; font-style: italic;")
+                rc_lbl.setProperty("class", "hint-italic")
             card_layout.addWidget(rc_lbl)
 
             # PDCA 字段：效果验证
@@ -881,10 +857,10 @@ class _CAPAPanel(QScrollArea):
             if effectiveness:
                 eff_lbl = QLabel(f"效果验证: {effectiveness}")
                 eff_lbl.setWordWrap(True)
-                eff_lbl.setStyleSheet(f"color: {_t.GREEN}; font-size: 11px;")
+                eff_lbl.setProperty("class", "success-text")
             else:
                 eff_lbl = QLabel("效果验证: 待填写")
-                eff_lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; font-style: italic;")
+                eff_lbl.setProperty("class", "hint-italic")
             card_layout.addWidget(eff_lbl)
 
             # PDCA 字段：改善追踪
@@ -892,17 +868,17 @@ class _CAPAPanel(QScrollArea):
             if follow_up:
                 fu_lbl = QLabel(f"改善追踪: {follow_up}")
                 fu_lbl.setWordWrap(True)
-                fu_lbl.setStyleSheet(f"color: {_t.LAVENDER}; font-size: 11px;")
+                fu_lbl.setProperty("class", "track-text")
             else:
                 fu_lbl = QLabel("改善追踪: 待填写")
-                fu_lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; font-style: italic;")
+                fu_lbl.setProperty("class", "hint-italic")
             card_layout.addWidget(fu_lbl)
 
             # 验证结果
             if rec.verification_result:
                 v_lbl = QLabel(f"验证: {rec.verification_result}")
                 v_lbl.setWordWrap(True)
-                v_lbl.setStyleSheet(f"color: {_t.GREEN}; font-size: 11px;")
+                v_lbl.setProperty("class", "success-text")
                 card_layout.addWidget(v_lbl)
 
             self._layout.addWidget(card)
@@ -959,10 +935,7 @@ class _CAPADialog(_BaseDialog):
             ref_text = "\n".join(parts)
             ref_label = QLabel(ref_text)
             ref_label.setWordWrap(True)
-            ref_label.setStyleSheet(
-                f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 4px 6px; "
-                f"background: {_t.SURFACE0}; border-radius: 4px;"
-            )
+            ref_label.setProperty("class", "ref-info")
             self._form.addRow("关联 Issue", ref_label)
 
         self._action_edit = self._add_text_area(

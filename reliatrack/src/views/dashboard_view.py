@@ -94,13 +94,10 @@ class _StatCard(QFrame):
 
         # 标签
         self._title_label = QLabel(title)
-        self._title_label.setStyleSheet(
-            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
-            f"border: none; background: transparent;"
-        )
+        self._title_label.setProperty("class", "subtext")  # 主题迁移: class=subtext
         lay.addWidget(self._title_label)
 
-        # 大数字
+        # 大数字 — DYNAMIC: color 是运行时参数，无法走 class 选择器
         self._val = QLabel(value)
         self._val.setStyleSheet(
             f"color: {color}; font-size: 22px; font-weight: bold;"
@@ -151,10 +148,7 @@ class _AuxCard(QFrame):
         self._title_label.setProperty("class", "hint-label")
         vl.addWidget(self._title_label)
         self._value_label = QLabel(value)
-        self._value_label.setStyleSheet(
-            f"color: {DASH_PRIMARY}; font-size: 16px; font-weight: bold;"
-            f"border: none; background: transparent;"
-        )
+        self._value_label.setProperty("class", "stat-value")  # 主题迁移: class=stat-value
         vl.addWidget(self._value_label)
     def set_value(self, text: str) -> None:
         self._value_label.setText(text)
@@ -179,10 +173,7 @@ class _TestProgressCard(QFrame):
         left.setSpacing(4)
 
         self._title_label = QLabel("测试进度")
-        self._title_label.setStyleSheet(
-            f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
-            f"border: none; background: transparent;"
-        )
+        self._title_label.setProperty("class", "text-bold")  # 主题迁移: class=text-bold
         left.addWidget(self._title_label)
 
         self._stacked = _StackedBar()
@@ -195,9 +186,10 @@ class _TestProgressCard(QFrame):
         for label, color in [("PASS", DASH_SUCCESS), ("FAIL", DASH_DANGER),
                              ("进行中", DASH_WARNING), ("待开始", DASH_NEUTRAL)]:
             dot = QLabel("●")
+            # DYNAMIC: color 是循环变量，无法走 class 选择器
             dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {_theme.SUBTEXT0}; font-size: 10px; border: none; background: transparent;")
+            lbl.setProperty("class", "hint-label")  # 主题迁移: class=hint-label
             self._legend_labels.append(lbl)
             legend.addWidget(dot)
             legend.addWidget(lbl)
@@ -641,34 +633,19 @@ class DashboardView(QWidget):
         self._setup_ui()
     def _on_theme_changed(self) -> None:
         """Refresh QSS for all widgets on theme change."""
-        # Scroll area & container
-        self._scroll.setStyleSheet(
-            f"QScrollArea {{ background-color: {_theme.BASE}; border: none; }}"
-            f"QScrollBar:vertical {{ width: 8px; background: transparent; }}"
-            f"QScrollBar::handle:vertical {{ background: {_theme.SURFACE1}; border-radius: 4px; min-height: 30px; }}"
-            f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}"
-        )
+        # Scroll area — 主题迁移: class=scroll-base（全局 QSS 自动刷新）
+        self._scroll.setProperty("class", "scroll-base")
         self._container.setProperty("class", "bg-base")
 
-        # Header labels
-        self._filter_label.setStyleSheet(
-            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
-            f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
-            f"border-radius: 8px; padding: 4px 12px;"
-        )
-        self._time_label.setStyleSheet(
-            f"color: {_theme.SUBTEXT0}; font-size: 11px;"
-            f"background: transparent; border: none;"
-        )
+        # Header labels — 主题迁移: class=filter-chip / hint-label
+        self._filter_label.setProperty("class", "filter-chip")
+        self._time_label.setProperty("class", "hint-label")
 
-        # Section titles
+        # Section titles — 主题迁移: class=text-bold
         for lbl in self._section_titles:
-            lbl.setStyleSheet(
-                f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
-                f"background: transparent; border: none;"
-            )
+            lbl.setProperty("class", "text-bold")
 
-        # Ring card frames
+        # Ring card frames — card_qss 保留（不同 radius）
         for card in self._ring_cards:
             card.setStyleSheet(card_qss(16))
 
@@ -680,12 +657,7 @@ class DashboardView(QWidget):
 
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
-        self._scroll.setStyleSheet(
-            f"QScrollArea {{ background-color: {_theme.BASE}; border: none; }}"
-            f"QScrollBar:vertical {{ width: 8px; background: transparent; }}"
-            f"QScrollBar::handle:vertical {{ background: {_theme.SURFACE1}; border-radius: 4px; min-height: 30px; }}"
-            f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}"
-        )
+        self._scroll.setProperty("class", "scroll-base")  # 主题迁移: class=scroll-base
 
         self._container = QWidget()
         self._container.setProperty("class", "bg-base")
@@ -697,19 +669,12 @@ class DashboardView(QWidget):
         header = QHBoxLayout()
         header.setSpacing(8)
         self._filter_label = QLabel("全部项目")
-        self._filter_label.setStyleSheet(
-            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
-            f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
-            f"border-radius: 8px; padding: 4px 12px;"
-        )
+        self._filter_label.setProperty("class", "filter-chip")  # 主题迁移: class=filter-chip
         header.addWidget(self._filter_label)
         header.addStretch()
 
         self._time_label = QLabel("")
-        self._time_label.setStyleSheet(
-            f"color: {_theme.SUBTEXT0}; font-size: 11px;"
-            f"background: transparent; border: none;"
-        )
+        self._time_label.setProperty("class", "hint-label")  # 主题迁移: class=hint-label
         header.addWidget(self._time_label)
         root.addLayout(header)
 
@@ -798,10 +763,7 @@ class DashboardView(QWidget):
     @staticmethod
     def _mk_section_title(text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(
-            f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
-            f"background: transparent; border: none;"
-        )
+        lbl.setProperty("class", "text-bold")  # 主题迁移: class=text-bold
         return lbl
 
     # ── 刷新 ──────────────────────────────────────────────────
@@ -855,6 +817,7 @@ class DashboardView(QWidget):
         self._ring_capa.setPercent(cr if cr is not None else 0)
 
     def _update_filter(self, project_name: str | None, plan_name: str | None) -> None:
+        # DYNAMIC: 根据筛选状态切换两种视觉风格（默认 vs 激活），无法走单一 class 选择器
         if project_name and plan_name:
             text = f"{project_name} / {plan_name}"
             ss = (

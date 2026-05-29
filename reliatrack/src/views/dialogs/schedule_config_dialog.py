@@ -166,9 +166,7 @@ class ScheduleConfigDialog(_BaseDialog):
         self._add_separator()
 
         header = QLabel("设备并行数上限")
-        header.setStyleSheet(
-            f"color: {_t.BLUE}; font-size: 12px; font-weight: bold;"
-        )
+        header.setProperty("class", "step-label")
         self._form.addRow(header)
 
         for eq in equipment_list:
