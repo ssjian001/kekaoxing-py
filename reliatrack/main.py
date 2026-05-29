@@ -170,31 +170,31 @@ class MainWindow(QMainWindow):
 
         # 全局项目筛选器 — 在 tab_widget 之前插入
         filter_bar = QHBoxLayout()
-        filter_label = QLabel("项目筛选:")
-        filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+        self._filter_label = QLabel("项目筛选:")
+        self._filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._project_filter_combo = QComboBox()
         self._project_filter_combo.setMinimumWidth(200)
         self._project_filter_combo.setStyleSheet(filter_combo_qss())
         self._project_filter_combo.addItem("全部项目", None)  # data=None means all
 
         # 计划筛选 combo — 跟随项目联动
-        plan_filter_label = QLabel("计划:")
-        plan_filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+        self._plan_filter_label = QLabel("计划:")
+        self._plan_filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._plan_filter_combo = QComboBox()
         self._plan_filter_combo.setMinimumWidth(180)
         self._plan_filter_combo.setStyleSheet(filter_combo_qss())
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)  # 默认禁用，选项目后启用
 
-        filter_bar.addWidget(filter_label)
+        filter_bar.addWidget(self._filter_label)
         filter_bar.addWidget(self._project_filter_combo)
-        filter_bar.addWidget(plan_filter_label)
+        filter_bar.addWidget(self._plan_filter_label)
         filter_bar.addWidget(self._plan_filter_combo)
         filter_bar.addStretch()
-        filter_layout = QWidget()
-        filter_layout.setLayout(filter_bar)
-        filter_layout.setStyleSheet(f"background-color: {BASE}; padding: 6px 20px; border-radius: 8px;")
-        layout.insertWidget(0, filter_layout)
+        self._filter_layout = QWidget()
+        self._filter_layout.setLayout(filter_bar)
+        self._filter_layout.setStyleSheet(f"background-color: {BASE}; padding: 6px 20px; border-radius: 8px;")
+        layout.insertWidget(0, self._filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
 
@@ -223,6 +223,16 @@ class MainWindow(QMainWindow):
         set_theme(name)
         QApplication.instance().setStyleSheet(get_stylesheet())
         QSettings().setValue("ReliaTrack/theme", name)
+        self._refresh_inline_styles()
+
+    def _refresh_inline_styles(self) -> None:
+        """主题切换后刷新所有使用内联样式的控件。"""
+        import src.styles.theme as _t
+        self._filter_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
+        self._plan_filter_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
+        self._filter_layout.setStyleSheet(f"background-color: {_t.BASE}; padding: 6px 20px; border-radius: 8px;")
+        self._project_filter_combo.setStyleSheet(_t.filter_combo_qss())
+        self._plan_filter_combo.setStyleSheet(_t.filter_combo_qss())
 
     def _on_theme_changed(self, name: str) -> None:
         """外部主题切换时同步菜单 checkbox 状态。"""

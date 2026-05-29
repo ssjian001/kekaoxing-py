@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
+import src.styles.theme as _t
 from src.styles.theme import (
     BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT1,
@@ -64,6 +65,16 @@ class _AnalysisWidget(QWidget):
         # 初始占位
         ph = self._make_placeholder("选择测试计划后显示失效模式分析")
         self._layout.addWidget(ph)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新所有子表格的 TABLE_QSS。"""
+        for tbl in self.findChildren(QTableWidget):
+            tbl.setStyleSheet(TABLE_QSS.format(
+                bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
+                alt_row=_t.SURFACE0, header_bg=_t.SURFACE0, header_text=_t.TEXT,
+                font_size=13, selection_bg=_t.SELECTION_BG,
+            ))
 
     # ── 工厂方法（每次 refresh 创建新实例） ──────────────
 

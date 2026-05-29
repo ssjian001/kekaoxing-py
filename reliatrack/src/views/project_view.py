@@ -19,6 +19,7 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor
 
 from src.models.project import Project
+import src.styles.theme as _t
 from src.styles.theme import (
     SURFACE1,
     OVERLAY0,
@@ -62,6 +63,16 @@ class ProjectView(QWidget):
         super().__init__(parent)
         self._all_projects: list[Project] = []
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新表格样式。"""
+        self._table.setStyleSheet(TABLE_QSS.format(
+            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
+            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
+            font_size=13, selection_bg=_t.SELECTION_BG,
+        ))
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     # ── UI 构建 ────────────────────────────────────────────────
 

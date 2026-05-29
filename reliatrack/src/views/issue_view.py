@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QAction
 
+import src.styles.theme as _t
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
@@ -83,6 +84,14 @@ class _IssueTable(QTableWidget):
         self.doubleClicked.connect(self._on_double_click)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self.setStyleSheet(TABLE_QSS.format(
+            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
+            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
+            font_size=13, selection_bg=_t.SELECTION_BG,
+        ))
 
     # ── 数据 ───────────────────────────────────────────────────
 
@@ -238,6 +247,15 @@ class _FAPanel(QScrollArea):
                 border-radius: 8px;
             }}
         """)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
+                border-radius: 8px;
+            }}
+        """)
 
     def set_fa_records(self, records: list[FARecord]) -> None:
         self._records = records
@@ -365,6 +383,18 @@ class IssueView(QWidget):
         self._technician_list: list = []  # 技术员列表，由 refresh_handlers 注入
         self._all_issues: list[Issue] = []  # 筛选前的完整列表缓存
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时重新应用所有内联样式。"""
+        self._stats_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px;")
+        self._fa_label.setStyleSheet(
+            f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        self._capa_label.setStyleSheet(
+            f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     # ── 公共方法：上下文数据注入 ────────────────────────────────────
 
@@ -804,6 +834,15 @@ class _CAPAPanel(QScrollArea):
         label = QLabel("选择一个 Issue 查看 CAPA 记录")
         label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
         self._layout.addWidget(label)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
+                border-radius: 8px;
+            }}
+        """)
 
     def set_capa_records(self, records: list) -> None:
         """刷新 CAPA 记录卡片。"""

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QAction, QColor
 
+import src.styles.theme as _t
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
@@ -85,6 +86,15 @@ class _TaskTable(QTableWidget):
         self._empty_label.setParent(self)
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self.setStyleSheet(TABLE_QSS.format(
+            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
+            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
+            font_size=13, selection_bg=_t.SELECTION_BG,
+        ))
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     def set_reference_data(
         self,
