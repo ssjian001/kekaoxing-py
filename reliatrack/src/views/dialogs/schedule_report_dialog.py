@@ -30,6 +30,7 @@ from src.styles.theme import (
     TEXT,
     YELLOW,
 )
+import src.styles.theme as _t
 from src.styles.constants import FONT_FAMILY
 
 # ── 利用率条形图 ──────────────────────────────────────────

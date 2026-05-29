@@ -37,6 +37,7 @@ from src.styles.theme import (
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
     SELECTION_BG,
 )
+import src.styles.theme as _t
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, install_copy_handler
 from src.models.test_plan import TestTask
 from src.models.common import Equipment

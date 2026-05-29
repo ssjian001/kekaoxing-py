@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 
 from src.styles.theme import SURFACE1
+import src.styles.theme as _t
 
 
 class _BaseDialog(QDialog):

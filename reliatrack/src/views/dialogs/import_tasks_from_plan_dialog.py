@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from src.models.test_plan import TestTask
 from src.styles.theme import SUBTEXT0, LAVENDER
+import src.styles.theme as _t
 from src.styles.constants import install_copy_handler
 from src.views.dialogs.base_dialog import _BaseDialog
 

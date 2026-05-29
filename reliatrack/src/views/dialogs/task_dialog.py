@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from PySide6.QtWidgets import QLineEdit
 
 from src.styles.theme import SUBTEXT0
+import src.styles.theme as _t
 
 from PySide6.QtWidgets import (
     QFileDialog,

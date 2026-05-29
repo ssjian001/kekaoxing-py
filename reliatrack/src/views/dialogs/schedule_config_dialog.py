@@ -30,6 +30,7 @@ from src.styles.theme import (
     SUBTEXT1,
     BLUE,
 )
+import src.styles.theme as _t
 from src.views.dialogs.base_dialog import _BaseDialog
 
 

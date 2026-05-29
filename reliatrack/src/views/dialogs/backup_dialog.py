@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.services.backup_service import BackupInfo, BackupService
 from src.styles.theme import SUBTEXT0
+import src.styles.theme as _t
 
 logger = logging.getLogger(__name__)
 

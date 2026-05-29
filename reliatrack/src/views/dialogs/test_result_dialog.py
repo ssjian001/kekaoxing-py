@@ -28,6 +28,7 @@ from src.styles.theme import (
     GREEN, GREEN_DARK, RED, YELLOW, BLUE,
     SELECTION_BG,
 )
+import src.styles.theme as _t
 
 
 class _ResultRow(QFrame):

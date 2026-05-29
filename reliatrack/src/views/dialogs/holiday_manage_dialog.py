@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.styles.theme import TEXT, SUBTEXT0, SURFACE0, SURFACE1, BASE, SELECTION_BG
+import src.styles.theme as _t
 from src.styles.constants import install_copy_handler
 from src.views.dialogs.base_dialog import _BaseDialog
 
