@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QMessageBox,
     QAbstractItemView,
+    QDialog,
 )
 from PySide6.QtCore import Qt
 
