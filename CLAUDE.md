@@ -113,6 +113,8 @@ bd dolt push          # 同步
 - **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`
 - **`QSS ::indicator` 与 QProxyStyle 不能共存** → 必须从 theme.py 删除所有 `::indicator` 块让 ProxyStyle 全权绘制
 - **QToolButton class 选择器**：`QPushButton[class="action"]` 不匹配 QToolButton，需逗号分隔同时写两个
+- **theme.py `globals().update()` 注入色板变量**：Pyright 对 `_build_qss()` f-string 中的变量报 "not defined" 误报，忽略即可
+- **Catppuccin Latte CRUST ≠ `#dc8a78`**（那是 ROSE），正确值 `#DCE0E8`（最浅灰）
 
 ## 启动工作流（每次会话开始必做）
 

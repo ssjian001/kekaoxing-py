@@ -163,6 +163,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **色值**: BASE=#F7F8FC(浅灰背景), MANTLE=#FFFFFF(白底卡片), SURFACE0=#F1F5F9(输入框), TEXT=#1E293B(深色文字)
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
+- **QSS 类选择器（2026-05-29 重构）**: `theme.py` 的 `_build_qss()` 定义 46+ 业务类选择器，所有静态样式用 `setProperty("class", "xxx")` 引用；剩余 27 处内联 `setStyleSheet` 均为动态/数据驱动色值（不可迁移）。迁移范围: 8 dialogs + 3 widgets + 2 views。**新增选择器必加 `_build_qss()` 底部，禁止用内联 `_t.X` 常量**
 
 ### Schema（v21）
 
@@ -213,7 +214,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
 - `tests/test_scheduler_limit.py` — 22 项排程引擎（daily_start_limit、starts 增减、周末/节假日跳过、compress、locked tasks）
 - `tests/test_sample_and_analysis.py` — 15 项样品管理增强（suspended 常量、TransactionType.RETURN、check_in/return transaction、JOIN task_name、失效详情 Issue 匹配）
-- 共 **304 个 pytest 测试**，全量通过（另有 test_boundary 15 项 CI-only 跳过）
+- 共 **339 个 pytest 测试**（304 通过 + 35 自动生成 session 测试），全量通过（另有 test_boundary 15 项 CI-only 跳过）
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
