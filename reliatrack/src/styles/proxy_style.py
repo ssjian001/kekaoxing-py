@@ -6,7 +6,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QProxyStyle, QStyle
 
-from src.styles.theme import ACCENT, MANTLE, SURFACE2
+import src.styles.theme as _theme
 
 
 class CheckboxProxyStyle(QProxyStyle):
@@ -43,12 +43,12 @@ class CheckboxProxyStyle(QProxyStyle):
         if checked or no_change:
             # 蓝色圆角背景
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QBrush(QColor(ACCENT)))
+            painter.setBrush(QBrush(QColor(_theme.ACCENT)))
             painter.drawRoundedRect(r, 3, 3)
 
             if checked:
                 # 白色 ✓ — 粗笔宽 + 圆角端点
-                pen = QPen(QColor(MANTLE))
+                pen = QPen(QColor(_theme.MANTLE))
                 pen.setWidthF(3.5)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -63,7 +63,7 @@ class CheckboxProxyStyle(QProxyStyle):
                 painter.drawPath(path)
             elif no_change:
                 # 白色 — (半选)
-                pen = QPen(QColor(MANTLE))
+                pen = QPen(QColor(_theme.MANTLE))
                 pen.setWidthF(3.0)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 painter.setPen(pen)
@@ -75,7 +75,7 @@ class CheckboxProxyStyle(QProxyStyle):
                 )
         else:
             # 未选中 — 透明填充 + 可见边框
-            border_color = QColor(ACCENT) if hover else QColor(SURFACE2)
+            border_color = QColor(_theme.ACCENT) if hover else QColor(_theme.SURFACE2)
             painter.setPen(QPen(border_color, 1.6))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRoundedRect(r, 4, 4)
@@ -93,14 +93,14 @@ class CheckboxProxyStyle(QProxyStyle):
         checked = bool(option.state & QStyle.StateFlag.State_On)
         hover = bool(option.state & QStyle.StateFlag.State_MouseOver)
 
-        border_color = QColor(ACCENT) if (checked or hover) else QColor(SURFACE2)
+        border_color = QColor(_theme.ACCENT) if (checked or hover) else QColor(_theme.SURFACE2)
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(r)
 
         if checked:
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QBrush(QColor(ACCENT)))
+            painter.setBrush(QBrush(QColor(_theme.ACCENT)))
             dot_r = QRectF(0, 0, r.width() * 0.45, r.height() * 0.45)
             dot_r.moveCenter(r.center())
             painter.drawEllipse(dot_r)
