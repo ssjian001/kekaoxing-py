@@ -53,7 +53,7 @@ class _TaskTable(QTableWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        apply_column_specs(self, _TASK_SPECS)
+        apply_column_specs(self, _TASK_SPECS, "task_table")
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)

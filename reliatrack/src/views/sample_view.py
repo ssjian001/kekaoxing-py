@@ -72,12 +72,12 @@ class _SampleTable(QTableWidget):
     """样品数据表格基类。"""
 
     def __init__(self, columns: list[tuple[str, str]], specs: list[tuple[str, str, int]],
-                 parent: QWidget | None = None):
+                 table_key: str = "", parent: QWidget | None = None):
         """columns: [(header_text, field_name)], specs: [(header, mode, width)]"""
         super().__init__(parent)
         self._columns = columns
         self._data: list[Sample] = []
-        apply_column_specs(self, specs)
+        apply_column_specs(self, specs, table_key)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
@@ -172,7 +172,7 @@ class _SamplePoolTab(QWidget):
 
         layout.addLayout(toolbar)
 
-        self._table = _SampleTable(self.COLUMNS, _POOL_SPECS)
+        self._table = _SampleTable(self.COLUMNS, _POOL_SPECS, "sample_pool")
         layout.addWidget(self._table)
 
         # 右键菜单
@@ -330,7 +330,7 @@ class _SampleUsageTab(QWidget):
 
         # ── 表格 ──
         self._table = QTableWidget()
-        apply_column_specs(self._table, _LOG_SPECS)
+        apply_column_specs(self._table, _LOG_SPECS, "sample_log")
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
@@ -506,7 +506,7 @@ class _SampleLedgerTab(QWidget):
 
         layout.addLayout(toolbar)
 
-        self._table = _SampleTable(self.COLUMNS, _LEDGER_SPECS)
+        self._table = _SampleTable(self.COLUMNS, _LEDGER_SPECS, "sample_ledger")
         layout.addWidget(self._table)
 
         # 右键菜单

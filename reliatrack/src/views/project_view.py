@@ -109,7 +109,7 @@ class ProjectView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        apply_column_specs(self._table, _PROJECT_SPECS)
+        apply_column_specs(self._table, _PROJECT_SPECS, "project_table")
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

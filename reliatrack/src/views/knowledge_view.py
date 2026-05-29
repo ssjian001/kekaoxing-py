@@ -98,7 +98,7 @@ class KnowledgeView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        apply_column_specs(self._table, _KNOWLEDGE_SPECS)
+        apply_column_specs(self._table, _KNOWLEDGE_SPECS, "knowledge_table")
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

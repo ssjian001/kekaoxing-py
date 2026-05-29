@@ -125,7 +125,7 @@ class EquipmentView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        apply_column_specs(self._table, _EQUIPMENT_SPECS)
+        apply_column_specs(self._table, _EQUIPMENT_SPECS, "equipment_table")
 
         # 默认隐藏低频列，减少 800px 窗口水平溢出
         # 列索引对应 _EQUIPMENT_SPECS: 5=制造商, 6=精度/不确定度, 9=间隔(月)

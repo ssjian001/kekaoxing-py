@@ -111,7 +111,7 @@ class TechnicianView(QWidget):
 
         # 表格
         self._table = QTableWidget()
-        apply_column_specs(self._table, _TECHNICIAN_SPECS)
+        apply_column_specs(self._table, _TECHNICIAN_SPECS, "technician_table")
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

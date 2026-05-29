@@ -62,7 +62,7 @@ class _IssueTable(QTableWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        apply_column_specs(self, _ISSUE_SPECS)
+        apply_column_specs(self, _ISSUE_SPECS, "issue_table")
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
