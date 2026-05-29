@@ -1,5 +1,191 @@
-{
-  "version": 1,
-  "project": "kekaoxing-py",
-  "tasks": []
-}
+[
+  {
+    "id": "F001",
+    "name": "项目管理",
+    "description": "项目的CRUD和状态管理",
+    "status": "done",
+    "dependencies": [],
+    "priority": "high"
+  },
+  {
+    "id": "F002",
+    "name": "样品管理",
+    "description": "测试样品的录入、关联和追踪",
+    "status": "done",
+    "dependencies": [
+      "F001"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "F003",
+    "name": "设备管理",
+    "description": "测试设备的台账和校准管理",
+    "status": "done",
+    "dependencies": [],
+    "priority": "medium"
+  },
+  {
+    "id": "F004",
+    "name": "测试计划",
+    "description": "测试计划的创建、配置和分配",
+    "status": "done",
+    "dependencies": [
+      "F001",
+      "F002"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "F005",
+    "name": "测试任务",
+    "description": "测试任务的生成、调度和状态流转",
+    "status": "done",
+    "dependencies": [
+      "F004"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "F006",
+    "name": "测试结果",
+    "description": "测试结果的录入、判定和汇总",
+    "status": "done",
+    "dependencies": [
+      "F005"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "F007",
+    "name": "问题跟踪",
+    "description": "不合格项和问题的记录与追踪",
+    "status": "done",
+    "dependencies": [
+      "F006"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "F008",
+    "name": "知识库",
+    "description": "经验教训和知识条目的管理",
+    "status": "done",
+    "dependencies": [],
+    "priority": "medium"
+  },
+  {
+    "id": "F009",
+    "name": "技术人员",
+    "description": "测试人员的资质和技能管理",
+    "status": "done",
+    "dependencies": [],
+    "priority": "medium"
+  },
+  {
+    "id": "F010",
+    "name": "仪表盘",
+    "description": "数据统计和可视化看板",
+    "status": "done",
+    "dependencies": [
+      "F001",
+      "F005",
+      "F006"
+    ],
+    "priority": "medium"
+  },
+  {
+    "id": "F011",
+    "name": "甘特图",
+    "description": "测试计划的甘特图可视化",
+    "status": "done",
+    "dependencies": [
+      "F004"
+    ],
+    "priority": "medium"
+  },
+  {
+    "id": "F012",
+    "name": "导出功能",
+    "description": "PDF/Word/Excel报告导出",
+    "status": "done",
+    "dependencies": [
+      "F006"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "F013",
+    "name": "批量导入",
+    "description": "Excel批量导入数据",
+    "status": "done",
+    "dependencies": [
+      "F001",
+      "F002"
+    ],
+    "priority": "medium"
+  },
+  {
+    "id": "F014",
+    "name": "调度器",
+    "description": "自动任务调度和提醒",
+    "status": "done",
+    "dependencies": [
+      "F005"
+    ],
+    "priority": "medium"
+  },
+  {
+    "id": "F015",
+    "name": "撤销管理",
+    "description": "操作撤销/重做支持",
+    "status": "done",
+    "dependencies": [],
+    "priority": "low"
+  },
+  {
+    "id": "F016",
+    "name": "列宽持久化",
+    "description": "表格列宽的保存和恢复",
+    "status": "done",
+    "dependencies": [],
+    "priority": "low"
+  },
+  {
+    "id": "F017",
+    "name": "Toast通知",
+    "description": "操作反馈的Toast通知组件",
+    "status": "done",
+    "dependencies": [],
+    "priority": "low"
+  },
+  {
+    "id": "F018",
+    "name": "暗色主题",
+    "description": "Catppuccin Mocha 暗色主题，支持菜单切换+QSettings持久化。仪表盘/Gantt图表语义色保持亮色不变；PDF导出保持白底。",
+    "status": "planned",
+    "dependencies": [],
+    "priority": "low",
+    "design_decisions": [
+      "图表语义色(CHART_COLORS/DASH_PRIMARY等)保持亮色，不跟随主题",
+      "PDF导出保持白底，不跟随主题",
+      "持久化用数据库settings表，由MainWindow层写，theme.py纯查询"
+    ],
+    "subtasks": [
+      "P1: theme.py双色板+signal+cache修复",
+      "P2: DB持久化+MainWindow菜单Toggle",
+      "P3: 内联样式清理+硬编码修正+rgba alpha",
+      "P4: 11个表格+Dashboard卡片theme_changed刷新",
+      "P5: Dashboard背景色QPainter适配+阴影修正",
+      "P6: Gantt背景色QPainter适配",
+      "P7: 全量走查+边界调试"
+    ],
+    "known_gaps": [
+      "Dashboard QPainter(仅改背景色~8处，语义色不变)",
+      "Gantt QPainter(仅改背景色~12处，语义色不变)",
+      "11个表格TABLE_QSS.format()需订阅signal刷新",
+      "add_shadow暗色下阴影不可见需修正",
+      "4处rgba alpha暗色下需增大"
+    ]
+  }
+]
