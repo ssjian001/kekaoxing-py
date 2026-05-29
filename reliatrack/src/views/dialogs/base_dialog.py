@@ -94,10 +94,19 @@ class _BaseDialog(QDialog):
     # ── 键盘事件 ─────────────────────────────────────────────────
 
     def keyPressEvent(self, event):
-        """Enter/Return 提交对话框，但 QTextEdit 中保留换行行为。"""
+        """Enter/Return 提交对话框，但 QTextEdit/QComboBox 中保留默认行为。"""
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             focus = self.focusWidget()
             if isinstance(focus, QTextEdit):
+                super().keyPressEvent(event)
+                return
+            # QComboBox 打开状态或聚焦时，Enter 应操作下拉框而非关闭弹窗
+            if isinstance(focus, QComboBox):
+                super().keyPressEvent(event)
+                return
+            # 下拉弹框打开时 focus 可能在 popup 的 QListView 上
+            parent = focus.parent() if focus else None
+            if isinstance(parent, QComboBox):
                 super().keyPressEvent(event)
                 return
             self._btn_ok.click()
