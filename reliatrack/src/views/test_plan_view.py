@@ -24,10 +24,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
+import src.styles.theme as _t
 from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
+    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
+    SELECTION_BG,
 )
 from src.styles.constants import VIEW_MARGINS, FONT_FAMILY
 from src.constants import TASK_STATUS_LABELS
@@ -46,6 +48,20 @@ class TestPlanView(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新内联样式。"""
+        if hasattr(self, "_summary_label"):
+            self._summary_label.setStyleSheet(
+                f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px; "
+                f"background: {_t.SURFACE0}; border-radius: 4px;"
+            )
+        if hasattr(self, "_gantt"):
+            self._gantt.setStyleSheet(
+                f"background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1}; border-radius: 6px;"
+            )
+            self._gantt_scroll.setStyleSheet(f"background-color: {_t.BASE}; border: none;")
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)

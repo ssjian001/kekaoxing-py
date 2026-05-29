@@ -37,7 +37,7 @@ from src.styles.theme import (
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, install_copy_handler
 from src.models.test_plan import TestTask
 from src.models.common import Equipment
 from src.services.scheduler import (
@@ -135,8 +135,6 @@ class SchedulePreviewDialog(QDialog):
         self._setup_ui()
         self._fill_table()
 
-    # ── UI 构建 ──
-
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
@@ -177,12 +175,6 @@ class SchedulePreviewDialog(QDialog):
         self._table.setColumnWidth(self._COL_DELTA, 70)
         self._table.setColumnWidth(self._COL_CONFLICT, 120)
 
-        self._table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         self._table.setMinimumHeight(250)
         # 双击编辑
         self._table.cellDoubleClicked.connect(self._on_cell_double_click)

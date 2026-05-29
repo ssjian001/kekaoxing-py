@@ -9,13 +9,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
+import src.styles.theme as _t
 from src.styles.theme import (
     BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT1,
     GREEN, RED, YELLOW,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_SIZE_SMALL, TABLE_QSS, apply_column_specs
+from src.styles.constants import FONT_SIZE_SMALL, apply_column_specs
 from src.models.test_plan import TestTask
 
 
@@ -172,12 +173,6 @@ class _AnalysisWidget(QWidget):
             self._layout.addWidget(section2)
 
             tbl = QTableWidget(len(fail_entries), 5)
-            tbl.setStyleSheet(TABLE_QSS.format(
-                bg=BASE, text=TEXT, gridline=SURFACE1,
-                alt_row=SURFACE0, header_bg=SURFACE0, header_text=TEXT,
-                font_size=13,
-                            selection_bg=SELECTION_BG,
-                        ))
             tbl.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
             tbl.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             tbl.verticalHeader().setVisible(False)

@@ -24,12 +24,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from src.views.dialogs.base_dialog import _BaseDialog
+import src.styles.theme as _t
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
     SELECTION_BG,
 )
-from src.styles.constants import TABLE_QSS, install_copy_handler
+from src.styles.constants import install_copy_handler
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +92,6 @@ class BatchImportDialog(_BaseDialog):
 
         self._build_ui()
 
-    # ── UI 构建 ──────────────────────────────────────────────────
-
     def _build_ui(self) -> None:
         # 1. 文件选择区
         file_bar = QHBoxLayout()
@@ -151,12 +150,6 @@ class BatchImportDialog(_BaseDialog):
         self._preview_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-        self._preview_table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         install_copy_handler(self._preview_table)
         self._root.addWidget(self._preview_table, 1)
 

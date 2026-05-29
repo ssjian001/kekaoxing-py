@@ -93,12 +93,12 @@ class _StatCard(QFrame):
         lay.setSpacing(2)
 
         # 标签
-        t = QLabel(title)
-        t.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 12px; font-weight: 500;"
+        self._title_label = QLabel(title)
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
             f"border: none; background: transparent;"
         )
-        lay.addWidget(t)
+        lay.addWidget(self._title_label)
 
         # 大数字
         self._val = QLabel(value)
@@ -108,8 +108,21 @@ class _StatCard(QFrame):
         )
         lay.addWidget(self._val)
 
+        _theme.theme_host.theme_changed.connect(self._refresh_theme_styles)
+
     def set_value(self, text: str) -> None:
         self._val.setText(text)
+
+    def _refresh_theme_styles(self) -> None:
+        self.setStyleSheet(card_qss(16))
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
+            f"border: none; background: transparent;"
+        )
+        self._val.setStyleSheet(
+            f"color: {self._color}; font-size: 22px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
 
     def enterEvent(self, event):  # noqa: N802
         shadow = self.graphicsEffect()
@@ -147,20 +160,31 @@ class _AuxCard(QFrame):
         vl = QVBoxLayout(self)
         vl.setContentsMargins(12, 6, 12, 6)
         vl.setSpacing(0)
-        t = QLabel(title)
-        t.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 11px; border: none; background: transparent;"
+        self._title_label = QLabel(title)
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px; border: none; background: transparent;"
         )
-        vl.addWidget(t)
+        vl.addWidget(self._title_label)
         self._value_label = QLabel(value)
         self._value_label.setStyleSheet(
             f"color: {DASH_PRIMARY}; font-size: 16px; font-weight: bold;"
             f"border: none; background: transparent;"
         )
         vl.addWidget(self._value_label)
+        _theme.theme_host.theme_changed.connect(self._refresh_theme_styles)
 
     def set_value(self, text: str) -> None:
         self._value_label.setText(text)
+
+    def _refresh_theme_styles(self) -> None:
+        self.setStyleSheet(card_qss(10))
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px; border: none; background: transparent;"
+        )
+        self._value_label.setStyleSheet(
+            f"color: {DASH_PRIMARY}; font-size: 16px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -197,12 +221,14 @@ class _TestProgressCard(QFrame):
         # 图例行
         legend = QHBoxLayout()
         legend.setSpacing(12)
+        self._legend_labels: list[QLabel] = []
         for label, color in [("PASS", DASH_SUCCESS), ("FAIL", DASH_DANGER),
                              ("进行中", DASH_WARNING), ("待开始", DASH_NEUTRAL)]:
             dot = QLabel("●")
             dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
             lbl = QLabel(label)
             lbl.setStyleSheet(f"color: {_theme.SUBTEXT0}; font-size: 10px; border: none; background: transparent;")
+            self._legend_labels.append(lbl)
             legend.addWidget(dot)
             legend.addWidget(lbl)
         legend.addStretch()
@@ -218,6 +244,8 @@ class _TestProgressCard(QFrame):
         right.addWidget(self._aux2)
         lay.addLayout(right, 2)
 
+        _theme.theme_host.theme_changed.connect(self._refresh_theme_styles)
+
     @staticmethod
     def _mk_aux(title: str, value: str) -> _AuxCard:
         """创建紧凑辅助指标。"""
@@ -232,6 +260,19 @@ class _TestProgressCard(QFrame):
         self._stacked.set_data(total, pass_count, fail_count, in_progress)
         self._aux1.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
         self._aux2.set_value(last_update or "—")
+
+    def _refresh_theme_styles(self) -> None:
+        self.setStyleSheet(card_qss(16))
+        self._title_label.setStyleSheet(
+            f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
+        for lbl in self._legend_labels:
+            lbl.setStyleSheet(
+                f"color: {_theme.SUBTEXT0}; font-size: 10px; border: none; background: transparent;"
+            )
+        self._aux1._refresh_theme_styles()
+        self._aux2._refresh_theme_styles()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -263,7 +304,7 @@ class _DonutChart(QFrame):
 
         if not self._data:
             # 空态提示
-            p.setPen(QColor(DASH_NEUTRAL))
+            p.setPen(QColor(_theme.SUBTEXT0))
             p.setFont(_FONT_MD)
             p.drawText(QRectF(0, 0, w, h),
                        Qt.AlignmentFlag.AlignCenter, "暂无数据")
@@ -290,7 +331,7 @@ class _DonutChart(QFrame):
 
         # 底环
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(_alpha(DASH_NEUTRAL, 34))
+        p.setBrush(_alpha(_theme.SUBTEXT0, 34))
         p.drawEllipse(rect)
 
         # 扇形（白色间隔线模拟圆角感）
@@ -314,7 +355,7 @@ class _DonutChart(QFrame):
         p.drawText(QRectF(cx - 36, cy - 16, 72, 32),
                    Qt.AlignmentFlag.AlignCenter, str(total))
         p.setFont(_FONT_SM)
-        p.setPen(QColor(DASH_NEUTRAL))
+        p.setPen(QColor(_theme.SUBTEXT0))
         p.drawText(QRectF(cx - 30, cy + 16, 60, 16),
                    Qt.AlignmentFlag.AlignCenter, "总任务数")
 
@@ -339,7 +380,7 @@ class _DonutChart(QFrame):
                        label)
 
             # 数值 + 百分比
-            p.setPen(QColor(DASH_NEUTRAL))
+            p.setPen(QColor(_theme.SUBTEXT0))
             val_w = 80
             p.drawText(QRectF(legend_x + 100, ly - 1, val_w, 16),
                        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
@@ -394,7 +435,7 @@ class _StackedBar(QWidget):
         ]
         pending = self._total - self._pass - self._fail - self._progress
         if pending > 0:
-            segments.append((pending, DASH_NEUTRAL))
+            segments.append((pending, _theme.SUBTEXT0))
 
         for count, color in segments:
             if count <= 0:
@@ -448,7 +489,7 @@ class _HProgressBar(QWidget):
         bar_y = (h - self._bar_h) / 2
         bg_rect = QRectF(0, bar_y, w, self._bar_h)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(_alpha(DASH_NEUTRAL, 51))
+        p.setBrush(_alpha(_theme.SUBTEXT0, 51))
         p.drawRoundedRect(bg_rect, self._bar_h / 2, self._bar_h / 2)
 
         # 进度条（渐变）
@@ -497,7 +538,7 @@ class _ProgressRing(QWidget):
         rect = QRectF(cx - r, cy - r, r * 2, r * 2)
 
         # 背景弧
-        p.setPen(QPen(_alpha(DASH_NEUTRAL, 51), self._ARC_W,
+        p.setPen(QPen(_alpha(_theme.SUBTEXT0, 51), self._ARC_W,
                       Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         p.drawArc(rect, 0, 360 * 16)
 
@@ -514,7 +555,7 @@ class _ProgressRing(QWidget):
                    Qt.AlignmentFlag.AlignCenter, f"{self._pct:.0f}%")
 
         # 底部标签
-        p.setPen(QColor(DASH_NEUTRAL))
+        p.setPen(QColor(_theme.SUBTEXT0))
         p.setFont(QFont(_FAMILY, 9))
         p.drawText(QRectF(0, h - 16, w, 14),
                    Qt.AlignmentFlag.AlignCenter, self._label)
@@ -558,9 +599,9 @@ class _SeverityBar(QWidget):
         if total == 0:
             # 空态
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(_alpha(DASH_NEUTRAL, 34))
+            p.setBrush(_alpha(_theme.SUBTEXT0, 34))
             p.drawRoundedRect(QRectF(bar_x, bar_y, w, bar_h), bar_h / 2, bar_h / 2)
-            p.setPen(QColor(DASH_NEUTRAL))
+            p.setPen(QColor(_theme.SUBTEXT0))
             p.setFont(_FONT_SM)
             p.drawText(QRectF(0, bar_y + bar_h + 4, w, 16),
                        Qt.AlignmentFlag.AlignCenter, "暂无数据")
@@ -575,7 +616,7 @@ class _SeverityBar(QWidget):
             if val <= 0:
                 continue
             seg_w = usable_w * val / total
-            color_str = ISSUE_SEVERITY_COLORS.get(sev, DASH_NEUTRAL)
+            color_str = ISSUE_SEVERITY_COLORS.get(sev, _theme.SUBTEXT0)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(color_str))
             p.drawRoundedRect(QRectF(x, bar_y, seg_w, bar_h), bar_h / 2, bar_h / 2)
@@ -588,7 +629,7 @@ class _SeverityBar(QWidget):
         for sev in self._SEVERITY_ORDER:
             val = self._data.get(sev, 0)
             label = self._SEVERITY_LABELS.get(sev, sev)
-            color_str = ISSUE_SEVERITY_COLORS.get(sev, DASH_NEUTRAL)
+            color_str = ISSUE_SEVERITY_COLORS.get(sev, _theme.SUBTEXT0)
 
             # 色点
             p.setPen(Qt.PenStyle.NoPen)
@@ -658,7 +699,8 @@ class DashboardView(QWidget):
         _theme.theme_host.theme_changed.connect(self._on_theme_changed)
 
     def _on_theme_changed(self) -> None:
-        """Refresh QSS for scroll area and container on theme change."""
+        """Refresh QSS for all widgets on theme change."""
+        # Scroll area & container
         self._scroll.setStyleSheet(
             f"QScrollArea {{ background-color: {_theme.BASE}; border: none; }}"
             f"QScrollBar:vertical {{ width: 8px; background: transparent; }}"
@@ -666,6 +708,28 @@ class DashboardView(QWidget):
             f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}"
         )
         self._container.setStyleSheet(f"background-color: {_theme.BASE};")
+
+        # Header labels
+        self._filter_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
+            f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
+            f"border-radius: 8px; padding: 4px 12px;"
+        )
+        self._time_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px;"
+            f"background: transparent; border: none;"
+        )
+
+        # Section titles
+        for lbl in self._section_titles:
+            lbl.setStyleSheet(
+                f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
+                f"background: transparent; border: none;"
+            )
+
+        # Ring card frames
+        for card in self._ring_cards:
+            card.setStyleSheet(card_qss(16))
 
     def _setup_ui(self) -> None:
         # 外层 QScrollArea 包裹，兜底小窗口
@@ -693,7 +757,7 @@ class DashboardView(QWidget):
         header.setSpacing(8)
         self._filter_label = QLabel("全部项目")
         self._filter_label.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 12px; font-weight: 500;"
+            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
             f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
             f"border-radius: 8px; padding: 4px 12px;"
         )
@@ -702,7 +766,7 @@ class DashboardView(QWidget):
 
         self._time_label = QLabel("")
         self._time_label.setStyleSheet(
-            f"color: {DASH_NEUTRAL}; font-size: 11px;"
+            f"color: {_theme.SUBTEXT0}; font-size: 11px;"
             f"background: transparent; border: none;"
         )
         header.addWidget(self._time_label)
@@ -719,7 +783,10 @@ class DashboardView(QWidget):
         # ═══ 左栏: 测试执行概览 ═══
         left = QVBoxLayout()
         left.setSpacing(12)
-        left.addWidget(self._mk_section_title("测试执行概览"))
+        self._section_titles: list[QLabel] = []
+        sec1 = self._mk_section_title("测试执行概览")
+        self._section_titles.append(sec1)
+        left.addWidget(sec1)
 
         # KPI 4 卡（已完成 / 进行中 / 待开始 / Fail）
         ga = QHBoxLayout()
@@ -743,7 +810,9 @@ class DashboardView(QWidget):
         # ═══ 右栏: 质量与问题概览 ═══
         right = QVBoxLayout()
         right.setSpacing(12)
-        right.addWidget(self._mk_section_title("质量与问题概览"))
+        sec2 = self._mk_section_title("质量与问题概览")
+        self._section_titles.append(sec2)
+        right.addWidget(sec2)
 
         # KPI 3 卡
         gb = QHBoxLayout()
@@ -763,6 +832,7 @@ class DashboardView(QWidget):
         self._ring_issue = _ProgressRing("Issue 闭环率", DASH_PRIMARY)
         self._ring_capa  = _ProgressRing("CAPA 完成率", DASH_SUCCESS)
 
+        self._ring_cards: list[QFrame] = []
         for ring_widget in (self._ring_issue, self._ring_capa):
             card = QFrame()
             card.setStyleSheet(card_qss(16))
@@ -772,6 +842,7 @@ class DashboardView(QWidget):
             cl.setContentsMargins(16, 12, 16, 12)
             cl.addWidget(ring_widget)
             ring_row.addWidget(card, 1)
+            self._ring_cards.append(card)
         right.addLayout(ring_row)
 
         right.addStretch()
@@ -860,7 +931,7 @@ class DashboardView(QWidget):
         else:
             text = "全部项目"
             ss = (
-                f"color: {DASH_NEUTRAL}; font-size: 12px; font-weight: 500;"
+                f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
                 f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
                 f"border-radius: 8px; padding: 4px 12px;"
             )

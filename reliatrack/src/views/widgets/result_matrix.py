@@ -10,13 +10,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
+import src.styles.theme as _t
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
     GREEN, RED, YELLOW, BLUE,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, install_copy_handler
 
 from src.models.test_plan import TestTask
 
@@ -84,12 +85,6 @@ class _ResultMatrixWidget(QWidget):
         self._layout.addLayout(mode_bar)
 
         self._table = QTableWidget()
-        self._table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self._table.setAlternatingRowColors(False)
@@ -112,6 +107,31 @@ class _ResultMatrixWidget(QWidget):
         self._last_tasks: list[TestTask] = []
         self._last_results: list = []
         self._last_sample_map: dict[int, str] = {}
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新表格和控件样式。"""
+        self._table.setStyleSheet("""
+            QTableWidget::item {
+                padding: 0px;
+            }
+        """)
+        self._summary_label.setStyleSheet(
+            f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;"
+        )
+        self._mode_checked_qss = (
+            f"QPushButton {{ background-color: {_t.SURFACE1}; color: {_t.TEXT}; "
+            f"border: 1px solid {_t.BLUE}; border-radius: 4px; "
+            f"padding: 1px 8px; font-size: 12px; }}"
+        )
+        self._mode_unchecked_qss = (
+            f"QPushButton {{ background-color: transparent; color: {_t.SUBTEXT0}; "
+            f"border: 1px solid {_t.SURFACE1}; border-radius: 4px; "
+            f"padding: 1px 8px; font-size: 12px; }}"
+        )
+        btn_id = self._mode_group.checkedId()
+        for i, btn in enumerate(self._mode_group.buttons()):
+            btn.setStyleSheet(self._mode_checked_qss if i == btn_id else self._mode_unchecked_qss)
 
     def _make_stat_item(self, text: str, fg: str, bg_alpha: int = 30) -> QTableWidgetItem:
         """创建统计单元格。"""

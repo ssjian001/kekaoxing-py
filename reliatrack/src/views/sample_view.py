@@ -20,12 +20,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QEvent, Qt
 
+import src.styles.theme as _t
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
     SELECTION_BG,
 )
-from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
+from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
 
 # 样品池列规格
@@ -83,12 +84,6 @@ class _SampleTable(QTableWidget):
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(True)
         self.verticalHeader().setVisible(False)
-        self.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-            selection_bg=SELECTION_BG,
-        ))
 
     def set_samples(self, samples: list[Sample]) -> None:
         self._data = samples
@@ -338,12 +333,6 @@ class _SampleUsageTab(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
-        self._table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-            selection_bg=SELECTION_BG,
-        ))
         layout.addWidget(self._table)
 
         # 空状态提示
@@ -360,6 +349,10 @@ class _SampleUsageTab(QWidget):
 
         # 外部刷新回调（由 main.py 连接）
         self._refresh_callback: object | None = None
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     # ── 公开方法 ──
 

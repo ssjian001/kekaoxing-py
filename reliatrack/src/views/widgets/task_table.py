@@ -17,13 +17,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QAction, QColor
 
+import src.styles.theme as _t
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
     GREEN, RED, PEACH,
     SELECTION_BG,
 )
-from src.styles.constants import TABLE_QSS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
+from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
@@ -66,12 +67,6 @@ class _TaskTable(QTableWidget):
         self._on_edit_callback: Callable[[TestTask], None] | None = None
         self._on_delete_callback: Callable[[TestTask], None] | None = None
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
-        self.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -85,6 +80,10 @@ class _TaskTable(QTableWidget):
         self._empty_label.setParent(self)
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     def set_reference_data(
         self,

@@ -19,6 +19,7 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor
 
 from src.models.project import Project
+import src.styles.theme as _t
 from src.styles.theme import (
     SURFACE1,
     OVERLAY0,
@@ -26,7 +27,7 @@ from src.styles.theme import (
     TEXT,
     SELECTION_BG,
 )
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
+from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
 from src.constants import PROJECT_STATUS_LABELS
 
 _PROJECT_SPECS = [
@@ -62,6 +63,11 @@ class ProjectView(QWidget):
         super().__init__(parent)
         self._all_projects: list[Project] = []
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新表格样式。"""
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     # ── UI 构建 ────────────────────────────────────────────────
 
@@ -117,12 +123,6 @@ class ProjectView(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
-        self._table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-            selection_bg=SELECTION_BG,
-        ))
 
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)
