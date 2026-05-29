@@ -42,7 +42,7 @@ class HolidayManageDialog(_BaseDialog):
         # ── 年份选择 ──
         year_row = QHBoxLayout()
         year_label = QLabel("年份：")
-        year_label.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
+        year_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
         year_row.addWidget(year_label)
 
         self._year_spin = QSpinBox()
@@ -73,7 +73,7 @@ class HolidayManageDialog(_BaseDialog):
         # ── 添加区 ──
         add_row = QHBoxLayout()
         add_label = QLabel("添加自定义节假日：")
-        add_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 12px;")
+        add_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 12px;")
         add_row.addWidget(add_label)
         self._form.addRow(add_row)
 

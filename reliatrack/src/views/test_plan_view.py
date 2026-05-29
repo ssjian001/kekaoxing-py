@@ -153,8 +153,8 @@ class TestPlanView(QWidget):
         # 今日工作摘要
         self._summary_label = QLabel()
         self._summary_label.setStyleSheet(
-            f"color: {SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
-            f" background: {SURFACE0}; border-radius: 4px;"
+            f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
+            f" background: {_t.SURFACE0}; border-radius: 4px;"
         )
         self._summary_label.setWordWrap(True)
         layout.addWidget(self._summary_label)
@@ -187,20 +187,20 @@ class TestPlanView(QWidget):
         gantt_mode_group.addButton(self._gantt_mode_actual, 1)
         gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
         mode_label = QLabel("显示模式:")
-        mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        mode_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px;")
         gantt_mode_bar.addWidget(mode_label)
         gantt_mode_bar.addWidget(self._gantt_mode_planned)
         gantt_mode_bar.addWidget(self._gantt_mode_actual)
         gantt_mode_bar.addStretch()
         tab_gantt_layout.addLayout(gantt_mode_bar)
         self._gantt = _GanttWidget()
-        self._gantt.setStyleSheet(f"background-color: {BASE}; border: 1px solid {SURFACE1}; border-radius: 6px;")
+        self._gantt.setStyleSheet(f"background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1}; border-radius: 6px;")
         self._gantt.task_moved.connect(self.task_moved.emit)
         self._gantt_scroll = QScrollArea()
         self._gantt_scroll.setWidget(self._gantt)
         self._gantt_scroll.setWidgetResizable(True)
         self._gantt_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._gantt_scroll.setStyleSheet(f"background-color: {BASE}; border: none;")
+        self._gantt_scroll.setStyleSheet(f"background-color: {_t.BASE}; border: none;")
         self._gantt.bind_scroll_area(self._gantt_scroll)
         tab_gantt_layout.addWidget(self._gantt_scroll)
         self._sub_tabs.addTab(tab_gantt, "甘特图")

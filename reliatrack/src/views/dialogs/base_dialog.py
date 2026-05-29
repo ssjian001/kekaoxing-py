@@ -185,7 +185,7 @@ class _BaseDialog(QDialog):
         line = QLabel()
         line.setFixedHeight(1)
         line.setObjectName("_separator")
-        line.setStyleSheet(f"background-color: {SURFACE1}; border: none;")
+        line.setStyleSheet(f"background-color: {_t.SURFACE1}; border: none;")
         self._form.addRow(line)
 
     def _add_text_area(

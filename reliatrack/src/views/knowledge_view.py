@@ -20,6 +20,7 @@ from PySide6.QtGui import QColor
 
 from src.models.knowledge import KnowledgeEntry
 from src.styles.constants import KNOWLEDGE_CATEGORY_COLORS, VIEW_MARGINS, apply_column_specs
+import src.styles.theme as _theme
 from src.styles.theme import OVERLAY0, TEXT, SURFACE1
 
 _KNOWLEDGE_SPECS = [
@@ -86,7 +87,7 @@ class KnowledgeView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setStyleSheet(f"color: {SURFACE1};")
+        sep.setStyleSheet(f"color: {_theme.SURFACE1};")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新增")
@@ -121,7 +122,7 @@ class KnowledgeView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无知识库条目")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_theme.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()

@@ -96,7 +96,7 @@ class BatchImportDialog(_BaseDialog):
         # 1. 文件选择区
         file_bar = QHBoxLayout()
         self._lbl_file = QLabel("未选择文件")
-        self._lbl_file.setStyleSheet(f"color: {SUBTEXT0}; font-size: 13px;")
+        self._lbl_file.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 13px;")
         file_bar.addWidget(self._lbl_file, 1)
 
         self._btn_browse = QPushButton("选择 Excel 文件")
@@ -112,7 +112,7 @@ class BatchImportDialog(_BaseDialog):
         mapping_layout.setSpacing(8)
 
         lbl_map = QLabel("列映射 — 请为每个字段选择对应的 Excel 列")
-        lbl_map.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+        lbl_map.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
         mapping_layout.addWidget(lbl_map)
 
         self._combos: dict[str, QComboBox] = {}
@@ -121,9 +121,9 @@ class BatchImportDialog(_BaseDialog):
             required = " *" if field_name in self._required_fields else ""
             lbl = QLabel(f"{display_name}{required}:")
             lbl.setFixedWidth(140)
-            lbl.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
+            lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
             if required:
-                lbl.setStyleSheet(f"color: {PEACH}; font-size: 13px;")
+                lbl.setStyleSheet(f"color: {_t.PEACH}; font-size: 13px;")
             row.addWidget(lbl)
 
             combo = QComboBox()
@@ -138,7 +138,7 @@ class BatchImportDialog(_BaseDialog):
 
         # 3. 预览表格
         lbl_preview = QLabel("数据预览（前 20 行）")
-        lbl_preview.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+        lbl_preview.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
         self._root.addWidget(lbl_preview)
 
         self._preview_table = QTableWidget()
@@ -190,7 +190,7 @@ class BatchImportDialog(_BaseDialog):
             return
         self._wb_path = Path(path)
         self._lbl_file.setText(f"{self._wb_path.name}")
-        self._lbl_file.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
+        self._lbl_file.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
         self._load_preview()
 
     def _load_preview(self) -> None:
@@ -385,13 +385,13 @@ class BatchImportDialog(_BaseDialog):
         )
         if skip_count > 0:
             self._lbl_result.setStyleSheet(
-                f"color: {YELLOW}; font-size: 12px; padding: 8px; "
-                f"background-color: {SURFACE0}; border-radius: 6px;"
+                f"color: {_t.YELLOW}; font-size: 12px; padding: 8px; "
+                f"background-color: {_t.SURFACE0}; border-radius: 6px;"
             )
         else:
             self._lbl_result.setStyleSheet(
-                f"color: {GREEN}; font-size: 12px; padding: 8px; "
-                f"background-color: {SURFACE0}; border-radius: 6px;"
+                f"color: {_t.GREEN}; font-size: 12px; padding: 8px; "
+                f"background-color: {_t.SURFACE0}; border-radius: 6px;"
             )
 
     def _on_close(self) -> None:

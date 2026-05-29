@@ -146,18 +146,18 @@ class ScheduleReportDialog(QDialog):
         for label, value, color in cards:
             card = QWidget()
             card.setStyleSheet(
-                f"background-color: {SURFACE0}; border-radius: 8px; "
+                f"background-color: {_t.SURFACE0}; border-radius: 8px; "
                 f"border-left: 3px solid {color};"
             )
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(12, 8, 12, 8)
             card_layout.setSpacing(2)
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+            lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
             card_layout.addWidget(lbl)
             val_lbl = QLabel(value)
             val_lbl.setStyleSheet(
-                f"color: {TEXT}; font-size: 18px; font-weight: bold;"
+                f"color: {_t.TEXT}; font-size: 18px; font-weight: bold;"
             )
             card_layout.addWidget(val_lbl)
             summary_layout.addWidget(card)
@@ -170,12 +170,12 @@ class ScheduleReportDialog(QDialog):
                 f"原始工期 {original_days} 天 → 优化后 {total_days} 天 "
                 f"（{improvement:+.0f}%）"
             )
-            compare.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; padding: 2px 4px;")
+            compare.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 2px 4px;")
             layout.addWidget(compare)
 
         # ── 设备利用率图表 ──
         util_label = QLabel("设备利用率")
-        util_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
+        util_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold;")
         layout.addWidget(util_label)
 
         self._util_chart = _UtilBarChart()
@@ -188,7 +188,7 @@ class ScheduleReportDialog(QDialog):
         if bottlenecks:
             bn_label = QLabel("瓶颈设备（利用率 > 80%）")
             bn_label.setStyleSheet(
-                f"color: {RED}; font-size: 13px; font-weight: bold;"
+                f"color: {_t.RED}; font-size: 13px; font-weight: bold;"
             )
             layout.addWidget(bn_label)
             for bn in bottlenecks[:5]:
@@ -196,8 +196,8 @@ class ScheduleReportDialog(QDialog):
                     f"  {bn.get('name', '?')} — {bn.get('utilization', 0):.0f}%"
                 )
                 row.setStyleSheet(
-                    f"color: {TEXT}; font-size: 12px; "
-                    f"background-color: {SURFACE0}; border-radius: 4px; "
+                    f"color: {_t.TEXT}; font-size: 12px; "
+                    f"background-color: {_t.SURFACE0}; border-radius: 4px; "
                     f"padding: 4px 8px;"
                 )
                 layout.addWidget(row)
@@ -206,14 +206,14 @@ class ScheduleReportDialog(QDialog):
         suggestions = report.get("suggestions", [])
         if suggestions:
             sug_label = QLabel("排程建议")
-            sug_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
+            sug_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold;")
             layout.addWidget(sug_label)
             for sug in suggestions:
                 row = QLabel(sug)
                 row.setWordWrap(True)
                 row.setStyleSheet(
-                    f"color: {SUBTEXT0}; font-size: 12px; "
-                    f"background-color: {SURFACE0}; border-radius: 4px; "
+                    f"color: {_t.SUBTEXT0}; font-size: 12px; "
+                    f"background-color: {_t.SURFACE0}; border-radius: 4px; "
                     f"padding: 6px 8px;"
                 )
                 layout.addWidget(row)

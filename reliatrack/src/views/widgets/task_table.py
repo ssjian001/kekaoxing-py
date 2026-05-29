@@ -75,7 +75,7 @@ class _TaskTable(QTableWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无测试任务")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self)
         self._empty_label.hide()

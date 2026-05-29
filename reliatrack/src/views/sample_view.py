@@ -182,7 +182,7 @@ class _SamplePoolTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无样品数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -338,7 +338,7 @@ class _SampleUsageTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无出入库记录")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -518,7 +518,7 @@ class _SampleLedgerTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无样品台账数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()

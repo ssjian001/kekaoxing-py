@@ -230,17 +230,17 @@ class SchedulePreviewDialog(QDialog):
         for label, value, color in cards:
             card = QFrame()
             card.setStyleSheet(
-                f"background-color: {SURFACE0}; border-radius: 6px; "
+                f"background-color: {_t.SURFACE0}; border-radius: 6px; "
                 f"border-left: 3px solid {color};"
             )
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(10, 6, 10, 6)
             card_layout.setSpacing(1)
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px; border: none;")
+            lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px; border: none;")
             card_layout.addWidget(lbl)
             val_lbl = QLabel(value)
-            val_lbl.setStyleSheet(f"color: {TEXT}; font-size: 16px; font-weight: bold; border: none;")
+            val_lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 16px; font-weight: bold; border: none;")
             card_layout.addWidget(val_lbl)
             row.addWidget(card)
 
@@ -260,7 +260,7 @@ class SchedulePreviewDialog(QDialog):
             parts.append(f"截止 {deadline}")
         text = " | ".join(parts) if parts else "无特殊参数"
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; padding: 2px 4px;")
+        lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 2px 4px;")
         return lbl
 
     # ── 填充表格 ──
@@ -527,7 +527,7 @@ class _StartDayEditDialog(QDialog):
 
         # 当前值提示
         current_label = QLabel(f"当前: {_day_label(start_date, current_day)}")
-        current_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
+        current_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
         layout.addWidget(current_label)
 
         # 输入
@@ -539,7 +539,7 @@ class _StartDayEditDialog(QDialog):
         form.addRow("开始日 (Day 索引):", self._spin)
 
         self._date_preview = QLabel(_day_label(start_date, current_day))
-        self._date_preview.setStyleSheet(f"color: {BLUE}; font-size: {FONT_SIZE_SMALL}px;")
+        self._date_preview.setStyleSheet(f"color: {_t.BLUE}; font-size: {FONT_SIZE_SMALL}px;")
         form.addRow("对应日期:", self._date_preview)
 
         self._spin.valueChanged.connect(

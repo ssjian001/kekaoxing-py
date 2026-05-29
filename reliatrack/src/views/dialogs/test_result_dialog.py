@@ -74,7 +74,7 @@ class _ResultRow(QFrame):
             info_text += f"  {sample.spec}"
         self._sample_lbl = QLabel(info_text)
         self._sample_lbl.setMinimumWidth(120)
-        self._sample_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        self._sample_lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
         row1.addWidget(self._sample_lbl)
 
         # 结果下拉
@@ -148,7 +148,7 @@ class _ResultRow(QFrame):
         self._notes_edit = QLineEdit()
         self._notes_edit.setPlaceholderText("备注")
         self._notes_edit.setMinimumWidth(60)
-        self._notes_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        self._notes_edit.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
         if existing_result and existing_result.notes:
             self._notes_edit.setText(existing_result.notes)
         row2.addWidget(self._notes_edit, stretch=2)
@@ -156,7 +156,7 @@ class _ResultRow(QFrame):
         self._measured_edit = QLineEdit()
         self._measured_edit.setPlaceholderText("实测值")
         self._measured_edit.setMinimumWidth(50)
-        self._measured_edit.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+        self._measured_edit.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
         if existing_result and existing_result.measured_value:
             self._measured_edit.setText(existing_result.measured_value)
         row2.addWidget(self._measured_edit, stretch=1)
@@ -164,13 +164,13 @@ class _ResultRow(QFrame):
         self._temp_edit = QLineEdit()
         self._temp_edit.setPlaceholderText("温度°C")
         self._temp_edit.setFixedWidth(68)
-        self._temp_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        self._temp_edit.setStyleSheet(f"color: {_t.TEXT}; font-size: 11px;")
         row2.addWidget(self._temp_edit)
 
         self._humidity_edit = QLineEdit()
         self._humidity_edit.setPlaceholderText("湿度%RH")
         self._humidity_edit.setFixedWidth(68)
-        self._humidity_edit.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        self._humidity_edit.setStyleSheet(f"color: {_t.TEXT}; font-size: 11px;")
         row2.addWidget(self._humidity_edit)
 
         # 解析已有的 environment JSON
@@ -315,19 +315,19 @@ class TestResultDialog(QWidget):
 
         # 任务信息头
         header = QLabel(f"任务: {self._task.name}")
-        header.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
+        header.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold;")
         layout.addWidget(header)
 
         # 判定准则（如有）
         if self._task.accept_criteria:
             criteria = QLabel(f"判定准则: {self._task.accept_criteria}")
-            criteria.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+            criteria.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
             criteria.setWordWrap(True)
             layout.addWidget(criteria)
 
         if not samples:
             lbl = QLabel("该任务未关联样品，请先在任务编辑中添加样品。")
-            lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px; padding: 16px;")
+            lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px; padding: 16px;")
             lbl.setWordWrap(True)
             layout.addWidget(lbl)
             self._rows: list[_ResultRow] = []
@@ -336,7 +336,7 @@ class TestResultDialog(QWidget):
         # 结果统计 + 环境条件工具栏
         stats_row = QHBoxLayout()
         self._stats_label = QLabel()
-        self._stats_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px;")
+        self._stats_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px;")
         stats_row.addWidget(self._stats_label, stretch=1)
 
         self._btn_apply_env = QPushButton("温湿度应用到全部")
@@ -347,7 +347,7 @@ class TestResultDialog(QWidget):
         self._btn_pass_all = QPushButton("全部通过")
         self._btn_pass_all.setFixedHeight(24)
         self._btn_pass_all.setStyleSheet(
-            f"QPushButton {{ color: {MANTLE}; background-color: {GREEN};"
+            f"QPushButton {{ color: {_t.MANTLE}; background-color: {_t.GREEN};"
             f" border: none; border-radius: 4px; padding: 2px 8px; }}"
             f"QPushButton:hover {{ background-color: {GREEN_DARK}; }}"
             f"QPushButton:pressed {{ background-color: {GREEN_DARK}; }}"
@@ -359,14 +359,14 @@ class TestResultDialog(QWidget):
         # 分隔线
         sep = QFrame()
         sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background-color: {SURFACE1};")
+        sep.setStyleSheet(f"background-color: {_t.SURFACE1};")
         layout.addWidget(sep)
 
         # 滚动区域
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(f"QScrollArea {{ border: none; background-color: {BASE}; }}")
+        scroll.setStyleSheet(f"QScrollArea {{ border: none; background-color: {_t.BASE}; }}")
 
         container = QWidget()
         container_layout = QVBoxLayout(container)

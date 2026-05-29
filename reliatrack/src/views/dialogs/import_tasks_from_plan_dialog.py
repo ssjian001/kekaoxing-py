@@ -28,7 +28,7 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         
         # ── 来源提示 ──
         hint = QLabel(f"来源计划: {source_plan_name}  |  共 {len(tasks)} 个任务")
-        hint.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; padding: 2px 0;")
+        hint.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 2px 0;")
         self._form.addRow(hint)
         
         # ── 搜索 + 全选/清空 ──
@@ -53,7 +53,7 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         desel_all.clicked.connect(self._deselect_all)
         
         self._count_label = QLabel("已选 0 项")
-        self._count_label.setStyleSheet(f"color: {LAVENDER}; font-weight: bold;")
+        self._count_label.setStyleSheet(f"color: {_t.LAVENDER}; font-weight: bold;")
         
         search_layout.addWidget(self._search, stretch=1)
         search_layout.addWidget(sel_all)

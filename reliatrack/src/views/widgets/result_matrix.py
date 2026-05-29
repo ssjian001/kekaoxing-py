@@ -59,12 +59,12 @@ class _ResultMatrixWidget(QWidget):
         mode_bar = QHBoxLayout()
         mode_bar.setContentsMargins(4, 2, 4, 2)
         mode_label = QLabel("显示模式:")
-        mode_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
+        mode_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
         mode_bar.addWidget(mode_label)
         self._mode_group = QButtonGroup(self)
         self._mode_checked_qss = (
-            f"QPushButton {{ background-color: {SURFACE1}; color: {TEXT}; "
-            f"border: 1px solid {BLUE}; border-radius: 4px; "
+            f"QPushButton {{ background-color: {_t.SURFACE1}; color: {_t.TEXT}; "
+            f"border: 1px solid {_t.BLUE}; border-radius: 4px; "
             f"padding: 1px 8px; font-size: 12px; }}"
         )
         self._mode_unchecked_qss = (
@@ -100,7 +100,7 @@ class _ResultMatrixWidget(QWidget):
 
         # 统计摘要行
         self._summary_label = QLabel("选择测试计划后显示结果矩阵")
-        self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
+        self._summary_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
         self._layout.addWidget(self._summary_label)
 
         # 缓存数据用于模式切换时重新渲染
@@ -341,7 +341,7 @@ class _ResultMatrixWidget(QWidget):
             self._summary_label.setText(
                 f"共 {len(tasks)} 项任务 × {len(sample_ids)} 个样品 — 暂无录入结果"
             )
-            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
+            self._summary_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
         else:
             self._summary_label.setText("暂无测试结果数据")
-            self._summary_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")
+            self._summary_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px;")

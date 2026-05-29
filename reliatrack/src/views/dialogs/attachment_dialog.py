@@ -102,7 +102,7 @@ class AttachmentDialog(_BaseDialog):
 
         # 提示标签
         hint = QLabel(f"Issue #{self._issue_id} 的附件")
-        hint.setStyleSheet(f"color: {BLUE}; font-size: 12px; font-weight: bold;")
+        hint.setStyleSheet(f"color: {_t.BLUE}; font-size: 12px; font-weight: bold;")
         self._form.addRow(hint)
 
         # 附件列表
@@ -110,15 +110,15 @@ class AttachmentDialog(_BaseDialog):
         self._list_widget.setAlternatingRowColors(True)
         self._list_widget.setStyleSheet(f"""
             QListWidget {{
-                background-color: {BASE}; color: {TEXT};
-                border: 1px solid {SURFACE1}; border-radius: 6px;
+                background-color: {_t.BASE}; color: {_t.TEXT};
+                border: 1px solid {_t.SURFACE1}; border-radius: 6px;
                 min-height: 280px; font-size: 13px;
             }}
             QListWidget::item {{
-                padding: 8px 10px; border-bottom: 1px solid {SURFACE0};
+                padding: 8px 10px; border-bottom: 1px solid {_t.SURFACE0};
             }}
             QListWidget::item:alternate {{
-                background-color: {MANTLE};
+                background-color: {_t.MANTLE};
             }}
             QListWidget::item:selected {{
                 background-color: {SURFACE1};

@@ -228,7 +228,7 @@ class _FAPanel(QScrollArea):
         self.setWidget(self._container)
         self.setStyleSheet(f"""
             QScrollArea {{
-                background-color: {BASE}; border: 1px solid {SURFACE1};
+                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
                 border-radius: 8px;
             }}
         """)
@@ -254,7 +254,7 @@ class _FAPanel(QScrollArea):
 
         if not records:
             label = QLabel("选择一个 Issue 查看 FA 分析记录")
-            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
+            label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px; padding: 12px;")
             self._layout.addWidget(label)
             return
 
@@ -262,8 +262,8 @@ class _FAPanel(QScrollArea):
             card = QFrame()
             card.setStyleSheet(f"""
                 QFrame {{
-                    background-color: {SURFACE0}; border-radius: 8px;
-                    border: 1px solid {SURFACE1};
+                    background-color: {_t.SURFACE0}; border-radius: 8px;
+                    border: 1px solid {_t.SURFACE1};
                 }}
             """)
             card_layout = QVBoxLayout(card)
@@ -272,11 +272,11 @@ class _FAPanel(QScrollArea):
             # 标题行
             header = QHBoxLayout()
             step_label = QLabel(f"Step {rec.step_no}")
-            step_label.setStyleSheet(f"color: {BLUE}; font-weight: bold; font-size: 12px;")
+            step_label.setStyleSheet(f"color: {_t.BLUE}; font-weight: bold; font-size: 12px;")
             header.addWidget(step_label)
 
             method_label = QLabel(rec.method or "")
-            method_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px;")
+            method_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px;")
             header.addWidget(method_label)
             header.addStretch()
 
@@ -298,27 +298,27 @@ class _FAPanel(QScrollArea):
 
             # 步骤标题
             title = QLabel(rec.step_title or "")
-            title.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
+            title.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
             card_layout.addWidget(title)
 
             # 描述
             desc = QLabel(rec.description or "")
             desc.setWordWrap(True)
-            desc.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+            desc.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
             card_layout.addWidget(desc)
 
             # 发现
             if rec.findings:
                 findings = QLabel(f"发现: {rec.findings}")
                 findings.setWordWrap(True)
-                findings.setStyleSheet(f"color: {PEACH}; font-size: 12px;")
+                findings.setStyleSheet(f"color: {_t.PEACH}; font-size: 12px;")
                 card_layout.addWidget(findings)
 
             # 可能原因（鱼骨图分类）
             if rec.possible_cause:
                 cause = QLabel(f"可能原因: {rec.possible_cause}")
                 cause.setWordWrap(True)
-                cause.setStyleSheet(f"color: {MAUVE}; font-size: 12px;")
+                cause.setStyleSheet(f"color: {_t.MAUVE}; font-size: 12px;")
                 card_layout.addWidget(cause)
 
             # 原因分类 + 确认状态
@@ -476,7 +476,7 @@ class IssueView(QWidget):
 
         # 统计标签
         self._stats_label = QLabel("0 个 Issue")
-        self._stats_label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 12px;")
+        self._stats_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px;")
         toolbar.addWidget(self._stats_label)
 
         layout.addLayout(toolbar)
@@ -492,7 +492,7 @@ class IssueView(QWidget):
         fa_col = QVBoxLayout()
         fa_col.setSpacing(4)
         self._fa_label = QLabel("FA 失效分析")
-        self._fa_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
+        self._fa_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
         fa_col.addWidget(self._fa_label)
         self._fa_panel = _FAPanel()
         self._fa_panel.fa_edit_requested.connect(self._open_edit_fa_dialog)
@@ -503,7 +503,7 @@ class IssueView(QWidget):
         capa_col = QVBoxLayout()
         capa_col.setSpacing(4)
         self._capa_label = QLabel("CAPA 纠正预防措施")
-        self._capa_label.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
+        self._capa_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;")
         capa_col.addWidget(self._capa_label)
         self._capa_panel = _CAPAPanel()
         capa_col.addWidget(self._capa_panel, stretch=1)
@@ -515,7 +515,7 @@ class IssueView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无 Issue 数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._issue_table)
         self._empty_label.hide()
@@ -811,13 +811,13 @@ class _CAPAPanel(QScrollArea):
         self.setWidget(self._container)
         self.setStyleSheet(f"""
             QScrollArea {{
-                background-color: {BASE}; border: 1px solid {SURFACE1};
+                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
                 border-radius: 8px;
             }}
         """)
         # 初始占位
         label = QLabel("选择一个 Issue 查看 CAPA 记录")
-        label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
+        label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px; padding: 12px;")
         self._layout.addWidget(label)
         _t.theme_host.theme_changed.connect(self._refresh_theme)
 
@@ -841,7 +841,7 @@ class _CAPAPanel(QScrollArea):
 
         if not records:
             label = QLabel("暂无 CAPA 记录")
-            label.setStyleSheet(f"color: {SUBTEXT1}; font-size: 13px; padding: 12px;")
+            label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px; padding: 12px;")
             self._layout.addWidget(label)
             return
 
@@ -849,8 +849,8 @@ class _CAPAPanel(QScrollArea):
             card = QFrame()
             card.setStyleSheet(f"""
                 QFrame {{
-                    background-color: {SURFACE0}; border-radius: 8px;
-                    border: 1px solid {SURFACE1};
+                    background-color: {_t.SURFACE0}; border-radius: 8px;
+                    border: 1px solid {_t.SURFACE1};
                 }}
             """)
             card_layout = QVBoxLayout(card)
@@ -866,7 +866,7 @@ class _CAPAPanel(QScrollArea):
             header.addWidget(status_lbl)
             if rec.due_date:
                 due_lbl = QLabel(f"截止: {rec.due_date}")
-                due_lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+                due_lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
                 header.addWidget(due_lbl)
             header.addStretch()
 
@@ -888,14 +888,14 @@ class _CAPAPanel(QScrollArea):
             # 措施内容
             action_lbl = QLabel(rec.action or "")
             action_lbl.setWordWrap(True)
-            action_lbl.setStyleSheet(f"color: {TEXT}; font-size: 12px;")
+            action_lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px;")
             card_layout.addWidget(action_lbl)
 
             # 负责人
             assignee_name = getattr(rec, 'assignee_name', '') or ''
             if assignee_name:
                 assignee_lbl = QLabel(f"负责人: {assignee_name}")
-                assignee_lbl.setStyleSheet(f"color: {SUBTEXT1}; font-size: 11px;")
+                assignee_lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
                 card_layout.addWidget(assignee_lbl)
 
             # PDCA 字段：根因分析
@@ -903,10 +903,10 @@ class _CAPAPanel(QScrollArea):
             if root_cause:
                 rc_lbl = QLabel(f"根因分析: {root_cause}")
                 rc_lbl.setWordWrap(True)
-                rc_lbl.setStyleSheet(f"color: {MAUVE}; font-size: 11px;")
+                rc_lbl.setStyleSheet(f"color: {_t.MAUVE}; font-size: 11px;")
             else:
                 rc_lbl = QLabel("根因分析: 待填写")
-                rc_lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; font-style: italic;")
+                rc_lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; font-style: italic;")
             card_layout.addWidget(rc_lbl)
 
             # PDCA 字段：效果验证
@@ -914,10 +914,10 @@ class _CAPAPanel(QScrollArea):
             if effectiveness:
                 eff_lbl = QLabel(f"效果验证: {effectiveness}")
                 eff_lbl.setWordWrap(True)
-                eff_lbl.setStyleSheet(f"color: {GREEN}; font-size: 11px;")
+                eff_lbl.setStyleSheet(f"color: {_t.GREEN}; font-size: 11px;")
             else:
                 eff_lbl = QLabel("效果验证: 待填写")
-                eff_lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; font-style: italic;")
+                eff_lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; font-style: italic;")
             card_layout.addWidget(eff_lbl)
 
             # PDCA 字段：改善追踪
@@ -925,17 +925,17 @@ class _CAPAPanel(QScrollArea):
             if follow_up:
                 fu_lbl = QLabel(f"改善追踪: {follow_up}")
                 fu_lbl.setWordWrap(True)
-                fu_lbl.setStyleSheet(f"color: {LAVENDER}; font-size: 11px;")
+                fu_lbl.setStyleSheet(f"color: {_t.LAVENDER}; font-size: 11px;")
             else:
                 fu_lbl = QLabel("改善追踪: 待填写")
-                fu_lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px; font-style: italic;")
+                fu_lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; font-style: italic;")
             card_layout.addWidget(fu_lbl)
 
             # 验证结果
             if rec.verification_result:
                 v_lbl = QLabel(f"验证: {rec.verification_result}")
                 v_lbl.setWordWrap(True)
-                v_lbl.setStyleSheet(f"color: {GREEN}; font-size: 11px;")
+                v_lbl.setStyleSheet(f"color: {_t.GREEN}; font-size: 11px;")
                 card_layout.addWidget(v_lbl)
 
             self._layout.addWidget(card)
@@ -993,8 +993,8 @@ class _CAPADialog(_BaseDialog):
             ref_label = QLabel(ref_text)
             ref_label.setWordWrap(True)
             ref_label.setStyleSheet(
-                f"color: {SUBTEXT0}; font-size: 11px; padding: 4px 6px; "
-                f"background: {SURFACE0}; border-radius: 4px;"
+                f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 4px 6px; "
+                f"background: {_t.SURFACE0}; border-radius: 4px;"
             )
             self._form.addRow("关联 Issue", ref_label)
 

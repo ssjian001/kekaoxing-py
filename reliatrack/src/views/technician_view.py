@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QEvent, Signal, Qt
 
 from src.models.common import Technician
+import src.styles.theme as _theme
 from src.styles.theme import (
     OVERLAY0,
     SURFACE0,
@@ -92,7 +93,7 @@ class TechnicianView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setStyleSheet(f"color: {SURFACE1};")
+        sep.setStyleSheet(f"color: {_theme.SURFACE1};")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新增")
@@ -134,7 +135,7 @@ class TechnicianView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无技术员数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {OVERLAY0}; font-size: 14px;")
+        self._empty_label.setStyleSheet(f"color: {_theme.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
