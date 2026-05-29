@@ -122,9 +122,11 @@ class BatchImportDialog(_BaseDialog):
             required = " *" if field_name in self._required_fields else ""
             lbl = QLabel(f"{display_name}{required}:")
             lbl.setFixedWidth(140)
-            lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
-            if required:
-                lbl.setStyleSheet(f"color: {_t.PEACH}; font-size: 13px;")
+            lbl.setStyleSheet(
+                f"color: {_t.PEACH}; font-size: 13px;"
+                if required
+                else f"color: {_t.TEXT}; font-size: 13px;"
+            )
             row.addWidget(lbl)
 
             combo = QComboBox()
@@ -186,12 +188,11 @@ class BatchImportDialog(_BaseDialog):
         if event.type() == QEvent.Type.KeyPress:
             ke: QKeyEvent = event
             if ke.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                # 通过焦点 widget 判断：popup 打开时焦点在 combo 内部 widget 上
+                focus = self.focusWidget()
                 for combo in self._combos.values():
-                    try:
-                        if combo.view().isVisible():
-                            return  # 丢弃，让 combo 处理
-                    except Exception:
-                        pass
+                    if focus is combo or (focus and focus in combo.view().children()):
+                        return  # 丢弃，让 combo 处理
                 self._btn_import.click()
                 event.accept()
                 return
