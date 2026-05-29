@@ -13,6 +13,7 @@ from src.styles.theme import (
     BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT1,
     GREEN, RED, YELLOW,
+    SELECTION_BG,
 )
 from src.styles.constants import FONT_SIZE_SMALL, TABLE_QSS, apply_column_specs
 from src.models.test_plan import TestTask
@@ -174,8 +175,9 @@ class _AnalysisWidget(QWidget):
             tbl.setStyleSheet(TABLE_QSS.format(
                 bg=BASE, text=TEXT, gridline=SURFACE1,
                 alt_row=SURFACE0, header_bg=SURFACE0, header_text=TEXT,
-                font_size=11,
-            ))
+                font_size=13,
+                            selection_bg=SELECTION_BG,
+                        ))
             tbl.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
             tbl.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             tbl.verticalHeader().setVisible(False)

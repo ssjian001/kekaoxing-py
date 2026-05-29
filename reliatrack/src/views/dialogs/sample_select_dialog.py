@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from src.models.sample import Sample
 from src.styles.constants import TABLE_QSS, install_copy_handler
-from src.styles.theme import BASE, TEXT, SURFACE0, SURFACE1
+from src.styles.theme import BASE, TEXT, SURFACE0, SURFACE1, SELECTION_BG
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:
@@ -115,7 +115,8 @@ class SampleSelectDialog(_BaseDialog):
             bg=BASE, text=TEXT, gridline=SURFACE1,
            alt_row=BASE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
-       ))
+                        selection_bg=SELECTION_BG,
+                    ))
 
         self._form.addRow(self._table)
 

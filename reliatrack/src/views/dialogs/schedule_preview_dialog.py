@@ -35,6 +35,7 @@ from src.styles.theme import (
     BASE, SURFACE0, SURFACE1, SURFACE2, MANTLE,
     TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
+    SELECTION_BG,
 )
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
 from src.models.test_plan import TestTask
@@ -180,7 +181,8 @@ class SchedulePreviewDialog(QDialog):
             bg=BASE, text=TEXT, gridline=SURFACE1,
            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
-       ))
+                        selection_bg=SELECTION_BG,
+                    ))
         self._table.setMinimumHeight(250)
         # 双击编辑
         self._table.cellDoubleClicked.connect(self._on_cell_double_click)

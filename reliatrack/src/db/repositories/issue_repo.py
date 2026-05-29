@@ -299,19 +299,33 @@ class IssueRepository(BaseRepository):
             self._remove_disk_file(fp)
 
     def delete_attachment(self, attachment_id: int) -> None:
-        """删除单条附件（DB 记录 + 磁盘文件）。
+        """删除单条附件（磁盘文件 + DB 记录）。
 
-        先删 DB 记录再删磁盘文件，避免 SQL 失败时文件已被删除。
+        先删磁盘文件再删 DB 记录：磁盘删除失败时保留 DB 记录，
+        用户可重试；避免 DB 记录丢失后文件变为孤儿。
         """
         row = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] WHERE id = ?",
             (attachment_id,),
         ).fetchone()
-        if row:
-            self._conn.execute(
-                "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
-            )
-            self._remove_disk_file(row[0])
+        if not row:
+            return
+        file_path = row[0]
+        # 先尝试删除磁盘文件
+        if file_path:
+            p = Path(file_path).resolve()
+            allowed = IssueRepository._ALLOWED_ATTACH_DIRS
+            if any(str(p).startswith(d) for d in allowed) and p.exists():
+                try:
+                    p.unlink()
+                except OSError as exc:
+                    raise RuntimeError(
+                        f"磁盘文件删除失败: {file_path}"
+                    ) from exc
+        # 磁盘文件已删除（或不存在 / 不在允许目录），安全删除 DB 记录
+        self._conn.execute(
+            "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
+        )
 
     # ── CAPA 记录 ──
 

@@ -32,6 +32,7 @@ from src.styles.theme import (
     CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, PINK, OVERLAY0,
+    SELECTION_BG,
 )
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
@@ -75,7 +76,8 @@ class _IssueTable(QTableWidget):
             bg=BASE, text=TEXT, gridline=SURFACE1,
            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
-       ))
+                        selection_bg=SELECTION_BG,
+                    ))
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)

@@ -24,6 +24,7 @@ from src.styles.theme import (
     OVERLAY0,
     MANTLE, BASE, SURFACE0,
     TEXT,
+    SELECTION_BG,
 )
 from src.styles.constants import TABLE_QSS, VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
 from src.constants import PROJECT_STATUS_LABELS
@@ -120,6 +121,7 @@ class ProjectView(QWidget):
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
+            selection_bg=SELECTION_BG,
         ))
 
         self._table.cellDoubleClicked.connect(self._on_double_click)

@@ -39,41 +39,44 @@ def import_equipment(
     seen_this_batch: set[str] = set()
     result = ImportResult()
 
-    with service.transaction():
-        for idx, row in enumerate(rows, 1):
-            name = row.get("name", "").strip()
-            if not name:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 设备名称为空")
-                continue
-            if name in existing:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 设备「{name}」已存在")
-                continue
-            if name in seen_this_batch:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 设备「{name}」与本批次重复")
-                continue
-            try:
-                service.create(
-                    name=name,
-                    type=row.get("type", "").strip(),
-                    model=row.get("model", "").strip(),
-                    location=row.get("location", "").strip(),
-                    status=row.get("status", "available").strip(),
-                    asset_no=row.get("asset_no", "").strip(),
-                    manufacturer=row.get("manufacturer", "").strip(),
-                    accuracy=row.get("accuracy", "").strip(),
-                    calibration_date=row.get("calibration_date", "").strip(),
-                    next_calibration_date=row.get("next_calibration_date", "").strip(),
-                    calibration_interval_months=int(row.get("calibration_interval_months", 12) or 12),
-                )
-                seen_this_batch.add(name)
-                result.success += 1
-            except Exception as e:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 设备「{name}」导入失败 — {e}")
-                raise  # 触发事务回滚
+    try:
+        with service.transaction():
+            for idx, row in enumerate(rows, 1):
+                name = row.get("name", "").strip()
+                if not name:
+                    result.skipped += 1
+                    result.errors.append(f"第 {idx} 行: 设备名称为空")
+                    continue
+                if name in existing:
+                    result.skipped += 1
+                    result.errors.append(f"第 {idx} 行: 设备「{name}」已存在")
+                    continue
+                if name in seen_this_batch:
+                    result.skipped += 1
+                    result.errors.append(f"第 {idx} 行: 设备「{name}」与本批次重复")
+                    continue
+                try:
+                    service.create(
+                        name=name,
+                        type=row.get("type", "").strip(),
+                        model=row.get("model", "").strip(),
+                        location=row.get("location", "").strip(),
+                        status=row.get("status", "available").strip(),
+                        asset_no=row.get("asset_no", "").strip(),
+                        manufacturer=row.get("manufacturer", "").strip(),
+                        accuracy=row.get("accuracy", "").strip(),
+                        calibration_date=row.get("calibration_date", "").strip(),
+                        next_calibration_date=row.get("next_calibration_date", "").strip(),
+                        calibration_interval_months=int(row.get("calibration_interval_months", 12) or 12),
+                    )
+                    seen_this_batch.add(name)
+                    result.success += 1
+                except Exception as e:
+                    result.errors.append(f"第 {idx} 行: 设备「{name}」导入失败 — {e}")
+                    raise  # 触发事务回滚
+    except Exception:
+        # 事务已回滚，success 计数无效
+        result.success = 0
     return result
 
 
@@ -86,36 +89,39 @@ def import_technicians(
     seen_this_batch: set[tuple[str, str]] = set()
     result = ImportResult()
 
-    with service.transaction():
-        for idx, row in enumerate(rows, 1):
-            name = row.get("name", "").strip()
-            if not name:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 技术员名称为空")
-                continue
-            emp_id = row.get("employee_id", "").strip()
-            key = (name, emp_id)
-            if key in existing:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 技术员「{name}({emp_id})」已存在")
-                continue
-            if key in seen_this_batch:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 技术员「{name}({emp_id})」与本批次重复")
-                continue
-            try:
-                service.create(
-                    name=name,
-                    employee_id=emp_id,
-                    role=row.get("role", "").strip(),
-                    department=row.get("department", "").strip(),
-                    phone=row.get("phone", "").strip(),
-                    email=row.get("email", "").strip(),
-                )
-                seen_this_batch.add(key)
-                result.success += 1
-            except Exception as e:
-                result.skipped += 1
-                result.errors.append(f"第 {idx} 行: 技术员「{name}」导入失败 — {e}")
-                raise  # 触发事务回滚
+    try:
+        with service.transaction():
+            for idx, row in enumerate(rows, 1):
+                name = row.get("name", "").strip()
+                if not name:
+                    result.skipped += 1
+                    result.errors.append(f"第 {idx} 行: 技术员名称为空")
+                    continue
+                emp_id = row.get("employee_id", "").strip()
+                key = (name, emp_id)
+                if key in existing:
+                    result.skipped += 1
+                    result.errors.append(f"第 {idx} 行: 技术员「{name}({emp_id})」已存在")
+                    continue
+                if key in seen_this_batch:
+                    result.skipped += 1
+                    result.errors.append(f"第 {idx} 行: 技术员「{name}({emp_id})」与本批次重复")
+                    continue
+                try:
+                    service.create(
+                        name=name,
+                        employee_id=emp_id,
+                        role=row.get("role", "").strip(),
+                        department=row.get("department", "").strip(),
+                        phone=row.get("phone", "").strip(),
+                        email=row.get("email", "").strip(),
+                    )
+                    seen_this_batch.add(key)
+                    result.success += 1
+                except Exception as e:
+                    result.errors.append(f"第 {idx} 行: 技术员「{name}」导入失败 — {e}")
+                    raise  # 触发事务回滚
+    except Exception:
+        # 事务已回滚，success 计数无效
+        result.success = 0
     return result

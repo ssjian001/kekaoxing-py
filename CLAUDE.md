@@ -113,3 +113,42 @@ bd dolt push          # 同步
 - **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`
 - **`QSS ::indicator` 与 QProxyStyle 不能共存** → 必须从 theme.py 删除所有 `::indicator` 块让 ProxyStyle 全权绘制
 - **QToolButton class 选择器**：`QPushButton[class="action"]` 不匹配 QToolButton，需逗号分隔同时写两个
+
+## 启动工作流（每次会话开始必做）
+
+1. `cat progress/current.md` — 读取上次进度
+2. `cat feature_list.json` — 确认当前功能状态
+3. `bash init.sh` — 验证环境（语法检查+测试）
+4. 如果 progress 中有未完成任务，从断点继续
+
+## 完成定义（Definition of Done）
+
+一个功能"完成"必须满足全部 5 项：
+
+1. ✅ `python -m py_compile` 语法检查通过
+2. ✅ `python -m pytest tests/ -x -q` 相关测试通过
+3. ✅ `git diff` 审查无敏感数据泄露
+4. ✅ `feature_list.json` 中对应功能 status 更新为 `"done"`
+5. ✅ 验证证据记录（测试输出/截图）写入 progress/current.md
+
+## 范围规则
+
+- **一次一个功能** — 完成当前功能（验证通过 + feature_list 更新）后才能开始下一个
+- **不越界** — 不修改当前功能范围外的代码，除非用户明确要求
+- **不擅自移动/删除 UI 元素** — 除非用户明确要求
+- **依赖顺序** — 查看 feature_list.json 的 dependencies 字段，先做被依赖的功能
+
+## 验证入口
+
+运行 `bash init.sh` 执行环境验证：
+- Python 语法检查（py_compile）
+- 数据库 schema 一致性检查
+- 测试套件（区分 GUI/非 GUI）
+
+## 会话交接
+
+每次会话结束前：
+1. 更新 `progress/current.md`（当前状态/下一步/阻塞）
+2. 更新 `feature_list.json`（已完成→done，进行中→in_progress）
+3. `git add -A && git commit -m "feat: <描述>"`
+4. 回答三个问题：产物在哪？什么可复用？什么需人工确认？
