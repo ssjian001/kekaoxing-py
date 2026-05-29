@@ -89,6 +89,9 @@ class BatchImportDialog(_BaseDialog):
         # 隐藏默认 OK/Cancel 按钮栏
         self._btn_ok.setVisible(False)
         self._btn_cancel.setVisible(False)
+        # 禁用 dialog 的主动关闭：阻止 focusOut / activationChange 在 combo popup 打开时触发 close
+        # Windows 上 QComboBox popup 打开期间，dialog 的焦点/激活事件可能导致 popup 关闭
+        self.setAttribute(Qt.WidgetAttribute.WA_InputMethodEnabled, False)
 
         self._build_ui()
 
@@ -129,6 +132,7 @@ class BatchImportDialog(_BaseDialog):
             combo = QComboBox()
             combo.setMinimumWidth(200)
             combo.addItem("— 不导入 —", None)
+            combo.view().installEventFilter(self)  # 防止 popup 被 dialog 焦点关闭
             row.addWidget(combo, 1)
             self._combos[field_name] = combo
             mapping_layout.addLayout(row)
@@ -175,6 +179,54 @@ class BatchImportDialog(_BaseDialog):
         btn_bar.addWidget(self._btn_close)
 
         self._root.addLayout(btn_bar)
+
+    # ── 事件过滤 ──────────────────────────────────────────────────
+
+    def eventFilter(self, obj, event) -> bool:
+        """拦截 QComboBox popup 区域的鼠标/键盘事件，防止传给 dialog 触发误关闭。
+
+        Windows 上 QComboBox popup 是 Qt.Popup 窗口，点击 popup 外区域会触发
+        窗口 deactivation，导致 popup 关闭。若此时 dialog 也处理了相关事件，
+        可能造成连锁关闭。
+        """
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        etype = event.type()
+
+        # Enter/Return 在 popup 打开时应由 QComboBox 内部处理（选择当前项后关闭 popup）
+        if etype == QEvent.Type.KeyPress:
+            ke: QKeyEvent = event
+            if ke.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                for combo in self._combos.values():
+                    # isVisible() 在 popup 打开期间返回 True
+                    try:
+                        if combo.view().isVisible():
+                            ke.accept()
+                            return True  # 消费，不传给 dialog
+                    except Exception:
+                        pass
+        return super().eventFilter(obj, event)
+
+    # ── 键盘事件（完全替换 base，以防 popup 打开时 base 逻辑误触发）──
+
+    def keyPressEvent(self, event):
+        """Enter 提交弹框，但 combo popup 打开时由 combo 自己处理。"""
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        if event.type() == QEvent.Type.KeyPress:
+            ke: QKeyEvent = event
+            if ke.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                for combo in self._combos.values():
+                    try:
+                        if combo.view().isVisible():
+                            return  # 丢弃，让 combo 处理
+                    except Exception:
+                        pass
+                self._btn_import.click()
+                event.accept()
+                return
+        # 走 QDialog 默认处理（Escape 等）
+        QDialog.keyPressEvent(self, event)
 
     # ── 事件处理 ─────────────────────────────────────────────────
 

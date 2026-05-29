@@ -88,7 +88,8 @@ class _BaseDialog(QDialog):
 
         self._root.addLayout(btn_layout)
 
-        # 延迟设置默认焦点到第一个可编辑控件
+        # 延迟设置默认焦点到第一个可编辑控件（跳过 QComboBox，
+        # 避免 focus 抢夺导致其 popup 被关闭）
         QTimer.singleShot(0, self._focus_first_edit)
 
     # ── 键盘事件 ─────────────────────────────────────────────────
@@ -115,15 +116,15 @@ class _BaseDialog(QDialog):
             super().keyPressEvent(event)
 
     def _focus_first_edit(self):
-        """将焦点设到表单中第一个可编辑控件（QLineEdit/QComboBox/QSpinBox/QDateEdit）。"""
+        """将焦点设到表单中第一个可编辑控件（跳过 QComboBox，避免 popup 被关闭）。"""
         for i in range(self._form.rowCount()):
             item = self._form.itemAt(i, QFormLayout.ItemRole.FieldRole)
             if item and item.widget():
                 w = item.widget()
-                if isinstance(w, (QLineEdit, QComboBox, QSpinBox, QDateEdit)):
+                if isinstance(w, (QLineEdit, QSpinBox, QDateEdit)):
                     w.setFocus()
-                    if hasattr(w, "selectAll"):  # type: ignore[union-attr]
-                        w.selectAll()  # type: ignore[union-attr]
+                    if hasattr(w, "selectAll"):
+                        w.selectAll()
                     break
 
     # ── 辅助方法 ──────────────────────────────────────────────────
