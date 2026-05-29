@@ -38,7 +38,7 @@ from src.styles.theme import (
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
-from src.styles.constants import TABLE_QSS, VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS, apply_column_specs
+from src.styles.constants import VIEW_MARGINS, ISSUE_STATUS_COLORS, ISSUE_SEVERITY_COLORS, apply_column_specs
 from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS, RESOLUTION_LABELS, ISSUE_CATEGORY_OPTIONS
 from src.views.dialogs.base_dialog import _BaseDialog
 
@@ -73,25 +73,10 @@ class _IssueTable(QTableWidget):
         self._issues: list[Issue] = []
         self._context_menu: QMenu | None = None
 
-        self.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
-
         # 信号
         self.doubleClicked.connect(self._on_double_click)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
-        _t.theme_host.theme_changed.connect(self._refresh_theme)
-
-    def _refresh_theme(self) -> None:
-        self.setStyleSheet(TABLE_QSS.format(
-            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
-            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
-            font_size=13, selection_bg=_t.SELECTION_BG,
-        ))
 
     # ── 数据 ───────────────────────────────────────────────────
 

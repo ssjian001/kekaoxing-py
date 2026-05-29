@@ -17,7 +17,7 @@ from src.styles.theme import (
     GREEN, RED, YELLOW, BLUE,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
+from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, install_copy_handler
 
 from src.models.test_plan import TestTask
 
@@ -85,12 +85,6 @@ class _ResultMatrixWidget(QWidget):
         self._layout.addLayout(mode_bar)
 
         self._table = QTableWidget()
-        self._table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self._table.setAlternatingRowColors(False)
@@ -117,11 +111,7 @@ class _ResultMatrixWidget(QWidget):
 
     def _refresh_theme(self) -> None:
         """主题切换时刷新表格和控件样式。"""
-        self._table.setStyleSheet(TABLE_QSS.format(
-            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
-            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
-            font_size=13, selection_bg=_t.SELECTION_BG,
-        ) + """
+        self._table.setStyleSheet("""
             QTableWidget::item {
                 padding: 0px;
             }

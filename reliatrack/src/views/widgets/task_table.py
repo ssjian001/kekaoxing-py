@@ -24,7 +24,7 @@ from src.styles.theme import (
     GREEN, RED, PEACH,
     SELECTION_BG,
 )
-from src.styles.constants import TABLE_QSS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
+from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
@@ -67,12 +67,6 @@ class _TaskTable(QTableWidget):
         self._on_edit_callback: Callable[[TestTask], None] | None = None
         self._on_delete_callback: Callable[[TestTask], None] | None = None
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
-        self.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -89,11 +83,6 @@ class _TaskTable(QTableWidget):
         _t.theme_host.theme_changed.connect(self._refresh_theme)
 
     def _refresh_theme(self) -> None:
-        self.setStyleSheet(TABLE_QSS.format(
-            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
-            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
-            font_size=13, selection_bg=_t.SELECTION_BG,
-        ))
         self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     def set_reference_data(

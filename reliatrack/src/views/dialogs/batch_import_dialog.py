@@ -30,7 +30,7 @@ from src.styles.theme import (
     TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
     SELECTION_BG,
 )
-from src.styles.constants import TABLE_QSS, install_copy_handler
+from src.styles.constants import install_copy_handler
 
 logger = logging.getLogger(__name__)
 
@@ -91,14 +91,6 @@ class BatchImportDialog(_BaseDialog):
         self._btn_cancel.setVisible(False)
 
         self._build_ui()
-        _t.theme_host.theme_changed.connect(self._refresh_theme)
-
-    def _refresh_theme(self) -> None:
-        self._preview_table.setStyleSheet(TABLE_QSS.format(
-            bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
-            alt_row=_t.MANTLE, header_bg=_t.SURFACE0, header_text=_t.TEXT,
-            font_size=13, selection_bg=_t.SELECTION_BG,
-        ))
 
     def _build_ui(self) -> None:
         # 1. 文件选择区
@@ -158,12 +150,6 @@ class BatchImportDialog(_BaseDialog):
         self._preview_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-        self._preview_table.setStyleSheet(TABLE_QSS.format(
-            bg=BASE, text=TEXT, gridline=SURFACE1,
-           alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
-            font_size=13,
-                        selection_bg=SELECTION_BG,
-                    ))
         install_copy_handler(self._preview_table)
         self._root.addWidget(self._preview_table, 1)
 

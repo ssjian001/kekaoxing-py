@@ -16,7 +16,7 @@ from src.styles.theme import (
     GREEN, RED, YELLOW,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_SIZE_SMALL, TABLE_QSS, apply_column_specs
+from src.styles.constants import FONT_SIZE_SMALL, apply_column_specs
 from src.models.test_plan import TestTask
 
 
@@ -65,16 +65,6 @@ class _AnalysisWidget(QWidget):
         # 初始占位
         ph = self._make_placeholder("选择测试计划后显示失效模式分析")
         self._layout.addWidget(ph)
-        _t.theme_host.theme_changed.connect(self._refresh_theme)
-
-    def _refresh_theme(self) -> None:
-        """主题切换时刷新所有子表格的 TABLE_QSS。"""
-        for tbl in self.findChildren(QTableWidget):
-            tbl.setStyleSheet(TABLE_QSS.format(
-                bg=_t.BASE, text=_t.TEXT, gridline=_t.SURFACE1,
-                alt_row=_t.SURFACE0, header_bg=_t.SURFACE0, header_text=_t.TEXT,
-                font_size=13, selection_bg=_t.SELECTION_BG,
-            ))
 
     # ── 工厂方法（每次 refresh 创建新实例） ──────────────
 
@@ -183,12 +173,6 @@ class _AnalysisWidget(QWidget):
             self._layout.addWidget(section2)
 
             tbl = QTableWidget(len(fail_entries), 5)
-            tbl.setStyleSheet(TABLE_QSS.format(
-                bg=BASE, text=TEXT, gridline=SURFACE1,
-                alt_row=SURFACE0, header_bg=SURFACE0, header_text=TEXT,
-                font_size=13,
-                            selection_bg=SELECTION_BG,
-                        ))
             tbl.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
             tbl.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             tbl.verticalHeader().setVisible(False)
