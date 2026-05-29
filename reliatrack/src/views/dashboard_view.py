@@ -23,6 +23,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QBrush, QLinearGradient
 
+import src.styles.theme as _theme
+
 from src.styles.constants import (
     FONT_FAMILY,
     VIEW_MARGINS,
@@ -33,15 +35,11 @@ from src.styles.constants import (
     DASH_WARNING,
     DASH_DANGER,
     DASH_NEUTRAL,
-    DASH_BG,
-    DASH_CARD_BG,
-    DASH_CARD_BORDER,
     STATUS_RED,
     STATUS_PEACH,
     card_qss,
     add_shadow,
 )
-from src.styles.theme import TEXT, SUBTEXT0, SURFACE1
 
 # ── 通用字体 ──
 _FAMILY = FONT_FAMILY.split(",")[0].strip()
@@ -188,7 +186,7 @@ class _TestProgressCard(QFrame):
 
         self._title_label = QLabel("测试进度")
         self._title_label.setStyleSheet(
-            f"color: {TEXT}; font-size: 13px; font-weight: bold;"
+            f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
             f"border: none; background: transparent;"
         )
         left.addWidget(self._title_label)
@@ -204,7 +202,7 @@ class _TestProgressCard(QFrame):
             dot = QLabel("●")
             dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {SUBTEXT0}; font-size: 10px; border: none; background: transparent;")
+            lbl.setStyleSheet(f"color: {_theme.SUBTEXT0}; font-size: 10px; border: none; background: transparent;")
             legend.addWidget(dot)
             legend.addWidget(lbl)
         legend.addStretch()
@@ -252,6 +250,7 @@ class _DonutChart(QFrame):
         self.setMinimumHeight(160)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         add_shadow(self)
+        _theme.theme_host.theme_changed.connect(self.update)
 
     def setData(self, data: dict[str, int]) -> None:
         self._data = dict(data)
@@ -299,18 +298,18 @@ class _DonutChart(QFrame):
         for i, (_, val) in enumerate(items):
             color = QColor(CHART_COLORS[i % len(CHART_COLORS)])
             span = int(val / total * 360 * 16)
-            p.setPen(QPen(QColor(DASH_CARD_BG), 2))
+            p.setPen(QPen(QColor(_theme.MANTLE), 2))
             p.setBrush(QBrush(color))
             p.drawPie(rect, -start, -span)
             start += span
 
         # 挖空中心
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(DASH_CARD_BG))
+        p.setBrush(QColor(_theme.MANTLE))
         p.drawEllipse(QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2))
 
         # 中心总数
-        p.setPen(QColor(TEXT))
+        p.setPen(QColor(_theme.TEXT))
         p.setFont(_FONT_XXL)
         p.drawText(QRectF(cx - 36, cy - 16, 72, 32),
                    Qt.AlignmentFlag.AlignCenter, str(total))
@@ -334,7 +333,7 @@ class _DonutChart(QFrame):
             p.drawRoundedRect(QRectF(legend_x, ly + 3, 10, 10), 2, 2)
 
             # 文字
-            p.setPen(QColor(TEXT))
+            p.setPen(QColor(_theme.TEXT))
             p.drawText(QRectF(legend_x + 16, ly - 1, 100, 16),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        label)
@@ -363,6 +362,7 @@ class _StackedBar(QWidget):
         self._pass = 0
         self._fail = 0
         self._progress = 0
+        _theme.theme_host.theme_changed.connect(self.update)
 
     def set_data(self, total: int, pass_count: int, fail_count: int,
                  in_progress: int) -> None:
@@ -379,7 +379,7 @@ class _StackedBar(QWidget):
 
         # 背景
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(SURFACE1))
+        p.setBrush(QColor(_theme.SURFACE1))
         p.drawRoundedRect(0, 0, w, h, 4, 4)
 
         if self._total <= 0:
@@ -482,6 +482,7 @@ class _ProgressRing(QWidget):
         self.setMinimumSize(100, 100)
         self.setMaximumSize(150, 150)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        _theme.theme_host.theme_changed.connect(self.update)
 
     def setPercent(self, pct: float) -> None:
         self._pct = max(0.0, min(100.0, pct))
@@ -507,7 +508,7 @@ class _ProgressRing(QWidget):
             p.drawArc(rect, 90 * 16, -int(self._pct / 100 * 360 * 16))
 
         # 中心数字
-        p.setPen(QColor(TEXT))
+        p.setPen(QColor(_theme.TEXT))
         p.setFont(QFont(_FAMILY, 16, QFont.Weight.Bold))
         p.drawText(QRectF(cx - 30, cy - 10, 60, 20),
                    Qt.AlignmentFlag.AlignCenter, f"{self._pct:.0f}%")
@@ -537,6 +538,7 @@ class _SeverityBar(QWidget):
         self._data: dict[str, int] = {}
         self.setFixedHeight(56)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        _theme.theme_host.theme_changed.connect(self.update)
 
     def setData(self, data: dict[str, int]) -> None:
         self._data = dict(data)
@@ -594,7 +596,7 @@ class _SeverityBar(QWidget):
             p.drawRoundedRect(QRectF(lx, legend_y + 2, 8, 8), 2, 2)
 
             # 文字
-            p.setPen(QColor(TEXT))
+            p.setPen(QColor(_theme.TEXT))
             text = f"{label} {val}"
             p.drawText(QRectF(lx + 12, legend_y - 1, 70, 14),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -653,6 +655,17 @@ class DashboardView(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
+        _theme.theme_host.theme_changed.connect(self._on_theme_changed)
+
+    def _on_theme_changed(self) -> None:
+        """Refresh QSS for scroll area and container on theme change."""
+        self._scroll.setStyleSheet(
+            f"QScrollArea {{ background-color: {_theme.BASE}; border: none; }}"
+            f"QScrollBar:vertical {{ width: 8px; background: transparent; }}"
+            f"QScrollBar::handle:vertical {{ background: {_theme.SURFACE1}; border-radius: 4px; min-height: 30px; }}"
+            f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}"
+        )
+        self._container.setStyleSheet(f"background-color: {_theme.BASE};")
 
     def _setup_ui(self) -> None:
         # 外层 QScrollArea 包裹，兜底小窗口
@@ -660,18 +673,18 @@ class DashboardView(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(
-            f"QScrollArea {{ background-color: {DASH_BG}; border: none; }}"
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setStyleSheet(
+            f"QScrollArea {{ background-color: {_theme.BASE}; border: none; }}"
             f"QScrollBar:vertical {{ width: 8px; background: transparent; }}"
-            f"QScrollBar::handle:vertical {{ background: {DASH_CARD_BORDER}; border-radius: 4px; min-height: 30px; }}"
+            f"QScrollBar::handle:vertical {{ background: {_theme.SURFACE1}; border-radius: 4px; min-height: 30px; }}"
             f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}"
         )
 
-        container = QWidget()
-        container.setStyleSheet(f"background-color: {DASH_BG};")
-        root = QVBoxLayout(container)
+        self._container = QWidget()
+        self._container.setStyleSheet(f"background-color: {_theme.BASE};")
+        root = QVBoxLayout(self._container)
         root.setContentsMargins(*VIEW_MARGINS)
         root.setSpacing(16)
 
@@ -681,7 +694,7 @@ class DashboardView(QWidget):
         self._filter_label = QLabel("全部项目")
         self._filter_label.setStyleSheet(
             f"color: {DASH_NEUTRAL}; font-size: 12px; font-weight: 500;"
-            f"background-color: {DASH_CARD_BG}; border: 1px solid {DASH_CARD_BORDER};"
+            f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
             f"border-radius: 8px; padding: 4px 12px;"
         )
         header.addWidget(self._filter_label)
@@ -767,14 +780,14 @@ class DashboardView(QWidget):
         root.addLayout(cols)
         root.addStretch()
 
-        scroll.setWidget(container)
-        outer.addWidget(scroll)
+        self._scroll.setWidget(self._container)
+        outer.addWidget(self._scroll)
 
     @staticmethod
     def _mk_section_title(text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
-            f"color: {TEXT}; font-size: 13px; font-weight: bold;"
+            f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
             f"background: transparent; border: none;"
         )
         return lbl
@@ -834,21 +847,21 @@ class DashboardView(QWidget):
             text = f"{project_name} / {plan_name}"
             ss = (
                 f"color: {DASH_PRIMARY}; font-size: 12px; font-weight: bold;"
-                f"background-color: {DASH_CARD_BG}; border: 1px solid {DASH_PRIMARY};"
+                f"background-color: {_theme.MANTLE}; border: 1px solid {DASH_PRIMARY};"
                 f"border-radius: 8px; padding: 4px 12px;"
             )
         elif project_name:
             text = project_name
             ss = (
                 f"color: {DASH_PRIMARY}; font-size: 12px; font-weight: bold;"
-                f"background-color: {DASH_CARD_BG}; border: 1px solid {DASH_PRIMARY};"
+                f"background-color: {_theme.MANTLE}; border: 1px solid {DASH_PRIMARY};"
                 f"border-radius: 8px; padding: 4px 12px;"
             )
         else:
             text = "全部项目"
             ss = (
                 f"color: {DASH_NEUTRAL}; font-size: 12px; font-weight: 500;"
-                f"background-color: {DASH_CARD_BG}; border: 1px solid {DASH_CARD_BORDER};"
+                f"background-color: {_theme.MANTLE}; border: 1px solid {_theme.SURFACE1};"
                 f"border-radius: 8px; padding: 4px 12px;"
             )
         self._filter_label.setText(text)

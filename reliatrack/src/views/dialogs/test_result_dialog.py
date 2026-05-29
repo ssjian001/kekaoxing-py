@@ -23,9 +23,10 @@ from src.constants import RESULT_OPTIONS
 from src.models.sample import Sample
 from src.models.test_plan import TestResult, TestResultStatus, TestTask
 from src.styles.theme import (
-    BASE, SURFACE0, SURFACE1, SURFACE2,
+    BASE, MANTLE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
-    GREEN, RED, YELLOW, BLUE,
+    GREEN, GREEN_DARK, RED, YELLOW, BLUE,
+    SELECTION_BG,
 )
 
 
@@ -204,7 +205,7 @@ class _ResultRow(QFrame):
         if self._deleted:
             bg, border = SURFACE2, RED
         elif self._needs_attention:
-            bg, border = "rgba(30, 102, 245, 0.09)", "rgba(30, 102, 245, 0.27)"
+            bg, border = SELECTION_BG, BLUE
         else:
             bg, border = SURFACE0, SURFACE1
         self.setStyleSheet(f"""
@@ -346,10 +347,10 @@ class TestResultDialog(QWidget):
         self._btn_pass_all = QPushButton("全部通过")
         self._btn_pass_all.setFixedHeight(24)
         self._btn_pass_all.setStyleSheet(
-            f"QPushButton {{ color: white; background-color: {GREEN};"
+            f"QPushButton {{ color: {MANTLE}; background-color: {GREEN};"
             f" border: none; border-radius: 4px; padding: 2px 8px; }}"
-            f"QPushButton:hover {{ background-color: #2da44e; }}"
-            f"QPushButton:pressed {{ background-color: #238636; }}"
+            f"QPushButton:hover {{ background-color: {GREEN_DARK}; }}"
+            f"QPushButton:pressed {{ background-color: {GREEN_DARK}; }}"
         )
         self._btn_pass_all.clicked.connect(self._pass_all)
         stats_row.addWidget(self._btn_pass_all)

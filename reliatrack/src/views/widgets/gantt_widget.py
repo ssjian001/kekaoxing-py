@@ -8,9 +8,9 @@ from PySide6.QtWidgets import QWidget, QScrollArea
 from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QMouseEvent, QWheelEvent, QRegion
 
+import src.styles.theme as _theme
 from src.styles.theme import (
-    MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1,
+    SURFACE2,
     BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
 )
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL
@@ -54,7 +54,7 @@ class _GanttWidget(QWidget):
         self._label_w: int = self._LABEL_W_DEFAULT  # 当前标签列宽度
         self.setMinimumHeight(150)
         self.setMouseTracking(True)  # 悬浮提示需要
-        self.setStyleSheet(f"background-color: {BASE};")
+        self.setStyleSheet(f"background-color: {_theme.BASE};")
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
         # 拖拽状态
@@ -64,6 +64,9 @@ class _GanttWidget(QWidget):
         self._drag_start_day: int = 0
         self._drag_preview_offset: int = 0  # 拖拽预览偏移（不直接改 model）
         self._hover_task_idx: int | None = None
+
+        # 主题切换 → 重绘
+        _theme.theme_host.theme_changed.connect(self.update)
 
         # 标签列拖拽调节
         self._dragging_label: bool = False
@@ -279,7 +282,7 @@ class _GanttWidget(QWidget):
     def paintEvent(self, event) -> None:  # type: ignore[override]
         if not self._tasks:
             p = QPainter(self)
-            p.setPen(QColor(SUBTEXT0))
+            p.setPen(QColor(_theme.SUBTEXT0))
             p.setFont(QFont(FONT_FAMILY, 12))
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "暂无任务数据")
             p.end()
@@ -293,13 +296,13 @@ class _GanttWidget(QWidget):
         chart_w = w - label_w
 
         # ── 标签/图表分隔线 ──
-        p.setPen(QPen(QColor(SURFACE1), 1))
+        p.setPen(QPen(QColor(_theme.SURFACE1), 1))
         p.drawLine(label_w, 0, label_w, self.height())
 
         # ── 表头（天数标尺）— 冻结在滚动位置顶部 ──
         vy = self._scroll_v_offset  # 表头固定 Y 坐标
-        p.fillRect(0, vy, w, self._header_height, QColor(SURFACE0))
-        p.setPen(QColor(SUBTEXT1))
+        p.fillRect(0, vy, w, self._header_height, QColor(_theme.SURFACE0))
+        p.setPen(QColor(_theme.SUBTEXT1))
         p.setFont(QFont(FONT_FAMILY, 9))
         step = max(1, self._total_days // 15)
 
@@ -327,7 +330,7 @@ class _GanttWidget(QWidget):
             if is_weekend:
                 # 周末列浅色背景
                 p.fillRect(int(x), self._header_height, int(self._day_w) + 1,
-                           self.height() - self._header_height, QColor(MANTLE))
+                           self.height() - self._header_height, QColor(_theme.MANTLE))
             if is_holiday:
                 # 节假日列浅红背景（叠加在周末之上，独立可见）
                 _holiday_color = QColor(RED)
@@ -336,7 +339,7 @@ class _GanttWidget(QWidget):
                            self.height() - self._header_height, _holiday_color)
 
             if d % step == 0:
-                p.setPen(QColor(SUBTEXT1))
+                p.setPen(QColor(_theme.SUBTEXT1))
                 if base_date is not None:
                     real_date = base_date + timedelta(days=d)
                     label = f"{real_date.month}/{real_date.day}"
@@ -344,10 +347,10 @@ class _GanttWidget(QWidget):
                     label = f"D{d}"
                 p.drawText(int(x) - 20, vy, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, label)
-            p.setPen(QColor(SURFACE1))
+            p.setPen(QColor(_theme.SURFACE1))
             if d % step == 0:
                 p.drawLine(int(x), vy + self._header_height, int(x), self.height())
-            p.setPen(QColor(SUBTEXT0))
+            p.setPen(QColor(_theme.SUBTEXT0))
 
         # ── 今日线 ──
         if base_date is not None:
@@ -376,10 +379,10 @@ class _GanttWidget(QWidget):
 
             # 交替行背景
             if i % 2 == 1:
-                p.fillRect(0, y, w, self._row_height, QColor(MANTLE))
+                p.fillRect(0, y, w, self._row_height, QColor(_theme.MANTLE))
 
             # 序号 + 任务名称标签 — 8pt 字体，根据可用宽度自动省略
-            p.setPen(QColor(TEXT))
+            p.setPen(QColor(_theme.TEXT))
             p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
             fm = p.fontMetrics()
             prefix = getattr(self, '_task_prefix', '')
@@ -423,7 +426,7 @@ class _GanttWidget(QWidget):
 
             # 进度文字
             if bar_w > 30:
-                p.setPen(QColor(TEXT))
+                p.setPen(QColor(_theme.TEXT))
                 p.drawText(QRect(int(bar_x), int(bar_y), int(bar_w), self._bar_height),
                            Qt.AlignmentFlag.AlignCenter, f"{task.progress:.0f}%")
 
