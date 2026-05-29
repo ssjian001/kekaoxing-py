@@ -71,7 +71,7 @@ class _AnalysisWidget(QWidget):
     @staticmethod
     def _make_placeholder(text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 24px;")
+        lbl.setProperty("class", "subtext")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         return lbl
 
@@ -145,7 +145,7 @@ class _AnalysisWidget(QWidget):
                 detail = QLabel(f"{stats['pass']}/{stats['total']}")
                 detail.setFixedWidth(50)
                 detail.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                detail.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px;")
+                detail.setProperty("class", "subtext")
                 row.addWidget(detail)
 
                 self._layout.addLayout(row)
@@ -214,7 +214,7 @@ class _AnalysisWidget(QWidget):
         # 没有任何结果
         if not category_stats and not fail_entries:
             no_data = QLabel("暂无测试结果数据")
-            no_data.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: {FONT_SIZE_SMALL}px; padding: 24px;")
+            no_data.setProperty("class", "subtext")
             no_data.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._layout.addWidget(no_data)
 

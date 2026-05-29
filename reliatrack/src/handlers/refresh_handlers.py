@@ -105,7 +105,7 @@ class RefreshHandlers:
 
     def _prefetch_shared_data(self) -> None:
         """全量刷新前预取共享数据。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl:
             return
         if ctrl.project_service:
@@ -119,11 +119,11 @@ class RefreshHandlers:
 
     def _refresh_projects(self) -> None:
         """刷新项目管理视图 + 筛选 combo。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.project_service:
             return
         all_projects = self._cached_projects if self._cached_projects is not None else ctrl.project_service.list_all()
-        self._win._project_view.refresh(all_projects)
+        self._win.project_view.refresh(all_projects)
         # 更新筛选 combo 选项（通过公共方法，不触发信号）
         self._win.refresh_project_filter(all_projects)
 
@@ -156,13 +156,13 @@ class RefreshHandlers:
             all_samples = []
 
         # ── 注入 Issue 弹窗上下文（通过公共方法）──
-        self._win._issue_view.set_context_data(
+        self._win.issue_view.set_context_data(
             projects=all_projects,
             default_project_id=filter_project_id,
             samples=all_samples,
         )
         if ctrl.knowledge_service:
-            self._win._issue_view.set_context_data(
+            self._win.issue_view.set_context_data(
                 knowledge=ctrl.knowledge_service.list_all(),
             )
 
@@ -186,7 +186,7 @@ class RefreshHandlers:
             filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id)
         else:
             filtered_tasks = ctrl.test_tasks.list_all()
-        self._win._issue_view.set_context_data(tasks=filtered_tasks)
+        self._win.issue_view.set_context_data(tasks=filtered_tasks)
 
         # ── Issue ──
         issues_list = (
@@ -281,7 +281,7 @@ class RefreshHandlers:
 
     def _refresh_dashboard(self) -> None:
         """刷新 Dashboard A/B 两区 KPI + 图表。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl:
             return
 
@@ -290,13 +290,13 @@ class RefreshHandlers:
 
         data = self._collect_dashboard_data(ctrl, filter_project_id, filter_plan_id)
         if data is not None:
-            self._win._dashboard.refresh(**{
+            self._win.dashboard.refresh(**{
                 slot: getattr(data, slot) for slot in data.__slots__
             })
 
     def _refresh_samples(self) -> None:
         """刷新样品视图。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
         filter_project_id = self._get_filter_project_id()
@@ -306,17 +306,17 @@ class RefreshHandlers:
             all_samples = ctrl.sample_service.get_by_project(filter_project_id)
         else:
             all_samples = ctrl.sample_service.list_all()
-        self._win._sample_view.refresh_ledger(all_samples)
+        self._win.sample_view.refresh_ledger(all_samples)
         # 样品池只显示在库样品（也按项目筛选）
         in_stock = [s for s in all_samples if s.status == "in_stock"]
-        self._win._sample_view.refresh_pool(in_stock)
+        self._win.sample_view.refresh_pool(in_stock)
         # 出入库记录 — delegate to sample handlers
         if self._sample_handlers is not None:
             self._sample_handlers._refresh_sample_usage()
 
     def _refresh_plans(self) -> None:
         """刷新测试计划 + 甘特图。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service or not ctrl.test_tasks:
             return
         filter_project_id = self._get_filter_project_id()
@@ -328,11 +328,11 @@ class RefreshHandlers:
         else:
             all_plans = ctrl.test_plan_service.list_all_plans()
         # 保存当前选中索引 — 通过公共方法设置 combo 并恢复选中
-        current_plan_id = self._win._test_plan_view.get_selected_plan_id()
+        current_plan_id = self._win.test_plan_view.get_selected_plan_id()
         plan_names = [p.name for p in all_plans]
         plan_ids = [p.id for p in all_plans]  # type: ignore[misc]
         target_id = current_plan_id if current_plan_id else (all_plans[0].id if all_plans else None)
-        self._win._test_plan_view.set_plans_and_restore(plan_names, plan_ids, target_id)
+        self._win.test_plan_view.set_plans_and_restore(plan_names, plan_ids, target_id)
         # 确定恢复后的索引
         restore_idx = 0
         if target_id and target_id in plan_ids:
@@ -388,7 +388,7 @@ class RefreshHandlers:
                 else:
                     plan_issues = ctrl.issue_service.list_all()
 
-            self._win._test_plan_view.refresh(
+            self._win.test_plan_view.refresh(
                 tasks, max_day, technician_map, result_map,
                 start_date=all_plans[restore_idx].start_date,
                 matrix_results=matrix_results,
@@ -401,7 +401,7 @@ class RefreshHandlers:
 
     def _refresh_issues(self) -> None:
         """刷新 Issue 追踪视图。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         filter_project_id = self._get_filter_project_id()
@@ -414,38 +414,38 @@ class RefreshHandlers:
             all_issues = ctrl.issue_service.list_all()
         # 注入技术员列表供 CAPA 弹窗使用（通过公共方法）
         if ctrl.technician_service:
-            self._win._issue_view.set_context_data(
+            self._win.issue_view.set_context_data(
                 technicians=ctrl.technician_service.list_all(),
             )
-        self._win._issue_view.refresh(all_issues)
+        self._win.issue_view.refresh(all_issues)
 
     def _refresh_equipment(self) -> None:
         """刷新设备管理视图。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.equipment_service:
             return
         all_equipment = ctrl.equipment_service.list_all()
-        self._win._equipment_view.refresh(all_equipment)
+        self._win.equipment_view.refresh(all_equipment)
 
     def _refresh_technicians(self) -> None:
         """刷新技术员管理视图。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.technician_service:
             return
         all_technicians = ctrl.technician_service.list_all()
-        self._win._technician_view.refresh(all_technicians)
+        self._win.technician_view.refresh(all_technicians)
 
     def _refresh_knowledge(self) -> None:
         """刷新知识库视图。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.knowledge_service:
             return
         all_knowledge = ctrl.knowledge_service.list_all()
-        self._win._knowledge_view.refresh(all_knowledge)
+        self._win.knowledge_view.refresh(all_knowledge)
 
     def _refresh_undo_state(self) -> None:
         """更新撤销/重做按钮状态。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.undo_manager:
             return
         self._win.update_undo_redo(

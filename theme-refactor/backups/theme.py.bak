@@ -46,7 +46,6 @@ _PALETTES: dict[str, dict[str, str]] = {
         TEAL     = "#179299",
         SKY      = "#04a5e5",
         # Semantic aliases
-        BG_BASE      = "#F7F8FC",      # 主背景 → BASE 同值
         BG_DARK      = "#F7F8FC",
         BG_CARD      = "#FFFFFF",
         BG_INPUT     = "#F1F5F9",
@@ -89,7 +88,6 @@ _PALETTES: dict[str, dict[str, str]] = {
         TEAL     = "#179299",
         SKY      = "#04a5e5",
         # Semantic aliases
-        BG_BASE      = "#1E1E2E",      # 主背景 → BASE 同值
         BG_DARK      = "#1E1E2E",
         BG_CARD      = "#181825",
         BG_INPUT     = "#313244",
@@ -514,102 +512,6 @@ QComboBox QAbstractItemView {{
 /* ── 诊断对话框 ── */
 QMessageBox {{
     background-color: {BG_CARD};
-}}
-
-/* ════════════════════════════════════════════════════════
-   业务类选择器 — 替代内联 setStyleSheet(color: ...)
-   所有控件通过 setProperty("class", "...") 引用
-   ════════════════════════════════════════════════════════ */
-
-/* ── 筛选栏 ── */
-QLabel[class="filter-label"] {{
-    color: {FG_PRIMARY}; font-size: 12px; font-weight: bold;
-}}
-QWidget[class="filter-bar"] {{
-    background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
-}}
-QComboBox[class="filter-combo"] {{
-    background-color: {BG_INPUT}; color: {FG_PRIMARY};
-    border: 1px solid {BORDER}; border-radius: 6px;
-    padding: 4px 8px; font-size: 12px; min-height: 26px;
-}}
-QComboBox[class="filter-combo"]::drop-down {{
-    border: none; width: 24px;
-}}
-
-/* ── 面板标题（视图/卡片 header）── */
-QLabel[class="panel-header"] {{
-    color: {FG_PRIMARY}; font-size: 13px; font-weight: bold;
-}}
-
-/* ── 正文加粗 ── */
-QLabel[class="text-bold"] {{
-    color: {FG_PRIMARY}; font-size: 13px; font-weight: bold;
-}}
-
-/* ── 次要文字 ── */
-QLabel[class="subtext"] {{
-    color: {FG_SECONDARY}; font-size: 12px; font-weight: 500;
-}}
-
-/* ── 小号提示文字 ── */
-QLabel[class="hint-label"] {{
-    color: {FG_SECONDARY}; font-size: 11px; border: none; background: transparent;
-}}
-
-/* ── 统计数值 ── */
-QLabel[class="stat-value"] {{
-    color: {FG_PRIMARY}; font-size: 16px; font-weight: bold; border: none;
-}}
-
-/* ── 强调色文字 ── */
-QLabel[class="accent-label"] {{
-    color: {ACCENT}; font-size: 12px; font-weight: bold;
-}}
-
-/* ── 计数标签 ── */
-QLabel[class="count-label"] {{
-    color: {FG_SECONDARY};
-}}
-
-/* ── 筛选标签块（chip）── */
-QLabel[class="filter-chip"] {{
-    color: {FG_SECONDARY}; font-size: 12px; font-weight: 500;
-    background-color: {BG_HOVER}; border: 1px solid {BORDER}; border-radius: 4px; padding: 2px 6px;
-}}
-
-/* ── 空状态提示文字（最淡）── */
-QLabel[class="empty-label"] {{
-    color: {OVERLAY0}; font-size: 14px;
-}}
-
-/* ── 蓝色强调文字 ── */
-QLabel[class="highlight-blue"] {{
-    color: {ACCENT}; font-weight: bold;
-}}
-
-/* ── 背景容器 ── */
-QWidget[class="bg-base"] {{
-    background-color: {BG_BASE};
-}}
-QScrollArea[class="scroll-base"] {{
-    background-color: {BG_BASE}; border: none;
-}}
-QWidget[class="container-base"] {{
-    background-color: {BG_BASE};
-}}
-
-/* ── 分隔线 ── */
-QLabel[class="separator"] {{
-    background-color: {BORDER}; border: none;
-}}
-
-/* ── 标签页卡片容器 ── */
-QWidget[class="card-container"] {{
-    background-color: {BG_CARD}; border-radius: 8px;
-}}
-QWidget[class="card-container"]:hover {{
-    background-color: {BG_HOVER};
 }}
 """
 

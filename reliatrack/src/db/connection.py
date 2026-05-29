@@ -7,7 +7,10 @@
   - 连接的 *创建* 由 threading.Lock 保护，线程安全。
   - 返回的 apsw.Connection 本身 **不是线程安全的**，禁止跨线程并发写入。
   - 当前架构为 Qt 单线程事件循环，所有 DB 操作在主线程执行，安全。
-  - 如果将来引入 QThread 做后台导出/同步，需为子线程创建独立连接。
+  - 如果将来引入 QThread 做后台导出/同步，需为子线程创建独立连接，
+    不可共享 get_connection() 返回的连接对象。
+  - BackupService.create_backup() 使用 apsw.backup API 在主连接上操作，
+    期间主线程不应有并发写入——当前架构下安全，但需注意。
 """
 
 from __future__ import annotations
@@ -53,10 +56,11 @@ def get_connection(db_path: str = "", *, health_check: bool = False) -> apsw.Con
             # 检查连接是否仍然可用（可能被外部 close()）
             try:
                 conn.execute("SELECT 1")
-            except Exception:
+            except apsw.SQLError:
+                # 连接已关闭或损坏，清理后重建
                 try:
                     conn.close()
-                except Exception:
+                except apsw.SQLError:
                     pass
                 del _connections[db_path]
                 # fall through to recreate

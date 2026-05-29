@@ -6,10 +6,8 @@
 
 from __future__ import annotations
 
-import copy
 import logging
 from copy import deepcopy
-from dataclasses import replace
 from typing import Optional
 
 from src.db.repositories import TestTaskRepository, EquipmentRepository, TestPlanRepository
@@ -83,7 +81,7 @@ class SchedulerService:
             holidays = self._holiday_service.get_holidays_set()
 
         # ── 深拷贝任务，不污染 DB 读出的原始对象 ──
-        tasks_copy = [replace(t) for t in tasks]
+        tasks_copy = [deepcopy(t) for t in tasks]
 
         # ── 应用用户手动锁定 ──
         locked_ids: set[int] = set()
@@ -202,8 +200,7 @@ class SchedulerService:
         original_start_days = {t.id: t.start_day for t in tasks if t.id is not None}
 
         # 深拷贝任务列表，防止 run_auto_schedule 污染原始对象
-        import copy
-        tasks_copy = copy.deepcopy(tasks)
+        tasks_copy = deepcopy(tasks)
 
         # 执行排程
         result = run_auto_schedule(tasks_copy, equipment, config)

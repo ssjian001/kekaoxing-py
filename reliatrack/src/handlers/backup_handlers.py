@@ -35,10 +35,13 @@ class BackupHandlers:
             ctrl.shutdown()
 
         from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import QProcess
 
         app = QApplication.instance()
         if app:
             app.closeAllWindows()
+            # 使用 QProcess.startDetached 优雅启动新进程，原进程正常退出
+            # 避免 os.execv 导致文件句柄泄漏和信号丢失
             import sys
-            import os
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            QProcess.startDetached(sys.executable, sys.argv)
+            app.quit()

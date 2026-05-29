@@ -608,14 +608,10 @@ def _migrate_v11(conn: apsw.Connection) -> None:
 
     SQLite 不支持 ALTER TABLE ADD CONSTRAINT，迁移通过表重建实现。
     使用 _rebuild_table 辅助函数避免重复代码。
-    受影响列（均指向 technicians / equipment / samples / test_tasks）：
-    - sample_transactions.operator_id / related_task_id
-    - test_tasks.technician_id / equipment_id
-    - test_results.sample_id / tester_id
-    - issues.assignee_id
-    - fa_records.analyst_id
-    - capa_records.assignee_id / verified_by
-    - issue_attachments (需重建以更新 FK 引用 issues)
+
+    ⚠️ 涉及 DROP TABLE / CREATE TABLE / RENAME（SQLite DDL 不可回滚）。
+    schema_version 记录在重建全部成功后最后写入，确保版本与实际状态一致。
+    若中途崩溃，schema_version 保持旧版本号，下次启动会重试迁移。
     """
     conn.execute("PRAGMA foreign_keys = OFF")
     try:

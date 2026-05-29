@@ -69,7 +69,8 @@ def _set_table_border(table):
     tblPr.append(borders)
 
 
-def _fill_cell_local(ct_tc, text, bold=False, size=9, color=None, shade=None, align=None):
+def _fill_cell(ct_tc, text, bold=False, size=9, color=None, shade=None, align=None):
+    from docx.oxml.ns import qn
     for p in ct_tc.findall(qn("w:p")):
         ct_tc.remove(p)
     p = etree_SubElement(ct_tc, "w:p")
@@ -100,13 +101,13 @@ def _fill_cell_local(ct_tc, text, bold=False, size=9, color=None, shade=None, al
         shd.set(qn("w:val"), "clear")
 
 
-def _fill_row_cells_local(tr, values, bold=False, color=None, shade=None, center_cols=frozenset()):
+def _fill_row_cells(tr, values, bold=False, color=None, shade=None, center_cols=frozenset()):
     from docx.oxml.ns import qn
     tc_elems = tr.findall(qn("w:tc"))
     for j, val in enumerate(values):
         tc = tc_elems[j] if j < len(tc_elems) else None
         if tc is not None:
-            _fill_cell_local(
+            _fill_cell(
                 tc, str(val), bold=bold, color=color,
                 shade=shade if j == 0 else shade,
                 align="center" if j in center_cols else None,
@@ -115,7 +116,9 @@ def _fill_row_cells_local(tr, values, bold=False, color=None, shade=None, center
 
 def etree_SubElement(parent, tag):
     from lxml import etree as _etree
-    return _etree.SubElement(parent, f"{{http://schemas.openxmlformats.org/wordprocessingml/2006/main}}{tag}")
+    # Strip any "w:" prefix — Clark notation doesn't use prefixes
+    local = tag.split(":")[-1] if ":" in tag else tag
+    return _etree.SubElement(parent, f"{{http://schemas.openxmlformats.org/wordprocessingml/2006/main}}{local}")
 
 
 def export_to_word(
@@ -147,49 +150,6 @@ def export_to_word(
     pf = style.paragraph_format
     pf.space_after = Pt(4)
     pf.space_before = Pt(2)
-
-    from lxml import etree
-    _ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-
-    def _make_ns(tag, **attrib):
-        return etree.SubElement(etree.Element("dummy"), f"{{{_ns}}}{tag}").makeelement(
-            f"{{{_ns}}}{tag}", {f"{{{_ns}}}{k}": v for k, v in attrib.items()})
-
-    def _fill_cell(ct_tc, text, bold=False, size=9, color=None, shade=None, align=None):
-        for p in ct_tc.findall(qn("w:p")):
-            ct_tc.remove(p)
-        p = etree.SubElement(ct_tc, f"{{{_ns}}}p")
-        if align == "center":
-            pPr = etree.SubElement(p, f"{{{_ns}}}pPr")
-            etree.SubElement(pPr, f"{{{_ns}}}jc", attrib={f"{{{_ns}}}val": "center"})
-        r = etree.SubElement(p, f"{{{_ns}}}r")
-        rPr = etree.SubElement(r, f"{{{_ns}}}rPr")
-        rFonts = etree.SubElement(rPr, f"{{{_ns}}}rFonts")
-        rFonts.set(f"{{{_ns}}}ascii", _f)
-        rFonts.set(f"{{{_ns}}}eastAsia", _f)
-        rFonts.set(f"{{{_ns}}}hAnsi", _f)
-        rPr.append(_make_ns("sz", val=str(size * 2)))
-        if bold:
-            rPr.append(_make_ns("b"))
-        if color:
-            rPr.append(_make_ns("color", val=color))
-        t = etree.SubElement(r, f"{{{_ns}}}t")
-        t.text = str(text) if text else ""
-        t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
-        if shade:
-            tcPr = ct_tc.get_or_add_tcPr()
-            shd = etree.SubElement(tcPr, f"{{{_ns}}}shd")
-            shd.set(f"{{{_ns}}}fill", shade)
-            shd.set(f"{{{_ns}}}val", "clear")
-
-    def _fill_row_cells(tr, values, bold=False, color=None, shade=None, center_cols=frozenset()):
-        tc_elems = tr.findall(qn("w:tc"))
-        for j, val in enumerate(values):
-            tc = tc_elems[j] if j < len(tc_elems) else None
-            if tc is not None:
-                _fill_cell(tc, str(val), bold=bold, color=color,
-                           shade=shade if j == 0 or shade else None,
-                           align="center" if j in center_cols else None)
 
     # ── 标题 ──
     title = doc.add_heading(level=1)
@@ -670,7 +630,7 @@ def export_dvpr_docx(
     sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     for j, role in enumerate(sig_roles):
         tc = sig_table.rows[0]._tr.findall(qn("w:tc"))[j]
-        _fill_cell_local(tc, f"{role}\n\n\n________________________", align="center")
+        _fill_cell(tc, f"{role}\n\n\n________________________", align="center")
 
     # ── 页脚 ──
     footer = section.footer

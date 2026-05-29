@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
-from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host
+from src.styles.theme import get_stylesheet, set_theme, filter_combo_qss, current_theme, theme_host, TEXT, BASE, SURFACE0, SURFACE1
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -175,17 +175,17 @@ class MainWindow(QMainWindow):
         """创建项目/计划筛选栏（注入到 layout 顶部）。"""
         filter_bar = QHBoxLayout()
         self._filter_label = QLabel("项目筛选:")
-        self._filter_label.setProperty("class", "filter-label")
+        self._filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._project_filter_combo = QComboBox()
         self._project_filter_combo.setMinimumWidth(200)
-        self._project_filter_combo.setProperty("class", "filter-combo")
+        self._project_filter_combo.setStyleSheet(filter_combo_qss())
         self._project_filter_combo.addItem("全部项目", None)
 
         self._plan_filter_label = QLabel("计划:")
-        self._plan_filter_label.setProperty("class", "filter-label")
+        self._plan_filter_label.setStyleSheet(f"color: {TEXT}; font-size: 12px; font-weight: bold;")
         self._plan_filter_combo = QComboBox()
         self._plan_filter_combo.setMinimumWidth(180)
-        self._plan_filter_combo.setProperty("class", "filter-combo")
+        self._plan_filter_combo.setStyleSheet(filter_combo_qss())
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)
 
@@ -196,7 +196,7 @@ class MainWindow(QMainWindow):
         filter_bar.addStretch()
         self._filter_layout = QWidget()
         self._filter_layout.setLayout(filter_bar)
-        self._filter_layout.setProperty("class", "filter-bar")
+        self._filter_layout.setStyleSheet(f"background-color: {BASE}; padding: 6px 20px; border-radius: 8px;")
         layout.insertWidget(0, self._filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
@@ -248,13 +248,22 @@ class MainWindow(QMainWindow):
         set_theme(name)
         QApplication.instance().setStyleSheet(get_stylesheet())
         QSettings().setValue("ReliaTrack/theme", name)
+        self._refresh_inline_styles()
+
+    def _refresh_inline_styles(self) -> None:
+        """主题切换后刷新所有使用内联样式的控件。"""
+        import src.styles.theme as _t
+        self._filter_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
+        self._plan_filter_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
+        self._filter_layout.setStyleSheet(f"background-color: {_t.BASE}; padding: 6px 20px; border-radius: 8px;")
+        self._project_filter_combo.setStyleSheet(_t.filter_combo_qss())
+        self._plan_filter_combo.setStyleSheet(_t.filter_combo_qss())
 
     def _on_theme_changed(self, name: str) -> None:
-        """外部主题切换时同步菜单 checkbox 状态（唯一 theme_changed 监听器）。"""
+        """外部主题切换时同步菜单 checkbox 状态。"""
         self._act_dark_theme.blockSignals(True)
         self._act_dark_theme.setChecked(name == "dark")
         self._act_dark_theme.blockSignals(False)
-        # 内联样式已全部迁移到 QSS 类选择器，不再需要逐控件刷新
 
     def _setup_toolbar(self) -> None:
         """快捷键注册（无可见工具栏）。"""

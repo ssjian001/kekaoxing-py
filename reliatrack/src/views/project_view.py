@@ -63,13 +63,6 @@ class ProjectView(QWidget):
         super().__init__(parent)
         self._all_projects: list[Project] = []
         self._setup_ui()
-        _t.theme_host.theme_changed.connect(self._refresh_theme)
-
-    def _refresh_theme(self) -> None:
-        """主题切换时刷新表格样式。"""
-        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
-
-    # ── UI 构建 ────────────────────────────────────────────────
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -103,7 +96,7 @@ class ProjectView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setStyleSheet(f"color: {_t.SURFACE1};")
+        sep.setProperty("class", "separator")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新建")
@@ -139,7 +132,7 @@ class ProjectView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无项目数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
+        self._empty_label.setProperty("class", "empty-label")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()

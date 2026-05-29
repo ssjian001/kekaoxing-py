@@ -154,7 +154,7 @@ class ScheduleReportDialog(QDialog):
             card_layout.setContentsMargins(12, 8, 12, 8)
             card_layout.setSpacing(2)
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
+            lbl.setProperty("class", "hint-label")
             card_layout.addWidget(lbl)
             val_lbl = QLabel(value)
             val_lbl.setStyleSheet(
@@ -171,7 +171,7 @@ class ScheduleReportDialog(QDialog):
                 f"原始工期 {original_days} 天 → 优化后 {total_days} 天 "
                 f"（{improvement:+.0f}%）"
             )
-            compare.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 2px 4px;")
+            compare.setProperty("class", "hint-label")
             layout.addWidget(compare)
 
         # ── 设备利用率图表 ──

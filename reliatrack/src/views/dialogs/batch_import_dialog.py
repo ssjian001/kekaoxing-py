@@ -97,7 +97,7 @@ class BatchImportDialog(_BaseDialog):
         # 1. 文件选择区
         file_bar = QHBoxLayout()
         self._lbl_file = QLabel("未选择文件")
-        self._lbl_file.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 13px;")
+        self._lbl_file.setProperty("class", "subtext")
         file_bar.addWidget(self._lbl_file, 1)
 
         self._btn_browse = QPushButton("选择 Excel 文件")
@@ -113,7 +113,7 @@ class BatchImportDialog(_BaseDialog):
         mapping_layout.setSpacing(8)
 
         lbl_map = QLabel("列映射 — 请为每个字段选择对应的 Excel 列")
-        lbl_map.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
+        lbl_map.setProperty("class", "text-bold")
         mapping_layout.addWidget(lbl_map)
 
         self._combos: dict[str, QComboBox] = {}
@@ -141,7 +141,7 @@ class BatchImportDialog(_BaseDialog):
 
         # 3. 预览表格
         lbl_preview = QLabel("数据预览（前 20 行）")
-        lbl_preview.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
+        lbl_preview.setProperty("class", "text-bold")
         self._root.addWidget(lbl_preview)
 
         self._preview_table = QTableWidget()
@@ -212,7 +212,7 @@ class BatchImportDialog(_BaseDialog):
             return
         self._wb_path = Path(path)
         self._lbl_file.setText(f"{self._wb_path.name}")
-        self._lbl_file.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
+        self._lbl_file.setProperty("class", "text-bold")
         self._load_preview()
 
     def _load_preview(self) -> None:

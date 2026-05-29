@@ -87,7 +87,7 @@ class KnowledgeView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setStyleSheet(f"color: {_theme.SURFACE1};")
+        sep.setProperty("class", "separator")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新增")
@@ -122,7 +122,7 @@ class KnowledgeView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无知识库条目")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet(f"color: {_theme.OVERLAY0}; font-size: 14px;")
+        self._empty_label.setProperty("class", "empty-label")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()

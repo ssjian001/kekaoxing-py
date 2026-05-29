@@ -31,7 +31,7 @@ class KnowledgeHandlers:
 
     def _on_knowledge_add(self) -> None:
         """新建知识条目。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.knowledge_service:
             return
         dlg = KnowledgeEditDialog(parent=self._win)
@@ -49,10 +49,10 @@ class KnowledgeHandlers:
 
     def _on_knowledge_edit(self) -> None:
         """编辑选中的知识条目。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.knowledge_service:
             return
-        entry = self._win._knowledge_view.get_selected_entry()
+        entry = self._win.knowledge_view.get_selected_entry()
         if entry is None:
             self._win.toast("请先选中一个知识条目", "info")
             return
@@ -77,10 +77,10 @@ class KnowledgeHandlers:
 
     def _on_knowledge_delete(self) -> None:
         """删除选中的知识条目。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.knowledge_service:
             return
-        entry = self._win._knowledge_view.get_selected_entry()
+        entry = self._win.knowledge_view.get_selected_entry()
         if entry is None:
             self._win.toast("请先选中一个知识条目", "info")
             return

@@ -42,10 +42,10 @@ class IssueHandlers:
 
     def _on_issue_attachments(self) -> None:
         """打开 Issue 附件管理弹窗。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
-        issue_id = self._win._issue_view.get_selected_issue_id()
+        issue_id = self._win.issue_view.get_selected_issue_id()
         if issue_id is None:
             self._win.toast("请先选中一个 Issue", "info")
             return
@@ -59,7 +59,7 @@ class IssueHandlers:
 
     def _handle_issue_saved(self, data: dict) -> None:
         """Issue 新建/编辑后回调。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
@@ -91,7 +91,7 @@ class IssueHandlers:
                         )
                         if reply != QMessageBox.StandardButton.Yes:
                             # 用户拒绝关闭 — 不写入 DB，直接刷新 UI 保持原状态
-                            self._win._ctrl.notify_data_changed("issue")
+                            self._win.ctrl.notify_data_changed("issue")
                             return
 
                 kwargs = {k: v for k, v in data.items() if k != "id"}
@@ -103,14 +103,14 @@ class IssueHandlers:
             else:
                 ctrl.issue_service.create(**data)
                 self._win.toast("Issue 已创建", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("Issue save failed")
             QMessageBox.critical(self._win, "保存失败", f"Issue 保存失败: {e}")
 
     def _prompt_archive_to_knowledge(self, issue_or_data) -> None:
         """Issue 关闭后提示归档到知识库。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.knowledge_service:
             return
 
@@ -150,21 +150,21 @@ class IssueHandlers:
                 }
                 ctrl.knowledge_service.create(**entry_data)
                 self._win.toast("已归档到知识库", "success")
-                self._win._ctrl.notify_data_changed("knowledge")
+                self._win.ctrl.notify_data_changed("knowledge")
             except Exception as e:
                 logger.exception("Knowledge archive failed")
                 QMessageBox.warning(self._win, "归档失败", f"知识库归档失败: {e}")
 
     def _handle_issue_deleted(self, issue_id: int) -> None:
         """Issue 删除后回调（软删除，可撤销）。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
             cmd = ctrl.issue_service.create_delete_command(issue_id)
             ctrl.undo_manager.execute(cmd)
             self._win.toast(f"Issue #{issue_id} 已删除（可撤销）", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("Issue delete failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "删除失败", f"Issue 删除失败: {e}")
@@ -174,21 +174,21 @@ class IssueHandlers:
         if issue_id is None:
             self._current_fa_records = []
             self._current_capa_records = []
-            self._win._issue_view.refresh_fa([])
-            self._win._issue_view.refresh_capa([])
+            self._win.issue_view.refresh_fa([])
+            self._win.issue_view.refresh_capa([])
             return
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-        self._win._issue_view.refresh_fa(self._current_fa_records)
+        self._win.issue_view.refresh_fa(self._current_fa_records)
         # CAPA 记录
         self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-        self._win._issue_view.refresh_capa(self._current_capa_records)
+        self._win.issue_view.refresh_capa(self._current_capa_records)
 
     def _handle_fa_record_added(self, data: dict) -> None:
         """FA 记录添加后回调。自动联动更新 Issue。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         issue_id = data.get("issue_id")
@@ -199,18 +199,18 @@ class IssueHandlers:
             ctrl.issue_service.add_fa_record(issue_id, **fa_data)
             # 刷新 FA 面板
             self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-            self._win._issue_view.refresh_fa(self._current_fa_records)
+            self._win.issue_view.refresh_fa(self._current_fa_records)
             # ── 联动: FA → Issue ──
             self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA 步骤已添加", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("FA record add failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "保存失败", f"FA 记录添加失败: {e}")
 
     def _handle_edit_fa(self, data: dict) -> None:
         """FA 记录编辑后回调。自动联动更新 Issue。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         fa_id = data.get("id")
@@ -220,40 +220,40 @@ class IssueHandlers:
             update_data = {k: v for k, v in data.items() if k not in ("id", "issue_id")}
             ctrl.issue_service.update_fa_record(fa_id, **update_data)
             # 刷新 FA 面板
-            issue_id = self._win._issue_view.get_selected_issue_id()
+            issue_id = self._win.issue_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-                self._win._issue_view.refresh_fa(self._current_fa_records)
+                self._win.issue_view.refresh_fa(self._current_fa_records)
                 self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA #{fa_id} 已更新", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("FA update failed for fa_id=%s", fa_id)
             QMessageBox.critical(self._win, "保存失败", f"FA 记录更新失败: {e}")
 
     def _handle_delete_fa(self, fa_id: int) -> None:
         """FA 记录删除后回调。自动联动更新 Issue。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
             cmd = ctrl.issue_service.create_fa_delete_command(fa_id)
             ctrl.undo_manager.execute(cmd)
             # 刷新 FA 面板
-            issue_id = self._win._issue_view.get_selected_issue_id()
+            issue_id = self._win.issue_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-                self._win._issue_view.refresh_fa(self._current_fa_records)
+                self._win.issue_view.refresh_fa(self._current_fa_records)
                 self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA #{fa_id} 已删除", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("FA delete failed for fa_id=%s", fa_id)
             QMessageBox.critical(self._win, "删除失败", f"FA 记录删除失败: {e}")
 
     def _handle_capa_record_added(self, data: dict) -> None:
         """CAPA 记录添加后回调。自动联动更新 Issue。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         issue_id = data.get("issue_id")
@@ -264,18 +264,18 @@ class IssueHandlers:
             ctrl.issue_service.add_capa_record(issue_id, **record_data)
             # 刷新 CAPA 面板
             self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-            self._win._issue_view.refresh_capa(self._current_capa_records)
+            self._win.issue_view.refresh_capa(self._current_capa_records)
             # ── 联动: CAPA → Issue ──
             self._sync_issue_from_capa(issue_id)
             self._win.toast("CAPA 措施已添加", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("CAPA record add failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录添加失败: {e}")
 
     def _handle_edit_capa(self, data: dict) -> None:
         """CAPA 记录编辑后回调。自动联动更新 Issue。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         capa_id = data.get("id")
@@ -285,42 +285,42 @@ class IssueHandlers:
             update_data = {k: v for k, v in data.items() if k != "id"}
             ctrl.issue_service.update_capa_record(capa_id, **update_data)
             # 刷新 CAPA 面板：从当前选中 Issue 重新加载
-            issue_id = self._win._issue_view.get_selected_issue_id()
+            issue_id = self._win.issue_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-                self._win._issue_view.refresh_capa(self._current_capa_records)
+                self._win.issue_view.refresh_capa(self._current_capa_records)
                 # ── 联动: CAPA → Issue ──
                 self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已更新", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("CAPA update failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "保存失败", f"CAPA 记录更新失败: {e}")
 
     def _handle_delete_capa(self, capa_id: int) -> None:
         """CAPA 记录删除后回调。自动联动更新 Issue。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
             cmd = ctrl.issue_service.create_capa_delete_command(capa_id)
             ctrl.undo_manager.execute(cmd)
             # 刷新 CAPA 面板
-            issue_id = self._win._issue_view.get_selected_issue_id()
+            issue_id = self._win.issue_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-                self._win._issue_view.refresh_capa(self._current_capa_records)
+                self._win.issue_view.refresh_capa(self._current_capa_records)
                 # ── 联动: CAPA → Issue ──
                 self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已删除", "success")
-            self._win._ctrl.notify_data_changed("issue")
+            self._win.ctrl.notify_data_changed("issue")
         except Exception as e:
             logger.exception("CAPA delete failed for capa_id=%s", capa_id)
             QMessageBox.critical(self._win, "删除失败", f"CAPA 记录删除失败: {e}")
 
     def _handle_export_8d(self, issue_id: int) -> None:
         """导出 8D 报告（PDF / Word 格式选择）。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service or not ctrl.export_service:
             return
         try:
@@ -384,7 +384,7 @@ class IssueHandlers:
         1. 有 FA 记录 → 状态改为 'analyzing'（如果当前是 'open'）
         2. FA 中 confirmed=1 的 possible_cause → 回写 Issue.root_cause
         """
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:
@@ -424,7 +424,7 @@ class IssueHandlers:
         4. Issue.root_cause 为空时，CAPA root_cause 汇总回写
         5. Issue.dri_name 为空时，取第一条有 assignee 的 CAPA
         """
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         try:

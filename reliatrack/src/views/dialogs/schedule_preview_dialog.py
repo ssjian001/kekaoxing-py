@@ -238,7 +238,7 @@ class SchedulePreviewDialog(QDialog):
             card_layout.setContentsMargins(10, 6, 10, 6)
             card_layout.setSpacing(1)
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px; border: none;")
+            lbl.setProperty("class", "hint-label")
             card_layout.addWidget(lbl)
             val_lbl = QLabel(value)
             val_lbl.setStyleSheet(f"color: {_t.TEXT}; font-size: 16px; font-weight: bold; border: none;")
@@ -261,7 +261,7 @@ class SchedulePreviewDialog(QDialog):
             parts.append(f"截止 {deadline}")
         text = " | ".join(parts) if parts else "无特殊参数"
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px; padding: 2px 4px;")
+        lbl.setProperty("class", "hint-label")
         return lbl
 
     # ── 填充表格 ──
@@ -540,7 +540,7 @@ class _StartDayEditDialog(QDialog):
         form.addRow("开始日 (Day 索引):", self._spin)
 
         self._date_preview = QLabel(_day_label(start_date, current_day))
-        self._date_preview.setStyleSheet(f"color: {_t.BLUE}; font-size: {FONT_SIZE_SMALL}px;")
+        self._date_preview.setProperty("class", "highlight-blue")
         form.addRow("对应日期:", self._date_preview)
 
         self._spin.valueChanged.connect(

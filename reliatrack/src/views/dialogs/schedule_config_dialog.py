@@ -58,7 +58,7 @@ class _EquipmentRow(QWidget):
         name_label = QLabel(display)
         name_label.setMinimumWidth(120)
         name_label.setMaximumWidth(200)
-        name_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
+        name_label.setProperty("class", "text-bold")
         name_label.setToolTip(f"{equipment_name}\n{asset_no}" if asset_no else equipment_name)
         layout.addWidget(name_label)
 
@@ -131,7 +131,7 @@ class ScheduleConfigDialog(_BaseDialog):
         # -- daily_start_limit --
         limit_row = QHBoxLayout()
         limit_label = QLabel("每日启动上限：")
-        limit_label.setStyleSheet(f"color: {_t.TEXT}; font-size: 13px;")
+        limit_label.setProperty("class", "text-bold")
         limit_row.addWidget(limit_label)
 
         self._spin_daily_limit = QSpinBox()
@@ -143,7 +143,7 @@ class ScheduleConfigDialog(_BaseDialog):
         limit_row.addWidget(self._spin_daily_limit)
 
         limit_hint = QLabel("（0 = 不限制）")
-        limit_hint.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px;")
+        limit_hint.setProperty("class", "subtext")
         limit_row.addWidget(limit_hint)
         limit_row.addStretch()
         self._form.addRow(limit_row)

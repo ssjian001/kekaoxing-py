@@ -66,6 +66,8 @@ class _GanttWidget(QWidget):
         self._hover_task_idx: int | None = None
 
         # 主题切换 → 重绘
+        _theme.theme_host.theme_changed.connect(self.update)
+
         # 标签列拖拽调节
         self._dragging_label: bool = False
 

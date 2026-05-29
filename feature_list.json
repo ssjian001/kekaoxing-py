@@ -1,5 +1,13 @@
 [
   {
+    "_meta": true,
+    "version": "2.0.0",
+    "schema_version": 21,
+    "updated": "2026-05-27",
+    "description": "ReliaTrack 功能清单 — 用于跟踪功能完成状态和依赖关系",
+    "note": "_meta 条目不表示功能，仅包含元数据"
+  },
+  {
     "id": "F001",
     "name": "项目管理",
     "description": "项目的CRUD和状态管理",

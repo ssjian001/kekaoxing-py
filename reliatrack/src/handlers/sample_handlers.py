@@ -44,15 +44,15 @@ class SampleHandlers:
         始终从 DB 拉全量记录，前端过滤由 _apply_filter 独立完成。
         避免双重过滤（DB 层过滤 + 前端过滤）导致数据源被污染。
         """
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
         data = ctrl.sample_service.list_transactions("", "")
-        self._win._sample_view.refresh_usage(data)
+        self._win.sample_view.refresh_usage(data)
 
     def _on_sample_checkin(self) -> None:
         """样品入库。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
 
@@ -104,10 +104,10 @@ class SampleHandlers:
 
     def _on_sample_checkout(self) -> None:
         """样品出库。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
-        sample_id = self._win._sample_view.pool_tab.table.get_selected_sample_id()
+        sample_id = self._win.sample_view.pool_tab.table.get_selected_sample_id()
         if sample_id is None:
             self._win.toast("请先选中一个样品", "info")
             return
@@ -146,7 +146,7 @@ class SampleHandlers:
                     )
                     ctrl.sample_service.update_status(sample.id, "checked_out")
                 self._win.toast(f"样品 {sample.sn} 出库成功", "success")
-                self._win._ctrl.notify_data_changed("sample")
+                self._win.ctrl.notify_data_changed("sample")
             except Exception as e:
                 logger.exception("出库失败")
                 QMessageBox.critical(self._win, "出库失败", f"保存失败: {e}")
@@ -154,7 +154,7 @@ class SampleHandlers:
 
     def _on_sample_batch_import(self) -> None:
         """样品批量导入。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
 
@@ -195,7 +195,7 @@ class SampleHandlers:
         dlg.exec()
         dlg.deleteLater()
         if dlg.was_imported():
-            self._win._ctrl.notify_data_changed("sample")
+            self._win.ctrl.notify_data_changed("sample")
             success, skip = dlg.import_result()
             msg = f"样品批量导入完成: {success} 条成功"
             if skip:
@@ -204,15 +204,15 @@ class SampleHandlers:
 
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""
-        self._edit_sample_from_table(self._win._sample_view.pool_tab.table)
+        self._edit_sample_from_table(self._win.sample_view.pool_tab.table)
 
     def _on_ledger_edit(self) -> None:
         """编辑选中样品（样品台账 Tab）。"""
-        self._edit_sample_from_table(self._win._sample_view.ledger_tab.table)
+        self._edit_sample_from_table(self._win.sample_view.ledger_tab.table)
 
     def _edit_sample_from_table(self, table: Any) -> None:
         """从指定表格获取选中样品并编辑。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
         sample_id = table.get_selected_sample_id()
@@ -245,10 +245,10 @@ class SampleHandlers:
 
     def _on_sample_return(self) -> None:
         """样品归还。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.sample_service:
             return
-        sample_id = self._win._sample_view.ledger_tab.table.get_selected_sample_id()
+        sample_id = self._win.sample_view.ledger_tab.table.get_selected_sample_id()
         if sample_id is None:
             self._win.toast("请先选中一个样品", "info")
             return
@@ -279,7 +279,7 @@ class SampleHandlers:
                     )
                     ctrl.sample_service.update_status(sample.id, "in_stock")
                 self._win.toast(f"样品 {sample.sn} 归还成功", "success")
-                self._win._ctrl.notify_data_changed("sample")
+                self._win.ctrl.notify_data_changed("sample")
             except Exception as e:
                 logger.exception("归还失败")
                 QMessageBox.critical(self._win, "归还失败", f"保存失败: {e}")

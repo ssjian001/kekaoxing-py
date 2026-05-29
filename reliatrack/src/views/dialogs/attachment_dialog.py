@@ -103,7 +103,7 @@ class AttachmentDialog(_BaseDialog):
 
         # 提示标签
         hint = QLabel(f"Issue #{self._issue_id} 的附件")
-        hint.setStyleSheet(f"color: {_t.BLUE}; font-size: 12px; font-weight: bold;")
+        hint.setProperty("class", "accent-label")
         self._form.addRow(hint)
 
         # 附件列表

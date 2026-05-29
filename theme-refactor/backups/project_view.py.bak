@@ -1,4 +1,4 @@
-"""设备管理 Tab — 设备列表 + 增删改查。"""
+"""项目管理 Tab — 项目列表 + 增删改查。"""
 
 from __future__ import annotations
 
@@ -15,63 +15,59 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QFrame,
 )
-from PySide6.QtCore import QEvent, Signal, Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor
 
-from src.models.common import Equipment
-import src.styles.theme as _theme
+from src.models.project import Project
+import src.styles.theme as _t
 from src.styles.theme import (
-    OVERLAY0,
-    SURFACE0,
     SURFACE1,
+    OVERLAY0,
+    MANTLE, BASE, SURFACE0,
     TEXT,
-    GREEN,
-    RED,
-    BLUE,
-    YELLOW,
+    SELECTION_BG,
 )
-from src.styles.constants import EQUIPMENT_STATUS_COLORS, VIEW_MARGINS, apply_column_specs
-from src.constants import EQUIPMENT_STATUS_LABELS
+from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
+from src.constants import PROJECT_STATUS_LABELS
 
-_EQUIPMENT_SPECS = [
+_PROJECT_SPECS = [
     ("ID", "fixed", 50),
-    ("资产编号", "interactive", 120),
-    ("型号", "interactive", 120),
-    ("名称", "stretch", 200),
-    ("类型", "interactive", 80),
-    ("制造商", "interactive", 120),
-    ("精度/不确定度", "interactive", 110),
-    ("校准日期", "interactive", 100),
-    ("下次校准", "interactive", 100),
-    ("间隔(月)", "interactive", 70),
+    ("名称", "interactive", 200),
+    ("产品", "interactive", 120),
+    ("客户", "interactive", 120),
     ("状态", "interactive", 80),
+    ("创建时间", "interactive", 100),
 ]
 
 
-class EquipmentView(QWidget):
-    """设备管理视图 — 顶部工具栏 + 表格。"""
+class ProjectView(QWidget):
+    """项目管理视图 — 顶部工具栏 + 表格。"""
 
-    equipment_changed = Signal()  # 增删改后发射
-
-    # 表格列：(显示名, 对应 Equipment 属性)
+    # 表格列：(显示名, 对应 Project 属性)
     _COLUMNS = [
         ("ID", "id"),
-        ("资产编号", "asset_no"),
-        ("型号", "model"),
         ("名称", "name"),
-        ("类型", "type"),
-        ("制造商", "manufacturer"),
-        ("精度/不确定度", "accuracy"),
-        ("校准日期", "calibration_date"),
-        ("下次校准", "next_calibration_date"),
-        ("间隔(月)", "calibration_interval_months"),
+        ("产品", "product"),
+        ("客户", "customer"),
         ("状态", "status"),
+        ("创建时间", "created_at"),
     ]
+
+    # 状态 → 显示文字
+    _STATUS_LABELS: dict[str, str] = PROJECT_STATUS_LABELS
+
+    # 状态 → 颜色（英文 key，与 constants.py PROJECT_STATUS_COLORS 一致）
+    _STATUS_COLORS: dict[str, str] = PROJECT_STATUS_COLORS
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._equip_list: list[Equipment] = []
+        self._all_projects: list[Project] = []
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新表格样式。"""
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     # ── UI 构建 ────────────────────────────────────────────────
 
@@ -84,55 +80,43 @@ class EquipmentView(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
 
-        self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("搜索设备名称 / 型号 / 类型…")
-        self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setMinimumWidth(160)
-        self._search_edit.textChanged.connect(self._on_search)
-        toolbar.addWidget(self._search_edit)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("搜索项目名称 / 产品 / 客户…")
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.setMinimumWidth(160)
+        self.search_input.textChanged.connect(self._on_search)
+        toolbar.addWidget(self.search_input)
 
         toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
         self.btn_edit.setMinimumWidth(70)
-        self.btn_edit.setToolTip("编辑选中设备 (F2)")
+        self.btn_edit.setToolTip("编辑选中项目 (F2)")
         toolbar.addWidget(self.btn_edit)
 
         self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setMinimumWidth(70)
-        self.btn_delete.setToolTip("删除选中设备 (Delete)")
+        self.btn_delete.setToolTip("删除选中项目 (Delete)")
         toolbar.addWidget(self.btn_delete)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setProperty("class", "separator")
+        sep.setStyleSheet(f"color: {_t.SURFACE1};")
         toolbar.addWidget(sep)
 
-        self.btn_add = QPushButton("新增")
+        self.btn_add = QPushButton("新建")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.setMinimumWidth(70)
-        self.btn_add.setToolTip("新增设备 (Ctrl+N)")
+        self.btn_add.setToolTip("新建项目 (Ctrl+N)")
         toolbar.addWidget(self.btn_add)
-
-        self.btn_import = QPushButton("导入")
-        self.btn_import.setProperty("class", "action")
-        self.btn_import.setMinimumWidth(70)
-        self.btn_import.setToolTip("从 Excel 批量导入设备")
-        toolbar.addWidget(self.btn_import)
 
         layout.addLayout(toolbar)
 
         # 表格
         self._table = QTableWidget()
-        apply_column_specs(self._table, _EQUIPMENT_SPECS, "equipment_table")
-
-        # 默认隐藏低频列，减少 800px 窗口水平溢出
-        # 列索引对应 _EQUIPMENT_SPECS: 5=制造商, 6=精度/不确定度, 9=间隔(月)
-        for _col_idx in (5, 6, 9):
-            self._table.setColumnHidden(_col_idx, True)
-
+        apply_column_specs(self._table, _PROJECT_SPECS, "project_table")
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -147,15 +131,15 @@ class EquipmentView(QWidget):
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._show_context_menu)
         self._context_menu = QMenu(self._table)
-        self._ctx_act_edit = self._context_menu.addAction("编辑设备")
-        self._ctx_act_delete = self._context_menu.addAction("删除设备")
+        self._ctx_act_edit = self._context_menu.addAction("编辑项目")
+        self._ctx_act_delete = self._context_menu.addAction("删除项目")
         self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
         self._ctx_act_delete.triggered.connect(self._on_ctx_delete)
 
         # 空状态提示
-        self._empty_label = QLabel("暂无设备数据")
+        self._empty_label = QLabel("暂无项目数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -163,45 +147,32 @@ class EquipmentView(QWidget):
 
     # ── 数据加载 ────────────────────────────────────────────────
 
-    def refresh(self, equipment_list: list[Equipment]) -> None:
-        """刷新设备表格。"""
-        self._equip_list = equipment_list
-        self._populate_table(equipment_list)
+    def refresh(self, projects: list[Project]) -> None:
+        """刷新项目表格。"""
+        self._all_projects = projects
+        self._on_search(self.search_input.text())
 
-    def _populate_table(self, items: list[Equipment]) -> None:
+    def _populate_table(self, items: list[Project]) -> None:
         """填充表格。"""
         self._table.setSortingEnabled(False)
         header = self._table.horizontalHeader()
         header.blockSignals(True)
         self._table.setRowCount(len(items))
-        for row, eq in enumerate(items):
+        for row, proj in enumerate(items):
             for col, (_, attr) in enumerate(self._COLUMNS):
-                value = getattr(eq, attr, "")
+                value = getattr(proj, attr, "")
                 # 格式化状态显示
                 if attr == "status":
-                    raw_status = str(value)
-                    value = EQUIPMENT_STATUS_LABELS.get(raw_status, raw_status)
+                    value = self._STATUS_LABELS.get(str(value), str(value))
                 item = QTableWidgetItem(str(value) if value is not None else "")
-                item.setData(Qt.ItemDataRole.UserRole, eq.id)
+                item.setData(Qt.ItemDataRole.UserRole, proj.id)
                 # 居中对齐
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # 状态列着色（用原始英文值匹配）
+                # 状态列着色
                 if attr == "status":
-                    color = EQUIPMENT_STATUS_COLORS.get(raw_status, TEXT)
+                    raw_status = str(getattr(proj, attr, ""))
+                    color = self._STATUS_COLORS.get(raw_status, OVERLAY0)
                     item.setForeground(QColor(color))
-                # 下次校准列：30天内到期黄色预警，已过期红色
-                if attr == "next_calibration_date" and value:
-                    from datetime import date, timedelta
-                    try:
-                        next_cal = date.fromisoformat(str(value))
-                        today = date.today()
-                        if next_cal < today:
-                            item.setForeground(QColor(RED))
-                            item.setText(f"{value} (过期)")
-                        elif next_cal <= today + timedelta(days=30):
-                            item.setForeground(QColor(YELLOW))
-                    except ValueError:
-                        pass
                 self._table.setItem(row, col, item)
         header.blockSignals(False)
         self._table.setSortingEnabled(True)
@@ -210,33 +181,37 @@ class EquipmentView(QWidget):
 
     # ── 选中 & 搜索 ────────────────────────────────────────────
 
-    def get_selected_equipment(self) -> Equipment | None:
-        """获取当前选中的设备对象。"""
+    def get_selected_project_id(self) -> int | None:
+        """获取当前选中项目的 ID。"""
         row = self._table.currentRow()
         if row < 0:
             return None
-        eq_id = self._table.item(row, 0)
-        if eq_id is None:
+        id_item = self._table.item(row, 0)
+        if id_item is None:
             return None
-        target_id = eq_id.data(Qt.ItemDataRole.UserRole)
-        for eq in self._equip_list:
-            if eq.id == target_id:
-                return eq
+        return id_item.data(Qt.ItemDataRole.UserRole)
+
+    def get_selected_project(self) -> Project | None:
+        """获取当前选中的项目对象。"""
+        pid = self.get_selected_project_id()
+        if pid is None:
+            return None
+        for proj in self._all_projects:
+            if proj.id == pid:
+                return proj
         return None
 
     def _on_search(self, text: str) -> None:
         """搜索过滤。"""
         keyword = text.strip().lower()
         if not keyword:
-            self._populate_table(self._equip_list)
+            self._populate_table(self._all_projects)
             return
         filtered = [
-            eq for eq in self._equip_list
-            if keyword in (eq.name or "").lower()
-            or keyword in (eq.model or "").lower()
-            or keyword in (eq.type or "").lower()
-            or keyword in (eq.asset_no or "").lower()
-            or keyword in (eq.manufacturer or "").lower()
+            proj for proj in self._all_projects
+            if keyword in (proj.name or "").lower()
+            or keyword in (proj.product or "").lower()
+            or keyword in (proj.customer or "").lower()
         ]
         self._populate_table(filtered)
 
@@ -261,12 +236,6 @@ class EquipmentView(QWidget):
     def _on_ctx_delete(self) -> None:
         """右键删除 → 触发工具栏删除按钮。"""
         self.btn_delete.click()
-
-    # ── 公开方法 ────────────────────────────────────────────────
-
-    def emit_equipment_changed(self) -> None:
-        """通知外部数据已变更。"""
-        self.equipment_changed.emit()
 
     # ── 空状态 ────────────────────────────────────────────────
 

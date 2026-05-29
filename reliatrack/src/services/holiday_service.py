@@ -87,17 +87,26 @@ class HolidayService:
         self._conn.execute("DELETE FROM [holidays] WHERE id = ?", (holiday_id,))
 
     def import_holidays(self, records: list[tuple[str, str, str]]) -> int:
-        """批量导入节假日 [(date, name, source), ...]，返回插入行数。"""
-        count = 0
-        for d, n, s in records:
-            self._conn.execute(
+        """批量导入节假日 [(date, name, source), ...]，返回插入行数。
+
+        使用 executemany + 事务包裹替代逐行 execute + changes()，
+        减少 N+1 查询问题。
+        """
+        if not records:
+            return 0
+        self._conn.execute("BEGIN")
+        try:
+            self._conn.executemany(
                 "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
-                (d, n, s),
+                records,
             )
-            # changes() 返回最近一条 SQL 影响的行数，比 getrowcount() 更可靠
-            if self._conn.execute("SELECT changes()").fetchone()[0] > 0:
-                count += 1
-        return count
+            self._conn.execute("COMMIT")
+        except Exception:
+            self._conn.execute("ROLLBACK")
+            raise
+        # 查询实际插入行数
+        row = self._conn.execute("SELECT changes()").fetchone()
+        return row[0] if row else 0
 
     def seed_year_if_missing(self, year: int, records: list[tuple[str, str]]) -> int:
         """如果指定年份数据为空，则插入种子数据。返回插入行数。"""

@@ -322,13 +322,13 @@ class TestResultDialog(QWidget):
         # 判定准则（如有）
         if self._task.accept_criteria:
             criteria = QLabel(f"判定准则: {self._task.accept_criteria}")
-            criteria.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
+            criteria.setProperty("class", "hint-label")
             criteria.setWordWrap(True)
             layout.addWidget(criteria)
 
         if not samples:
             lbl = QLabel("该任务未关联样品，请先在任务编辑中添加样品。")
-            lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px; padding: 16px;")
+            lbl.setProperty("class", "subtext")
             lbl.setWordWrap(True)
             layout.addWidget(lbl)
             self._rows: list[_ResultRow] = []
@@ -337,7 +337,7 @@ class TestResultDialog(QWidget):
         # 结果统计 + 环境条件工具栏
         stats_row = QHBoxLayout()
         self._stats_label = QLabel()
-        self._stats_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px;")
+        self._stats_label.setProperty("class", "subtext")
         stats_row.addWidget(self._stats_label, stretch=1)
 
         self._btn_apply_env = QPushButton("温湿度应用到全部")
@@ -360,7 +360,7 @@ class TestResultDialog(QWidget):
         # 分隔线
         sep = QFrame()
         sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background-color: {_t.SURFACE1};")
+        sep.setProperty("class", "separator")
         layout.addWidget(sep)
 
         # 滚动区域

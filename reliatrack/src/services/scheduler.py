@@ -20,6 +20,9 @@ from typing import Optional
 from src.models.test_plan import TestTask
 from src.models.common import Equipment
 
+# 用于表示"无设备约束"的占位符（不为 None 方便字典 key）
+_NO_EQUIPMENT: int = -1
+
 logger = logging.getLogger(__name__)
 
 
@@ -239,7 +242,7 @@ def can_place_at(
 
     for day in work_days:
         day_usage = timeline.get(day, {})
-        eq_id = task.equipment_id if task.equipment_id is not None else -1
+        eq_id = task.equipment_id if task.equipment_id is not None else _NO_EQUIPMENT
         used = day_usage.get(eq_id, 0)
         if used + 1 > cap:
             return False
@@ -285,7 +288,7 @@ def place_task(
     for day in work_days:
         if day not in timeline:
             timeline[day] = {}
-        eq_id = task.equipment_id if task.equipment_id is not None else -1
+        eq_id = task.equipment_id if task.equipment_id is not None else _NO_EQUIPMENT
         timeline[day][eq_id] = timeline[day].get(eq_id, 0) + 1
     # 每日启动数计数
     if starts is not None and config.daily_start_limit > 0:
@@ -307,7 +310,7 @@ def remove_task_from_timeline(
     for day in work_days:
         if day not in timeline:
             continue
-        eq_id = task.equipment_id if task.equipment_id is not None else -1
+        eq_id = task.equipment_id if task.equipment_id is not None else _NO_EQUIPMENT
         timeline[day][eq_id] = max(0, timeline[day].get(eq_id, 0) - 1)
         if timeline[day][eq_id] <= 0:
             timeline[day].pop(eq_id, None)
@@ -475,10 +478,11 @@ def run_auto_schedule(
         t for t in valid_tasks
         if t.status != "completed" and t.id not in locked_ids
     ]
+    # 排序策略：拓扑序 → 优先级 → 短任务优先（与 topological_order 一致）
     schedulable.sort(key=lambda t: (
         topo_index.get(t.id or 0, 999),
         t.priority,
-        -t.duration,
+        t.duration,  # 短任务优先，与 Kahn 算法的 tie-break 一致
     ))
 
     # 1d. Greedily place each task
@@ -530,7 +534,7 @@ def run_auto_schedule(
     for eq_id in set(
         eq_id for day_usage in timeline.values() for eq_id in day_usage
     ):
-        if eq_id == -1:
+        if eq_id == _NO_EQUIPMENT:
             continue  # skip "no equipment" placeholder
         cap = config.equipment_capacity.get(eq_id, 1)
         total_avail = cap * len(all_days) if all_days else 1

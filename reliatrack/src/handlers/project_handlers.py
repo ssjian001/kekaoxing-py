@@ -48,7 +48,7 @@ class ProjectHandlers:
 
     def _on_project_add(self) -> None:
         """新建项目。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.project_service:
             return
         dlg = ProjectEditDialog(parent=self._win)
@@ -66,10 +66,10 @@ class ProjectHandlers:
 
     def _on_project_edit(self) -> None:
         """编辑选中的项目。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.project_service:
             return
-        proj = self._win._project_view.get_selected_project()
+        proj = self._win.project_view.get_selected_project()
         if proj is None:
             self._win.toast("请先选中一个项目", "info")
             return
@@ -93,10 +93,10 @@ class ProjectHandlers:
 
     def _on_project_delete(self) -> None:
         """删除选中的项目。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.project_service:
             return
-        proj = self._win._project_view.get_selected_project()
+        proj = self._win.project_view.get_selected_project()
         if proj is None:
             self._win.toast("请先选中一个项目", "info")
             return

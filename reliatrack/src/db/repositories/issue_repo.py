@@ -27,6 +27,9 @@ class IssueRepository(BaseRepository):
         """查询所有未删除的 Issue，支持可选过滤条件。
 
         软删除的记录 (is_deleted=1) 会被自动过滤。
+
+        Raises:
+            Exception: 数据库操作失败时向上传播。
         """
         cols_sql = self._columns_sql()
         cols_list = self._columns()
@@ -38,15 +41,15 @@ class IssueRepository(BaseRepository):
             clauses.append(f"[{k}] = ?")
             params.append(v)
         sql += " WHERE " + " AND ".join(clauses)
-        try:
-            rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
-            return self._rows_to_models(rows, cols=cols_list)
-        except Exception:
-            logger.exception("list_all failed: table=issues, filters=%s", filters)
-            return []
+        rows = self._conn.execute(sql + " ORDER BY id", params).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
 
     def count(self, **kwargs) -> int:
-        """计数 — 始终过滤 is_deleted=0。"""
+        """计数 — 始终过滤 is_deleted=0。
+
+        Raises:
+            Exception: 数据库操作失败时向上传播（替代静默返回 0）。
+        """
         kwargs["is_deleted"] = 0
         return super().count(**kwargs)
 
@@ -144,16 +147,16 @@ class IssueRepository(BaseRepository):
         return self.list_all(project_id=project_id)
 
     def get_unassigned(self) -> list[Issue]:
-        """返回未关联项目 (project_id IS NULL) 且未软删除的 Issue。"""
+        """返回未关联项目 (project_id IS NULL) 且未软删除的 Issue。
+
+        Raises:
+            Exception: 数据库操作失败时向上传播。
+        """
         cols_sql = self._columns_sql()
         cols_list = self._columns()
         sql = f"SELECT {cols_sql} FROM [issues] WHERE [project_id] IS NULL AND [is_deleted] = 0 ORDER BY id"
-        try:
-            rows = self._conn.execute(sql).fetchall()
-            return self._rows_to_models(rows, cols=cols_list)
-        except Exception:
-            logger.exception("get_unassigned failed")
-            return []
+        rows = self._conn.execute(sql).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
 
     def get_by_status(self, status: str) -> list[Issue]:
         return self.list_all(status=status)
@@ -263,16 +266,27 @@ class IssueRepository(BaseRepository):
             "DELETE FROM [fa_records] WHERE issue_id = ?", (issue_id,)
         )
 
-    # 附件磁盘存储允许的基础目录
+    # 附件磁盘存储允许的基础目录（resolve 后的真实路径）
     _ALLOWED_ATTACH_DIRS: tuple[str, ...] = (
-        str(DEFAULT_ATTACHMENTS_DIR.parent),
+        str(Path(DEFAULT_ATTACHMENTS_DIR.parent).resolve()),
     )
 
     @staticmethod
     def _remove_disk_file(file_path: str) -> None:
-        """安全删除附件磁盘文件，忽略不存在或无权限的文件。"""
+        """安全删除附件磁盘文件，忽略不存在或无权限的文件。
+
+        安全策略：
+        1. 拒绝符号链接（防止 symlink 指向外部文件被删除）
+        2. resolve() 后校验是否在允许目录内
+        3. 静默忽略不存在的文件和有权限错误的文件
+        """
         try:
-            p = Path(file_path).resolve()
+            raw = Path(file_path)
+            # 拒绝符号链接
+            if raw.is_symlink():
+                logger.warning("附件路径是符号链接，拒绝删除: %s -> %s", raw, raw.resolve())
+                return
+            p = raw.resolve()
             # 路径前缀校验：只删除允许目录下的文件
             allowed = IssueRepository._ALLOWED_ATTACH_DIRS
             if not any(str(p).startswith(d) for d in allowed):
@@ -286,17 +300,26 @@ class IssueRepository(BaseRepository):
     def delete_attachments(self, issue_id: int) -> None:
         """删除 Issue 的所有附件（DB 记录 + 磁盘文件）。
 
-        先删 DB 记录再删磁盘文件，避免 SQL 失败时文件已被删除。
+        先删磁盘文件再删 DB 记录：与 delete_attachment 顺序一致。
+        磁盘删除失败时保留 DB 记录，用户可重试；
+        避免 DB 记录丢失后文件变为孤儿。
         """
         rows = self._conn.execute(
-            "SELECT file_path FROM [issue_attachments] WHERE issue_id = ?",
+            "SELECT id, file_path FROM [issue_attachments] WHERE issue_id = ?",
             (issue_id,),
         ).fetchall()
+        for (aid, fp) in rows:
+            if fp:
+                p = Path(fp).resolve()
+                allowed = IssueRepository._ALLOWED_ATTACH_DIRS
+                if any(str(p).startswith(d) for d in allowed) and p.exists():
+                    try:
+                        p.unlink()
+                    except OSError as exc:
+                        raise RuntimeError(f"磁盘文件删除失败: {fp}") from exc
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
         )
-        for (fp,) in rows:
-            self._remove_disk_file(fp)
 
     def delete_attachment(self, attachment_id: int) -> None:
         """删除单条附件（磁盘文件 + DB 记录）。

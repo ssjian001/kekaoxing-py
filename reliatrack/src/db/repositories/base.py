@@ -29,6 +29,7 @@ class BaseRepository:
         self._table = table
         self._model_class = model_class
         self._columns_cache: list[str] | None = None
+        self._columns_set: set[str] | None = None
 
     @property
     def conn(self) -> apsw.Connection:
@@ -80,15 +81,21 @@ class BaseRepository:
     def invalidate_columns_cache(self) -> None:
         """清除列名缓存（Schema 迁移后调用）。"""
         self._columns_cache = None
+        self._columns_set = None
 
     def _rows_to_models(
-        self, rows: list[tuple], cols: list[str] | None = None
+        self, rows: list[tuple], cols: list[str] | None = None,
+        strict: bool = False,
     ) -> list[Any]:
         """将查询结果转为 dataclass 列表。
 
         防御性实现：列数与行值数不一致时截断到较短者，避免字段串位。
         优先使用调用方传入的显式列名列表（与 SELECT 顺序一致），
         而非 PRAGMA 序（可能与物理表列序不一致）。
+
+        Args:
+            strict: 为 True 时 int 字段遇到非数字 str 时抛 ValueError，
+                    而非静默保持原值。默认 False 兼容旧数据。
         """
         if cols is None:
             cols = self._columns()
@@ -96,7 +103,7 @@ class BaseRepository:
         for row in rows:
             # 截断到较短者，防止列数与行值数不一致（如 SELECT * 与 PRAGMA 顺序差异）
             data = dict(zip(cols, row))
-            # 验证非 None 数值字段类型，报告静默类型错误
+            # 验证非 None 数值字段类型
             for col, val in data.items():
                 if val is not None:
                     model_fields = getattr(self._model_class, "__annotations__", {})
@@ -106,6 +113,11 @@ class BaseRepository:
                             data[col] = 0
                         elif val.lstrip("-").isdigit():
                             data[col] = int(val)
+                        elif strict:
+                            raise ValueError(
+                                f"Type mismatch: {self._table}.{col} "
+                                f"expected int, got {val!r}"
+                            )
                         else:
                             logger.warning(
                                 "Type mismatch: %s.%s expected int, got %r; keeping as-is",
@@ -135,9 +147,13 @@ class BaseRepository:
     # ── 通用 CRUD ──
 
     def _safe_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
-        """过滤 kwargs，只保留表中实际存在的列名（防 SQL 列名注入）。"""
-        valid = set(self._columns())
-        return {k: v for k, v in kwargs.items() if k in valid}
+        """过滤 kwargs，只保留表中实际存在的列名（防 SQL 列名注入）。
+
+        列名集合缓存于 _columns_set，invalidate_columns_cache 时同步失效。
+        """
+        if not hasattr(self, '_columns_set') or self._columns_set is None:
+            self._columns_set = set(self._columns())
+        return {k: v for k, v in kwargs.items() if k in self._columns_set}
 
     def insert(self, **kwargs: Any) -> int:
         """插入一行，返回 lastrowid。"""
@@ -233,7 +249,11 @@ class BaseRepository:
         return self._rows_to_models(rows, cols=cols_list)
 
     def count(self, **filters: Any) -> int:
-        """计数，支持可选过滤。"""
+        """计数，支持可选过滤。
+
+        Raises:
+            Exception: 数据库操作失败时向上传播。
+        """
         sql = f"SELECT COUNT(*) FROM [{self._table}]"
         params: list[Any] = []
         if filters:
@@ -242,12 +262,8 @@ class BaseRepository:
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)
-        try:
-            row = self._conn.execute(sql, params).fetchone()
-            return row[0] if row else 0
-        except Exception:
-            logger.exception("count failed: table=%s, filters=%s", self._table, filters)
-            return 0
+        row = self._conn.execute(sql, params).fetchone()
+        return row[0] if row else 0
 
 
 class _Transaction:

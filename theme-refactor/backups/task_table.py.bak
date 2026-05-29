@@ -75,11 +75,15 @@ class _TaskTable(QTableWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无测试任务")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self)
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
 
     def set_reference_data(
         self,

@@ -72,11 +72,11 @@ class PlanHandlers:
         4. 用户确认 → apply_schedule 写 DB + undo
         5. 用户重新排程 → 带 user_locked_days 重跑预览
         """
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.scheduler_service:
             return
 
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.statusBar().showMessage("请先创建并选择测试计划", 5000)
             return
@@ -171,7 +171,7 @@ class PlanHandlers:
                     self._win.statusBar().showMessage("排程预览：无变更", 5000)
 
                 # 刷新视图
-                self._win._ctrl.notify_data_changed("task")
+                self._win.ctrl.notify_data_changed("task")
                 return
 
             elif result == 2:
@@ -186,7 +186,7 @@ class PlanHandlers:
 
     def _on_gantt_task_moved(self, task_id: int, new_start_day: int) -> None:
         """甘特图拖拽移动任务后，写回数据库并注册撤销。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_tasks:
             return
         # 读取旧值
@@ -200,7 +200,7 @@ class PlanHandlers:
         ctrl.undo_manager.execute(
             MoveTaskCommand(ctrl.test_tasks, task_id, old_day, new_start_day)
         )
-        self._win._ctrl.notify_data_changed("task")
+        self._win.ctrl.notify_data_changed("task")
 
     def _on_import_from_plan(self) -> None:
         """从同项目其他计划导入任务。"""
@@ -208,11 +208,11 @@ class PlanHandlers:
         from PySide6.QtWidgets import QInputDialog
         from src.views.dialogs.import_tasks_from_plan_dialog import ImportTasksFromPlanDialog
 
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
 
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.statusBar().showMessage("请先创建并选择测试计划", 5000)
             return
@@ -273,11 +273,11 @@ class PlanHandlers:
 
     def _on_task_batch_import(self) -> None:
         """测试任务批量导入。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if ctrl is None or ctrl.test_plan_service is None:
             return
 
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.statusBar().showMessage("请先创建并选择测试计划", 5000)
             return
@@ -344,12 +344,12 @@ class PlanHandlers:
         dlg.exec()
         dlg.deleteLater()
         if dlg.was_imported():
-            self._win._ctrl.notify_data_changed("task")
+            self._win.ctrl.notify_data_changed("task")
             self._win.statusBar().showMessage("测试任务导入完成", 5000)
 
     def _on_plan_add(self) -> None:
         """新建测试计划。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service or not ctrl.project_service:
             return
         project_list = ctrl.project_service.list_all()
@@ -380,10 +380,10 @@ class PlanHandlers:
 
     def _on_plan_edit(self) -> None:
         """编辑当前选中的测试计划。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.toast("请先选中一个测试计划", "info")
             return
@@ -416,10 +416,10 @@ class PlanHandlers:
 
     def _on_plan_delete(self) -> None:
         """删除当前选中的测试计划（不可撤销）。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.toast("请先选中一个测试计划", "info")
             return
@@ -452,10 +452,10 @@ class PlanHandlers:
 
     def _on_plan_changed(self, index: int) -> None:
         """切换测试计划时刷新任务列表。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             return
         plan = ctrl.test_plan_service.get_plan(plan_id)
@@ -497,7 +497,7 @@ class PlanHandlers:
                 if not iss.is_deleted and iss.plan_id == plan_id
             ]
 
-        self._win._test_plan_view.refresh(
+        self._win.test_plan_view.refresh(
             tasks, max_day, technician_map, result_map,
             start_date=plan.start_date if plan else "",
             matrix_results=matrix_results,
@@ -515,7 +515,7 @@ class PlanHandlers:
         if not ctrl.test_plan_service or not ctrl.sample_service:
             return []
         # 从当前计划获取 project_id
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             return []
         plan = ctrl.test_plan_service.get_plan(plan_id)
@@ -528,10 +528,10 @@ class PlanHandlers:
 
     def _on_task_add(self) -> None:
         """新建测试任务。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.toast("没有测试计划，请先创建计划", "info")
             return
@@ -560,7 +560,7 @@ class PlanHandlers:
 
     def _on_task_edit_menu(self) -> None:
         """菜单触发：选中行后编辑任务。"""
-        table = self._win._test_plan_view.task_table
+        table = self._win.test_plan_view.task_table
         row = table.currentRow()
         task = table.get_task_at_row(row)
         if task is None:
@@ -570,7 +570,7 @@ class PlanHandlers:
 
     def _on_task_delete_menu(self) -> None:
         """菜单触发：选中行后删除任务。"""
-        table = self._win._test_plan_view.task_table
+        table = self._win.test_plan_view.task_table
         row = table.currentRow()
         task = table.get_task_at_row(row)
         if task is None:
@@ -580,10 +580,10 @@ class PlanHandlers:
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             return
         current_tasks = ctrl.test_plan_service.get_tasks(plan_id)
@@ -620,11 +620,11 @@ class PlanHandlers:
 
     def _on_record_result(self) -> None:
         """录入测试结果 — 选中任务后打开结果录入弹窗。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        task = self._win._test_plan_view._task_table.get_task_at_row(
-            self._win._test_plan_view._task_table.currentRow()
+        task = self._win.test_plan_view._task_table.get_task_at_row(
+            self._win.test_plan_view._task_table.currentRow()
         )
         if not task or task.id is None:
             QMessageBox.information(self._win, "提示", "请先选中一个测试任务。")
@@ -734,8 +734,8 @@ class PlanHandlers:
                 if issue_count:
                     msg += f"，自动创建 {issue_count} 条 Issue"
                 self._win.toast(msg, "success")
-                self._win._ctrl.notify_data_changed("task")
-                self._win._ctrl.notify_data_changed("issue")
+                self._win.ctrl.notify_data_changed("task")
+                self._win.ctrl.notify_data_changed("issue")
         dlg.deleteLater()
 
     def _on_summary_report(self) -> None:
@@ -745,10 +745,10 @@ class PlanHandlers:
         from PySide6.QtCore import Qt
         from PySide6.QtWidgets import QApplication
 
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        plan_id = self._win._test_plan_view.get_selected_plan_id()
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             self._win.toast("请先选择测试计划", "info")
             return
@@ -797,7 +797,7 @@ class PlanHandlers:
 
     def _on_task_delete(self, task) -> None:
         """删除测试任务（不可撤销 — 级联子数据将一并删除）。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
         if task.id is None:
@@ -862,7 +862,7 @@ class PlanHandlers:
 
         if not isinstance(task, TestTask):
             return
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
         if task.id is None:

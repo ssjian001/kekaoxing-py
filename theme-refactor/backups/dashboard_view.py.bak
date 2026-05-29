@@ -107,9 +107,22 @@ class _StatCard(QFrame):
             f"border: none; background: transparent;"
         )
         lay.addWidget(self._val)
+
+        _theme.theme_host.theme_changed.connect(self._refresh_theme_styles)
+
     def set_value(self, text: str) -> None:
         self._val.setText(text)
 
+    def _refresh_theme_styles(self) -> None:
+        self.setStyleSheet(card_qss(16))
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 12px; font-weight: 500;"
+            f"border: none; background: transparent;"
+        )
+        self._val.setStyleSheet(
+            f"color: {self._color}; font-size: 22px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
 
     def enterEvent(self, event):  # noqa: N802
         shadow = self.graphicsEffect()
@@ -148,7 +161,9 @@ class _AuxCard(QFrame):
         vl.setContentsMargins(12, 6, 12, 6)
         vl.setSpacing(0)
         self._title_label = QLabel(title)
-        self._title_label.setProperty("class", "hint-label")
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px; border: none; background: transparent;"
+        )
         vl.addWidget(self._title_label)
         self._value_label = QLabel(value)
         self._value_label.setStyleSheet(
@@ -156,10 +171,25 @@ class _AuxCard(QFrame):
             f"border: none; background: transparent;"
         )
         vl.addWidget(self._value_label)
+        _theme.theme_host.theme_changed.connect(self._refresh_theme_styles)
+
     def set_value(self, text: str) -> None:
         self._value_label.setText(text)
 
+    def _refresh_theme_styles(self) -> None:
+        self.setStyleSheet(card_qss(10))
+        self._title_label.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px; border: none; background: transparent;"
+        )
+        self._value_label.setStyleSheet(
+            f"color: {DASH_PRIMARY}; font-size: 16px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
 
+
+# ═══════════════════════════════════════════════════════════════════
+#  健康度卡片 — 顶部大摘要
+# ═══════════════════════════════════════════════════════════════════
 
 class _TestProgressCard(QFrame):
     """测试进度摘要: 堆叠进度条 (PASS/FAIL/进行中/待开始) + 辅助指标。"""
@@ -213,6 +243,9 @@ class _TestProgressCard(QFrame):
         right.addWidget(self._aux1)
         right.addWidget(self._aux2)
         lay.addLayout(right, 2)
+
+        _theme.theme_host.theme_changed.connect(self._refresh_theme_styles)
+
     @staticmethod
     def _mk_aux(title: str, value: str) -> _AuxCard:
         """创建紧凑辅助指标。"""
@@ -228,7 +261,23 @@ class _TestProgressCard(QFrame):
         self._aux1.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
         self._aux2.set_value(last_update or "—")
 
+    def _refresh_theme_styles(self) -> None:
+        self.setStyleSheet(card_qss(16))
+        self._title_label.setStyleSheet(
+            f"color: {_theme.TEXT}; font-size: 13px; font-weight: bold;"
+            f"border: none; background: transparent;"
+        )
+        for lbl in self._legend_labels:
+            lbl.setStyleSheet(
+                f"color: {_theme.SUBTEXT0}; font-size: 10px; border: none; background: transparent;"
+            )
+        self._aux1._refresh_theme_styles()
+        self._aux2._refresh_theme_styles()
 
+
+# ═══════════════════════════════════════════════════════════════════
+#  环形图（Donut）— QPainter, 图例右侧垂直
+# ═══════════════════════════════════════════════════════════════════
 
 class _DonutChart(QFrame):
     """环形图 + 右侧垂直图例。"""
@@ -242,6 +291,8 @@ class _DonutChart(QFrame):
         self.setMinimumHeight(160)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         add_shadow(self)
+        _theme.theme_host.theme_changed.connect(self.update)
+
     def setData(self, data: dict[str, int]) -> None:
         self._data = dict(data)
         self.update()
@@ -352,6 +403,8 @@ class _StackedBar(QWidget):
         self._pass = 0
         self._fail = 0
         self._progress = 0
+        _theme.theme_host.theme_changed.connect(self.update)
+
     def set_data(self, total: int, pass_count: int, fail_count: int,
                  in_progress: int) -> None:
         self._total = max(total, 1)
@@ -470,6 +523,8 @@ class _ProgressRing(QWidget):
         self.setMinimumSize(100, 100)
         self.setMaximumSize(150, 150)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        _theme.theme_host.theme_changed.connect(self.update)
+
     def setPercent(self, pct: float) -> None:
         self._pct = max(0.0, min(100.0, pct))
         self.update()
@@ -524,6 +579,8 @@ class _SeverityBar(QWidget):
         self._data: dict[str, int] = {}
         self.setFixedHeight(56)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        _theme.theme_host.theme_changed.connect(self.update)
+
     def setData(self, data: dict[str, int]) -> None:
         self._data = dict(data)
         self.update()
@@ -639,6 +696,8 @@ class DashboardView(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
+        _theme.theme_host.theme_changed.connect(self._on_theme_changed)
+
     def _on_theme_changed(self) -> None:
         """Refresh QSS for all widgets on theme change."""
         # Scroll area & container
@@ -648,7 +707,7 @@ class DashboardView(QWidget):
             f"QScrollBar::handle:vertical {{ background: {_theme.SURFACE1}; border-radius: 4px; min-height: 30px; }}"
             f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}"
         )
-        self._container.setProperty("class", "bg-base")
+        self._container.setStyleSheet(f"background-color: {_theme.BASE};")
 
         # Header labels
         self._filter_label.setStyleSheet(
@@ -688,7 +747,7 @@ class DashboardView(QWidget):
         )
 
         self._container = QWidget()
-        self._container.setProperty("class", "bg-base")
+        self._container.setStyleSheet(f"background-color: {_theme.BASE};")
         root = QVBoxLayout(self._container)
         root.setContentsMargins(*VIEW_MARGINS)
         root.setSpacing(16)

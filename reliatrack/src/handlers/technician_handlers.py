@@ -34,7 +34,7 @@ class TechnicianHandlers:
 
     def _on_technician_add(self) -> None:
         """新建技术员。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.technician_service:
             return
         dlg = TechnicianEditDialog(parent=self._win)
@@ -52,10 +52,10 @@ class TechnicianHandlers:
 
     def _on_technician_edit(self) -> None:
         """编辑选中的技术员。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.technician_service:
             return
-        tech = self._win._technician_view.get_selected_technician()
+        tech = self._win.technician_view.get_selected_technician()
         if tech is None:
             self._win.toast("请先选中一个技术员", "info")
             return
@@ -80,10 +80,10 @@ class TechnicianHandlers:
 
     def _on_technician_delete(self) -> None:
         """删除选中的技术员。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.technician_service:
             return
-        tech = self._win._technician_view.get_selected_technician()
+        tech = self._win.technician_view.get_selected_technician()
         if tech is None:
             self._win.toast("请先选中一个技术员", "info")
             return
@@ -113,7 +113,7 @@ class TechnicianHandlers:
 
     def _on_technician_import(self) -> None:
         """批量导入技术员。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.technician_service:
             return
 

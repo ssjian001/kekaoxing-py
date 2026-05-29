@@ -232,6 +232,15 @@ class _FAPanel(QScrollArea):
                 border-radius: 8px;
             }}
         """)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
+                border-radius: 8px;
+            }}
+        """)
 
     def set_fa_records(self, records: list[FARecord]) -> None:
         self._records = records
@@ -245,7 +254,7 @@ class _FAPanel(QScrollArea):
 
         if not records:
             label = QLabel("选择一个 Issue 查看 FA 分析记录")
-            label.setProperty("class", "subtext")
+            label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px; padding: 12px;")
             self._layout.addWidget(label)
             return
 
@@ -267,7 +276,7 @@ class _FAPanel(QScrollArea):
             header.addWidget(step_label)
 
             method_label = QLabel(rec.method or "")
-            method_label.setProperty("class", "subtext")
+            method_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px;")
             header.addWidget(method_label)
             header.addStretch()
 
@@ -289,7 +298,7 @@ class _FAPanel(QScrollArea):
 
             # 步骤标题
             title = QLabel(rec.step_title or "")
-            title.setProperty("class", "text-bold")
+            title.setStyleSheet(f"color: {_t.TEXT}; font-size: 12px; font-weight: bold;")
             card_layout.addWidget(title)
 
             # 描述
@@ -359,6 +368,20 @@ class IssueView(QWidget):
         self._technician_list: list = []  # 技术员列表，由 refresh_handlers 注入
         self._all_issues: list[Issue] = []  # 筛选前的完整列表缓存
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时重新应用所有内联样式。"""
+        self._stats_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px;")
+        self._fa_label.setStyleSheet(
+            f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        self._capa_label.setStyleSheet(
+            f"color: {_t.TEXT}; font-size: 13px; font-weight: bold; padding: 4px 0;"
+        )
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
+
+    # ── 公共方法：上下文数据注入 ────────────────────────────────────
 
     def set_context_data(
         self,
@@ -453,7 +476,7 @@ class IssueView(QWidget):
 
         # 统计标签
         self._stats_label = QLabel("0 个 Issue")
-        self._stats_label.setProperty("class", "subtext")
+        self._stats_label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 12px;")
         toolbar.addWidget(self._stats_label)
 
         layout.addLayout(toolbar)
@@ -492,7 +515,7 @@ class IssueView(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无 Issue 数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._issue_table)
         self._empty_label.hide()
@@ -794,8 +817,17 @@ class _CAPAPanel(QScrollArea):
         """)
         # 初始占位
         label = QLabel("选择一个 Issue 查看 CAPA 记录")
-        label.setProperty("class", "subtext")
+        label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px; padding: 12px;")
         self._layout.addWidget(label)
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1};
+                border-radius: 8px;
+            }}
+        """)
 
     def set_capa_records(self, records: list) -> None:
         """刷新 CAPA 记录卡片。"""
@@ -809,7 +841,7 @@ class _CAPAPanel(QScrollArea):
 
         if not records:
             label = QLabel("暂无 CAPA 记录")
-            label.setProperty("class", "subtext")
+            label.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 13px; padding: 12px;")
             self._layout.addWidget(label)
             return
 
@@ -834,7 +866,7 @@ class _CAPAPanel(QScrollArea):
             header.addWidget(status_lbl)
             if rec.due_date:
                 due_lbl = QLabel(f"截止: {rec.due_date}")
-                due_lbl.setProperty("class", "hint-label")
+                due_lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
                 header.addWidget(due_lbl)
             header.addStretch()
 
@@ -863,7 +895,7 @@ class _CAPAPanel(QScrollArea):
             assignee_name = getattr(rec, 'assignee_name', '') or ''
             if assignee_name:
                 assignee_lbl = QLabel(f"负责人: {assignee_name}")
-                assignee_lbl.setProperty("class", "hint-label")
+                assignee_lbl.setStyleSheet(f"color: {_t.SUBTEXT1}; font-size: 11px;")
                 card_layout.addWidget(assignee_lbl)
 
             # PDCA 字段：根因分析

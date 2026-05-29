@@ -48,6 +48,20 @@ class TestPlanView(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        """主题切换时刷新内联样式。"""
+        if hasattr(self, "_summary_label"):
+            self._summary_label.setStyleSheet(
+                f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px; "
+                f"background: {_t.SURFACE0}; border-radius: 4px;"
+            )
+        if hasattr(self, "_gantt"):
+            self._gantt.setStyleSheet(
+                f"background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1}; border-radius: 6px;"
+            )
+            self._gantt_scroll.setStyleSheet(f"background-color: {_t.BASE}; border: none;")
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -173,14 +187,14 @@ class TestPlanView(QWidget):
         gantt_mode_group.addButton(self._gantt_mode_actual, 1)
         gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
         mode_label = QLabel("显示模式:")
-        mode_label.setProperty("class", "subtext")
+        mode_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px;")
         gantt_mode_bar.addWidget(mode_label)
         gantt_mode_bar.addWidget(self._gantt_mode_planned)
         gantt_mode_bar.addWidget(self._gantt_mode_actual)
         gantt_mode_bar.addStretch()
         tab_gantt_layout.addLayout(gantt_mode_bar)
         self._gantt = _GanttWidget()
-        self._gantt.setProperty("class", "bg-base")
+        self._gantt.setStyleSheet(f"background-color: {_t.BASE}; border: 1px solid {_t.SURFACE1}; border-radius: 6px;")
         self._gantt.task_moved.connect(self.task_moved.emit)
         self._gantt_scroll = QScrollArea()
         self._gantt_scroll.setWidget(self._gantt)

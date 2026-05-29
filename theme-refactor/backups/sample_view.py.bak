@@ -182,7 +182,7 @@ class _SamplePoolTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无样品数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -338,7 +338,7 @@ class _SampleUsageTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无出入库记录")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
@@ -349,6 +349,12 @@ class _SampleUsageTab(QWidget):
 
         # 外部刷新回调（由 main.py 连接）
         self._refresh_callback: object | None = None
+        _t.theme_host.theme_changed.connect(self._refresh_theme)
+
+    def _refresh_theme(self) -> None:
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
+
+    # ── 公开方法 ──
 
     def set_refresh_callback(self, callback: object) -> None:
         """设置刷新回调，由外部传入 sample_service.list_transactions 调用。"""
@@ -512,7 +518,7 @@ class _SampleLedgerTab(QWidget):
         # 空状态提示
         self._empty_label = QLabel("暂无样品台账数据")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setStyleSheet(f"color: {_t.OVERLAY0}; font-size: 14px;")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()

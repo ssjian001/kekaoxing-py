@@ -125,7 +125,7 @@ class TaskEditDialog(_BaseDialog):
         self._sample_count_label = QLabel(
             self._format_sample_count()
         )
-        self._sample_count_label.setStyleSheet(f"color: {_t.SUBTEXT0};")
+        self._sample_count_label.setProperty("class", "count-label")
 
         sample_layout.addWidget(self._sample_select_btn)
         sample_layout.addWidget(self._sample_count_label, stretch=1)
@@ -232,7 +232,7 @@ class TaskEditDialog(_BaseDialog):
         dep_row = QHBoxLayout()
         dep_row.setSpacing(6)
         self._dep_summary = QLabel(self._format_dep_summary())
-        self._dep_summary.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px;")
+        self._dep_summary.setProperty("class", "subtext")
         self._dep_summary.setWordWrap(True)
         dep_btn = QPushButton("选择...")
         dep_btn.setProperty("class", "action")
@@ -499,7 +499,7 @@ class TaskEditDialog(_BaseDialog):
         layout.setSpacing(8)
 
         hint = QLabel("勾选当前任务所依赖的前置任务：")
-        hint.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: 11px;")
+        hint.setProperty("class", "subtext")
         layout.addWidget(hint)
 
         lst = QListWidget()

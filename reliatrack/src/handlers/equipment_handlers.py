@@ -34,7 +34,7 @@ class EquipmentHandlers:
 
     def _on_equipment_add(self) -> None:
         """新建设备。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.equipment_service:
             return
         dlg = EquipmentEditDialog(parent=self._win)
@@ -52,10 +52,10 @@ class EquipmentHandlers:
 
     def _on_equipment_edit(self) -> None:
         """编辑选中的设备。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.equipment_service:
             return
-        eq = self._win._equipment_view.get_selected_equipment()
+        eq = self._win.equipment_view.get_selected_equipment()
         if eq is None:
             self._win.toast("请先选中一个设备", "info")
             return
@@ -78,10 +78,10 @@ class EquipmentHandlers:
 
     def _on_equipment_delete(self) -> None:
         """删除选中的设备。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.equipment_service:
             return
-        eq = self._win._equipment_view.get_selected_equipment()
+        eq = self._win.equipment_view.get_selected_equipment()
         if eq is None:
             self._win.toast("请先选中一个设备", "info")
             return
@@ -111,7 +111,7 @@ class EquipmentHandlers:
 
     def _on_equipment_import(self) -> None:
         """批量导入设备。"""
-        ctrl = self._win._ctrl
+        ctrl = self._win.ctrl
         if not ctrl or not ctrl.equipment_service:
             return
 
