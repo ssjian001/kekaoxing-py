@@ -14,6 +14,7 @@ from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
     TEXT, SUBTEXT0, SUBTEXT1,
     GREEN, RED, YELLOW, BLUE,
+    SELECTION_BG,
 )
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, TABLE_QSS, install_copy_handler
 
@@ -87,7 +88,8 @@ class _ResultMatrixWidget(QWidget):
             bg=BASE, text=TEXT, gridline=SURFACE1,
            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
-       ))
+                        selection_bg=SELECTION_BG,
+                    ))
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self._table.setAlternatingRowColors(False)

@@ -21,6 +21,7 @@ from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
     GREEN, RED, PEACH,
+    SELECTION_BG,
 )
 from src.styles.constants import TABLE_QSS, TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
@@ -69,7 +70,8 @@ class _TaskTable(QTableWidget):
             bg=BASE, text=TEXT, gridline=SURFACE1,
            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
-       ))
+                        selection_bg=SELECTION_BG,
+                    ))
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单

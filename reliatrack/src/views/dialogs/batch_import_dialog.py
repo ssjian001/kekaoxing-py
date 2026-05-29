@@ -27,6 +27,7 @@ from src.views.dialogs.base_dialog import _BaseDialog
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
+    SELECTION_BG,
 )
 from src.styles.constants import TABLE_QSS, install_copy_handler
 
@@ -154,7 +155,8 @@ class BatchImportDialog(_BaseDialog):
             bg=BASE, text=TEXT, gridline=SURFACE1,
            alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
-       ))
+                        selection_bg=SELECTION_BG,
+                    ))
         install_copy_handler(self._preview_table)
         self._root.addWidget(self._preview_table, 1)
 

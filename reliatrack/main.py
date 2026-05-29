@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
-from src.styles.theme import get_stylesheet, filter_combo_qss, TEXT, BASE, SURFACE0, SURFACE1
+from src.styles.theme import get_stylesheet, set_theme, filter_combo_qss, current_theme, theme_host, TEXT, BASE, SURFACE0, SURFACE1
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -85,6 +85,7 @@ class MainWindow(QMainWindow):
         self._refresh_handlers._sample_handlers = self._sample_handlers
 
         self._setup_central_widget()
+        self._setup_menubar()
         self._setup_toolbar()
         self._setup_status_bar()
 
@@ -196,6 +197,38 @@ class MainWindow(QMainWindow):
         layout.insertWidget(0, filter_layout)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
+
+    def _setup_menubar(self) -> None:
+        """创建菜单栏 — 视图菜单含主题切换。"""
+        menubar = self.menuBar()
+
+        # 视图菜单
+        view_menu = menubar.addMenu("视图(&V)")
+
+        # 暗色主题 Toggle
+        self._act_dark_theme = QAction("暗色主题(&D)", self)
+        self._act_dark_theme.setCheckable(True)
+        self._act_dark_theme.setChecked(current_theme() == "dark")
+        self._act_dark_theme.setToolTip("切换暗色/明亮主题")
+        self._act_dark_theme.toggled.connect(self._on_toggle_dark_theme)
+        view_menu.addAction(self._act_dark_theme)
+
+        # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
+        theme_host.theme_changed.connect(self._on_theme_changed)
+
+    def _on_toggle_dark_theme(self, checked: bool) -> None:
+        """菜单 Toggle 回调 — 切换主题并持久化。"""
+        from PySide6.QtWidgets import QApplication
+        name = "dark" if checked else "light"
+        set_theme(name)
+        QApplication.instance().setStyleSheet(get_stylesheet())
+        QSettings().setValue("ReliaTrack/theme", name)
+
+    def _on_theme_changed(self, name: str) -> None:
+        """外部主题切换时同步菜单 checkbox 状态。"""
+        self._act_dark_theme.blockSignals(True)
+        self._act_dark_theme.setChecked(name == "dark")
+        self._act_dark_theme.blockSignals(False)
 
     def _setup_toolbar(self) -> None:
         """创建工具栏。"""
@@ -561,6 +594,13 @@ def main() -> int:
     app.setStyle(CheckboxProxyStyle())
 
     app.setStyleSheet(get_stylesheet())
+
+    # 恢复主题偏好（QSettings，controller 初始化前即可用）
+    _settings = QSettings()
+    _saved_theme = _settings.value("ReliaTrack/theme", "light")
+    if _saved_theme in ("light", "dark") and _saved_theme != "light":
+        set_theme(_saved_theme)
+        app.setStyleSheet(get_stylesheet())
 
     # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗
     _log = logging.getLogger("reliatrack")

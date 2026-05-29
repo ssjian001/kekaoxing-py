@@ -120,7 +120,7 @@ ISSUE_SEVERITY_COLORS: dict[str, str] = {
 }
 
 ISSUE_RESOLUTION_COLORS: dict[str, str] = {
-    "": "#1E293B",
+    "": "",          # 动态填充，见 resolve_issue_resolution_color()
     "fixed": STATUS_GREEN,
     "wont_fix": STATUS_OVERLAY,
     "duplicate": STATUS_OVERLAY,
@@ -149,7 +149,8 @@ PRIORITY_COLORS: dict[int, str] = {
 # ═══════════════════════════════════════════════════════════════════
 
 # QTableWidget 统一样式片段（使用 BG_DARK 背景与全局主题一致）
-# 占位符: {bg}, {text}, {gridline}, {alt_row}, {header_bg}, {header_text}, {font_size}
+# 占位符: {bg}, {text}, {gridline}, {alt_row}, {header_bg}, {header_text},
+#         {font_size}, {selection_bg}
 TABLE_QSS: str = (
     "QTableWidget {{"
     "background-color: {bg}; color: {text};"
@@ -158,7 +159,7 @@ TABLE_QSS: str = (
     "}}"
     "QTableWidget::item {{ padding: 6px; }}"
     "QTableWidget::item:selected {{"
-    "background-color: rgba(30, 102, 245, 0.12); color: {text};"
+    "background-color: {selection_bg}; color: {text};"
     "}}"
     "QTableWidget::item:alternate:!selected {{ background-color: {alt_row}; }}"
     "QHeaderView::section {{"
@@ -203,12 +204,28 @@ DASH_SUCCESS = STATUS_GREEN      # #40a02b
 DASH_WARNING = STATUS_YELLOW     # #df8e1d
 DASH_DANGER  = STATUS_RED        # #d20f39
 
-# 以下值与 theme.py 保持同步，不可延迟导入（constants ↔ theme 循环依赖）
-# 验证：grep DASH_NEUTRAL/DASH_BG/DASH_CARD_BG/DASH_CARD_BORDER 的值 == theme.py 对应常量
-DASH_NEUTRAL      = "#64748B"     # = theme.SUBTEXT0
-DASH_BG           = "#F7F8FC"     # = theme.BASE
-DASH_CARD_BG      = "#FFFFFF"     # = theme.MANTLE
-DASH_CARD_BORDER  = "#E2E8F0"     # = theme.SURFACE1
+# 以下值通过延迟导入从 theme.py 动态读取，确保主题切换后同步
+def _dash_colors() -> dict[str, str]:
+    """返回当前主题下的 Dashboard 背景色常量。"""
+    import src.styles.theme as _t
+    return dict(
+        DASH_NEUTRAL     = _t.SUBTEXT0,
+        DASH_BG          = _t.BASE,
+        DASH_CARD_BG     = _t.MANTLE,
+        DASH_CARD_BORDER = _t.SURFACE1,
+    )
+
+# 模块级属性代理：dashboard_view.py 等 import 后使用 DASH_BG 等名
+# 通过模块 __getattr__ 实现延迟求值
+import sys as _sys
+
+_THIS = _sys.modules[__name__]
+_DASH_KEYS = ("DASH_NEUTRAL", "DASH_BG", "DASH_CARD_BG", "DASH_CARD_BORDER")
+
+def __getattr__(name: str):  # type: ignore[no-untyped-def]
+    if name in _DASH_KEYS:
+        return _dash_colors()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -227,13 +244,18 @@ def card_qss(radius: int = 12) -> str:
 
 def add_shadow(widget, blur: int = 12, offset: int = 2,
                opacity: int = 25) -> None:
-    """给 widget 添加柔和阴影效果。"""
+    """给 widget 添加柔和阴影效果。暗色主题下自动调整阴影色。"""
     from PySide6.QtWidgets import QGraphicsDropShadowEffect
     from PySide6.QtGui import QColor
+    import src.styles.theme as _t
     shadow = QGraphicsDropShadowEffect()
     shadow.setOffset(0, offset)
     shadow.setBlurRadius(blur)
-    shadow.setColor(QColor(0, 0, 0, opacity))
+    # 暗色主题下用浅色阴影，亮色下用黑色阴影
+    if _t.current_theme() == "dark":
+        shadow.setColor(QColor(255, 255, 255, min(opacity + 15, 50)))
+    else:
+        shadow.setColor(QColor(0, 0, 0, opacity))
     widget.setGraphicsEffect(shadow)
 
 

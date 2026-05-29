@@ -23,6 +23,7 @@ from PySide6.QtCore import QEvent, Qt
 from src.styles.theme import (
     MANTLE, BASE, SURFACE0, SURFACE1,
     TEXT, OVERLAY0,
+    SELECTION_BG,
 )
 from src.styles.constants import TABLE_QSS, SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
@@ -86,6 +87,7 @@ class _SampleTable(QTableWidget):
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
+            selection_bg=SELECTION_BG,
         ))
 
     def set_samples(self, samples: list[Sample]) -> None:
@@ -340,6 +342,7 @@ class _SampleUsageTab(QWidget):
             bg=BASE, text=TEXT, gridline=SURFACE1,
             alt_row=MANTLE, header_bg=SURFACE0, header_text=TEXT,
             font_size=13,
+            selection_bg=SELECTION_BG,
         ))
         layout.addWidget(self._table)
 

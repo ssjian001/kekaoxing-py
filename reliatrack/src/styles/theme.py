@@ -1,62 +1,140 @@
-"""统一主题系统 — Catppuccin Latte 明亮主题。
+"""统一主题系统 — Catppuccin Latte (明亮) / Mocha (暗色) 双色板。
 
 本模块是 QSS 样式表的唯一来源（single source of truth）。
 所有 UI 组件通过 `get_stylesheet()` 获取完整的应用样式。
+
+用法:
+    from src.styles.theme import get_stylesheet, set_theme, theme_host
+    app.setStyleSheet(get_stylesheet())          # 启动时
+    set_theme("dark")                             # 切换暗色
+    theme_host.theme_changed.connect(my_refresh)  # 订阅刷新
 """
 
 from __future__ import annotations
 
+from PySide6.QtCore import QObject, Signal
+
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_NORMAL
 
 # ═══════════════════════════════════════════════════════════════════
-#  Catppuccin Latte 色板
+#  Catppuccin 双色板 — Latte (light) / Mocha (dark)
 # ═══════════════════════════════════════════════════════════════════
 
-# Base — 浅灰背景（SaaS 风格升级）
-CRUST    = "#dc8a78"
-MANTLE   = "#FFFFFF"      # 卡片/次要背景 → 白底
-BASE     = "#F7F8FC"      # 主背景 → 浅灰
-SURFACE0 = "#F1F5F9"      # 输入框背景 → 更亮的灰
-SURFACE1 = "#E2E8F0"      # hover / 边框
-SURFACE2 = "#CBD5E1"      # 更深灰
-OVERLAY0 = "#94A3B8"      # muted text
-TEXT     = "#1E293B"      # 主文字 → 更深更清晰
-SUBTEXT0 = "#64748B"      # 次要文字
-SUBTEXT1 = "#475569"      # 二级文字
+_PALETTES: dict[str, dict[str, str]] = {
+    "light": dict(
+        # Base neutrals
+        CRUST    = "#dc8a78",
+        MANTLE   = "#FFFFFF",      # 卡片/次要背景 → 白底
+        BASE     = "#F7F8FC",      # 主背景 → 浅灰
+        SURFACE0 = "#F1F5F9",      # 输入框背景
+        SURFACE1 = "#E2E8F0",      # hover / 边框
+        SURFACE2 = "#CBD5E1",      # 更深灰
+        OVERLAY0 = "#94A3B8",      # muted text
+        TEXT     = "#1E293B",      # 主文字
+        SUBTEXT0 = "#64748B",      # 次要文字
+        SUBTEXT1 = "#475569",      # 二级文字
+        # Accent
+        RED      = "#d20f39",
+        PEACH    = "#fe640b",
+        YELLOW   = "#df8e1d",
+        GREEN    = "#40a02b",
+        GREEN_DARK = "#358524",
+        BLUE     = "#1e66f5",
+        LAVENDER = "#7287fd",
+        MAUVE    = "#8839ef",
+        PINK     = "#ea76cb",
+        TEAL     = "#179299",
+        SKY      = "#04a5e5",
+        # Semantic aliases
+        BG_DARK      = "#F7F8FC",
+        BG_CARD      = "#FFFFFF",
+        BG_INPUT     = "#F1F5F9",
+        BG_HOVER     = "#E2E8F0",
+        FG_PRIMARY   = "#1E293B",
+        FG_SECONDARY = "#475569",
+        FG_MUTED     = "#94A3B8",
+        BORDER       = "#F1F5F9",
+        ACCENT       = "#1e66f5",
+        SUCCESS      = "#40a02b",
+        DANGER       = "#d20f39",
+        WARNING      = "#df8e1d",
+        # rgba helpers (selection, danger button)
+        SELECTION_BG  = "rgba(30, 102, 245, 0.12)",
+        DANGER_BG     = "rgba(210, 15, 57, 0.08)",
+        DANGER_BG_HOV = "rgba(210, 15, 57, 0.14)",
+    ),
+    "dark": dict(
+        # Base neutrals (Catppuccin Mocha)
+        CRUST    = "#11111B",
+        MANTLE   = "#181825",      # 卡片/次要背景
+        BASE     = "#1E1E2E",      # 主背景
+        SURFACE0 = "#313244",      # 输入框背景
+        SURFACE1 = "#45475A",      # hover / 边框
+        SURFACE2 = "#585B70",      # 更深灰
+        OVERLAY0 = "#6C7086",      # muted text
+        TEXT     = "#CDD6F4",      # 主文字
+        SUBTEXT0 = "#A6ADC8",      # 次要文字
+        SUBTEXT1 = "#BAC2DE",      # 二级文字
+        # Accent (保持 Latte 亮色 — 图表/语义色在暗色下更醒目)
+        RED      = "#d20f39",
+        PEACH    = "#fe640b",
+        YELLOW   = "#df8e1d",
+        GREEN    = "#40a02b",
+        GREEN_DARK = "#358524",
+        BLUE     = "#1e66f5",
+        LAVENDER = "#7287fd",
+        MAUVE    = "#8839ef",
+        PINK     = "#ea76cb",
+        TEAL     = "#179299",
+        SKY      = "#04a5e5",
+        # Semantic aliases
+        BG_DARK      = "#1E1E2E",
+        BG_CARD      = "#181825",
+        BG_INPUT     = "#313244",
+        BG_HOVER     = "#45475A",
+        FG_PRIMARY   = "#CDD6F4",
+        FG_SECONDARY = "#BAC2DE",
+        FG_MUTED     = "#6C7086",
+        BORDER       = "#313244",
+        ACCENT       = "#1e66f5",
+        SUCCESS      = "#40a02b",
+        DANGER       = "#d20f39",
+        WARNING      = "#df8e1d",
+        # rgba helpers — 暗色下增大 alpha
+        SELECTION_BG  = "rgba(30, 102, 245, 0.25)",
+        DANGER_BG     = "rgba(210, 15, 57, 0.18)",
+        DANGER_BG_HOV = "rgba(210, 15, 57, 0.28)",
+    ),
+}
 
-# Accent
-RED      = "#d20f39"
-PEACH    = "#fe640b"
-YELLOW   = "#df8e1d"
-GREEN    = "#40a02b"
-GREEN_DARK = "#358524"   # primary hover / border
-BLUE     = "#1e66f5"
-LAVENDER = "#7287fd"
-MAUVE    = "#8839ef"
-PINK     = "#ea76cb"
-TEAL     = "#179299"
-SKY      = "#04a5e5"
+# ═══════════════════════════════════════════════════════════════════
+#  初始化：将 light 色板写入模块全局变量
+# ═══════════════════════════════════════════════════════════════════
 
-# Semantic aliases
-BG_DARK      = BASE       # main background (lightest)
-BG_CARD      = MANTLE     # card/secondary background
-BG_INPUT     = SURFACE0   # input fields
-BG_HOVER     = SURFACE1   # hover states
-FG_PRIMARY   = TEXT       # primary text (dark)
-FG_SECONDARY = SUBTEXT1   # secondary text
-FG_MUTED     = OVERLAY0   # muted/disabled text
-BORDER       = SURFACE0   # borders
-ACCENT       = BLUE       # accent color
-SUCCESS      = GREEN
-DANGER       = RED
-WARNING      = YELLOW
+_current_theme: str = "light"
+
+# 将 light 色板的所有 key 注入为模块级常量
+globals().update(_PALETTES["light"])
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  主题切换 Signal Host
+# ═══════════════════════════════════════════════════════════════════
+
+class _SignalHost(QObject):
+    """模块级 Signal 发射器 — theme.py 不是 QObject，需要代理。"""
+    theme_changed = Signal(str)   # 参数: "light" | "dark"
+
+theme_host = _SignalHost()
 
 
 # ═══════════════════════════════════════════════════════════════════
 #  QSS 构建块
 # ═══════════════════════════════════════════════════════════════════
 
-_BASE_QSS = f"""
+def _build_qss() -> str:
+    """根据当前模块全局常量生成完整 QSS（每次调用都重新求值）。"""
+    return f"""
 /* ── 全局 ── */
 QDialog, QMainWindow {{
     background-color: {BG_DARK};
@@ -169,12 +247,12 @@ QPushButton[class="primary"]:hover {{
 
 /* ── 危险按钮 ── */
 QPushButton[class="danger"] {{
-    background-color: rgba(210, 15, 57, 0.08);
+    background-color: {DANGER_BG};
     color: {RED};
     border-color: {RED};
 }}
 QPushButton[class="danger"]:hover {{
-    background-color: rgba(210, 15, 57, 0.14);
+    background-color: {DANGER_BG_HOV};
 }}
 
 /* ── 操作按钮 ── */
@@ -221,12 +299,12 @@ QTableWidget, QTableView {{
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     gridline-color: {BORDER};
-    selection-background-color: rgba(30, 102, 245, 0.12);
+    selection-background-color: {SELECTION_BG};
     selection-color: {FG_PRIMARY};
 }}
 QHeaderView::section {{
     background-color: {BG_INPUT};
-    color: {TEXT};
+    color: {FG_PRIMARY};
     border: none;
     border-bottom: 2px solid {SURFACE1};
     padding: 8px 12px;
@@ -437,25 +515,54 @@ QMessageBox {{
 }}
 """
 
+
 # ═══════════════════════════════════════════════════════════════════
 #  公开 API
 # ═══════════════════════════════════════════════════════════════════
 
-# 预编译，避免每次调用 get_stylesheet() 重新拼接
+# 预编译缓存
 _COMPILED_STYLESHEET: str | None = None
-
 
 
 def get_stylesheet() -> str:
     """获取完整的应用 QSS 样式表。
 
     Returns:
-        Catppuccin Latte 明亮主题的完整 QSS 字符串。
+        当前主题（Latte / Mocha）的完整 QSS 字符串。
     """
     global _COMPILED_STYLESHEET
     if _COMPILED_STYLESHEET is None:
-        _COMPILED_STYLESHEET = _BASE_QSS
+        _COMPILED_STYLESHEET = _build_qss()
     return _COMPILED_STYLESHEET
+
+
+def set_theme(name: str) -> None:
+    """切换主题（light / dark）。
+
+    1. 用 globals().update() 重绑定所有颜色常量
+    2. 清空 QSS 缓存
+    3. 发射 theme_changed 信号
+    """
+    global _current_theme, _COMPILED_STYLESHEET
+    if name not in _PALETTES:
+        raise ValueError(f"Unknown theme: {name!r}, expected 'light' or 'dark'")
+    if name == _current_theme:
+        return
+
+    _current_theme = name
+    globals().update(_PALETTES[name])
+    _COMPILED_STYLESHEET = None
+    theme_host.theme_changed.emit(name)
+
+
+def current_theme() -> str:
+    """返回当前主题名称。"""
+    return _current_theme
+
+
+def get_palette() -> dict[str, str]:
+    """返回当前色板（只读副本）。"""
+    return dict(_PALETTES[_current_theme])
 
 
 def filter_combo_qss() -> str:
