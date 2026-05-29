@@ -37,7 +37,7 @@ class PlanHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win._test_plan_view
+        v = win.test_plan_view
         v.btn_schedule.clicked.connect(self._on_auto_schedule)
         v.task_moved.connect(self._on_gantt_task_moved)
         # 计划管理菜单

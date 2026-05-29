@@ -25,9 +25,9 @@ class ProjectHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        win._project_view.btn_add.clicked.connect(self._on_project_add)
-        win._project_view.btn_edit.clicked.connect(self._on_project_edit)
-        win._project_view.btn_delete.clicked.connect(self._on_project_delete)
+        win.project_view.btn_add.clicked.connect(self._on_project_add)
+        win.project_view.btn_edit.clicked.connect(self._on_project_edit)
+        win.project_view.btn_delete.clicked.connect(self._on_project_delete)
 
     @staticmethod
     def _cascade_message(service: "ProjectService", project_id: int) -> str:

@@ -24,14 +24,6 @@ class KnowledgeRepository(BaseRepository):
         """按 ID 查询单条。"""
         return self.get_by_id(entry_id)
 
-    def update(self, id: int, **kwargs: Any) -> None:
-        """按 ID 更新指定字段。委托基类（自动维护 updated_at）。"""
-        super().update(id, **kwargs)
-
-    def delete(self, entry_id: int) -> None:
-        """按 ID 删除。"""
-        super().delete(entry_id)
-
     def list_all(self, **filters: Any) -> list[KnowledgeEntry]:
         """查询所有条目，按 id DESC 排序，支持可选过滤条件。"""
         cols_sql = self._columns_sql()

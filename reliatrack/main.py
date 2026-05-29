@@ -69,7 +69,6 @@ class MainWindow(QMainWindow):
         self.resize(1100, 700)
 
         # 初始化 handler 模块
-        self._ctrl = controller
         self._project_handlers = ProjectHandlers(self)
         self._sample_handlers = SampleHandlers(self)
         self._plan_handlers = PlanHandlers(self)

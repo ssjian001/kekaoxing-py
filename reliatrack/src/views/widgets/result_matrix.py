@@ -62,24 +62,15 @@ class _ResultMatrixWidget(QWidget):
         mode_label.setStyleSheet(f"color: {_t.SUBTEXT0}; font-size: {FONT_SIZE_SMALL}px;")
         mode_bar.addWidget(mode_label)
         self._mode_group = QButtonGroup(self)
-        self._mode_checked_qss = (
-            f"QPushButton {{ background-color: {_t.SURFACE1}; color: {_t.TEXT}; "
-            f"border: 1px solid {_t.BLUE}; border-radius: 4px; "
-            f"padding: 1px 8px; font-size: 12px; }}"
-        )
-        self._mode_unchecked_qss = (
-            f"QPushButton {{ background-color: transparent; color: {SUBTEXT0}; "
-            f"border: 1px solid {SURFACE1}; border-radius: 4px; "
-            f"padding: 1px 8px; font-size: 12px; }}"
-        )
         for i, label in enumerate(self._DISPLAY_MODES):
             btn = QPushButton(label)
             btn.setFixedHeight(22)
             btn.setCheckable(True)
-            btn.setStyleSheet(self._mode_unchecked_qss if i != 0 else self._mode_checked_qss)
+            btn.setStyleSheet(self._mode_qss(False))
             self._mode_group.addButton(btn, i)
             mode_bar.addWidget(btn)
         self._mode_group.button(0).setChecked(True)
+        self._mode_group.button(0).setStyleSheet(self._mode_qss(True))
         self._mode_group.idClicked.connect(self._on_mode_changed)
         mode_bar.addStretch()
         self._layout.addLayout(mode_bar)
@@ -121,11 +112,26 @@ class _ResultMatrixWidget(QWidget):
         item.setFont(font)
         return item
 
+    @staticmethod
+    def _mode_qss(checked: bool) -> str:
+        """模式按钮 QSS — 动态读取 theme 常量，主题切换后自动生效。"""
+        if checked:
+            return (
+                f"QPushButton {{ background-color: {_t.SURFACE1}; color: {_t.TEXT}; "
+                f"border: 1px solid {_t.BLUE}; border-radius: 4px; "
+                f"padding: 1px 8px; font-size: 12px; }}"
+            )
+        return (
+            f"QPushButton {{ background-color: transparent; color: {_t.SUBTEXT0}; "
+            f"border: 1px solid {_t.SURFACE1}; border-radius: 4px; "
+            f"padding: 1px 8px; font-size: 12px; }}"
+        )
+
     def _on_mode_changed(self, btn_id: int) -> None:
         """切换显示模式后重新渲染。"""
         # 更新按钮选中样式
         for i, btn in enumerate(self._mode_group.buttons()):
-            btn.setStyleSheet(self._mode_checked_qss if i == btn_id else self._mode_unchecked_qss)
+            btn.setStyleSheet(self._mode_qss(i == btn_id))
         self.refresh(self._last_tasks, self._last_results, self._last_sample_map)
 
     def refresh(

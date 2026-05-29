@@ -26,7 +26,7 @@ class TechnicianHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win._technician_view
+        v = win.technician_view
         v.btn_add.clicked.connect(self._on_technician_add)
         v.btn_edit.clicked.connect(self._on_technician_edit)
         v.btn_delete.clicked.connect(self._on_technician_delete)

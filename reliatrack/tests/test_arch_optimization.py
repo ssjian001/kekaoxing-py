@@ -257,7 +257,7 @@ def _make_mock_win(undo_manager):
     ctrl = MagicMock()
     ctrl.undo_manager = undo_manager
     ctrl.notify_data_changed = MagicMock()
-    win._ctrl = ctrl
+    win.ctrl = ctrl
     return win
 
 

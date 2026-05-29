@@ -29,7 +29,7 @@ class SampleHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win._sample_view
+        v = win.sample_view
         v.pool_tab.btn_add.clicked.connect(self._on_sample_checkin)
         v.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
         v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)

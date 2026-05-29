@@ -63,7 +63,7 @@ def exec_crud(
         action_kwargs = {}
 
     try:
-        ctrl = win._ctrl
+        ctrl = win.ctrl
         if undo_command is not None and ctrl is not None:
             ctrl.undo_manager.execute(undo_command)
         else:
@@ -83,7 +83,7 @@ def exec_crud(
 
     win.toast(toast_msg, "success")
     if ctrl is None:
-        ctrl = win._ctrl
+        ctrl = win.ctrl
     if ctrl:
         ctrl.notify_data_changed(entity)
     return True

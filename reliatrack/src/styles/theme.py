@@ -23,7 +23,7 @@ from src.styles.constants import FONT_FAMILY, FONT_SIZE_NORMAL
 _PALETTES: dict[str, dict[str, str]] = {
     "light": dict(
         # Base neutrals
-        CRUST    = "#dc8a78",
+        CRUST    = "#DCE0E8",
         MANTLE   = "#FFFFFF",      # 卡片/次要背景 → 白底
         BASE     = "#F7F8FC",      # 主背景 → 浅灰
         SURFACE0 = "#F1F5F9",      # 输入框背景
@@ -667,15 +667,15 @@ def filter_combo_qss() -> str:
     """筛选栏 ComboBox 统一样式（DRY）。"""
     return f"""
         QComboBox {{
-            background-color: {SURFACE0}; color: {TEXT};
-            border: 1px solid {SURFACE1}; border-radius: 6px;
+            background-color: {BG_INPUT}; color: {FG_PRIMARY};
+            border: 1px solid {BORDER}; border-radius: 6px;
             padding: 4px 8px; font-size: 12px; min-height: 26px;
         }}
         QComboBox::drop-down {{
             border: none; width: 24px;
         }}
         QComboBox QAbstractItemView {{
-            background-color: {SURFACE0}; color: {TEXT};
-            selection-background-color: {SURFACE1};
+            background-color: {BG_INPUT}; color: {FG_PRIMARY};
+            selection-background-color: {BG_HOVER};
         }}
     """

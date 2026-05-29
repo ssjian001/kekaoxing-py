@@ -18,7 +18,7 @@ class BackupHandlers:
 
     def _on_data_manage(self) -> None:
         """打开数据管理对话框。"""
-        db_path = getattr(self._main, "_db_path", "")
+        db_path = getattr(self._main, "db_path", "")
         dlg = BackupDialog(parent=self._main, db_path=db_path)  # type: ignore[arg-type]
         dlg.exec()
         dlg.deleteLater()
@@ -30,7 +30,7 @@ class BackupHandlers:
     def _restart_app(self) -> None:
         """重启应用以加载恢复的数据库。先执行 shutdown 确保数据安全。"""
         # 先 shutdown — 确保 WAL checkpoint 和连接关闭
-        ctrl = getattr(self._main, "_ctrl", None)
+        ctrl = getattr(self._main, "ctrl", None)
         if ctrl:
             ctrl.shutdown()
 

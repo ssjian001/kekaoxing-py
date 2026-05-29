@@ -27,7 +27,7 @@ class IssueHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win._issue_view
+        v = win.issue_view
         v.issue_saved.connect(self._handle_issue_saved)
         v.issue_deleted.connect(self._handle_issue_deleted)
         v.issue_selected.connect(self._handle_issue_selected)

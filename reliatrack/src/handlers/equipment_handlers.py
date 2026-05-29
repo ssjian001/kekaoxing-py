@@ -26,7 +26,7 @@ class EquipmentHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win._equipment_view
+        v = win.equipment_view
         v.btn_add.clicked.connect(self._on_equipment_add)
         v.btn_edit.clicked.connect(self._on_equipment_edit)
         v.btn_delete.clicked.connect(self._on_equipment_delete)

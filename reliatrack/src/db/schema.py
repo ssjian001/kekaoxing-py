@@ -109,6 +109,7 @@ _DDL_TABLES: list[str] = [
         status          TEXT    NOT NULL DEFAULT 'draft',
         apqp_phase      TEXT    NOT NULL DEFAULT '',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+        task_prefix     TEXT    NOT NULL DEFAULT '',
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
@@ -177,6 +178,10 @@ _DDL_TABLES: list[str] = [
         reporter_name   TEXT    NOT NULL DEFAULT '',
         failure_code    TEXT    NOT NULL DEFAULT '',
         occurrence_count INTEGER NOT NULL DEFAULT 1,
+        is_deleted      INTEGER NOT NULL DEFAULT 0,
+        deleted_at      TEXT    NOT NULL DEFAULT '',
+        dri_name        TEXT    NOT NULL DEFAULT '',
+        improvement_measures TEXT NOT NULL DEFAULT '',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -220,6 +225,7 @@ _DDL_TABLES: list[str] = [
         status              TEXT    NOT NULL DEFAULT 'pending',
         verification_result TEXT    NOT NULL DEFAULT '',
         verified_by         INTEGER REFERENCES technicians(id),
+        verifier_name     TEXT    DEFAULT '',
         root_cause          TEXT    DEFAULT '',
         effectiveness       TEXT    DEFAULT '',
         follow_up           TEXT    DEFAULT '',
@@ -706,6 +712,10 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             reporter_name   TEXT    NOT NULL DEFAULT '',
             failure_code    TEXT    NOT NULL DEFAULT '',
             occurrence_count INTEGER NOT NULL DEFAULT 1,
+            is_deleted      INTEGER NOT NULL DEFAULT 0,
+            deleted_at      TEXT    NOT NULL DEFAULT '',
+            dri_name        TEXT    NOT NULL DEFAULT '',
+            improvement_measures TEXT NOT NULL DEFAULT '',
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )""")

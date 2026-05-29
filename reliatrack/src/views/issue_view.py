@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from PySide6.QtCore import QEvent, Qt, Signal
-from PySide6.QtGui import QAction
 
 import src.styles.theme as _t
 from src.styles.theme import (

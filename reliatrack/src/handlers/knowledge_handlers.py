@@ -24,7 +24,7 @@ class KnowledgeHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win._knowledge_view
+        v = win.knowledge_view
         v.btn_add.clicked.connect(self._on_knowledge_add)
         v.btn_edit.clicked.connect(self._on_knowledge_edit)
         v.btn_delete.clicked.connect(self._on_knowledge_delete)
