@@ -25,7 +25,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QStatusBar,
-    QToolBar,
     QMessageBox,
     QComboBox,
     QPushButton,
@@ -199,8 +198,30 @@ class MainWindow(QMainWindow):
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
 
     def _setup_menubar(self) -> None:
-        """创建菜单栏 — 视图菜单含主题切换。"""
+        """创建菜单栏。"""
         menubar = self.menuBar()
+
+        # 操作菜单
+        op_menu = menubar.addMenu("操作(&O)")
+
+        act_refresh = QAction("刷新(&R)", self)
+        act_refresh.setShortcut("F5")
+        act_refresh.setToolTip("刷新所有数据 (F5)")
+        act_refresh.triggered.connect(self._refresh_all)
+        op_menu.addAction(act_refresh)
+
+        act_export = QAction("导出(&E)…", self)
+        act_export.setShortcut("Ctrl+E")
+        act_export.setToolTip("导出报告 (Ctrl+E)")
+        act_export.triggered.connect(self._export_handlers._on_export)
+        op_menu.addAction(act_export)
+
+        op_menu.addSeparator()
+
+        act_backup = QAction("数据管理(&B)…", self)
+        act_backup.setToolTip("数据库备份与恢复")
+        act_backup.triggered.connect(self._backup_handlers._on_data_manage)
+        op_menu.addAction(act_backup)
 
         # 视图菜单
         view_menu = menubar.addMenu("视图(&V)")
@@ -241,11 +262,7 @@ class MainWindow(QMainWindow):
         self._act_dark_theme.blockSignals(False)
 
     def _setup_toolbar(self) -> None:
-        """创建工具栏。"""
-        toolbar = QToolBar("主工具栏")
-        toolbar.setMovable(False)
-        self.addToolBar(toolbar)
-
+        """快捷键注册（无可见工具栏）。"""
         # 全局快捷键
         self._shortcut_new = QShortcut(QKeySequence("Ctrl+N"), self)
         self._shortcut_new.activated.connect(self._on_shortcut_new)
@@ -255,43 +272,12 @@ class MainWindow(QMainWindow):
         self._shortcut_edit.activated.connect(self._on_shortcut_edit)
         self._shortcut_find = QShortcut(QKeySequence("Ctrl+F"), self)
         self._shortcut_find.activated.connect(self._on_shortcut_find)
-        self._shortcut_export = QShortcut(QKeySequence("Ctrl+E"), self)
-        self._shortcut_export.activated.connect(self._export_handlers._on_export)
 
-        # 撤销 / 重做
-        self._act_undo = QAction("撤销", self)
-        self._act_undo.setEnabled(False)
-        self._act_undo.setShortcut("Ctrl+Z")
-        self._act_undo.setToolTip("撤销 (Ctrl+Z)")
-        self._act_undo.triggered.connect(self._on_undo)
-        toolbar.addAction(self._act_undo)
-
-        self._act_redo = QAction("重做", self)
-        self._act_redo.setEnabled(False)
-        self._act_redo.setShortcuts([QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")])
-        self._act_redo.setToolTip("重做 (Ctrl+Y)")
-        self._act_redo.triggered.connect(self._on_redo)
-        toolbar.addAction(self._act_redo)
-
-        toolbar.addSeparator()
-
-        # 刷新
-        act_refresh = QAction("刷新", self)
-        act_refresh.setToolTip("刷新所有数据")
-        act_refresh.triggered.connect(self._refresh_all)
-        toolbar.addAction(act_refresh)
-
-        # 导出
-        act_export = QAction("导出", self)
-        act_export.setToolTip("导出报告 (Ctrl+E)")
-        act_export.triggered.connect(self._export_handlers._on_export)
-        toolbar.addAction(act_export)
-
-        # 数据管理
-        act_backup = QAction("数据管理", self)
-        act_backup.setToolTip("数据库备份与恢复")
-        act_backup.triggered.connect(self._backup_handlers._on_data_manage)
-        toolbar.addAction(act_backup)
+        # 撤销 / 重做（隐藏快捷键，无 UI 按钮）
+        self._shortcut_undo = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self._shortcut_undo.activated.connect(self._on_undo)
+        self._shortcut_redo = QShortcut(QKeySequence("Ctrl+Y"), self)
+        self._shortcut_redo.activated.connect(self._on_redo)
 
     def _setup_status_bar(self) -> None:
         """创建状态栏。"""
@@ -429,13 +415,7 @@ class MainWindow(QMainWindow):
         undo_desc: str = "",
         redo_desc: str = "",
     ) -> None:
-        """更新撤销/重做按钮状态（供 handler 调用）。"""
-        self._act_undo.setEnabled(can_undo)
-        self._act_redo.setEnabled(can_redo)
-        if undo_desc:
-            self._act_undo.setText(undo_desc)
-        if redo_desc:
-            self._act_redo.setText(redo_desc)
+        """更新撤销/重做状态（保留接口兼容，无可见 UI）。"""
 
     def _on_project_filter_changed(self, index: int) -> None:
         """项目筛选变化时：更新计划 combo + 刷新所有视图。"""
