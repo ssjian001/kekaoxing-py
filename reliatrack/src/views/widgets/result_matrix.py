@@ -17,7 +17,7 @@ from src.styles.theme import (
     GREEN, RED, YELLOW, BLUE,
     SELECTION_BG,
 )
-from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL, install_copy_handler
+from src.styles.constants import install_copy_handler
 
 from src.models.test_plan import TestTask
 
@@ -314,10 +314,8 @@ class _ResultMatrixWidget(QWidget):
                 f"通过 {total_pass}/{total_cells} ({rate:.0f}%) | "
                 f"失败 {total_fail}"
             )
-            self._summary_label.setStyleSheet(
-                f"color: {_t.GREEN if rate >= 80 else _t.YELLOW if rate >= 50 else _t.RED}; "
-                f"font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px; font-weight: bold;"
-            )
+            cls = "good" if rate >= 80 else "warn" if rate >= 50 else "bad"
+            self._summary_label.setProperty("rate-class", cls)
         elif sample_ids:
             self._summary_label.setText(
                 f"共 {len(tasks)} 项任务 × {len(sample_ids)} 个样品 — 暂无录入结果"

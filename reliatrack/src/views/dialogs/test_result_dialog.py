@@ -23,10 +23,8 @@ from src.constants import RESULT_OPTIONS
 from src.models.sample import Sample
 from src.models.test_plan import TestResult, TestResultStatus, TestTask
 from src.styles.theme import (
-    BASE, MANTLE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1,
-    GREEN, GREEN_DARK, RED, YELLOW, BLUE,
-    SELECTION_BG,
+    SUBTEXT0,
+    GREEN, RED, YELLOW,
 )
 import src.styles.theme as _t
 
@@ -207,17 +205,12 @@ class _ResultRow(QFrame):
     def _update_row_style(self) -> None:
         """根据当前状态 (deleted > needs_attention > normal) 更新行样式。"""
         if self._deleted:
-            bg, border = _t.SURFACE2, _t.RED
+            state = "deleted"
         elif self._needs_attention:
-            bg, border = _t.SELECTION_BG, _t.BLUE
+            state = "attention"
         else:
-            bg, border = _t.SURFACE0, _t.SURFACE1
-        self.setStyleSheet(f"""
-            QFrame#_result_row {{
-                background-color: {bg}; border: 1px solid {border};
-                border-radius: 6px; padding: 4px;
-            }}
-        """)
+            state = "normal"
+        self.setProperty("row-state", state)
 
     def _update_indicator(self) -> None:
         result = self._combo.currentData()
@@ -355,12 +348,7 @@ class TestResultDialog(QWidget):
 
         self._btn_pass_all = QPushButton("全部通过")
         self._btn_pass_all.setFixedHeight(24)
-        self._btn_pass_all.setStyleSheet(
-            f"QPushButton {{ color: {_t.MANTLE}; background-color: {_t.GREEN};"
-            f" border: none; border-radius: 4px; padding: 2px 8px; }}"
-            f"QPushButton:hover {{ background-color: {GREEN_DARK}; }}"
-            f"QPushButton:pressed {{ background-color: {GREEN_DARK}; }}"
-        )
+        self._btn_pass_all.setProperty("class", "btn-pass-all")
         self._btn_pass_all.clicked.connect(self._pass_all)
         stats_row.addWidget(self._btn_pass_all)
         layout.addLayout(stats_row)

@@ -601,7 +601,17 @@ QWidget[class="container-base"] {{
 
 /* ── 统计卡片容器 ── */
 QFrame[class="stat-card"], QWidget[class="stat-card"] {{
-    background-color: {SURFACE0}; border-radius: 6px;
+    background-color: {MANTLE}; border: 1px solid {SURFACE1}; border-radius: 6px; padding: 8px;
+}}
+
+/* ── 卡片背景(圆角16px) / (圆角10px) — 替代 card_qss() ── */
+QFrame[class="card-bg"], QWidget[class="card-bg"] {{
+    background-color: {MANTLE}; border: 1px solid {SURFACE1};
+    border-radius: 16px;
+}}
+QWidget[class="card-bg-sm"] {{
+    background-color: {MANTLE}; border: 1px solid {SURFACE1};
+    border-radius: 10px;
 }}
 
 /* ── 统计数值(大号) ── */
@@ -738,6 +748,49 @@ QLabel[class="detail-text"] {{
 /* ── 行背景 ── */
 QWidget[class="row-surface"] {{
     background-color: {SURFACE0}; border-radius: 4px;
+}}
+
+/* ── 通过率颜色(动态 rate-class 属性) ── */
+QLabel[rate-class="good"] {{
+    color: {GREEN}; font-size: 11px; display: block; font-weight: bold;
+}}
+QLabel[rate-class="warn"]  {{
+    color: {YELLOW}; font-size: 11px; display: block; font-weight: bold;
+}}
+QLabel[rate-class="bad"]   {{
+    color: {RED}; font-size: 11px; display: block; font-weight: bold;
+}}
+
+/* ── 结果行状态(动态 row-state 属性) ── */
+QFrame[row-state="normal"]   {{
+    background-color: {SURFACE0}; border: 1px solid {SURFACE1}; border-radius: 6px; padding: 4px;
+}}
+QFrame[row-state="attention"] {{
+    background-color: {SELECTION_BG}; border: 1px solid {BLUE}; border-radius: 6px; padding: 4px;
+}}
+QFrame[row-state="deleted"]   {{
+    background-color: {SURFACE2}; border: 1px solid {RED}; border-radius: 6px; padding: 4px;
+}}
+
+/* ── 全部通过按钮 ── */
+QPushButton[class="btn-pass-all"] {{
+    color: {MANTLE}; background-color: {GREEN};
+    border: none; border-radius: 4px; padding: 2px 8px;
+}}
+
+/* ── 导入结果标签 ── */
+QLabel[class="import-result-ok"] {{
+    color: {SUBTEXT0}; font-size: 12px; padding: 8px;
+    background-color: {SURFACE0}; border-radius: 6px;
+}}
+QLabel[class="import-result-warn"] {{
+    color: {YELLOW}; font-size: 12px; padding: 8px;
+    background-color: {SURFACE0}; border-radius: 6px;
+}}
+
+/* ── 必填标签 ── */
+QLabel[class="req-field"] {{
+    color: {PEACH}; font-size: 13px;
 }}
 """
 

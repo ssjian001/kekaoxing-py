@@ -35,9 +35,6 @@ from src.styles.constants import (
     DASH_WARNING,
     DASH_DANGER,
     DASH_NEUTRAL,
-    STATUS_RED,
-    STATUS_PEACH,
-    card_qss,
     add_shadow,
 )
 
@@ -81,7 +78,7 @@ class _StatCard(QFrame):
         self._tab_index = tab_index
         self._color = color
         self.setObjectName("stat-card")
-        self.setStyleSheet(card_qss(16))
+        self.setProperty("class", "card-bg")
         self.setMinimumHeight(64)
         self.setMaximumHeight(80)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -160,7 +157,7 @@ class _TestProgressCard(QFrame):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setStyleSheet(card_qss(16))
+        self.setProperty("class", "card-bg")
         self.setFixedHeight(88)
         add_shadow(self, blur=16, offset=3, opacity=20)
 
@@ -209,7 +206,7 @@ class _TestProgressCard(QFrame):
     def _mk_aux(title: str, value: str) -> _AuxCard:
         """创建紧凑辅助指标。"""
         card = _AuxCard(title, value)
-        card.setStyleSheet(card_qss(10))
+        card.setProperty("class", "card-bg-sm")
         card.setFixedHeight(56)
         return card
 
@@ -230,7 +227,7 @@ class _DonutChart(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._data: dict[str, int] = {}
-        self.setStyleSheet(card_qss(16))
+        self.setProperty("class", "card-bg")
         self.setMinimumHeight(160)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         add_shadow(self)
@@ -645,23 +642,22 @@ class DashboardView(QWidget):
         for lbl in self._section_titles:
             lbl.setProperty("class", "text-bold")
 
-        # Ring card frames — card_qss 保留（不同 radius）
+        # Ring card frames — class-based
         for card in self._ring_cards:
-            card.setStyleSheet(card_qss(16))
+            card.setProperty("class", "card-bg")
 
     def refresh_theme(self) -> None:
         """外部主题切换回调 — 刷新所有内联样式。"""
         self._on_theme_changed()
 
-        # Stat cards — card_qss 在构造时设置，需重新应用
-        import src.styles.theme as _t
+        # Stat cards — class-based
         for card in (
             self._card_done, self._card_active,
             self._card_wait, self._card_fail,
             self._card_issues, self._card_issue_close,
             self._card_capa,
         ):
-            card.setStyleSheet(card_qss(16))
+            card.setProperty("class", "card-bg")
             # 大数字颜色是语义色（DASH_SUCCESS 等），无需切换
             card._val.setStyleSheet(
                 f"color: {card._color}; font-size: 22px; font-weight: bold;"
@@ -672,11 +668,8 @@ class DashboardView(QWidget):
         for section in self._section_titles:
             section.setStyleSheet("")
 
-        # 筛选标签
-        self._filter_label.setStyleSheet(
-            f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
-            f" background: {_t.SURFACE0}; border-radius: 4px;"
-        )
+        # 筛选标签 — 主题迁移: class=summary-bar
+        self._filter_label.setProperty("class", "summary-bar")
 
     def _setup_ui(self) -> None:
         # 外层 QScrollArea 包裹，兜底小窗口
@@ -770,7 +763,7 @@ class DashboardView(QWidget):
         self._ring_cards: list[QFrame] = []
         for ring_widget in (self._ring_issue, self._ring_capa):
             card = QFrame()
-            card.setStyleSheet(card_qss(16))
+            card.setProperty("class", "card-bg")
             card.setFixedHeight(170)
             add_shadow(card)
             cl = QHBoxLayout(card)

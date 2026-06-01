@@ -138,10 +138,7 @@ class TestPlanView(QWidget):
 
         # 今日工作摘要
         self._summary_label = QLabel()
-        self._summary_label.setStyleSheet(
-            f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
-            f" background: {_t.SURFACE0}; border-radius: 4px;"
-        )
+        self._summary_label.setProperty("class", "summary-bar")
         self._summary_label.setWordWrap(True)
         layout.addWidget(self._summary_label)
 
@@ -493,12 +490,7 @@ class TestPlanView(QWidget):
         if reply == QMessageBox.StandardButton.Yes and self._on_delete_task:
             self._on_delete_task(task)
 
-    def refresh_theme(self) -> None:
-        """主题切换回调 — 刷新内联样式。"""
-        self._summary_label.setStyleSheet(
-            f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
-            f" background: {_t.SURFACE0}; border-radius: 4px;"
-        )
+
 # ═══════════════════════════════════════════════════════════════════
 #  结果矩阵（任务×样品 pass/fail 矩阵）
 # ═══════════════════════════════════════════════════════════════════

@@ -246,7 +246,7 @@ class MainWindow(QMainWindow):
         name = "dark" if checked else "light"
         set_theme(name)
         QApplication.instance().setStyleSheet(get_stylesheet())
-        self._refresh_all_inline_styles()
+        self._refresh_remaining_inline_styles()
         QSettings().setValue("ReliaTrack/theme", name)
 
     def _on_theme_changed(self, name: str) -> None:
@@ -254,29 +254,19 @@ class MainWindow(QMainWindow):
         self._act_dark_theme.blockSignals(True)
         self._act_dark_theme.setChecked(name == "dark")
         self._act_dark_theme.blockSignals(False)
-        self._refresh_all_inline_styles()
+        self._refresh_remaining_inline_styles()
 
-    def _refresh_all_inline_styles(self) -> None:
-        """主题切换后刷新所有长驻视图 + 已打开的弹窗内联样式。
+    def _refresh_remaining_inline_styles(self) -> None:
+        """主题切换后刷新仍有动态内联样式的控件。
 
-        全局 QSS 通过 setStyleSheet() 自动刷新，但各视图/控件中
-        通过 setStyleSheet() 设置的内联样式需要手动重新应用。
-        弹窗（dialog）在打开时固化了主题颜色，也需要遍历刷新。
+        大部分控件已迁移到 QSS 类选择器（全局 QSS 自动刷新），
+        以下情况仍需手动：
+        - dashboard stat card 数值颜色（DASH_NEUTRAL = theme 变量）
+        - result_matrix 模式按钮（运行时 checked/unchecked 动态切换）
+        - 已打开 dialog 中的 _ResultRow/_btn_pass_all（已有 refresh_theme）
         """
-        from PySide6.QtWidgets import QApplication
-        app = QApplication.instance()
-
-        # 1. 刷新所有已打开的顶层窗口（包含 dialog）
-        for win in app.topLevelWidgets():
-            if hasattr(win, "refresh_theme"):
-                win.refresh_theme()
-
-        # 2. 额外刷新 3 个长驻 Tab（topLevelWidgets 可能未覆盖子 Tab）
-        for view in (
-            self._dashboard,
-            self._test_plan_view,
-            self._issue_view,
-        ):
+        # 1. 长驻视图的剩余 refresh_theme
+        for view in (self._dashboard,):
             if hasattr(view, "refresh_theme"):
                 view.refresh_theme()
 
@@ -285,11 +275,12 @@ class MainWindow(QMainWindow):
         if matrix and hasattr(matrix, "refresh_theme"):
             matrix.refresh_theme()
 
-        # 3. 强制 QApplication style 重新 polish，覆盖剩余角落
-        # unpolish → clear 所有动态样式缓存，polish → 重新应用
-        style = app.style()
-        style.unpolish(app)
-        style.polish(app)
+        # 2. 已打开的弹窗 — 调用 refresh_theme（若有）
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        for win in app.topLevelWidgets():
+            if hasattr(win, "refresh_theme"):
+                win.refresh_theme()
 
     def _setup_toolbar(self) -> None:
         """快捷键注册（无可见工具栏）。"""

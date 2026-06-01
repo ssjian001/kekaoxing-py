@@ -25,12 +25,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from src.views.dialogs.base_dialog import _BaseDialog
-import src.styles.theme as _t
-from src.styles.theme import (
-    MANTLE, BASE, SURFACE0, SURFACE1,
-    TEXT, SUBTEXT0, GREEN, YELLOW, PEACH,
-    SELECTION_BG,
-)
 from src.styles.constants import install_copy_handler
 
 logger = logging.getLogger(__name__)
@@ -122,11 +116,10 @@ class BatchImportDialog(_BaseDialog):
             required = " *" if field_name in self._required_fields else ""
             lbl = QLabel(f"{display_name}{required}:")
             lbl.setFixedWidth(140)
-            lbl.setStyleSheet(
-                f"color: {_t.PEACH}; font-size: 13px;"
-                if required
-                else f"color: {_t.TEXT}; font-size: 13px;"
-            )
+            if required:
+                lbl.setProperty("class", "req-field")
+            else:
+                lbl.setProperty("class", "body-text")
             row.addWidget(lbl)
 
             combo = QComboBox()
@@ -406,15 +399,9 @@ class BatchImportDialog(_BaseDialog):
             + ("\n" + "\n".join(detail_lines) if detail_lines else "")
         )
         if skip_count > 0:
-            self._lbl_result.setStyleSheet(
-                f"color: {_t.YELLOW}; font-size: 12px; padding: 8px; "
-                f"background-color: {_t.SURFACE0}; border-radius: 6px;"
-            )
+            self._lbl_result.setProperty("class", "import-result-warn")
         else:
-            self._lbl_result.setStyleSheet(
-                f"color: {_t.GREEN}; font-size: 12px; padding: 8px; "
-                f"background-color: {_t.SURFACE0}; border-radius: 6px;"
-            )
+            self._lbl_result.setProperty("class", "import-result-ok")
 
     def _on_close(self) -> None:
         """关闭对话框。"""
