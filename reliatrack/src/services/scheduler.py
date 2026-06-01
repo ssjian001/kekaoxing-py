@@ -15,7 +15,7 @@ import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Optional
+
 
 from src.models.test_plan import TestTask
 from src.models.common import Equipment
