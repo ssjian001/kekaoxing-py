@@ -97,8 +97,8 @@ class TestDateHelpers:
 
     def test_iterate_work_days_skip_weekend(self):
         days = _iterate_work_days(0, 3, True, "2026-01-01", True, set())
-        # 第 0/1/2 为工作日，3/4 周末跳过，第 5 为下一个工作日
-        assert days == [0, 1, 2, 5]
+        # 2026-01-01 周四: day0=周四, day1=周五, day2=周六(跳), day3=周日(跳), day4=周一
+        assert days == [0, 1, 4]
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -211,14 +211,15 @@ class TestGreedyPlacement:
         assert result["report"]["total_days"] == 5
 
     def test_priority_order(self):
-        """高优先级（低数字）任务应排在前。"""
+        """高优先级（低数字）任务应排在前。无设备约束时可并行。"""
         t1 = _make_task(1, duration=3, priority=5)
         t2 = _make_task(2, duration=3, priority=1)  # 高优先级
         tasks = [t1, t2]
         run_auto_schedule(tasks, [], _make_empty_config())
-        # 高优先级任务第 0 天开始，低优先级排在其后
-        assert t2.start_day == 0  # 高优先级先排
-        assert t1.start_day == 3  # 不能与 t2 并行（相同设备？不，无设备约束）
+        # 高优先级任务从第 0 天开始
+        assert t2.start_day == 0
+        # 无设备约束下可并行，t1 也从第 0 天开始
+        assert t1.start_day == 0
 
     def test_long_task_first(self):
         """长任务不应阻塞所有短任务（短任务可并行插空）。"""
