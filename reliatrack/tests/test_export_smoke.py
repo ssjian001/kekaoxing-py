@@ -178,7 +178,39 @@ def test_export_dvpr_excel(
 
 
 # ═══════════════════════════════════════════════════════════════
-#  7. export_8d_pdf → pdf
+#  7. export_dvpr_pdf → pdf
+# ═══════════════════════════════════════════════════════════════
+
+def test_export_dvpr_pdf(
+    svc: ExportService,
+    plan: TestPlan,
+    tasks: list[TestTask],
+    results: list[TestResult],
+    issues: list[Issue],
+    samples: list[Sample],
+):
+    path = svc.export_dvpr_pdf(plan, tasks, results, issues, samples)
+    _assert_valid_file(path, ".pdf")
+
+
+# ═══════════════════════════════════════════════════════════════
+#  8. export_dvpr_docx → docx
+# ═══════════════════════════════════════════════════════════════
+
+def test_export_dvpr_docx(
+    svc: ExportService,
+    plan: TestPlan,
+    tasks: list[TestTask],
+    results: list[TestResult],
+    issues: list[Issue],
+    samples: list[Sample],
+):
+    path = svc.export_dvpr_docx(plan, tasks, results, issues, samples)
+    _assert_valid_file(path, ".docx")
+
+
+# ═══════════════════════════════════════════════════════════════
+#  10. export_8d_pdf → pdf
 # ═══════════════════════════════════════════════════════════════
 
 def test_export_8d_pdf(
@@ -198,7 +230,7 @@ def test_export_8d_pdf(
 
 
 # ═══════════════════════════════════════════════════════════════
-#  8. export_8d_docx → docx
+#  11. export_8d_docx → docx
 # ═══════════════════════════════════════════════════════════════
 
 def test_export_8d_docx(

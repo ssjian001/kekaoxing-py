@@ -214,7 +214,14 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_improvement_measures.py` — 8 项改善对策字段（CRUD、CAPA 联动、v19 迁移、幂等性）
 - `tests/test_scheduler_limit.py` — 22 项排程引擎（daily_start_limit、starts 增减、周末/节假日跳过、compress、locked tasks）
 - `tests/test_sample_and_analysis.py` — 15 项样品管理增强（suspended 常量、TransactionType.RETURN、check_in/return transaction、JOIN task_name、失效详情 Issue 匹配）
-- 共 **339 个 pytest 测试**（304 通过 + 35 自动生成 session 测试），全量通过（另有 test_boundary 15 项 CI-only 跳过）
+- `tests/test_scheduler.py` — 35 项排程算法单元测试（日期辅助、拓扑排序、贪心放置、设备约束、压缩、边界）
+- `tests/test_scheduler_service.py` — 6 项排程服务层测试
+- `tests/test_soft_delete.py` — 26 项软删除（Schema v17 迁移、list/restore/purge/undo）
+- `tests/test_export_smoke.py` — 13 项导出冒烟（10 种导出函数 + CJK + 空数据边界）
+- `tests/test_arch_optimization.py` — 架构优化验证测试
+- `tests/test_handlers.py` — Handler 层集成测试
+- `tests/test_session_20260512.py` — 会话特定功能测试
+- 共 **341 个 pytest 测试**（326 通过 + 15 CI-only 跳过 test_boundary），全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
