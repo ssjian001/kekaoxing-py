@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from src.models.sample import Sample
 from src.styles.constants import install_copy_handler
-from src.styles.theme import BASE, TEXT, SURFACE0, SURFACE1, SELECTION_BG
+# 清理死 import（2026-06-01 review 修复）
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:

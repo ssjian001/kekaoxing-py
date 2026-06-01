@@ -22,10 +22,7 @@ from PySide6.QtWidgets import (
 from src.constants import RESULT_OPTIONS
 from src.models.sample import Sample
 from src.models.test_plan import TestResult, TestResultStatus, TestTask
-from src.styles.theme import (
-    SUBTEXT0,
-    GREEN, RED, YELLOW,
-)
+# 清理死 import（2026-06-01 review 修复）
 import src.styles.theme as _t
 
 
@@ -211,6 +208,9 @@ class _ResultRow(QFrame):
         else:
             state = "normal"
         self.setProperty("row-state", state)
+        # Qt 不会自动重算动态属性选择器，必须手动 unpolish/polish
+        self.style().unpolish(self)
+        self.style().polish(self)
 
     def _update_indicator(self) -> None:
         result = self._combo.currentData()
@@ -284,9 +284,12 @@ class _ResultRow(QFrame):
         return self._result_id
 
     def refresh_theme(self) -> None:
-        """主题切换回调 — 重新应用行背景/边框/指示器颜色。"""
+        """主题切换回调 — 重新应用行背景/边框/指示器颜色，并对自身 unpolish/polish
+        以刷新 body-text/field-text 等静态属性选择器。"""
         self._update_row_style()
         self._update_indicator()
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 
 class TestResultDialog(QWidget):

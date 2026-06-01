@@ -26,19 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.db.connection import DEFAULT_ATTACHMENTS_DIR
-from src.styles.theme import (
-    BASE,
-    SURFACE0,
-    SURFACE1,
-    SURFACE2,
-    MANTLE,
-    TEXT,
-    SUBTEXT0,
-    SUBTEXT1,
-    BLUE,
-)
-import src.styles.theme as _t
-
+# 清理死 import（2026-06-01 review 修复）
 from src.views.dialogs.base_dialog import _BaseDialog
 
 if TYPE_CHECKING:

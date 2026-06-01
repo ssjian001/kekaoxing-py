@@ -19,8 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.styles.theme import TEXT, SUBTEXT0, SURFACE0, SURFACE1, BASE, SELECTION_BG
-import src.styles.theme as _t
+# 清理死 import（2026-06-01 review 修复）
 from src.styles.constants import install_copy_handler
 from src.views.dialogs.base_dialog import _BaseDialog
 
