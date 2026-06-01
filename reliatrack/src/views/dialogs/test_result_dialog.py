@@ -35,10 +35,13 @@ class _ResultRow(QFrame):
     """单个样品的结果录入行（双行布局）。"""
 
     _RESULT_OPTIONS = RESULT_OPTIONS
-    _RESULT_COLORS: dict[str, str] = {
-        "pass": GREEN, "fail": RED,
-        "conditional": YELLOW, "pending": SUBTEXT0, "skip": SUBTEXT0,
-    }
+    # 动态从 theme 模块取值，避免模块级导入快照化
+    @classmethod
+    def _result_colors(cls) -> dict[str, str]:
+        return {
+            "pass": _t.GREEN, "fail": _t.RED,
+            "conditional": _t.YELLOW, "pending": _t.SUBTEXT0, "skip": _t.SUBTEXT0,
+        }
 
     def __init__(
         self,
@@ -204,11 +207,11 @@ class _ResultRow(QFrame):
     def _update_row_style(self) -> None:
         """根据当前状态 (deleted > needs_attention > normal) 更新行样式。"""
         if self._deleted:
-            bg, border = SURFACE2, RED
+            bg, border = _t.SURFACE2, _t.RED
         elif self._needs_attention:
-            bg, border = SELECTION_BG, BLUE
+            bg, border = _t.SELECTION_BG, _t.BLUE
         else:
-            bg, border = SURFACE0, SURFACE1
+            bg, border = _t.SURFACE0, _t.SURFACE1
         self.setStyleSheet(f"""
             QFrame#_result_row {{
                 background-color: {bg}; border: 1px solid {border};
@@ -218,7 +221,7 @@ class _ResultRow(QFrame):
 
     def _update_indicator(self) -> None:
         result = self._combo.currentData()
-        color = self._RESULT_COLORS.get(str(result), SUBTEXT0)
+        color = self._result_colors().get(str(result), _t.SUBTEXT0)
         self._indicator.setStyleSheet(
             f"background-color: {color}; border-radius: 6px;"
         )
@@ -286,6 +289,11 @@ class _ResultRow(QFrame):
     @property
     def result_id(self) -> int | None:
         return self._result_id
+
+    def refresh_theme(self) -> None:
+        """主题切换回调 — 重新应用行背景/边框/指示器颜色。"""
+        self._update_row_style()
+        self._update_indicator()
 
 
 class TestResultDialog(QWidget):

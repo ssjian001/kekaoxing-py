@@ -257,11 +257,21 @@ class MainWindow(QMainWindow):
         self._refresh_all_inline_styles()
 
     def _refresh_all_inline_styles(self) -> None:
-        """主题切换后刷新所有长驻视图的内联样式。
+        """主题切换后刷新所有长驻视图 + 已打开的弹窗内联样式。
 
         全局 QSS 通过 setStyleSheet() 自动刷新，但各视图/控件中
         通过 setStyleSheet() 设置的内联样式需要手动重新应用。
+        弹窗（dialog）在打开时固化了主题颜色，也需要遍历刷新。
         """
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+
+        # 1. 刷新所有已打开的顶层窗口（包含 dialog）
+        for win in app.topLevelWidgets():
+            if hasattr(win, "refresh_theme"):
+                win.refresh_theme()
+
+        # 2. 额外刷新 3 个长驻 Tab（topLevelWidgets 可能未覆盖子 Tab）
         for view in (
             self._dashboard,
             self._test_plan_view,
@@ -269,10 +279,17 @@ class MainWindow(QMainWindow):
         ):
             if hasattr(view, "refresh_theme"):
                 view.refresh_theme()
+
         # result_matrix 是 test_plan_view 的子 widget
         matrix = getattr(self._test_plan_view, "_result_matrix", None)
         if matrix and hasattr(matrix, "refresh_theme"):
             matrix.refresh_theme()
+
+        # 3. 强制 QApplication style 重新 polish，覆盖剩余角落
+        # unpolish → clear 所有动态样式缓存，polish → 重新应用
+        style = app.style()
+        style.unpolish(app)
+        style.polish(app)
 
     def _setup_toolbar(self) -> None:
         """快捷键注册（无可见工具栏）。"""

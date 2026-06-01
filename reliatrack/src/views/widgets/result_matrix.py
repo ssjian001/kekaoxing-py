@@ -315,7 +315,7 @@ class _ResultMatrixWidget(QWidget):
                 f"失败 {total_fail}"
             )
             self._summary_label.setStyleSheet(
-                f"color: {GREEN if rate >= 80 else YELLOW if rate >= 50 else RED}; "
+                f"color: {_t.GREEN if rate >= 80 else _t.YELLOW if rate >= 50 else _t.RED}; "
                 f"font-size: {FONT_SIZE_SMALL}px; padding: 4px 8px; font-weight: bold;"
             )
         elif sample_ids:
