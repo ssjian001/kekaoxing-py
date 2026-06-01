@@ -234,8 +234,12 @@ class ExportHandlers:
             fmt = "PDF (.pdf)"
             self._win.toast("综合报告暂不支持 Excel，已自动切换为 PDF", "info")
 
-        # dispatch 到对应处理方法
-        handler = self._export_dispatch.get(content)
+        # dispatch 到对应处理方法（dispatch key 是简称，需用 in 匹配 combo 完整文本）
+        handler = None
+        for key, fn in self._export_dispatch.items():
+            if key in content:
+                handler = fn
+                break
         if handler is None:
             self._win.toast(f"不支持的导出类型: {content}", "error")
             return
