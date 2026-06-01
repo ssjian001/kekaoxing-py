@@ -21,11 +21,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QEvent, Qt
 
 import src.styles.theme as _t
-from src.styles.theme import (
-    MANTLE, BASE, SURFACE0, SURFACE1,
-    TEXT, OVERLAY0,
-    SELECTION_BG,
-)
 from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
 
@@ -395,7 +390,7 @@ class _SampleUsageTab(QWidget):
         for row_idx, record in enumerate(filtered):
             txn_type = record.get("type", "")
             label = self._TYPE_LABELS.get(txn_type, txn_type)
-            color = self._TYPE_COLORS.get(txn_type, TEXT)
+            color = self._TYPE_COLORS.get(txn_type, _t.TEXT)
 
             # 关联任务：显示 #id 任务名
             task_id = record.get("related_task_id")

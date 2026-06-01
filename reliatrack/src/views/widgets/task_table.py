@@ -18,12 +18,6 @@ from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QAction, QColor
 
 import src.styles.theme as _t
-from src.styles.theme import (
-    MANTLE, BASE, SURFACE0, SURFACE1,
-    TEXT, OVERLAY0,
-    GREEN, RED, PEACH,
-    SELECTION_BG,
-)
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
 from src.models.test_plan import TestTask
@@ -250,21 +244,21 @@ class _TaskTable(QTableWidget):
                     item.setToolTip(task.name)
                 # 超期标记：预计开始(col4) 和 预计结束(col5) 文字标红
                 if is_overdue and col in (4, 5):
-                    item.setForeground(QColor(RED))
+                    item.setForeground(QColor(_t.RED))
                     if col == 5:
                         item.setToolTip(f"已超期（预计结束: {planned_end_str}）")
                 # 状态颜色 (col 8)
                 if col == 8:
-                    item.setForeground(QColor(self._STATUS_COLORS.get(task.status, TEXT)))
+                    item.setForeground(QColor(self._STATUS_COLORS.get(task.status, _t.TEXT)))
                 # 优先级颜色 (col 7)
                 elif col == 7:
-                    item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, TEXT)))
+                    item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, _t.TEXT)))
                 # 通过率着色 (col 10)
                 elif col == 10 and total > 0:
                     if pass_count == total:
-                        item.setForeground(QColor(GREEN))
+                        item.setForeground(QColor(_t.GREEN))
                     elif pass_count == 0:
-                        item.setForeground(QColor(RED))
+                        item.setForeground(QColor(_t.RED))
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
         self._update_empty_state()

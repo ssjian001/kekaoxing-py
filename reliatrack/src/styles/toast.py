@@ -12,14 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.styles.theme import (
-    BASE,
-    GREEN,
-    RED,
-    PEACH,
-    SURFACE1,
-    TEXT,
-)
+import src.styles.theme as _t
 
 
 class ToastWidget(QWidget):
@@ -36,12 +29,15 @@ class ToastWidget(QWidget):
     WARNING = "warning"
     INFO = "info"
 
-    _COLORS = {
-        SUCCESS: GREEN,
-        ERROR: RED,
-        WARNING: PEACH,
-        INFO: SURFACE1,
-    }
+    @classmethod
+    def _colors(cls) -> dict[str, str]:
+        """动态读取主题色，主题切换后自动生效。"""
+        return {
+            cls.SUCCESS: _t.GREEN,
+            cls.ERROR: _t.RED,
+            cls.WARNING: _t.PEACH,
+            cls.INFO: _t.SURFACE1,
+        }
 
     # 多 Toast 堆叠偏移计数
     _active_count: int = 0
@@ -60,9 +56,9 @@ class ToastWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
-        bg_color = self._COLORS.get(level, BASE)
+        bg_color = self._colors().get(level, _t.BASE)
         self.setStyleSheet(
-            f"background-color: {bg_color}; color: {TEXT}; "
+            f"background-color: {bg_color}; color: {_t.TEXT}; "
             f"border-radius: 6px; padding: 8px 16px; font-size: 13px;"
         )
 

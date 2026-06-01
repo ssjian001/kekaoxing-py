@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QEvent, Qt, Signal
 
-from src.styles.theme import TEXT, SUBTEXT0, BLUE, GREEN, YELLOW, RED
+import src.styles.theme as _t
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
@@ -99,9 +99,9 @@ class _IssueTable(QTableWidget):
                 if col == 0:
                     item.setData(Qt.ItemDataRole.UserRole, issue.id)
                 elif col == 2:  # severity
-                    item.setForeground(QColor(ISSUE_SEVERITY_COLORS.get(issue.severity, TEXT)))
+                    item.setForeground(QColor(ISSUE_SEVERITY_COLORS.get(issue.severity, _t.TEXT)))
                 elif col == 3:  # status
-                    item.setForeground(QColor(ISSUE_STATUS_COLORS.get(issue.status, TEXT)))
+                    item.setForeground(QColor(ISSUE_STATUS_COLORS.get(issue.status, _t.TEXT)))
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
 
@@ -300,9 +300,9 @@ class _FAPanel(QScrollArea):
             if rec.cause_category:
                 meta_parts.append(f"分类: {rec.cause_category}")
             confirmed_labels = {0: "待定", 1: "确认", 2: "排除"}
-            confirmed_colors = {0: SUBTEXT0, 1: GREEN, 2: RED}
+            confirmed_colors = {0: _t.SUBTEXT0, 1: _t.GREEN, 2: _t.RED}
             confirmed_label = confirmed_labels.get(rec.confirmed, "待定")
-            confirmed_color = confirmed_colors.get(rec.confirmed, SUBTEXT0)
+            confirmed_color = confirmed_colors.get(rec.confirmed, _t.SUBTEXT0)
             meta_parts.append(f"状态: {confirmed_label}")
             meta_text = "  |  ".join(meta_parts)
             meta = QLabel(meta_text)
@@ -756,12 +756,15 @@ class IssueView(QWidget):
 class _CAPAPanel(QScrollArea):
     """CAPA 纠正预防措施面板。"""
 
-    _STATUS_LABELS = {
-        "pending": ("待执行", SUBTEXT0),
-        "in_progress": ("进行中", YELLOW),
-        "completed": ("已完成", GREEN),
-        "verified": ("已验证", BLUE),
-    }
+    @classmethod
+    def _status_labels(cls) -> dict[str, tuple[str, str]]:
+        """动态读取主题色，主题切换后自动生效。"""
+        return {
+            "pending": ("待执行", _t.SUBTEXT0),
+            "in_progress": ("进行中", _t.YELLOW),
+            "completed": ("已完成", _t.GREEN),
+            "verified": ("已验证", _t.BLUE),
+        }
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -799,8 +802,8 @@ class _CAPAPanel(QScrollArea):
             card_layout.setContentsMargins(10, 8, 10, 8)
 
             # 状态行
-            status_label_text, status_color = self._STATUS_LABELS.get(
-                rec.status, ("未知", SUBTEXT0)
+            status_label_text, status_color = self._status_labels().get(
+                rec.status, ("未知", _t.SUBTEXT0)
             )
             header = QHBoxLayout()
             status_lbl = QLabel(status_label_text)

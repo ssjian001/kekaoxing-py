@@ -31,12 +31,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.styles.theme import (
-    BASE, SURFACE0, SURFACE1, SURFACE2, MANTLE,
-    TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
-    SELECTION_BG,
-)
 import src.styles.theme as _t
 from src.styles.constants import FONT_FAMILY, install_copy_handler
 from src.models.test_plan import TestTask
@@ -223,10 +217,10 @@ class SchedulePreviewDialog(QDialog):
         row.setSpacing(8)
 
         cards = [
-            ("总工期", f"{total_days} 天", BLUE),
-            ("优化率", f"{improvement:+.0f}%", GREEN if improvement >= 0 else RED),
-            ("任务数", f"{task_count}", MAUVE),
-            ("已调整", f"{updated_count}", PEACH),
+            ("总工期", f"{total_days} 天", _t.BLUE),
+            ("优化率", f"{improvement:+.0f}%", _t.GREEN if improvement >= 0 else _t.RED),
+            ("任务数", f"{task_count}", _t.MAUVE),
+            ("已调整", f"{updated_count}", _t.PEACH),
         ]
         for label, value, color in cards:
             card = QFrame()
@@ -275,7 +269,7 @@ class SchedulePreviewDialog(QDialog):
             name_item = QTableWidgetItem(task.name)
             name_item.setData(Qt.ItemDataRole.UserRole, task_id)
             if task.status == "completed":
-                name_item.setForeground(QColor(OVERLAY0))
+                name_item.setForeground(QColor(_t.OVERLAY0))
             self._table.setItem(row, self._COL_NAME, name_item)
 
             # 设备
@@ -304,15 +298,15 @@ class SchedulePreviewDialog(QDialog):
             delta_item = QTableWidgetItem(delta_text)
             delta_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             if delta < 0:
-                delta_item.setForeground(QColor(GREEN))
+                delta_item.setForeground(QColor(_t.GREEN))
             elif delta > 0:
-                delta_item.setForeground(QColor(RED))
+                delta_item.setForeground(QColor(_t.RED))
             self._table.setItem(row, self._COL_DELTA, delta_item)
 
             # 冲突状态
             conflict_item = QTableWidgetItem("无冲突")
             conflict_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            conflict_item.setForeground(QColor(GREEN))
+            conflict_item.setForeground(QColor(_t.GREEN))
             self._table.setItem(row, self._COL_CONFLICT, conflict_item)
 
             # 已完成任务灰色
@@ -320,7 +314,7 @@ class SchedulePreviewDialog(QDialog):
                 for col in range(len(self.COLUMNS)):
                     item = self._table.item(row, col)
                     if item:
-                        item.setForeground(QColor(OVERLAY0))
+                        item.setForeground(QColor(_t.OVERLAY0))
                         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
 
         # 延迟检测冲突
@@ -416,19 +410,19 @@ class SchedulePreviewDialog(QDialog):
             if conflict_item:
                 if has_dep_conflict:
                     conflict_item.setText("! 依赖冲突")
-                    conflict_item.setForeground(QColor(RED))
+                    conflict_item.setForeground(QColor(_t.RED))
                 elif has_eq_conflict:
                     conflict_item.setText("! 设备冲突")
-                    conflict_item.setForeground(QColor(YELLOW))
+                    conflict_item.setForeground(QColor(_t.YELLOW))
                 elif has_non_working:
                     conflict_item.setText("! 非工作日")
-                    conflict_item.setForeground(QColor(PEACH))
+                    conflict_item.setForeground(QColor(_t.PEACH))
                 elif has_start_limit:
                     conflict_item.setText("! 启动数超限")
-                    conflict_item.setForeground(QColor(YELLOW))
+                    conflict_item.setForeground(QColor(_t.YELLOW))
                 else:
                     conflict_item.setText("无冲突")
-                    conflict_item.setForeground(QColor(GREEN))
+                    conflict_item.setForeground(QColor(_t.GREEN))
 
     # ── 用户交互 ──
 
@@ -469,9 +463,9 @@ class SchedulePreviewDialog(QDialog):
             delta_text = f"{delta:+d}天" if delta != 0 else "—"
             delta_item.setText(delta_text)
             if delta < 0:
-                delta_item.setForeground(QColor(GREEN))
+                delta_item.setForeground(QColor(_t.GREEN))
             elif delta > 0:
-                delta_item.setForeground(QColor(RED))
+                delta_item.setForeground(QColor(_t.RED))
 
     def _on_reschedule(self) -> None:
         """基于用户手动调整重新排程（发出信号请求外部重跑）。"""

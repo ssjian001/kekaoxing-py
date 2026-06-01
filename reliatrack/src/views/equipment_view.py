@@ -20,16 +20,6 @@ from PySide6.QtGui import QColor
 
 from src.models.common import Equipment
 import src.styles.theme as _theme
-from src.styles.theme import (
-    OVERLAY0,
-    SURFACE0,
-    SURFACE1,
-    TEXT,
-    GREEN,
-    RED,
-    BLUE,
-    YELLOW,
-)
 from src.styles.constants import EQUIPMENT_STATUS_COLORS, VIEW_MARGINS, apply_column_specs
 from src.constants import EQUIPMENT_STATUS_LABELS
 
@@ -187,7 +177,7 @@ class EquipmentView(QWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 状态列着色（用原始英文值匹配）
                 if attr == "status":
-                    color = EQUIPMENT_STATUS_COLORS.get(raw_status, TEXT)
+                    color = EQUIPMENT_STATUS_COLORS.get(raw_status, _theme.TEXT)
                     item.setForeground(QColor(color))
                 # 下次校准列：30天内到期黄色预警，已过期红色
                 if attr == "next_calibration_date" and value:
@@ -196,10 +186,10 @@ class EquipmentView(QWidget):
                         next_cal = date.fromisoformat(str(value))
                         today = date.today()
                         if next_cal < today:
-                            item.setForeground(QColor(RED))
+                            item.setForeground(QColor(_theme.RED))
                             item.setText(f"{value} (过期)")
                         elif next_cal <= today + timedelta(days=30):
-                            item.setForeground(QColor(YELLOW))
+                            item.setForeground(QColor(_theme.YELLOW))
                     except ValueError:
                         pass
                 self._table.setItem(row, col, item)

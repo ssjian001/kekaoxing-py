@@ -25,12 +25,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 
 import src.styles.theme as _t
-from src.styles.theme import (
-    CRUST, MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1, OVERLAY0,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER,
-    SELECTION_BG,
-)
 from src.styles.constants import VIEW_MARGINS, FONT_FAMILY
 from src.constants import TASK_STATUS_LABELS
 from src.models.test_plan import TestTask
@@ -343,9 +337,9 @@ class TestPlanView(QWidget):
 
         parts: list[str] = []
         if overdue > 0:
-            parts.append(f'<span style="color:{RED}">{overdue} 个超期</span>')
+            parts.append(f'<span style="color:{_t.RED}">{overdue} 个超期</span>')
         if due > 0:
-            parts.append(f'<span style="color:{YELLOW}">{due} 个今天到期</span>')
+            parts.append(f'<span style="color:{_t.YELLOW}">{due} 个今天到期</span>')
         if pending > 0:
             parts.append(f'{pending} 个结果待录入')
 

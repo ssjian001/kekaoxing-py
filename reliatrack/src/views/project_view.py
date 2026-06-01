@@ -20,13 +20,6 @@ from PySide6.QtGui import QColor
 
 from src.models.project import Project
 import src.styles.theme as _t
-from src.styles.theme import (
-    SURFACE1,
-    OVERLAY0,
-    MANTLE, BASE, SURFACE0,
-    TEXT,
-    SELECTION_BG,
-)
 from src.styles.constants import VIEW_MARGINS, PROJECT_STATUS_COLORS, apply_column_specs
 from src.constants import PROJECT_STATUS_LABELS
 
@@ -164,7 +157,7 @@ class ProjectView(QWidget):
                 # 状态列着色
                 if attr == "status":
                     raw_status = str(getattr(proj, attr, ""))
-                    color = self._STATUS_COLORS.get(raw_status, OVERLAY0)
+                    color = self._STATUS_COLORS.get(raw_status, _t.OVERLAY0)
                     item.setForeground(QColor(color))
                 self._table.setItem(row, col, item)
         header.blockSignals(False)

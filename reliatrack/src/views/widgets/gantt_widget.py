@@ -9,10 +9,6 @@ from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QMouseEvent, QWheelEvent, QRegion
 
 import src.styles.theme as _theme
-from src.styles.theme import (
-    SURFACE2,
-    BLUE, GREEN, YELLOW, RED, PEACH, MAUVE, LAVENDER, TEAL,
-)
 from src.styles.constants import FONT_FAMILY, FONT_SIZE_SMALL
 from src.models.test_plan import TestTask
 
@@ -24,12 +20,12 @@ class _GanttWidget(QWidget):
 
     # 类别 → 颜色
     CATEGORY_COLORS = {
-        "环境试验": BLUE,
-        "机械试验": GREEN,
-        "表面处理": PEACH,
-        "包装": MAUVE,
-        "其他": LAVENDER,
-        "": LAVENDER,
+        "环境试验": _theme.BLUE,
+        "机械试验": _theme.GREEN,
+        "表面处理": _theme.PEACH,
+        "包装": _theme.MAUVE,
+        "其他": _theme.LAVENDER,
+        "": _theme.LAVENDER,
     }
 
     # 拖拽移动任务后发射 (task_id, new_start_day)
@@ -72,7 +68,7 @@ class _GanttWidget(QWidget):
         # 设备颜色映射：equipment_id → 颜色
         self._equipment_map: dict[int, str] = {}  # {equipment_id: equipment_name}
         self._equipment_colors: dict[int, str] = {}  # {equipment_id: color_hex}
-        self._palette = [BLUE, GREEN, PEACH, MAUVE, LAVENDER, YELLOW, TEAL]
+        self._palette = [_theme.BLUE, _theme.GREEN, _theme.PEACH, _theme.MAUVE, _theme.LAVENDER, _theme.YELLOW, _theme.TEAL]
         self._holidays: set[str] = set()  # 节假日日期集合
         self._task_prefix: str = ""  # 任务编号前缀
 
@@ -332,7 +328,7 @@ class _GanttWidget(QWidget):
                            self.height() - self._header_height, QColor(_theme.MANTLE))
             if is_holiday:
                 # 节假日列浅红背景（叠加在周末之上，独立可见）
-                _holiday_color = QColor(RED)
+                _holiday_color = QColor(_theme.RED)
                 _holiday_color.setAlpha(30)
                 p.fillRect(int(x), self._header_height, int(self._day_w) + 1,
                            self.height() - self._header_height, _holiday_color)
@@ -357,11 +353,11 @@ class _GanttWidget(QWidget):
             today_offset = (today - base_date).days
             if 0 <= today_offset <= self._total_days:
                 tx = label_w + today_offset * self._day_w
-                pen = QPen(QColor(PEACH), 2, Qt.PenStyle.DashLine)
+                pen = QPen(QColor(_theme.PEACH), 2, Qt.PenStyle.DashLine)
                 p.setPen(pen)
                 p.drawLine(int(tx), vy + self._header_height, int(tx), self.height())
                 # "今天" 标签
-                p.setPen(QColor(PEACH))
+                p.setPen(QColor(_theme.PEACH))
                 p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
                 p.drawText(int(tx) - 20, vy, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, "今天")
@@ -401,18 +397,18 @@ class _GanttWidget(QWidget):
             if task.equipment_id and task.equipment_id in self._equipment_colors:
                 color = QColor(self._equipment_colors[task.equipment_id])
             else:
-                color = QColor(self.CATEGORY_COLORS.get(task.category, LAVENDER))
+                color = QColor(self.CATEGORY_COLORS.get(task.category, _theme.LAVENDER))
 
             # 背景（总条）
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(SURFACE2))
+            p.setBrush(QColor(_theme.SURFACE2))
             p.drawRoundedRect(QRect(int(bar_x), int(bar_y), int(bar_w), self._bar_height), 4, 4)
 
             # 进度条
             if task.progress > 0:
                 prog_w = bar_w * min(task.progress / 100.0, 1.0)
                 if task.status == "completed":
-                    p.setBrush(QColor(GREEN))
+                    p.setBrush(QColor(_theme.GREEN))
                 else:
                     p.setBrush(color)
                 p.drawRoundedRect(QRect(int(bar_x), int(bar_y), int(prog_w), self._bar_height), 4, 4)

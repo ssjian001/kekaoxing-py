@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QLineEdit
 
-from src.styles.theme import SUBTEXT0
 import src.styles.theme as _t
 
 from PySide6.QtWidgets import (
@@ -487,8 +486,6 @@ class TaskEditDialog(_BaseDialog):
             QDialog, QVBoxLayout, QListWidget, QListWidgetItem,
             QHBoxLayout, QPushButton, QLabel,
         )
-        from src.styles.theme import BASE, TEXT, SURFACE0, SURFACE1, SUBTEXT0, BLUE
-
         dlg = QDialog(self)
         dlg.setWindowTitle("选择依赖任务")
         dlg.setMinimumWidth(360)
@@ -512,7 +509,7 @@ class TaskEditDialog(_BaseDialog):
             cur_label = f"▶ #{cur.id} {cur.name}  (D{cur.start_day}~D{cur.start_day + cur.duration}) — 当前任务"
             cur_item = QListWidgetItem(cur_label)
             cur_item.setFlags(Qt.ItemFlag.NoItemFlags)  # 不可选、不可勾选
-            cur_item.setForeground(_QColor(BLUE))
+            cur_item.setForeground(_QColor(_t.BLUE))
             # 找到插入位置（按 start_day 排序）
             insert_pos = 0
             for i, t in enumerate(sorted_tasks):

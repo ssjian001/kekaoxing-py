@@ -19,12 +19,6 @@ from PySide6.QtCore import QEvent, Signal, Qt
 
 from src.models.common import Technician
 import src.styles.theme as _theme
-from src.styles.theme import (
-    OVERLAY0,
-    SURFACE0,
-    SURFACE1,
-    TEXT,
-)
 from src.styles.constants import VIEW_MARGINS, apply_column_specs
 
 _TECHNICIAN_SPECS = [

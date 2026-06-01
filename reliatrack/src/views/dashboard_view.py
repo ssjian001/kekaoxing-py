@@ -34,7 +34,6 @@ from src.styles.constants import (
     DASH_SUCCESS,
     DASH_WARNING,
     DASH_DANGER,
-    DASH_NEUTRAL,
     add_shadow,
 )
 
@@ -181,7 +180,7 @@ class _TestProgressCard(QFrame):
         legend.setSpacing(12)
         self._legend_labels: list[QLabel] = []
         for label, color in [("PASS", DASH_SUCCESS), ("FAIL", DASH_DANGER),
-                             ("进行中", DASH_WARNING), ("待开始", DASH_NEUTRAL)]:
+                             ("进行中", DASH_WARNING), ("待开始", _theme.SUBTEXT0)]:
             dot = QLabel("●")
             # DYNAMIC: color 是循环变量，无法走 class 选择器
             dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
@@ -658,9 +657,14 @@ class DashboardView(QWidget):
             self._card_capa,
         ):
             card.setProperty("class", "card-bg")
-            # 大数字颜色是语义色（DASH_SUCCESS 等），无需切换
+            # 大数字颜色是语义色（DASH_SUCCESS/SUBTEXT0 等），需重新读取
+            if card is self._card_wait:
+                # 待开始卡片的颜色随主题切换变化
+                color = _theme.SUBTEXT0
+            else:
+                color = card._color
             card._val.setStyleSheet(
-                f"color: {card._color}; font-size: 22px; font-weight: bold;"
+                f"color: {color}; font-size: 22px; font-weight: bold;"
                 f"border: none; background: transparent;"
             )
 
@@ -721,7 +725,7 @@ class DashboardView(QWidget):
         ga.setSpacing(10)
         self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3)
         self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3)
-        self._card_wait   = _StatCard("待开始", "0", DASH_NEUTRAL, 3)
+        self._card_wait   = _StatCard("待开始", "0", _theme.SUBTEXT0, 3)
         self._card_fail   = _StatCard("Fail", "0", DASH_DANGER, 3)
         ga.addWidget(self._card_done)
         ga.addWidget(self._card_active)

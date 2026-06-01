@@ -11,12 +11,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
 import src.styles.theme as _t
-from src.styles.theme import (
-    MANTLE, BASE, SURFACE0, SURFACE1, SURFACE2,
-    TEXT, SUBTEXT0, SUBTEXT1,
-    GREEN, RED, YELLOW, BLUE,
-    SELECTION_BG,
-)
 from src.styles.constants import install_copy_handler
 
 from src.models.test_plan import TestTask
@@ -29,13 +23,16 @@ class _ResultMatrixWidget(QWidget):
     末列 = 行统计（通过率），末行 = 列统计（各样品通过率）。
     """
 
-    _RESULT_COLORS: dict[str, str] = {
-        "pass": GREEN,
-        "fail": RED,
-        "conditional": YELLOW,
-        "pending": SURFACE2,
-        "skip": SUBTEXT0,
-    }
+    @classmethod
+    def _result_colors(cls) -> dict[str, str]:
+        """动态读取主题色，主题切换后自动生效。"""
+        return {
+            "pass": _t.GREEN,
+            "fail": _t.RED,
+            "conditional": _t.YELLOW,
+            "pending": _t.SURFACE2,
+            "skip": _t.SUBTEXT0,
+        }
 
     _RESULT_LABELS: dict[str, str] = {
         "pass": "P",
@@ -223,7 +220,7 @@ class _ResultMatrixWidget(QWidget):
                 tid = task.id
                 result_obj = lookup.get((tid, sid)) if tid else None
                 result_str = result_obj.result if result_obj else ""
-                color = self._RESULT_COLORS.get(result_str, SURFACE2)
+                color = self._result_colors().get(result_str, _t.SURFACE2)
 
                 # 根据模式选择显示文本
                 if mode == self._MODE_MEASURED and result_obj and hasattr(result_obj, "measured_value"):
@@ -241,11 +238,11 @@ class _ResultMatrixWidget(QWidget):
                 bg_color.setAlpha(60)
                 item.setBackground(bg_color)
                 if result_str == "pass":
-                    item.setForeground(QColor(GREEN))
+                    item.setForeground(QColor(_t.GREEN))
                 elif result_str == "fail":
-                    item.setForeground(QColor(RED))
+                    item.setForeground(QColor(_t.RED))
                 else:
-                    item.setForeground(QColor(SUBTEXT0))
+                    item.setForeground(QColor(_t.SUBTEXT0))
 
                 # Tooltip: 始终显示完整信息（不受模式影响）
                 if result_obj:
@@ -274,16 +271,16 @@ class _ResultMatrixWidget(QWidget):
             # 行统计（末列）
             if row_total > 0:
                 rate = row_pass / row_total * 100
-                fg = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+                fg = _t.GREEN if rate >= 80 else _t.YELLOW if rate >= 50 else _t.RED
                 stat = self._make_stat_item(f"{rate:.0f}%", fg)
             else:
-                stat = self._make_stat_item("—", SUBTEXT0)
+                stat = self._make_stat_item("—", _t.SUBTEXT0)
             self._table.setItem(row, cols - 1, stat)
 
         # 列统计行（末行）
         stat_row = len(tasks)
         self._table.setVerticalHeaderItem(stat_row, QTableWidgetItem(""))
-        label_item = self._make_stat_item("合计", TEXT)
+        label_item = self._make_stat_item("合计", _t.TEXT)
         self._table.setItem(stat_row, 0, label_item)
 
         for col_idx, sid in enumerate(sample_ids):
@@ -291,19 +288,19 @@ class _ResultMatrixWidget(QWidget):
             cs = col_stats[sid]
             if cs["total"] > 0:
                 rate = cs["pass"] / cs["total"] * 100
-                fg = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+                fg = _t.GREEN if rate >= 80 else _t.YELLOW if rate >= 50 else _t.RED
                 stat = self._make_stat_item(f"{rate:.0f}%", fg)
             else:
-                stat = self._make_stat_item("—", SUBTEXT0)
+                stat = self._make_stat_item("—", _t.SUBTEXT0)
             self._table.setItem(stat_row, col, stat)
 
         # 右下角总计
         if total_cells > 0:
             rate = total_pass / total_cells * 100
-            fg = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+            fg = _t.GREEN if rate >= 80 else _t.YELLOW if rate >= 50 else _t.RED
             total_item = self._make_stat_item(f"{total_pass}/{total_cells} ({rate:.0f}%)", fg, bg_alpha=50)
         else:
-            total_item = self._make_stat_item("—", SUBTEXT0)
+            total_item = self._make_stat_item("—", _t.SUBTEXT0)
         self._table.setItem(stat_row, cols - 1, total_item)
 
         # 摘要

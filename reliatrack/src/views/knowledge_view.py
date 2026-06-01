@@ -21,7 +21,6 @@ from PySide6.QtGui import QColor
 from src.models.knowledge import KnowledgeEntry
 from src.styles.constants import KNOWLEDGE_CATEGORY_COLORS, VIEW_MARGINS, apply_column_specs
 import src.styles.theme as _theme
-from src.styles.theme import OVERLAY0, TEXT, SURFACE1
 
 _KNOWLEDGE_SPECS = [
     ("ID", "fixed", 50),
@@ -155,7 +154,7 @@ class KnowledgeView(QWidget):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # 类别列着色
                 if col == 1 and text:
-                    color = KNOWLEDGE_CATEGORY_COLORS.get(text, TEXT)
+                    color = KNOWLEDGE_CATEGORY_COLORS.get(text, _theme.TEXT)
                     item.setForeground(QColor(color))
                 # 设置 tooltip 显示完整内容
                 if len(str(value) if value else "") > 60:

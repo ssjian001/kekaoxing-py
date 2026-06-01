@@ -9,12 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter
 
-from src.styles.theme import (
-    BASE, SURFACE0, SURFACE1,
-    TEXT, SUBTEXT1,
-    GREEN, RED, YELLOW,
-    SELECTION_BG,
-)
+import src.styles.theme as _t
 from src.styles.constants import apply_column_specs
 from src.models.test_plan import TestTask
 
@@ -34,7 +29,7 @@ class _BarWidget(QWidget):
         w, h = self.width(), self.height()
 
         # 背景
-        p.fillRect(0, 0, w, h, QColor(SURFACE1))
+        p.fillRect(0, 0, w, h, QColor(_t.SURFACE1))
 
         # 前景条
         bar_w = int(w * self._value / 100.0)
@@ -42,7 +37,7 @@ class _BarWidget(QWidget):
             p.fillRect(0, 0, bar_w, h, QColor(self._color))
 
         # 文字
-        p.setPen(QColor(TEXT))
+        p.setPen(QColor(_t.TEXT))
         p.setFont(p.font())
         p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, f"{self._value:.0f}%")
         p.end()
@@ -136,7 +131,7 @@ class _AnalysisWidget(QWidget):
                 row.addWidget(cat_label)
 
                 rate = stats["pass"] / stats["total"] * 100 if stats["total"] > 0 else 0
-                color = GREEN if rate >= 80 else YELLOW if rate >= 50 else RED
+                color = _t.GREEN if rate >= 80 else _t.YELLOW if rate >= 50 else _t.RED
                 bar = _BarWidget(rate, color)
                 bar.setFixedHeight(18)
                 row.addWidget(bar, stretch=1)
@@ -185,16 +180,16 @@ class _AnalysisWidget(QWidget):
             ])
 
             for row, entry in enumerate(fail_entries):
-                tbl.setItem(row, 0, self._make_item(entry["task_name"], TEXT))
-                tbl.setItem(row, 1, self._make_item(entry["category"], SUBTEXT1))
-                tbl.setItem(row, 2, self._make_item(entry["sample_sn"], SUBTEXT1))
+                tbl.setItem(row, 0, self._make_item(entry["task_name"], _t.TEXT))
+                tbl.setItem(row, 1, self._make_item(entry["category"], _t.SUBTEXT1))
+                tbl.setItem(row, 2, self._make_item(entry["sample_sn"], _t.SUBTEXT1))
                 if entry["has_issue"]:
-                    issue_item = self._make_item(f"{entry['issue_count']}个", GREEN)
+                    issue_item = self._make_item(f"{entry['issue_count']}个", _t.GREEN)
                 else:
-                    issue_item = self._make_item("未创建", RED)
+                    issue_item = self._make_item("未创建", _t.RED)
                 tbl.setItem(row, 3, issue_item)
                 sev = entry["severity"]
-                sev_color = RED if sev == "critical" else YELLOW if sev == "major" else SUBTEXT1
+                sev_color = _t.RED if sev == "critical" else _t.YELLOW if sev == "major" else _t.SUBTEXT1
                 tbl.setItem(row, 4, self._make_item(sev, sev_color))
 
             self._layout.addWidget(tbl)

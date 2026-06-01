@@ -13,23 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.styles.theme import (
-    BASE,
-    BLUE,
-    CRUST,
-    GREEN,
-    LAVENDER,
-    MAUVE,
-    PEACH,
-    RED,
-    SUBTEXT0,
-    SUBTEXT1,
-    SURFACE0,
-    SURFACE1,
-    SURFACE2,
-    TEXT,
-    YELLOW,
-)
+import src.styles.theme as _t
 from src.styles.constants import FONT_FAMILY
 
 # ── 利用率条形图 ──────────────────────────────────────────
@@ -58,7 +42,7 @@ class _UtilBarChart(QWidget):
     def paintEvent(self, event) -> None:  # type: ignore[override]
         if not self._data:
             p = QPainter(self)
-            p.setPen(QColor(SUBTEXT0))
+            p.setPen(QColor(_t.SUBTEXT0))
             p.setFont(QFont(FONT_FAMILY, 11))
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "无设备利用率数据")
             p.end()
@@ -76,7 +60,7 @@ class _UtilBarChart(QWidget):
             util = item.get("utilization", 0)
 
             # 名称标签
-            p.setPen(QColor(TEXT))
+            p.setPen(QColor(_t.TEXT))
             p.setFont(QFont(FONT_FAMILY, 10))
             fm = p.fontMetrics()
             elided = fm.elidedText(name, Qt.TextElideMode.ElideRight, label_w - 8)
@@ -86,22 +70,22 @@ class _UtilBarChart(QWidget):
             # 背景条
             bar_x = label_w
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(SURFACE2))
+            p.setBrush(QColor(_t.SURFACE2))
             p.drawRoundedRect(QRect(bar_x, y, chart_w, self._BAR_H), 4, 4)
 
             # 利用率条 — 颜色按阈值
             if util >= 80:
-                color = QColor(RED)
+                color = QColor(_t.RED)
             elif util >= 60:
-                color = QColor(YELLOW)
+                color = QColor(_t.YELLOW)
             else:
-                color = QColor(GREEN)
+                color = QColor(_t.GREEN)
             fill_w = max(0, chart_w * util / 100.0)
             p.setBrush(color)
             p.drawRoundedRect(QRect(bar_x, y, int(fill_w), self._BAR_H), 4, 4)
 
             # 百分比文字
-            p.setPen(QColor(CRUST) if util >= 50 else QColor(TEXT))
+            p.setPen(QColor(_t.CRUST) if util >= 50 else QColor(_t.TEXT))
             p.setFont(QFont(FONT_FAMILY, 9))
             p.drawText(QRect(bar_x, y, chart_w, self._BAR_H),
                        Qt.AlignmentFlag.AlignCenter, f"{util:.0f}%")
@@ -138,10 +122,10 @@ class ScheduleReportDialog(QDialog):
         summary_layout.setSpacing(12)
 
         cards = [
-            ("总工期", f"{total_days} 天", BLUE),
-            ("优化率", f"{improvement:+.0f}%", GREEN if improvement >= 0 else RED),
-            ("任务数", f"{task_count}", MAUVE),
-            ("已更新", f"{updated_count}", PEACH),
+            ("总工期", f"{total_days} 天", _t.BLUE),
+            ("优化率", f"{improvement:+.0f}%", _t.GREEN if improvement >= 0 else _t.RED),
+            ("任务数", f"{task_count}", _t.MAUVE),
+            ("已更新", f"{updated_count}", _t.PEACH),
         ]
         for label, value, color in cards:
             card = QWidget()
