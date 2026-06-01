@@ -163,7 +163,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **色值**: BASE=#F7F8FC(浅灰背景), MANTLE=#FFFFFF(白底卡片), SURFACE0=#F1F5F9(输入框), TEXT=#1E293B(深色文字)
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
-- **QSS 类选择器（2026-05-29 重构）**: `theme.py` 的 `_build_qss()` 定义 46+ 业务类选择器，所有静态样式用 `setProperty("class", "xxx")` 引用；剩余 27 处内联 `setStyleSheet` 均为动态/数据驱动色值（不可迁移）。迁移范围: 8 dialogs + 3 widgets + 2 views。**新增选择器必加 `_build_qss()` 底部，禁止用内联 `_t.X` 常量**
+- **QSS 类选择器（2026-06-01 重构）**: `theme.py` 的 `_build_qss()` 定义 50+ 业务类选择器，所有静态样式用 `setProperty("class", "xxx")` 引用；动态属性（如 `rate-class="good"`、`row-state="attention"`）用 `setProperty` + `style().unpolish(self)/polish(self)` 触发重算。剩余手动 `refresh_theme()` 仅 3 处：dashboard stat card 数值颜色、result_matrix 模式按钮、已打开 dialog 的 `_ResultRow`。**所有 `from src.styles.theme import GREEN` 冻结导入已清理为 `import src.styles.theme as _t` 动态引用**。**新增选择器必加 `_build_qss()` 底部，禁止用内联 `_t.X` 常量**
 
 ### Schema（v21）
 

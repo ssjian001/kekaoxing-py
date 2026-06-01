@@ -19,7 +19,7 @@ python3 -m venv .venv  # 首次
 - Python 3.11+（CI: 3.11/3.12, 本地开发: 3.13）+ PySide6 6.11.1 + apsw (SQLite) + openpyxl / reportlab
 - 架构：MVC 变体 — Controller → Handlers → Services → Repos → DB
 - DB 版本：schema v21（16 张表）
-- 主题：Catppuccin Latte 明亮 (theme.py)
+- 主题：Catppuccin Latte 明亮 / Mocha 暗黑 (theme.py，明暗切换已完整支持)
 
 ## 项目结构
 
@@ -115,6 +115,8 @@ bd dolt push          # 同步
 - **QToolButton class 选择器**：`QPushButton[class="action"]` 不匹配 QToolButton，需逗号分隔同时写两个
 - **theme.py `globals().update()` 注入色板变量**：Pyright 对 `_build_qss()` f-string 中的变量报 "not defined" 误报，忽略即可
 - **Catppuccin Latte CRUST ≠ `#dc8a78`**（那是 ROSE），正确值 `#DCE0E8`（最浅灰）
+- **`setProperty("row-state", ...)` 等 QSS 动态属性**：已渲染控件改动态属性后必须 `style().unpolish(self); style().polish(self)` 强制 Qt 重算选择器，否则视觉不更新
+- **`from src.styles.theme import GREEN` 冻结快照**：`globals().update()` 不更新其他模块已导入的变量，必须用 `import src.styles.theme as _t` + `_t.GREEN` 动态引用
 
 ## 启动工作流（每次会话开始必做）
 
