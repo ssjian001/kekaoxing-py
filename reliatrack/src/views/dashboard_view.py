@@ -649,6 +649,35 @@ class DashboardView(QWidget):
         for card in self._ring_cards:
             card.setStyleSheet(card_qss(16))
 
+    def refresh_theme(self) -> None:
+        """外部主题切换回调 — 刷新所有内联样式。"""
+        self._on_theme_changed()
+
+        # Stat cards — card_qss 在构造时设置，需重新应用
+        import src.styles.theme as _t
+        for card in (
+            self._card_done, self._card_active,
+            self._card_wait, self._card_fail,
+            self._card_issues, self._card_issue_close,
+            self._card_capa,
+        ):
+            card.setStyleSheet(card_qss(16))
+            # 大数字颜色是语义色（DASH_SUCCESS 等），无需切换
+            card._val.setStyleSheet(
+                f"color: {card._color}; font-size: 22px; font-weight: bold;"
+                f"border: none; background: transparent;"
+            )
+
+        # 健康度环图区域
+        for section in self._section_titles:
+            section.setStyleSheet("")
+
+        # 筛选标签
+        self._filter_label.setStyleSheet(
+            f"color: {_t.SUBTEXT1}; font-size: 11px; padding: 2px 8px;"
+            f" background: {_t.SURFACE0}; border-radius: 4px;"
+        )
+
     def _setup_ui(self) -> None:
         # 外层 QScrollArea 包裹，兜底小窗口
         outer = QVBoxLayout(self)

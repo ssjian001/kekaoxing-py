@@ -234,10 +234,10 @@ def __getattr__(name: str):  # type: ignore[no-untyped-def]
 
 def card_qss(radius: int = 12) -> str:
     """返回白底圆角卡片 QSS，供所有 Tab/Dialog 复用。"""
-    from src.styles.theme import MANTLE, SURFACE1
+    import src.styles.theme as _t
     return (
-        f"background-color: {MANTLE};"
-        f"border: 1px solid {SURFACE1};"
+        f"background-color: {_t.MANTLE};"
+        f"border: 1px solid {_t.SURFACE1};"
         f"border-radius: {radius}px;"
     )
 

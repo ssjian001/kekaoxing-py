@@ -326,3 +326,8 @@ class _ResultMatrixWidget(QWidget):
         else:
             self._summary_label.setText("暂无测试结果数据")
             self._summary_label.setProperty("class", "subtext")
+
+    def refresh_theme(self) -> None:
+        """主题切换回调 — 刷新模式按钮内联样式。"""
+        for i, btn in enumerate(self._mode_group.buttons()):
+            btn.setStyleSheet(self._mode_qss(btn.isChecked()))

@@ -246,6 +246,7 @@ class MainWindow(QMainWindow):
         name = "dark" if checked else "light"
         set_theme(name)
         QApplication.instance().setStyleSheet(get_stylesheet())
+        self._refresh_all_inline_styles()
         QSettings().setValue("ReliaTrack/theme", name)
 
     def _on_theme_changed(self, name: str) -> None:
@@ -253,7 +254,25 @@ class MainWindow(QMainWindow):
         self._act_dark_theme.blockSignals(True)
         self._act_dark_theme.setChecked(name == "dark")
         self._act_dark_theme.blockSignals(False)
-        # 内联样式已全部迁移到 QSS 类选择器，不再需要逐控件刷新
+        self._refresh_all_inline_styles()
+
+    def _refresh_all_inline_styles(self) -> None:
+        """主题切换后刷新所有长驻视图的内联样式。
+
+        全局 QSS 通过 setStyleSheet() 自动刷新，但各视图/控件中
+        通过 setStyleSheet() 设置的内联样式需要手动重新应用。
+        """
+        for view in (
+            self._dashboard,
+            self._test_plan_view,
+            self._issue_view,
+        ):
+            if hasattr(view, "refresh_theme"):
+                view.refresh_theme()
+        # result_matrix 是 test_plan_view 的子 widget
+        matrix = getattr(self._test_plan_view, "_result_matrix", None)
+        if matrix and hasattr(matrix, "refresh_theme"):
+            matrix.refresh_theme()
 
     def _setup_toolbar(self) -> None:
         """快捷键注册（无可见工具栏）。"""
