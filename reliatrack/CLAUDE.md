@@ -163,7 +163,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **色值**: BASE=#F7F8FC(浅灰背景), MANTLE=#FFFFFF(白底卡片), SURFACE0=#F1F5F9(输入框), TEXT=#1E293B(深色文字)
 - **圆角**: QGroupBox 12px, 输入控件/按钮 8px, Tab 6px, 卡片 12-16px
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
-- **QSS 类选择器（2026-06-01 重构）**: `theme.py` 的 `_build_qss()` 定义 50+ 业务类选择器，所有静态样式用 `setProperty("class", "xxx")` 引用；动态属性（如 `rate-class="good"`、`row-state="attention"`）用 `setProperty` + `style().unpolish(self)/polish(self)` 触发重算。剩余手动 `refresh_theme()` 仅 3 处：dashboard stat card 数值颜色、result_matrix 模式按钮、已打开 dialog 的 `_ResultRow`。**所有 `from src.styles.theme import GREEN` 冻结导入已清理为 `import src.styles.theme as _t` 动态引用**。**新增选择器必加 `_build_qss()` 底部，禁止用内联 `_t.X` 常量**
+- **QSS 类选择器（2026-06-01 重构）**: `theme.py` 的 `_build_qss()` 定义 50+ 业务类选择器，所有静态样式用 `setProperty("class", "xxx")` 引用；动态属性（如 `rate-class="good"`、`row-state="attention"`）用 `setProperty` + `style().unpolish(self)/polish(self)` 触发重算。**内联 `_t.X` 颜色需 `refresh_theme()` 同步**，当前共 7 处：`DashboardView` stat card + legend dots、`result_matrix` 模式按钮、已打开 dialog 的 `_ResultRow`、`IssueView` + `_FAPanel` + `_CAPAPanel` FA/CAPA 面板颜色。**所有 `from src.styles.theme import GREEN` 冻结导入已清理为 `import src.styles.theme as _t` 动态引用**。**新增选择器必加 `_build_qss()` 底部，禁止用内联 `_t.X` 常量**
 
 ### Schema（v21）
 
@@ -190,12 +190,15 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - 备份: `data/backups/reliatrack_YYYYMMDD.db`
 - 连接: apsw，WAL 模式，FK 约束启用
 
-### 安全机制（2026-05-08 审计）
+### 安全机制（2026-05-08 审计，2026-06-02 补充）
 
-- **SQL 列名注入**：`base._safe_kwargs()` 过滤非法列名；各 repo 有独立白名单（`_TXN_SAFE_COLS` 等）
+- **SQL 列名注入**：`base._safe_kwargs()` 过滤 insert/update 的非法列名；`list_all()`/`count()` 的 filter 键也过白名单；各 repo 有独立白名单（`_TXN_SAFE_COLS` 等）
+- **附件目录收窄**：`_ALLOWED_ATTACH_DIRS` 仅 `~/.reliatrack/attachments/`，禁止附件路径指向数据库文件本身
+- **UndoManager CASCADE 保护**：`DeleteEntityCommand` 对有 CASCADE FK 的实体（test_task/issue）标记 `_cascade_children=True`，undo 时拒绝执行并弹警告
 - **XML 颜色注入**：`export_service._set_cell_shading()` 用 `re.fullmatch(r"[0-9A-Fa-f]{6}")` 校验
-- **路径遍历**：`_validate_output_path()` 校验 resolve 后路径在允许目录内
+- **路径遍历**：`_validate_output_path()` 用 `is_relative_to()` 而非 `startswith()` 校验
 - **原子性**：出库操作用 `repo.transaction()` 包裹；scheduler 用 `deepcopy` 隔离原始对象
+- **备份异常链**：验证失败 `raise ... from exc` 保留原始异常栈
 - **附件完整性**：`shutdown()` 时 `scan_attachment_integrity()` 检查 DB 记录 vs 磁盘文件，缺失/孤立写入日志
 - **Column tuple**：`_TXN_COLS`/`_FA_COLS`/`_ATTACH_COLS`/`_CAPA_SELECT_COLS` 为 tuple（单一真相源）
 - **审计报告**：`docs/audit-2026-05-08.md` — 完整修复记录 + P2 待修清单
