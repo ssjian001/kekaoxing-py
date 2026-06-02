@@ -117,6 +117,8 @@ bd dolt push          # 同步
 - **Catppuccin Latte CRUST ≠ `#dc8a78`**（那是 ROSE），正确值 `#DCE0E8`（最浅灰）
 - **`setProperty("row-state", ...)` 等 QSS 动态属性**：已渲染控件改动态属性后必须 `style().unpolish(self); style().polish(self)` 强制 Qt 重算选择器，否则视觉不更新
 - **`from src.styles.theme import GREEN` 冻结快照**：`globals().update()` 不更新其他模块已导入的变量，必须用 `import src.styles.theme as _t` + `_t.GREEN` 动态引用
+- **QPalette 不跟随 setStyleSheet 更新**：QSS 只覆盖匹配选择器的控件，QCalendarWidget / QComboBox popup / QScrollArea viewport 等原生子控件 fallback 到 QPalette。主题切换时必须调用 `apply_palette()` 同步 QPalette ColorRole → 当前色板
+- **Windows 暗色系统主题污染**：`QWindowsVistaStyle` 从 Windows 系统主题读取暗色 palette，覆盖 `setPalette()` 效果。必须用 `QStyleFactory.create("Fusion")` 作为 base style（跨平台一致，完全遵循 QPalette），再用 `CheckboxProxyStyle(fusion)` 包一层
 
 ## 启动工作流（每次会话开始必做）
 
