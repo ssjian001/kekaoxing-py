@@ -139,3 +139,20 @@ class SampleRepository(BaseRepository):
             "DELETE FROM [samples] WHERE project_id = ?", (project_id,)
         )
         return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0
+
+    def bulk_update_field(self, sample_ids: list[int], **fields: Any) -> None:
+        """批量更新多个样品的指定字段。
+
+        用一条 SQL 一次性更新所有匹配 ID 的记录。
+        """
+        if not sample_ids or not fields:
+            return
+        safe = self._safe_kwargs(fields)
+        if not safe:
+            return
+        set_clause = ", ".join([f"[{k}] = ?" for k in safe])
+        set_clause += ", [updated_at] = datetime('now','localtime')"
+        vals = list(safe.values())
+        placeholders = ", ".join(["?"] * len(sample_ids))
+        sql = f"UPDATE [samples] SET {set_clause} WHERE id IN ({placeholders})"
+        self._conn.execute(sql, vals + list(sample_ids))

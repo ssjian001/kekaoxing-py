@@ -16,6 +16,8 @@ from src.views.dialogs.sample_checkout_dialog import SampleCheckoutDialog
 from src.views.dialogs.sample_return_dialog import SampleReturnDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.views.dialogs.sample_edit_dialog import SampleEditDialog
+from src.views.dialogs.batch_edit_sample_dialog import BatchEditSampleDialog
+from src.services.undo_manager import BatchEditSamplesCommand
 
 if TYPE_CHECKING:
     from main import MainWindow
@@ -34,8 +36,10 @@ class SampleHandlers:
         v.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
         v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
+        v.pool_tab.btn_batch_edit.clicked.connect(self._on_pool_batch_edit)
         v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
         v.ledger_tab.btn_return.clicked.connect(self._on_sample_return)
+        v.ledger_tab.btn_batch_edit.clicked.connect(self._on_ledger_batch_edit)
         v.usage_tab.set_refresh_callback(self._refresh_sample_usage)
 
     def _refresh_sample_usage(self) -> None:
@@ -210,6 +214,14 @@ class SampleHandlers:
         """编辑选中样品（样品台账 Tab）。"""
         self._edit_sample_from_table(self._win.sample_view.ledger_tab.table)
 
+    def _on_pool_batch_edit(self) -> None:
+        """批量编辑选中样品（样品池 Tab）。"""
+        self._batch_edit_from_table(self._win.sample_view.pool_tab.table)
+
+    def _on_ledger_batch_edit(self) -> None:
+        """批量编辑选中样品（样品台账 Tab）。"""
+        self._batch_edit_from_table(self._win.sample_view.ledger_tab.table)
+
     def _edit_sample_from_table(self, table: Any) -> None:
         """从指定表格获取选中样品并编辑。"""
         ctrl = self._win.ctrl
@@ -241,6 +253,75 @@ class SampleHandlers:
                 entity="sample",
                 error_title="更新失败",
             )
+        dlg.deleteLater()
+
+    def _batch_edit_from_table(self, table: Any) -> None:
+        """批量编辑选中样品。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+
+        # 获取选中行的 sample IDs
+        sample_ids = table.get_selected_sample_ids()
+        if len(sample_ids) < 2:
+            self._win.toast("请选中 2 个以上的样品进行批量编辑", "info")
+            return
+
+        # 加载选中样品的完整数据
+        samples: list = []
+        for sid in sample_ids:
+            s = ctrl.sample_service.get(sid)
+            if s is not None:
+                samples.append(s)
+
+        if not samples:
+            return
+
+        # 弹出批量编辑对话框
+        project_list = ctrl.project_service.list_all() if ctrl.project_service else []
+        dlg = BatchEditSampleDialog(
+            samples=samples,
+            project_list=project_list,
+            parent=self._win,
+        )
+        if dlg.exec():
+            changes = dlg.get_changes()
+            if not changes:
+                dlg.deleteLater()
+                return
+
+            # 构建 Command 的 changes 列表：[(sample_id, {field: old}, {field: new})]
+            command_changes: list[tuple[int, dict, dict]] = []
+            for sample in samples:
+                if sample.id is None:
+                    continue
+                old_vals: dict = {}
+                new_vals: dict = {}
+                for field, new_value in changes.items():
+                    old_value = getattr(sample, field, None)
+                    old_vals[field] = old_value
+                    new_vals[field] = new_value
+                if old_vals and new_vals:
+                    command_changes.append((sample.id, old_vals, new_vals))
+
+            if not command_changes:
+                dlg.deleteLater()
+                return
+
+            try:
+                # 事务中执行批量更新
+                sample_repo = ctrl.sample_service._repo
+                cmd = BatchEditSamplesCommand(sample_repo, command_changes)
+                with ctrl.sample_service.transaction():
+                    ctrl.undo_manager.execute(cmd)
+                self._win.toast(
+                    f"已批量修改 {len(command_changes)} 个样品", "success"
+                )
+                ctrl.notify_data_changed("sample")
+            except Exception as e:
+                logger.exception("批量编辑失败")
+                QMessageBox.critical(self._win, "批量编辑失败", f"保存失败: {e}")
+
         dlg.deleteLater()
 
     def _on_sample_return(self) -> None:

@@ -112,6 +112,17 @@ class _SampleTable(QTableWidget):
                 return int(sid)
         return None
 
+    def get_selected_sample_ids(self) -> list[int]:
+        """返回所有选中行的 sample ID 列表（支持多选）。"""
+        ids: list[int] = []
+        for row in self.selectionModel().selectedRows():
+            item = self.item(row.row(), 0)
+            if item is not None:
+                sid = item.data(Qt.ItemDataRole.UserRole)
+                if sid is not None:
+                    ids.append(int(sid))
+        return ids
+
 
 class _SamplePoolTab(QWidget):
     """样品池 Tab — 在库样品列表。"""
@@ -162,9 +173,19 @@ class _SamplePoolTab(QWidget):
         self._btn_edit.setToolTip("编辑选中样品")
         toolbar.addWidget(self._btn_edit)
 
+        self._btn_batch_edit = QPushButton("批量编辑")
+        self._btn_batch_edit.setProperty("class", "action")
+        self._btn_batch_edit.setMinimumWidth(70)
+        self._btn_batch_edit.setToolTip("批量编辑选中的多个样品")
+        toolbar.addWidget(self._btn_batch_edit)
+
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS, _POOL_SPECS, "sample_pool")
+        # 启用多选
+        self._table.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         layout.addWidget(self._table)
 
         # 右键菜单
@@ -251,6 +272,11 @@ class _SamplePoolTab(QWidget):
     def btn_edit(self) -> QPushButton:
         """编辑按钮。"""
         return self._btn_edit
+
+    @property
+    def btn_batch_edit(self) -> QPushButton:
+        """批量编辑按钮。"""
+        return self._btn_batch_edit
 
     @property
     def search_input(self) -> QLineEdit:
@@ -489,9 +515,19 @@ class _SampleLedgerTab(QWidget):
         self._btn_return.setToolTip("归还选中已出库样品")
         toolbar.addWidget(self._btn_return)
 
+        self._btn_batch_edit = QPushButton("批量编辑")
+        self._btn_batch_edit.setProperty("class", "action")
+        self._btn_batch_edit.setMinimumWidth(70)
+        self._btn_batch_edit.setToolTip("批量编辑选中的多个样品")
+        toolbar.addWidget(self._btn_batch_edit)
+
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS, _LEDGER_SPECS, "sample_ledger")
+        # 启用多选
+        self._table.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         layout.addWidget(self._table)
 
         # 右键菜单
@@ -569,6 +605,11 @@ class _SampleLedgerTab(QWidget):
     def btn_return(self) -> QPushButton:
         """归还按钮。"""
         return self._btn_return
+
+    @property
+    def btn_batch_edit(self) -> QPushButton:
+        """批量编辑按钮。"""
+        return self._btn_batch_edit
 
     @property
     def table(self) -> _SampleTable:

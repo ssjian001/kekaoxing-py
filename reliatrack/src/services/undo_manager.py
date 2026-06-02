@@ -201,6 +201,44 @@ class DeleteEntityCommand(Command):
                 self._repo.insert(**self._saved_data)
 
 
+class BatchEditSamplesCommand(Command):
+    """批量编辑样品字段（支持撤销/重做）。
+
+    在一个事务中更新多个样品的多个字段。
+    """
+
+    def __init__(
+        self,
+        sample_repo: Any,
+        changes: list[tuple[int, dict[str, Any], dict[str, Any]]],
+    ) -> None:
+        """
+        Parameters
+        ----------
+        sample_repo : SampleRepository
+            样品仓库。
+        changes : list[tuple[int, dict, dict]]
+            [(sample_id, {field: old_value}, {field: new_value}), ...]
+        """
+        self._repo = sample_repo
+        self._changes = changes
+        self.description = f"批量编辑 {len(changes)} 个样品"
+
+    def do(self) -> None:
+        """执行所有字段更新。"""
+        for sample_id, _old, new_vals in self._changes:
+            self._repo.update(sample_id, **new_vals)
+
+    def undo(self) -> None:
+        """恢复所有旧值。"""
+        for sample_id, old_vals, _new in self._changes:
+            self._repo.update(sample_id, **old_vals)
+
+    def redo(self) -> None:
+        """重新执行更新。"""
+        self.do()
+
+
 class SoftDeleteCommand(Command):
     """软删除实体（标记 is_deleted=1），撤销时恢复。
 
