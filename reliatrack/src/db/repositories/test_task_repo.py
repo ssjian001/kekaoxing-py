@@ -119,18 +119,12 @@ class TestTaskRepository(BaseRepository):
 
     def bulk_update_start_day(self, updates: list[tuple[int, int]]) -> None:
         """批量更新任务开始天数 [(task_id, start_day), ...]。"""
-        self.begin_transaction()
-        try:
+        with self.transaction():
             for task_id, start_day in updates:
                 self._conn.execute(
                     "UPDATE [test_tasks] SET start_day = ? WHERE id = ?",
                     (start_day, task_id),
                 )
-            self.commit()
-        except Exception:
-            self.rollback()
-            logger.exception("bulk_update_start_day failed for %d tasks", len(updates))
-            raise
 
     def delete_by_plan(self, plan_id: int) -> int:
         """删除计划关联的所有测试任务，返回删除行数。

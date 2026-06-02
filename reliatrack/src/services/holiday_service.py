@@ -70,11 +70,13 @@ class HolidayService:
 
     def add_holiday(self, date_str: str, name: str, source: str = "custom") -> int:
         """添加自定义节假日。返回记录 ID；已存在时返回 0。"""
-        cur = self._conn.execute(
+        before = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
+        self._conn.execute(
             "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
             (date_str, name, source),
         )
-        if cur.getconnection().execute("SELECT changes()").fetchone()[0] == 0:
+        after = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
+        if after == before:
             # INSERT 被忽略 — 日期已存在
             return 0
         row = self._conn.execute(
@@ -94,6 +96,8 @@ class HolidayService:
         """
         if not records:
             return 0
+        # 事务前后 count 差值 = 实际插入行数
+        before = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
         self._conn.execute("BEGIN")
         try:
             self._conn.executemany(
@@ -104,9 +108,8 @@ class HolidayService:
         except Exception:
             self._conn.execute("ROLLBACK")
             raise
-        # 查询实际插入行数
-        row = self._conn.execute("SELECT changes()").fetchone()
-        return row[0] if row else 0
+        after = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
+        return after - before
 
     def seed_year_if_missing(self, year: int, records: list[tuple[str, str]]) -> int:
         """如果指定年份数据为空，则插入种子数据。返回插入行数。"""

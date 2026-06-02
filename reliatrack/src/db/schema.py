@@ -590,23 +590,23 @@ def _rebuild_table(conn: apsw.Connection, name: str, new_ddl: str) -> None:
     需在 PRAGMA foreign_keys = OFF 环境下调用。
     使用新表列名显式映射，避免 SELECT * 在列顺序不一致时数据错乱。
     """
-    conn.execute(f"DROP TABLE IF EXISTS {name}_new")
+    conn.execute(f"DROP TABLE IF EXISTS [{name}_new]")
     conn.execute(new_ddl)
     # 获取新表列名（从 new_ddl 创建的表）
-    new_cols = [r[1] for r in conn.execute(f"PRAGMA table_info({name}_new)").fetchall()]
+    new_cols = [r[1] for r in conn.execute(f"PRAGMA table_info([{name}_new])").fetchall()]
     # 获取旧表列名
-    old_cols = [r[1] for r in conn.execute(f"PRAGMA table_info({name})").fetchall()]
+    old_cols = [r[1] for r in conn.execute(f"PRAGMA table_info([{name}])").fetchall()]
     # 只取新表中在旧表里也存在的列（交集），确保数据安全
     common_cols = [c for c in new_cols if c in old_cols]
     cols_str = ", ".join(f"[{c}]" for c in common_cols)
     try:
-        conn.execute(f"INSERT INTO {name}_new ({cols_str}) SELECT {cols_str} FROM {name}")
+        conn.execute(f"INSERT INTO [{name}_new] ({cols_str}) SELECT {cols_str} FROM [{name}]")
     except Exception:
         # 迁移失败：清理 _new 表，保留原始数据不丢失
-        conn.execute(f"DROP TABLE IF EXISTS {name}_new")
+        conn.execute(f"DROP TABLE IF EXISTS [{name}_new]")
         raise
-    conn.execute(f"DROP TABLE {name}")
-    conn.execute(f"ALTER TABLE {name}_new RENAME TO {name}")
+    conn.execute(f"DROP TABLE [{name}]")
+    conn.execute(f"ALTER TABLE [{name}_new] RENAME TO [{name}]")
 
 
 def _migrate_v11(conn: apsw.Connection) -> None:

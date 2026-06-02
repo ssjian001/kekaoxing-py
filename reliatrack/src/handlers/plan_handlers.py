@@ -309,6 +309,7 @@ class PlanHandlers:
                     task_name = data.get("name", "?")
                     logger.exception("Failed to import task name=%s: data=%s", task_name, data)
                     skip += 1
+                    self._win.toast(f"导入任务「{task_name}」失败，已跳过", "warning")
             return success, skip
 
         task_field_map = [
@@ -623,8 +624,8 @@ class PlanHandlers:
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        task = self._win.test_plan_view._task_table.get_task_at_row(
-            self._win.test_plan_view._task_table.currentRow()
+        task = self._win.test_plan_view.task_table.get_task_at_row(
+            self._win.test_plan_view.task_table.currentRow()
         )
         if not task or task.id is None:
             QMessageBox.information(self._win, "提示", "请先选中一个测试任务。")
@@ -836,16 +837,16 @@ class PlanHandlers:
                 results = svc.get_task_results(task_id)
                 if results:
                     parts.append(f"{len(results)} 条测试结果")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("获取任务结果失败: %s", exc)
         try:
             issue_svc = getattr(ctrl, "issue_service", None)
             if issue_svc and hasattr(issue_svc, "get_by_task"):
                 issues = issue_svc.get_by_task(task_id)
                 if issues:
                     parts.append(f"{len(issues)} 个 Issue")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("获取任务关联 Issue 失败: %s", exc)
         if not parts:
             return ""
         return f"将同时删除：{'、'.join(parts)}。\n"

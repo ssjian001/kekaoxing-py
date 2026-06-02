@@ -307,7 +307,7 @@ class _FAPanel(QScrollArea):
             meta_text = "  |  ".join(meta_parts)
             meta = QLabel(meta_text)
             # 动态颜色（confirmed_color 取决于运行时状态），保留内联
-            meta.setStyleSheet(f"color: {confirmed_color}; font-size: 11px;")
+            meta.setStyleSheet(f"color: {confirmed_color};")
             card_layout.addWidget(meta)
 
             self._layout.addWidget(card)
@@ -617,7 +617,8 @@ class IssueView(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             if issue.id is None:
-                raise ValueError("Cannot delete issue without id")
+                QMessageBox.warning(self, "错误", "无法删除：Issue 缺少 ID")
+                return
             self.issue_deleted.emit(issue.id)
 
     # ── FA 步骤 ──────────────────────────────────────────────
@@ -808,7 +809,7 @@ class _CAPAPanel(QScrollArea):
             header = QHBoxLayout()
             status_lbl = QLabel(status_label_text)
             # 动态颜色（status_color 取决于运行时状态），保留内联
-            status_lbl.setStyleSheet(f"color: {status_color}; font-weight: bold; font-size: 12px;")
+            status_lbl.setStyleSheet(f"color: {status_color}; font-weight: bold;")
             header.addWidget(status_lbl)
             if rec.due_date:
                 due_lbl = QLabel(f"截止: {rec.due_date}")

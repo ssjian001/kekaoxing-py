@@ -95,7 +95,7 @@ class RefreshHandlers:
 
         # 按需刷新顶部计划筛选 combo
         if self._need_plan_combo_refresh:
-            self._win._refresh_plan_combo()
+            self._win.refresh_plan_combo()
             self._need_plan_combo_refresh = False
 
         pending.clear()

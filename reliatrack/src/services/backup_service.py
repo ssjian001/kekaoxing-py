@@ -119,7 +119,7 @@ class BackupService:
             finally:
                 conn.close()
         except Exception as exc:
-            raise ValueError(f"无法读取备份文件: {exc}") from None
+            raise ValueError(f"无法读取备份文件: {exc}") from exc
 
         if version == 0:
             raise ValueError("备份文件不是有效的 ReliaTrack 数据库（缺少 schema_version）")

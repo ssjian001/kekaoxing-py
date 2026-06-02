@@ -179,8 +179,8 @@ class _TestProgressCard(QFrame):
         legend = QHBoxLayout()
         legend.setSpacing(12)
         self._legend_labels: list[QLabel] = []
-        for label, color in [("PASS", DASH_SUCCESS), ("FAIL", DASH_DANGER),
-                             ("进行中", DASH_WARNING), ("待开始", _theme.SUBTEXT0)]:
+        for label, color in [("PASS", _theme.GREEN), ("FAIL", _theme.RED),
+                             ("进行中", _theme.YELLOW), ("待开始", _theme.SUBTEXT0)]:
             dot = QLabel("●")
             # DYNAMIC: color 是循环变量，无法走 class 选择器
             dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")

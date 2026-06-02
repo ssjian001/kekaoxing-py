@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from src.services.export.export_utils import (
     CATEGORY_MAP, STATUS_MAP, _validate_output_path, logger,
     excel_styles, excel_save, excel_write_headers, excel_write_row,
-    _judge_conclusion,
+    _judge_conclusion, get_cjk_font,
 )
 from src.constants import RESOLUTION_LABELS
 
@@ -22,35 +22,6 @@ if TYPE_CHECKING:
     from src.models.issue import Issue, FARecord, CAPARecord
     from src.models.sample import Sample
     from src.models.test_plan import TestPlan, TestTask, TestResult
-
-import platform
-import subprocess
-
-_CJK_FONT_LOCAL = None
-
-
-def _get_cjk_font():
-    global _CJK_FONT_LOCAL
-    if _CJK_FONT_LOCAL is not None:
-        return _CJK_FONT_LOCAL
-    system = platform.system()
-    if system == "Windows":
-        _CJK_FONT_LOCAL = "Microsoft YaHei"
-    elif system == "Darwin":
-        _CJK_FONT_LOCAL = "PingFang SC"
-    else:
-        for candidate in ("Noto Sans CJK SC", "WenQuanYi Micro Hei", "Droid Sans Fallback"):
-            try:
-                r = subprocess.run(["fc-match", "-f", "%{family}", candidate],
-                                   capture_output=True, text=True, timeout=3)
-                if r.returncode == 0 and r.stdout.strip():
-                    _CJK_FONT_LOCAL = r.stdout.strip()
-                    break
-            except Exception:
-                continue
-        if _CJK_FONT_LOCAL is None:
-            _CJK_FONT_LOCAL = "Noto Sans CJK SC"
-    return _CJK_FONT_LOCAL
 
 
 def _set_table_border(table):
@@ -80,7 +51,7 @@ def _fill_cell(ct_tc, text, bold=False, size=9, color=None, shade=None, align=No
     r = etree_SubElement(p, "w:r")
     rPr = etree_SubElement(r, "w:rPr")
     rFonts = etree_SubElement(rPr, "w:rFonts")
-    _f = _get_cjk_font()
+    _f = get_cjk_font()
     rFonts.set(qn("w:ascii"), _f)
     rFonts.set(qn("w:eastAsia"), _f)
     rFonts.set(qn("w:hAnsi"), _f)
@@ -137,7 +108,7 @@ def export_to_word(
     from docx.oxml.ns import qn
     from docx.oxml import parse_xml
 
-    _f = _get_cjk_font()
+    _f = get_cjk_font()
     _BLUE = RGBColor(0x2B, 0x57, 0x9A)
 
     doc = Document()
@@ -492,7 +463,7 @@ def export_dvpr_docx(
     from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.oxml.ns import qn
 
-    _f = _get_cjk_font()
+    _f = get_cjk_font()
     _BLUE = RGBColor(0x1E, 0x66, 0xA5)
     _GRAY = RGBColor(0x99, 0x99, 0x99)
     _DARK = RGBColor(0x33, 0x33, 0x33)
@@ -509,7 +480,7 @@ def export_dvpr_docx(
 
     style = doc.styles["Normal"]
     font = style.font
-    _f = _get_cjk_font()
+    _f = get_cjk_font()
     font.name = _f
     font.size = Pt(9)
     style.element.rPr.rFonts.set(qn("w:eastAsia"), _f)
@@ -748,7 +719,7 @@ def export_8d_docx(
     # ── 默认字体 ──
     style = doc.styles["Normal"]
     font = style.font
-    _f = _get_cjk_font()
+    _f = get_cjk_font()
     font.name = _f
     font.size = Pt(9)
     style.element.rPr.rFonts.set(qn("w:eastAsia"), _f)

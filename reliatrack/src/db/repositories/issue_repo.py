@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 import apsw
 
@@ -310,13 +309,7 @@ class IssueRepository(BaseRepository):
         ).fetchall()
         for (aid, fp) in rows:
             if fp:
-                p = Path(fp).resolve()
-                allowed = IssueRepository._ALLOWED_ATTACH_DIRS
-                if any(str(p).startswith(d) for d in allowed) and p.exists():
-                    try:
-                        p.unlink()
-                    except OSError as exc:
-                        raise RuntimeError(f"磁盘文件删除失败: {fp}") from exc
+                self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
         )
@@ -336,15 +329,7 @@ class IssueRepository(BaseRepository):
         file_path = row[0]
         # 先尝试删除磁盘文件
         if file_path:
-            p = Path(file_path).resolve()
-            allowed = IssueRepository._ALLOWED_ATTACH_DIRS
-            if any(str(p).startswith(d) for d in allowed) and p.exists():
-                try:
-                    p.unlink()
-                except OSError as exc:
-                    raise RuntimeError(
-                        f"磁盘文件删除失败: {file_path}"
-                    ) from exc
+            self._remove_disk_file(str(file_path))
         # 磁盘文件已删除（或不存在 / 不在允许目录），安全删除 DB 记录
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)

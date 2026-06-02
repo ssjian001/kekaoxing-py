@@ -92,7 +92,7 @@ class SampleHandlers:
             if ok:
                 current_filter = self._win.get_project_filter_id()
                 if current_filter is not None and sample_project_id != current_filter:
-                    self._win._project_filter_combo.setCurrentIndex(0)
+                    self._win.project_filter_combo.setCurrentIndex(0)
                 # 同步创建入库记录
                 created = ctrl.sample_service.get_by_sn(data["sn"])
                 if created is not None and created.id is not None:
@@ -116,7 +116,7 @@ class SampleHandlers:
             return
         # 获取当前项目下的测试任务列表，供出库时关联
         task_list: list = []
-        filter_pid = self._win._refresh_handlers._get_filter_project_id()
+        filter_pid = self._win.get_project_filter_id()
         if filter_pid and ctrl.test_plan_service:
             plans = ctrl.test_plan_service.get_plans_by_project(filter_pid)
             for p in plans:
@@ -196,7 +196,7 @@ class SampleHandlers:
         dlg.deleteLater()
         if dlg.was_imported():
             self._win.ctrl.notify_data_changed("sample")
-            success, skip = dlg.import_result()
+            success, skip = dlg.get_result()
             msg = f"样品批量导入完成: {success} 条成功"
             if skip:
                 msg += f"，{skip} 条跳过（详见日志）"

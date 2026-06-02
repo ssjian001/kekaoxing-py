@@ -158,12 +158,14 @@ def excel_save(wb, filepath: str | None, filename: str, output_dir: Path) -> str
 
 def _validate_output_path(path: str | Path, output_dir: Path) -> Path:
     """校验输出路径安全性，防止路径遍历。"""
+    import tempfile
+
     resolved = Path(path).resolve()
     try:
         resolved.relative_to(output_dir.resolve())
     except ValueError:
-        import tempfile
-        if not str(resolved).startswith(tempfile.gettempdir()):
+        tmp = Path(tempfile.gettempdir()).resolve()
+        if not resolved.is_relative_to(tmp):
             raise ValueError(f"导出路径超出允许范围: {resolved}")
     return resolved
 

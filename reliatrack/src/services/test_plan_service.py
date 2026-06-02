@@ -135,7 +135,7 @@ class TestPlanService:
     def create_task_delete_command(self, task_id: int):
         """创建任务删除命令（可撤销）。"""
         from src.services.undo_manager import DeleteEntityCommand
-        return DeleteEntityCommand(self._task_repo, task_id, "任务")
+        return DeleteEntityCommand(self._task_repo, task_id, "任务", _cascade_children=True)
 
     def import_tasks_from_plan(self, target_plan_id: int, source_tasks: list[TestTask]) -> int:
         """从其他计划复制任务到目标计划。只复制任务模板字段，不复制运行时数据。

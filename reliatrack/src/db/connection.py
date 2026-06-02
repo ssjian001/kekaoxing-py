@@ -100,7 +100,8 @@ def close_all_connections() -> None:
         for conn in _connections.values():
             try:
                 conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning("WAL checkpoint 失败: %s", exc)
             conn.close()
         _connections.clear()

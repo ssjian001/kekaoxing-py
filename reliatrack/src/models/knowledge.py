@@ -15,7 +15,7 @@ class KnowledgeEntry:
     cause_analysis: str = ""        # 原因分析
     improvement: str = ""           # 改进措施
     reference_standard: str = ""    # 参考标准
-    keywords: str = ""              # 关键词
+    keywords: str = ""              # 关键词（DB 存 JSON 数组字符串如 '[]'，UI 按逗号分隔文本处理）
     summary: str = ""               # 摘要
     root_cause: str = ""            # 根因（旧字段，兼容）
     resolution: str = ""            # 解决方案（旧字段，兼容）

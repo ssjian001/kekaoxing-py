@@ -130,19 +130,7 @@ class BaseRepository:
         self, row: tuple, cols: list[str] | None = None
     ) -> Any:
         """将单条查询结果转为 dataclass。"""
-        if cols is None:
-            cols = self._columns()
-        data = dict(zip(cols, row))
-        for col, val in data.items():
-            if val is not None:
-                model_fields = getattr(self._model_class, "__annotations__", {})
-                expected = model_fields.get(col)
-                if expected in (int, "int", "Integer") and isinstance(val, str):
-                    if val == "":
-                        data[col] = 0
-                    elif val.lstrip("-").isdigit():
-                        data[col] = int(val)
-        return self._model_class(**data)
+        return self._rows_to_models([row], cols=cols)[0]
 
     # ── 通用 CRUD ──
 
@@ -223,7 +211,8 @@ class BaseRepository:
         params: list[Any] = []
         if filters:
             clauses = []
-            for k, v in filters.items():
+            safe = self._safe_kwargs(filters)
+            for k, v in safe.items():
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)
@@ -258,7 +247,8 @@ class BaseRepository:
         params: list[Any] = []
         if filters:
             clauses = []
-            for k, v in filters.items():
+            safe = self._safe_kwargs(filters)
+            for k, v in safe.items():
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)

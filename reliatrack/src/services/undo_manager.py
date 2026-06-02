@@ -157,10 +157,12 @@ class DeleteEntityCommand(Command):
     撤销时恢复原始 ID，保持关联数据（如 issues.task_id）的引用完整性。
     """
 
-    def __init__(self, repo: Any, entity_id: int, entity_name: str = "实体"):
+    def __init__(self, repo: Any, entity_id: int, entity_name: str = "实体",
+                 _cascade_children: bool = False):
         self._repo = repo
         self._entity_id = entity_id
         self._entity_name = entity_name
+        self._cascade_children = _cascade_children
         # 先读取当前数据用于撤销恢复
         entity = repo.get_by_id(entity_id)
         self._saved_data: dict[str, Any] = {}
@@ -175,6 +177,13 @@ class DeleteEntityCommand(Command):
         self._repo.delete(self._entity_id)
 
     def undo(self) -> None:
+        if self._cascade_children:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                None, "无法撤销",
+                "此操作涉及关联数据（CASCADE 子记录），无法撤销。",
+            )
+            return
         if self._saved_data and self._saved_data.get("id") is not None:
             # 检查原 ID 是否已被新记录占用
             existing = self._repo.get_by_id(self._saved_data["id"])

@@ -478,17 +478,26 @@ class MainWindow(QMainWindow):
     def dashboard(self) -> DashboardView:
         return self._dashboard
 
+    @property
+    def db_path(self) -> str:
+        """获取当前数据库路径。"""
+        return getattr(self._ctrl, '_db_path', '')
+
+    @property
+    def project_filter_combo(self) -> QComboBox:
+        return self._project_filter_combo
+
     def _on_project_filter_changed(self, index: int) -> None:
         """项目筛选变化时：更新计划 combo + 刷新所有视图。"""
         # 更新计划 combo
-        self._refresh_plan_combo()
+        self.refresh_plan_combo()
         self._refresh_all()
 
     def _on_plan_filter_changed(self, index: int) -> None:
         """计划筛选变化时刷新仪表盘。"""
         self._refresh_all()
 
-    def _refresh_plan_combo(self) -> None:
+    def refresh_plan_combo(self) -> None:
         """根据当前选中的项目更新计划筛选 combo（保留之前选中项）。"""
         project_id = self._project_filter_combo.currentData()
         ctrl = self._ctrl

@@ -378,6 +378,7 @@ class BatchImportDialog(_BaseDialog):
             skip_count = 0
 
         self._imported = True
+        self._import_result = (success_count, skip_count)
         self._btn_import.setText("✅ 导入完成")
         self._btn_close.setText("关闭")
 
@@ -415,4 +416,4 @@ class BatchImportDialog(_BaseDialog):
 
     def get_result(self) -> tuple[int, int]:
         """返回 (成功数, 跳过数)。"""
-        return (0, 0)
+        return getattr(self, "_import_result", (0, 0))

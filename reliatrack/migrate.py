@@ -232,8 +232,12 @@ def _migrate_core(
 
     # 原子替换：临时文件 → 目标路径
     if _old_new_db:
-        os.remove(_old_new_db)
-    shutil.move(tmp_path, new_db_path)
+        _bak = _old_new_db + ".swap"
+        shutil.move(_old_new_db, _bak)
+        shutil.move(tmp_path, new_db_path)
+        os.remove(_bak)
+    else:
+        shutil.move(tmp_path, new_db_path)
     # 清理临时 WAL/SHM
     for ext in ("-wal", "-shm"):
         p = Path(tmp_path + ext)
