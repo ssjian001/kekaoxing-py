@@ -221,6 +221,10 @@ class _FAPanel(QScrollArea):
         self.setWidget(self._container)
         self.setProperty("class", "issue-scroll")
 
+    def refresh_theme(self) -> None:
+        """主题切换回调 — 用当前数据重建卡片以刷新内联颜色。"""
+        self.set_fa_records(self._records)
+
     def set_fa_records(self, records: list[FARecord]) -> None:
         self._records = records
         # 清空
@@ -343,6 +347,13 @@ class IssueView(QWidget):
         self._technician_list: list = []  # 技术员列表，由 refresh_handlers 注入
         self._all_issues: list[Issue] = []  # 筛选前的完整列表缓存
         self._setup_ui()
+
+    def refresh_theme(self) -> None:
+        """主题切换回调 — 刷新 FA/CAPA 面板中的内联颜色。"""
+        if hasattr(self, "_fa_panel") and hasattr(self._fa_panel, "refresh_theme"):
+            self._fa_panel.refresh_theme()
+        if hasattr(self, "_capa_panel") and hasattr(self._capa_panel, "refresh_theme"):
+            self._capa_panel.refresh_theme()
 
     def set_context_data(
         self,
@@ -775,13 +786,19 @@ class _CAPAPanel(QScrollArea):
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setWidget(self._container)
         self.setProperty("class", "issue-scroll")
+        self._records: list = []
         # 初始占位
         label = QLabel("选择一个 Issue 查看 CAPA 记录")
         label.setProperty("class", "subtext")
         self._layout.addWidget(label)
 
+    def refresh_theme(self) -> None:
+        """主题切换回调 — 用当前数据重建卡片以刷新内联颜色。"""
+        self.set_capa_records(self._records)
+
     def set_capa_records(self, records: list) -> None:
         """刷新 CAPA 记录卡片。"""
+        self._records = records
         # 清空
         while self._layout.count():
             child = self._layout.takeAt(0)

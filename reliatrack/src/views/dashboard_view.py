@@ -179,11 +179,16 @@ class _TestProgressCard(QFrame):
         legend = QHBoxLayout()
         legend.setSpacing(12)
         self._legend_labels: list[QLabel] = []
-        for label, color in [("PASS", _theme.GREEN), ("FAIL", _theme.RED),
-                             ("进行中", _theme.YELLOW), ("待开始", _theme.SUBTEXT0)]:
+        self._legend_dots: list[QLabel] = []
+        self._legend_color_keys: list[str] = []
+        for label, key in [("PASS", "GREEN"), ("FAIL", "RED"),
+                           ("进行中", "YELLOW"), ("待开始", "SUBTEXT0")]:
+            color = getattr(_theme, key)
             dot = QLabel("●")
             # DYNAMIC: color 是循环变量，无法走 class 选择器
             dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
+            self._legend_dots.append(dot)
+            self._legend_color_keys.append(key)
             lbl = QLabel(label)
             lbl.setProperty("class", "hint-label")  # 主题迁移: class=hint-label
             self._legend_labels.append(lbl)
@@ -674,6 +679,11 @@ class DashboardView(QWidget):
 
         # 筛选标签 — 主题迁移: class=summary-bar
         self._filter_label.setProperty("class", "summary-bar")
+
+        # 图例圆点颜色
+        for dot, key in zip(self._health._legend_dots, self._health._legend_color_keys):
+            color = getattr(_theme, key)
+            dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none; background: transparent;")
 
     def _setup_ui(self) -> None:
         # 外层 QScrollArea 包裹，兜底小窗口
