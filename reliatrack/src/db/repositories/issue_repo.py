@@ -267,7 +267,7 @@ class IssueRepository(BaseRepository):
 
     # 附件磁盘存储允许的基础目录（resolve 后的真实路径）
     _ALLOWED_ATTACH_DIRS: tuple[str, ...] = (
-        str(Path(DEFAULT_ATTACHMENTS_DIR.parent).resolve()),
+        str(DEFAULT_ATTACHMENTS_DIR.resolve()),
     )
 
     @staticmethod

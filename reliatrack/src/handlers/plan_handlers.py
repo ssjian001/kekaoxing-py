@@ -309,7 +309,9 @@ class PlanHandlers:
                     task_name = data.get("name", "?")
                     logger.exception("Failed to import task name=%s: data=%s", task_name, data)
                     skip += 1
-                    self._win.toast(f"导入任务「{task_name}」失败，已跳过", "warning")
+                    self._win.toast(
+                        f"导入任务「{task_name!r}」失败，已跳过", "warning"
+                    )
             return success, skip
 
         task_field_map = [

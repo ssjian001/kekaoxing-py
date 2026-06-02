@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 import apsw
 
@@ -141,7 +142,6 @@ class TestTaskRepository(BaseRepository):
             "WHERE tt.plan_id = ?",
             (plan_id,),
         ).fetchall()
-        from pathlib import Path
         from src.db.repositories.issue_repo import IssueRepository
         for (fp,) in attachment_paths:
             IssueRepository._remove_disk_file(fp)
