@@ -641,9 +641,14 @@ def main() -> int:
     app.setOrganizationName("ReliaTrack")
 
     # 自定义 CheckBox / RadioButton indicator 绘制
+    # 使用 Fusion 作为 base style — 跨平台一致，完全遵循 QPalette，
+    # 避免 Windows 暗色系统主题通过 QWindowsVistaStyle 注入暗色 palette
+    from PySide6.QtWidgets import QStyleFactory
+    _base_style = QStyleFactory.create("Fusion")
     from src.styles.proxy_style import CheckboxProxyStyle
-    app.setStyle(CheckboxProxyStyle())
+    app.setStyle(CheckboxProxyStyle(_base_style))
 
+    apply_palette()
     app.setStyleSheet(get_stylesheet())
 
     # 恢复主题偏好（QSettings，controller 初始化前即可用）
