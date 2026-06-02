@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
-from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host
+from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -245,6 +245,7 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QApplication
         name = "dark" if checked else "light"
         set_theme(name)
+        apply_palette()
         QApplication.instance().setStyleSheet(get_stylesheet())
         self._refresh_remaining_inline_styles()
         QSettings().setValue("ReliaTrack/theme", name)
@@ -650,6 +651,7 @@ def main() -> int:
     _saved_theme = _settings.value("ReliaTrack/theme", "light")
     if _saved_theme in ("light", "dark") and _saved_theme != "light":
         set_theme(_saved_theme)
+        apply_palette()
         app.setStyleSheet(get_stylesheet())
 
     # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗

@@ -838,6 +838,40 @@ def current_theme() -> str:
     """返回当前主题名称。"""
     return _current_theme
 
+def apply_palette() -> None:
+    """同步 QPalette 到当前主题色板。
+
+    QSS 只覆盖匹配选择器的控件；QPalette 是 fallback 机制，
+    控制 QSS 未覆盖的子控件（QCalendarWidget、QComboBox popup、
+    QScrollArea viewport 等原生弹出窗口的背景和文字色）。
+    必须在 set_theme() 之后、setStyleSheet() 之前调用。
+    """
+    from PySide6.QtGui import QPalette, QColor
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        return
+
+    pal = QPalette()
+    # 背景色（Window / Base / AlternateBase / Button）
+    pal.setColor(QPalette.ColorRole.Window, QColor(BG_DARK))
+    pal.setColor(QPalette.ColorRole.WindowText, QColor(FG_PRIMARY))
+    pal.setColor(QPalette.ColorRole.Base, QColor(BG_INPUT))
+    pal.setColor(QPalette.ColorRole.AlternateBase, QColor(BG_CARD))
+    pal.setColor(QPalette.ColorRole.ToolTipBase, QColor(SURFACE2))
+    pal.setColor(QPalette.ColorRole.ToolTipText, QColor(FG_PRIMARY))
+    pal.setColor(QPalette.ColorRole.Text, QColor(FG_PRIMARY))
+    pal.setColor(QPalette.ColorRole.Button, QColor(BG_INPUT))
+    pal.setColor(QPalette.ColorRole.ButtonText, QColor(FG_PRIMARY))
+    pal.setColor(QPalette.ColorRole.BrightText, QColor(RED))
+    pal.setColor(QPalette.ColorRole.PlaceholderText, QColor(FG_MUTED))
+    # 高亮
+    pal.setColor(QPalette.ColorRole.Highlight, QColor(ACCENT))
+    pal.setColor(QPalette.ColorRole.HighlightedText, QColor(MANTLE))
+
+    app.setPalette(pal)
+
 
 def get_palette() -> dict[str, str]:
     """返回当前色板（只读副本）。"""
