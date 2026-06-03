@@ -140,12 +140,32 @@ def excel_write_row(ws, row: int, values: list, styles: dict, alignment=None) ->
         cell.border = styles["thin_border"]
 
 
+def _sanitize_filename(name: str) -> str:
+    """移除文件名非法字符，防止路径分隔符混入文件名。"""
+    import re
+    # Windows 非法字符：\ / : * ? " < > |
+    return re.sub(r'[\\/:*?"<>|]', '_', name)
+
+
+def _sanitize_path(path: str) -> str:
+    """清理完整路径中的非法文件名字符（只处理末尾的文件名部分）。"""
+    import re
+    # 只替换路径末尾文件名部分的非法字符，不动目录分隔符
+    safe = re.sub(r'[\\:*?"<>|]', '_', path)
+    # 路径中的正斜杠保留（Unix/URL 合法），反斜杠替换
+    safe = safe.replace('\\', '_')
+    return safe
+
+
 def excel_save(wb, filepath: str | None, filename: str, output_dir: Path) -> str:
     """保存 Excel 工作簿，返回绝对路径。"""
     from openpyxl.utils import get_column_letter
 
-    out = filepath or str(output_dir / filename)
-    resolved = _validate_output_path(out, output_dir)
+    # 同时清理 filename（自动命名）和 out（用户指定路径）
+    safe_name = _sanitize_filename(filename)
+    raw_out = filepath or str(output_dir / safe_name)
+    safe_out = _sanitize_path(raw_out)
+    resolved = _validate_output_path(safe_out, output_dir)
     try:
         wb.save(str(resolved))
     except (OSError, PermissionError) as e:
