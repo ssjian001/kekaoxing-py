@@ -695,8 +695,8 @@ class PlanHandlers:
                 if item.get("deleted") and item.get("result_id"):
                     ctrl.test_plan_service.delete_result(item["result_id"])
                     deleted_count += 1
-                # 未删除且有效样品 → 保存
-                elif item["sample_id"] is not None and not item.get("deleted"):
+                # 未删除 → 保存（sample_id 可为 None，表示无样品关联的整体结论）
+                elif not item.get("deleted"):
                     ctrl.test_plan_service.save_result(
                         task_id=task.id,
                         sample_id=item["sample_id"],
@@ -727,11 +727,11 @@ class PlanHandlers:
                                     project_id=issue_project_id,
                                     plan_id=task.plan_id if hasattr(task, "plan_id") else None,
                                     task_id=task.id,
-                                    sample_id=item["sample_id"],
+                                    sample_id=item.get("sample_id"),
                                     failure_mode="不通过",
                                     severity="major",
                                     status="open",
-                                    description=f"自动创建：测试任务「{task.name}」样品「{sample_name}」结果不通过",
+                                    description=f"自动创建：测试任务「{task.name}」{'样品「' + sample_name + '」' if sample_name else ''}结果不通过",
                                 )
                                 issue_count += 1
                             except Exception:

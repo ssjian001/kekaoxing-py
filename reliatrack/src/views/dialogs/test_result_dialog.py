@@ -40,7 +40,7 @@ class _ResultRow(QFrame):
 
     def __init__(
         self,
-        sample: Sample,
+        sample: Sample | None,
         existing_result: TestResult | None = None,
         technician_list: list | None = None,
         on_change: Callable[[], None] | None = None,
@@ -65,12 +65,15 @@ class _ResultRow(QFrame):
         row1 = QHBoxLayout()
         row1.setSpacing(6)
 
-        # 样品信息
-        info_text = sample.sn
-        if sample.batch_no:
-            info_text += f"  ({sample.batch_no})"
-        if sample.spec:
-            info_text += f"  {sample.spec}"
+        # 样品信息（无样品时显示"整体结论"）
+        if sample is not None:
+            info_text = sample.sn
+            if sample.batch_no:
+                info_text += f"  ({sample.batch_no})"
+            if sample.spec:
+                info_text += f"  {sample.spec}"
+        else:
+            info_text = "（整体结论）"
         self._sample_lbl = QLabel(info_text)
         self._sample_lbl.setMinimumWidth(120)
         self._sample_lbl.setProperty("class", "body-text")
@@ -266,7 +269,7 @@ class _ResultRow(QFrame):
         if humidity:
             env["humidity"] = humidity
         return {
-            "sample_id": self._sample.id,
+            "sample_id": self._sample.id if self._sample else None,
             "result": self._combo.currentData() or TestResultStatus.PENDING.value,
             "test_date": self._date_edit.date().toString("yyyy-MM-dd"),
             "notes": self._notes_edit.text().strip(),
@@ -274,7 +277,7 @@ class _ResultRow(QFrame):
             "environment": json.dumps(env, ensure_ascii=False),
             "tester_id": self._tester_combo.currentData(),
             "create_issue": self._create_issue_cb.isChecked(),
-            "sample_name": self._sample.sn,
+            "sample_name": self._sample.sn if self._sample else "",
             "result_id": self._result_id,
             "deleted": self._deleted,
         }
@@ -330,15 +333,7 @@ class TestResultDialog(QWidget):
             criteria.setWordWrap(True)
             layout.addWidget(criteria)
 
-        if not samples:
-            lbl = QLabel("该任务未关联样品，请先在任务编辑中添加样品。")
-            lbl.setProperty("class", "subtext")
-            lbl.setWordWrap(True)
-            layout.addWidget(lbl)
-            self._rows: list[_ResultRow] = []
-            return
-
-        # 结果统计 + 环境条件工具栏
+        # 结果统计 + 环境条件工具栏（始终创建，无论有无样品）
         stats_row = QHBoxLayout()
         self._stats_label = QLabel()
         self._stats_label.setProperty("class", "subtext")
@@ -362,6 +357,11 @@ class TestResultDialog(QWidget):
         sep.setProperty("class", "separator")
         layout.addWidget(sep)
 
+        # 构建已有结果映射：sample_id → TestResult（含 None key）
+        result_map: dict[int | None, TestResult] = {}
+        for r in self._existing_results:
+            result_map[r.sample_id] = r
+
         # 滚动区域
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -373,17 +373,26 @@ class TestResultDialog(QWidget):
         container_layout.setSpacing(6)
         container_layout.setContentsMargins(0, 4, 0, 4)
 
-        # 构建结果行
-        result_map: dict[int, TestResult] = {}
-        for r in self._existing_results:
-            if r.sample_id is not None:
-                result_map[r.sample_id] = r
+        self._rows: list[_ResultRow] = []
+        self._has_samples: bool = bool(samples)
 
-        self._rows = []
-        for sample in samples:
-            existing = result_map.get(sample.id) if sample.id else None
+        if samples:
+            # 有样品：每个样品一行结果
+            for sample in samples:
+                existing = result_map.get(sample.id) if sample.id else None
+                row = _ResultRow(
+                    sample, existing,
+                    technician_list=self._technician_list,
+                    on_change=self._update_stats,
+                    parent=self,
+                )
+                self._rows.append(row)
+                container_layout.addWidget(row)
+        else:
+            # 无样品：生成一行"整体结论"
+            existing = result_map.get(None)
             row = _ResultRow(
-                sample, existing,
+                None, existing,
                 technician_list=self._technician_list,
                 on_change=self._update_stats,
                 parent=self,
@@ -458,11 +467,18 @@ class TestResultDialog(QWidget):
         pending_count = sum(1 for r in results if r == "pending")
         skip_count = sum(1 for r in results if r == "skip")
         deleted_count = sum(1 for r in self._rows if r._deleted)
-        text = (
-            f"共 {total} 个样品: "
-            f"通过 {pass_count}  |  不通过 {fail_count}  |  "
-            f"条件通过 {cond_count}  |  待定 {pending_count}  |  跳过 {skip_count}"
-        )
+        if getattr(self, "_has_samples", True):
+            text = (
+                f"共 {total} 个样品: "
+                f"通过 {pass_count}  |  不通过 {fail_count}  |  "
+                f"条件通过 {cond_count}  |  待定 {pending_count}  |  跳过 {skip_count}"
+            )
+        else:
+            text = (
+                f"整体结果: "
+                f"通过 {pass_count}  |  不通过 {fail_count}  |  "
+                f"条件通过 {cond_count}  |  待定 {pending_count}  |  跳过 {skip_count}"
+            )
         if deleted_count:
             text += f"  (已标记删除 {deleted_count})"
         self._stats_label.setText(text)

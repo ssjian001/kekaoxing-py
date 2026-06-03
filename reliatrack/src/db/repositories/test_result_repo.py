@@ -41,15 +41,25 @@ class TestResultRepository(BaseRepository):
         ).fetchall()
         return self._rows_to_models(rows, cols=_COLS)
 
-    def get_task_result_for_sample(self, task_id: int, sample_id: int) -> Optional[TestResult]:
-        """获取某任务+样品的测试结果（一对一）。"""
-        row = self._conn.execute(
-            f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE task_id = ? AND sample_id = ?",
-            (task_id, sample_id),
-        ).fetchone()
+    def get_task_result_for_sample(self, task_id: int, sample_id: int | None) -> Optional[TestResult]:
+        """获取某任务+样品的测试结果（一对一）。
+
+        sample_id 为 None 时查找无样品关联的整体结果。
+        """
+        if sample_id is not None:
+            row = self._conn.execute(
+                f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE task_id = ? AND sample_id = ?",
+                (task_id, sample_id),
+            ).fetchone()
+        else:
+            # SQL: = NULL 永远不匹配，必须用 IS NULL
+            row = self._conn.execute(
+                f"SELECT {', '.join(_COLS)} FROM [test_results] WHERE task_id = ? AND sample_id IS NULL",
+                (task_id,),
+            ).fetchone()
         return self._row_to_model(row, cols=_COLS) if row else None
 
-    def upsert(self, task_id: int, sample_id: int, **kwargs: object) -> int:
+    def upsert(self, task_id: int, sample_id: int | None, **kwargs: object) -> int:
         """插入或更新某任务+样品的测试结果，返回 id。
 
         用事务包裹 SELECT + INSERT/UPDATE 防止并发竞态。

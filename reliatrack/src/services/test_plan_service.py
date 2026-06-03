@@ -108,7 +108,7 @@ class TestPlanService:
     def save_result(
         self,
         task_id: int,
-        sample_id: int,
+        sample_id: int | None,
         result: str,
         test_date: str = "",
         measured_value: str = "",
