@@ -130,6 +130,32 @@ class SampleRepository(BaseRepository):
             "DELETE FROM [sample_transactions] WHERE sample_id = ?", (sample_id,)
         )
 
+    def remove_from_task_sample_ids(self, sample_id: int) -> int:
+        """从所有 test_tasks.sample_ids JSON 数组中移除指定样品 ID。
+
+        Returns:
+            更新的行数。
+        """
+        import json
+        rows = self._conn.execute(
+            "SELECT id, sample_ids FROM [test_tasks] WHERE sample_ids != '[]'"
+        ).fetchall()
+        updated = 0
+        for row_id, raw in rows:
+            try:
+                ids = json.loads(str(raw)) if raw else []
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if sample_id not in ids:
+                continue
+            ids = [i for i in ids if i != sample_id]
+            self._conn.execute(
+                "UPDATE [test_tasks] SET sample_ids = ? WHERE id = ?",
+                (json.dumps(ids, ensure_ascii=False), row_id),
+            )
+            updated += 1
+        return updated
+
     def delete_by_project(self, project_id: int) -> int:
         """删除项目关联的所有样品，返回删除行数。
 

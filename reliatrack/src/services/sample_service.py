@@ -72,7 +72,9 @@ class SampleService:
             )
 
         with self._repo.transaction():
-            # 先删出入库记录（子表），再删样品（父表）
+            # 1. 清理 test_tasks.sample_ids JSON 中的悬空引用
+            self._repo.remove_from_task_sample_ids(sample_id)
+            # 2. 删出入库记录（子表），再删样品（父表）
             self._repo.delete_transactions(sample_id)
             self._repo.delete(sample_id)
 
