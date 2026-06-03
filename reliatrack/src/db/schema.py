@@ -147,7 +147,7 @@ _DDL_TABLES: list[str] = [
     """CREATE TABLE IF NOT EXISTS test_results (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         task_id         INTEGER NOT NULL REFERENCES test_tasks(id) ON DELETE CASCADE,
-        sample_id       INTEGER DEFAULT NULL REFERENCES samples(id),
+        sample_id       INTEGER DEFAULT NULL REFERENCES samples(id) ON DELETE SET NULL,
         result          TEXT    NOT NULL DEFAULT 'pending',
         test_date       TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         tester_id       INTEGER REFERENCES technicians(id),

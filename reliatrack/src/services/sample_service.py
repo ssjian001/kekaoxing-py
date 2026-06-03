@@ -73,9 +73,8 @@ class SampleService:
 
     def delete(self, sample_id: int) -> None:
         """删除样品，有引用时拒绝删除。"""
-        self._check_references(sample_id)
-
         with self._repo.transaction():
+            self._check_references(sample_id)
             # 1. 清理 test_tasks.sample_ids JSON 中的悬空引用
             self._repo.remove_from_task_sample_ids(sample_id)
             # 2. 删出入库记录（子表），再删样品（父表）
