@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QDate
 
 from src.models.sample import Sample
 from src.models.test_plan import TestTask
@@ -52,6 +52,7 @@ class TaskEditDialog(_BaseDialog):
         technician_list: list | None = None,  # kept for backward compat, unused
         all_tasks: list[TestTask] | None = None,
         sample_list: list[Sample] | None = None,
+        plan_start_date: str = "",
         parent: QWidget | None = None,
     ) -> None:
         is_edit = task is not None
@@ -66,6 +67,10 @@ class TaskEditDialog(_BaseDialog):
         self._all_tasks = [t for t in (all_tasks or []) if t.id != (task.id if task else None)]
         self._sample_list = sample_list or []
         self._selected_sample_ids: list[int] = []
+        # 计划开始日期（用于预计日期换算）
+        self._plan_start_date = plan_start_date
+        # 防重入标志：三向联动时阻止循环触发
+        self._planned_updating = False
         # 编辑时解析已有的 sample_ids
         if task:
             try:
@@ -109,6 +114,21 @@ class TaskEditDialog(_BaseDialog):
             default=task.priority if task else 3,
             min_val=1, max_val=5,
         )
+
+        # ── 预计排程日期 ──
+        self._planned_start_edit = self._add_date_field("预计开始日期")
+        self._planned_end_edit = self._add_date_field("预计结束日期")
+        self._planned_hint = QLabel()
+        self._planned_hint.setProperty("class", "subtext")
+        self._planned_hint.setWordWrap(True)
+        self._form.addRow("", self._planned_hint)
+
+        # 初始化预计日期控件
+        self._init_planned_dates(task, plan_start_date)
+        # 连接三向联动信号
+        self._planned_start_edit.dateChanged.connect(self._on_planned_start_changed)
+        self._planned_end_edit.dateChanged.connect(self._on_planned_end_changed)
+        self._duration_spin.valueChanged.connect(self._on_duration_changed_for_planned)
 
         # ── 样品选择 ──
         sample_container = QWidget()
@@ -563,6 +583,105 @@ class TaskEditDialog(_BaseDialog):
             self._dep_summary.setText(self._format_dep_summary())
         dlg.deleteLater()
 
+    # ── 预计日期控件 ─────────────────────────────────────────────
+
+    def _init_planned_dates(
+        self, task: TestTask | None, plan_start_date: str
+    ) -> None:
+        """初始化预计开始/结束日期控件。
+
+        若计划无开始日期，则禁用控件并提示。
+        否则根据 task.start_day / task.duration 换算初始日期。
+        """
+        from datetime import date as _date, timedelta as _td
+
+        if not plan_start_date:
+            self._planned_start_edit.setEnabled(False)
+            self._planned_end_edit.setEnabled(False)
+            self._planned_hint.setText(
+                "<i style='color:#888'>请先在「编辑计划」中设置计划开始日期</i>"
+            )
+            return
+
+        try:
+            base = _date.fromisoformat(plan_start_date)
+        except (ValueError, TypeError):
+            self._planned_start_edit.setEnabled(False)
+            self._planned_end_edit.setEnabled(False)
+            self._planned_hint.setText(
+                "<i style='color:#c00'>计划开始日期格式无效，无法计算预计日期</i>"
+            )
+            return
+
+        # 编辑模式：从 task.start_day 反算预计日期
+        if task:
+            start_day = task.start_day if task.start_day else 0
+            duration = task.duration if task.duration else 1
+        else:
+            start_day = 0
+            duration = self._duration_spin.value()
+
+        planned_start = base + _td(days=start_day)
+        planned_end = base + _td(days=start_day + duration - 1)
+
+        self._planned_start_edit.setDate(QDate(planned_start.year, planned_start.month, planned_start.day))
+        self._planned_end_edit.setDate(QDate(planned_end.year, planned_end.month, planned_end.day))
+        self._planned_hint.setText("")
+
+    def _on_planned_start_changed(self, new_date: QDate) -> None:
+        """预计开始日期变化 → 重算工期 + 更新预计结束日期。"""
+        if self._planned_updating:
+            return
+        self._planned_updating = True
+        try:
+            end_date = self._planned_end_edit.date()
+            if new_date > end_date:
+                # 预计开始晚于预计结束：自动把结束拉到开始
+                self._planned_end_edit.blockSignals(True)
+                self._planned_end_edit.setDate(new_date)
+                self._planned_end_edit.blockSignals(False)
+                self._planned_hint.setText(
+                    "<i style='color:#f90'>已自动调整预计结束日期</i>"
+                )
+            # 重算工期
+            dur = self._planned_start_edit.date().daysTo(self._planned_end_edit.date()) + 1
+            dur = max(1, min(999, dur))
+            if dur != self._duration_spin.value():
+                self._duration_spin.setValue(dur)
+        finally:
+            self._planned_updating = False
+
+    def _on_planned_end_changed(self, new_date: QDate) -> None:
+        """预计结束日期变化 → 重算工期（不改变预计开始）。"""
+        if self._planned_updating:
+            return
+        self._planned_updating = True
+        try:
+            dur = self._planned_start_edit.date().daysTo(new_date) + 1
+            dur = max(1, min(999, dur))
+            if dur != self._duration_spin.value():
+                self._duration_spin.setValue(dur)
+            self._planned_hint.setText("")
+        finally:
+            self._planned_updating = False
+
+    def _on_duration_changed_for_planned(self, new_duration: int) -> None:
+        """工期 spinbox 变化 → 更新预计结束日期（保持预计开始不变）。"""
+        if self._planned_updating:
+            return
+        if not self._plan_start_date:
+            return
+        self._planned_updating = True
+        try:
+            start_date = self._planned_start_edit.date()
+            new_end = start_date.addDays(new_duration - 1)
+            self._planned_end_edit.blockSignals(True)
+            self._planned_end_edit.setDate(new_end)
+            self._planned_end_edit.blockSignals(False)
+            self._planned_hint.setText("")
+        finally:
+            self._planned_updating = False
+
     # ── 公开 API ───────────────────────────────────────────────
 
     def get_data(self) -> dict:
@@ -597,6 +716,20 @@ class TaskEditDialog(_BaseDialog):
         status_text = self._status_combo.currentText()
         task_status = status_map.get(status_text, "pending")
 
+        # 预计日期 → start_day 换算
+        start_day: int | None = None
+        manual_scheduled = 0
+        if self._plan_start_date and self._planned_start_edit.isEnabled():
+            from datetime import date as _date
+            try:
+                base = _date.fromisoformat(self._plan_start_date)
+                planned_start = self._planned_start_edit.date().toPython().date()
+                start_day = (planned_start - base).days
+                manual_scheduled = 1
+            except (ValueError, TypeError, RuntimeError, AttributeError):
+                # 换算失败，忽略，不阻塞提交
+                pass
+
         return {
             "name": self._name_edit.text().strip(),
             "category": self._category_combo.currentText(),
@@ -617,6 +750,8 @@ class TaskEditDialog(_BaseDialog):
             "log_file": self._log_file_edit.text().strip(),
             "accept_criteria": self._criteria_edit.text().strip(),
             "notes": self._notes_edit.toPlainText().strip(),
+            "start_day": start_day,
+            "manual_scheduled": manual_scheduled,
         }
 
     # ── 校验 ───────────────────────────────────────────────────

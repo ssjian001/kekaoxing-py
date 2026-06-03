@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -138,6 +138,7 @@ _DDL_TABLES: list[str] = [
         sort_order      INTEGER NOT NULL DEFAULT 0,
         actual_start_date TEXT  NOT NULL DEFAULT '',
         actual_end_date   TEXT  NOT NULL DEFAULT '',
+        manual_scheduled INTEGER NOT NULL DEFAULT 0,
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -951,6 +952,24 @@ def _migrate_v21(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (21)")
 
 
+def _migrate_v22(conn: apsw.Connection) -> None:
+    """v21→v22: test_tasks 加 manual_scheduled 列 + 迁移已有手动调整任务。
+
+    将所有 start_day > 0 的已有任务标记为手动排程（manual_scheduled=1），
+    保护它们不被后续自动排程覆盖。
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(test_tasks)").fetchall()}
+    if "manual_scheduled" not in cols:
+        conn.execute(
+            "ALTER TABLE test_tasks ADD COLUMN manual_scheduled INTEGER NOT NULL DEFAULT 0"
+        )
+    # 迁移：已有 start_day > 0 的任务视为手动调整过
+    conn.execute(
+        "UPDATE [test_tasks] SET manual_scheduled = 1 WHERE start_day > 0"
+    )
+    conn.execute("INSERT INTO schema_version (version) VALUES (22)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -973,6 +992,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (19, _migrate_v19),
     (20, _migrate_v20),
     (21, _migrate_v21),
+    (22, _migrate_v22),
 ]
 
 
@@ -1159,6 +1179,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v21 failed")
+            raise
+
+    # v22: test_tasks 加 manual_scheduled 列 + 迁移已有手动调整任务
+    if current < 22:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v22(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v22 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）

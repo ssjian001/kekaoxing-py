@@ -21,7 +21,7 @@ from src.views.dialogs.task_dialog import TaskEditDialog
 from src.views.dialogs.test_result_dialog import TestResultDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.handlers.crud_helpers import exec_crud
-from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand
+from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand, UpdateFieldCommand
 
 if TYPE_CHECKING:
     from main import MainWindow
@@ -415,6 +415,8 @@ class PlanHandlers:
                 entity="plan",
                 error_title="更新失败",
             )
+            # 计划日期变更后，刷新任务视图的预计日期列
+            self._win.ctrl.notify_data_changed("task")
         dlg.deleteLater()
 
     def _on_plan_delete(self) -> None:
@@ -539,6 +541,7 @@ class PlanHandlers:
             self._win.toast("没有测试计划，请先创建计划", "info")
             return
         current_tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        plan = ctrl.test_plan_service.get_plan(plan_id)
         sample_list = self._get_project_samples(ctrl)
         dlg = TaskEditDialog(
             task=None,
@@ -546,6 +549,7 @@ class PlanHandlers:
             technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
             all_tasks=current_tasks,
             sample_list=sample_list,
+            plan_start_date=plan.start_date if plan else "",
             parent=self._win,
         )
         if dlg.exec():
@@ -589,6 +593,7 @@ class PlanHandlers:
         plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
         current_tasks = ctrl.test_plan_service.get_tasks(plan_id)
         sample_list = self._get_project_samples(ctrl)
         dlg = TaskEditDialog(
@@ -597,6 +602,7 @@ class PlanHandlers:
             technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
             all_tasks=current_tasks,
             sample_list=sample_list,
+            plan_start_date=plan.start_date if plan else "",
             parent=self._win,
         )
         if dlg.exec():

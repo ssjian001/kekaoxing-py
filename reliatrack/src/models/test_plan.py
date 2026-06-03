@@ -82,6 +82,7 @@ class TestTask:
     actual_start_date: str = ""
     actual_end_date: str = ""
     sort_order: int = 0
+    manual_scheduled: int = 0  # 1=手动排程，自动排程时跳过
     created_at: str = ""
     updated_at: str = ""
 
