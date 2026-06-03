@@ -37,6 +37,7 @@ class SampleHandlers:
         v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
         v.pool_tab.btn_batch_edit.clicked.connect(self._on_pool_batch_edit)
+        v.pool_tab.btn_delete.clicked.connect(self._on_sample_delete)
         v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
         v.ledger_tab.btn_return.clicked.connect(self._on_sample_return)
         v.ledger_tab.btn_batch_edit.clicked.connect(self._on_ledger_batch_edit)
@@ -209,6 +210,41 @@ class SampleHandlers:
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""
         self._edit_sample_from_table(self._win.sample_view.pool_tab.table)
+
+    def _on_sample_delete(self) -> None:
+        """彻底删除选中样品（样品池 Tab）。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        sample_id = self._win.sample_view.pool_tab.table.get_selected_sample_id()
+        if sample_id is None:
+            self._win.toast("请先选中一个样品", "info")
+            return
+        sample = ctrl.sample_service.get(sample_id)
+        if sample is None:
+            return
+
+        # 二次确认
+        reply = QMessageBox.question(
+            self._win,
+            "确认删除",
+            f"确定要彻底删除样品「{sample.sn}」吗？\n"
+            f"该操作将同时删除出入库记录，且不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            ctrl.sample_service.delete(sample_id)
+            self._win.toast(f"样品「{sample.sn}」已删除", "success")
+            ctrl.notify_data_changed("sample")
+        except ValueError as e:
+            QMessageBox.warning(self._win, "无法删除", str(e))
+        except Exception as e:
+            logger.exception("删除样品失败")
+            QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")
 
     def _on_ledger_edit(self) -> None:
         """编辑选中样品（样品台账 Tab）。"""

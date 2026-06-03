@@ -179,6 +179,12 @@ class _SamplePoolTab(QWidget):
         self._btn_batch_edit.setToolTip("批量编辑选中的多个样品")
         toolbar.addWidget(self._btn_batch_edit)
 
+        self._btn_delete = QPushButton("删除")
+        self._btn_delete.setProperty("class", "action")
+        self._btn_delete.setMinimumWidth(70)
+        self._btn_delete.setToolTip("彻底删除选中样品")
+        toolbar.addWidget(self._btn_delete)
+
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS, _POOL_SPECS, "sample_pool")
@@ -194,6 +200,9 @@ class _SamplePoolTab(QWidget):
         self._context_menu = QMenu(self._table)
         self._ctx_act_edit = self._context_menu.addAction("编辑样品")
         self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
+        self._context_menu.addSeparator()
+        self._ctx_act_delete = self._context_menu.addAction("删除样品")
+        self._ctx_act_delete.triggered.connect(self._on_ctx_delete)
 
         # 空状态提示
         self._empty_label = QLabel("暂无样品数据")
@@ -218,6 +227,10 @@ class _SamplePoolTab(QWidget):
     def _on_ctx_edit(self) -> None:
         """右键编辑 → 触发工具栏编辑按钮。"""
         self._btn_edit.click()
+
+    def _on_ctx_delete(self) -> None:
+        """右键删除 → 触发工具栏删除按钮。"""
+        self._btn_delete.click()
 
     def _on_search(self, text: str) -> None:
         """根据搜索关键词过滤样品列表。"""
@@ -277,6 +290,11 @@ class _SamplePoolTab(QWidget):
     def btn_batch_edit(self) -> QPushButton:
         """批量编辑按钮。"""
         return self._btn_batch_edit
+
+    @property
+    def btn_delete(self) -> QPushButton:
+        """删除按钮。"""
+        return self._btn_delete
 
     @property
     def search_input(self) -> QLineEdit:
