@@ -716,7 +716,7 @@ class TaskEditDialog(_BaseDialog):
         status_text = self._status_combo.currentText()
         task_status = status_map.get(status_text, "pending")
 
-        # 预计日期 → start_day 换算
+        # 预计日期 → start_day 换算（只当计划有起始日期时才写入）
         start_day: int | None = None
         manual_scheduled = 0
         if self._plan_start_date and self._planned_start_edit.isEnabled():
@@ -728,9 +728,9 @@ class TaskEditDialog(_BaseDialog):
                 manual_scheduled = 1
             except (ValueError, TypeError, RuntimeError, AttributeError):
                 # 换算失败，忽略，不阻塞提交
-                pass
+                start_day = None
 
-        return {
+        update_data = {
             "name": self._name_edit.text().strip(),
             "category": self._category_combo.currentText(),
             "test_standard": self._standard_edit.text().strip(),
@@ -750,9 +750,12 @@ class TaskEditDialog(_BaseDialog):
             "log_file": self._log_file_edit.text().strip(),
             "accept_criteria": self._criteria_edit.text().strip(),
             "notes": self._notes_edit.toPlainText().strip(),
-            "start_day": start_day,
-            "manual_scheduled": manual_scheduled,
         }
+        # 只在有效转换时才更新 start_day / manual_scheduled，避免 NOT NULL 约束冲突
+        if start_day is not None:
+            update_data["start_day"] = start_day
+            update_data["manual_scheduled"] = manual_scheduled
+        return update_data
 
     # ── 校验 ───────────────────────────────────────────────────
 
