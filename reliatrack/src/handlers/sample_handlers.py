@@ -224,7 +224,14 @@ class SampleHandlers:
         if sample is None:
             return
 
-        # 二次确认
+        # 先检查引用（在确认对话框之前，避免用户确认后被告知无法删除）
+        try:
+            ctrl.sample_service._check_references(sample_id)
+        except ValueError as e:
+            QMessageBox.warning(self._win, "无法删除", str(e))
+            return
+
+        # 无引用，二次确认
         reply = QMessageBox.question(
             self._win,
             "确认删除",
@@ -240,8 +247,6 @@ class SampleHandlers:
             ctrl.sample_service.delete(sample_id)
             self._win.toast(f"样品「{sample.sn}」已删除", "success")
             ctrl.notify_data_changed("sample")
-        except ValueError as e:
-            QMessageBox.warning(self._win, "无法删除", str(e))
         except Exception as e:
             logger.exception("删除样品失败")
             QMessageBox.critical(self._win, "删除失败", f"删除失败: {e}")

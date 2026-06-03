@@ -51,8 +51,8 @@ class SampleService:
     def update_status(self, sample_id: int, status: str) -> None:
         self._repo.update_status(sample_id, status)
 
-    def delete(self, sample_id: int) -> None:
-        """删除样品，有引用时拒绝删除。"""
+    def _check_references(self, sample_id: int) -> None:
+        """检查样品是否被其他实体引用，有引用则抛 ValueError。"""
         reasons: list[str] = []
 
         if self._test_result_repo is not None:
@@ -70,6 +70,10 @@ class SampleService:
             raise ValueError(
                 f"样品 #{sample_id} 仍被 {detail} 引用，请先解除关联"
             )
+
+    def delete(self, sample_id: int) -> None:
+        """删除样品，有引用时拒绝删除。"""
+        self._check_references(sample_id)
 
         with self._repo.transaction():
             # 1. 清理 test_tasks.sample_ids JSON 中的悬空引用
