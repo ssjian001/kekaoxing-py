@@ -17,8 +17,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer
 
-from src.styles.theme import get_stylesheet
-
 
 class _BaseDialog(QDialog):
     """通用弹窗基类 — 继承全局主题样式，提供 QFormLayout 和 OK/Cancel 按钮。

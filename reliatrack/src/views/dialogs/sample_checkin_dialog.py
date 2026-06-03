@@ -79,9 +79,6 @@ class SampleCheckInDialog(_BaseDialog):
             placeholder="选填",
         )
 
-        # SN 必填标红提示
-        self._sn_edit.setStyleSheet(self._sn_edit.styleSheet() or "")
-
     # ── 公开 API ─────────────────────────────────────────────────
 
     def get_data(self) -> dict:

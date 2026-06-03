@@ -676,6 +676,10 @@ class DashboardView(QWidget):
         # 健康度环图区域
         for section in self._section_titles:
             section.setStyleSheet("")
+            style = section.style()
+            if style:
+                style.unpolish(section)
+                style.polish(section)
 
         # 筛选标签 — 主题迁移: class=summary-bar
         self._filter_label.setProperty("class", "summary-bar")

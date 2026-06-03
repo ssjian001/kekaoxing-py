@@ -49,7 +49,7 @@ class TaskEditDialog(_BaseDialog):
         self,
         task: TestTask | None = None,
         equipment_list: list[Equipment] | None = None,
-        technician_list: list | None = None,  # kept for backward compat, unused
+        technician_list: list | None = None,  # kept for backward compat
         all_tasks: list[TestTask] | None = None,
         sample_list: list[Sample] | None = None,
         plan_start_date: str = "",
