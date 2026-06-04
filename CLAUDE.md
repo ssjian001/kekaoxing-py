@@ -107,8 +107,7 @@ bd dolt push          # 同步
 
 ## 已知 Qt 坑
 
-- **QSpinBox/QComboBox 子控件不要在 QSS 中覆盖**：一旦定义了 `::up-button`/`::down-button`/`::drop-down` 等子控件规则，Qt 就不再用 Fusion 默认渲染箭头。如果不同时提供正确的 `::up-arrow`/`::down-arrow`，箭头要么空白要么变形。正确做法：**只设外框样式（背景/边框/padding/圆角），完全不碰子控件**，让 Fusion 用 QPalette 颜色画默认箭头。当前 theme.py 只有一条统一规则覆盖 QLineEdit/QSpinBox/QDoubleSpinBox/QComboBox/QDateEdit/QTimeEdit/QDateTimeEdit
-- **Qt QSS 不支持 CSS border triangle**：`width:0; border-left/right: transparent` 在浏览器里画三角形，在 Qt 里渲染成实心方块。不要用这个 trick 画 SpinBox/ComboBox 箭头
+- **QSpinBox/QComboBox 子控件箭头用 `image` 属性 + PNG 文件**：Qt QSS 不支持 CSS border triangle（渲染为实心方块）。正确做法：用 `::up-button`/`::down-button` 设按钮背景 + `::up-arrow`/`::down-arrow` 用 `image: url(path/to/arrow.png)` 加载 PNG 箭头图标。图标文件在 `src/styles/icons/` 目录。不要试图只用 `width`/`height` 不设 `image`——Qt 会画空白。也不要用 CSS border trick——渲染为方块。详见 theme.py `_build_qss()` 开头的 `arrow_up`/`arrow_down`/`arrow_combo` 变量
 - QPushButton 设 `background: transparent; border: none` 在 Windows 上不可见 → 必须有可见背景和边框
 - QLockFile: Qt5 `setStaleLockTimeout(ms)` → PySide6 6.x `setStaleLockTime(ms)`
 - **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`

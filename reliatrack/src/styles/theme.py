@@ -136,6 +136,12 @@ theme_host = _SignalHost()
 
 def _build_qss() -> str:
     """根据当前模块全局常量生成完整 QSS（每次调用都重新求值）。"""
+    # 箭头图标路径（QSS image 属性需要绝对路径）
+    from pathlib import Path
+    _icons = Path(__file__).parent / "icons"
+    arrow_up = _icons / "arrow-up.png"
+    arrow_down = _icons / "arrow-down.png"
+    arrow_combo = _icons / "arrow-combo.png"
     return f"""
 /* ── 全局 ── */
 QDialog, QMainWindow {{
@@ -170,6 +176,49 @@ QDateEdit, QTimeEdit, QDateTimeEdit {{
     border-radius: 8px;
     padding: 2px 4px;
     min-height: 24px;
+}}
+/* ── SpinBox/DateEdit 箭头 ── */
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QDateEdit::up-button, QTimeEdit::up-button, QDateTimeEdit::up-button {{
+    width: 16px;
+    border: none;
+    background-color: {BORDER};
+}}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QDateEdit::up-button:hover, QTimeEdit::up-button:hover, QDateTimeEdit::up-button:hover {{
+    background-color: {ACCENT};
+}}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
+QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
+    width: 12px;
+    height: 8px;
+    image: url({arrow_up});
+}}
+QSpinBox::down-button, QDoubleSpinBox::down-button,
+QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
+    width: 16px;
+    border: none;
+    background-color: {BORDER};
+}}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover,
+QDateEdit::down-button:hover, QTimeEdit::down-button:hover, QDateTimeEdit::down-button:hover {{
+    background-color: {ACCENT};
+}}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
+QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
+    width: 12px;
+    height: 8px;
+    image: url({arrow_down});
+}}
+/* ── ComboBox 下拉箭头 ── */
+QComboBox::drop-down {{
+    border: none;
+    width: 24px;
+}}
+QComboBox::down-arrow {{
+    width: 10px;
+    height: 7px;
+    image: url({arrow_combo});
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
