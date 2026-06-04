@@ -62,19 +62,23 @@ class BackupDialog(_BaseDialog):
         btn_layout.setSpacing(8)
 
         self._btn_backup_now = QPushButton("立即备份")
+        self._btn_backup_now.setToolTip("立即创建数据库备份")
         self._btn_backup_now.setProperty("class", "primary")
         self._btn_backup_now.clicked.connect(self._on_backup_now)
 
         self._btn_restore = QPushButton("恢复选中")
+        self._btn_restore.setToolTip("恢复选中的备份记录")
         self._btn_restore.setProperty("class", "action")
         self._btn_restore.setEnabled(False)
         self._btn_restore.clicked.connect(self._on_restore_selected)
 
         self._btn_restore_file = QPushButton("从文件恢复...")
+        self._btn_restore_file.setToolTip("从外部 .db 文件恢复数据")
         self._btn_restore_file.setProperty("class", "action")
         self._btn_restore_file.clicked.connect(self._on_restore_from_file)
 
         self._btn_delete = QPushButton("删除选中")
+        self._btn_delete.setToolTip("删除选中的备份记录")
         self._btn_delete.setProperty("class", "action")
         self._btn_delete.setEnabled(False)
         self._btn_delete.clicked.connect(self._on_delete_selected)

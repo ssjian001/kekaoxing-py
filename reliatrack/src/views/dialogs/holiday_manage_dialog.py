@@ -70,6 +70,14 @@ class HolidayManageDialog(_BaseDialog):
         self._table.setMinimumHeight(250)
         self._form.addRow(self._table)
 
+        # 空状态提示
+        self._empty_label = QLabel("暂无节假日数据")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self._table)
+        self._empty_label.hide()
+
         # ── 添加区 ──
         add_row = QHBoxLayout()
         add_label = QLabel("添加自定义节假日：")
@@ -91,6 +99,7 @@ class HolidayManageDialog(_BaseDialog):
         input_row.addWidget(self._name_edit)
 
         btn_add = QPushButton("添加")
+        btn_add.setToolTip("添加节假日")
         btn_add.setProperty("class", "primary")
         btn_add.clicked.connect(self._on_add)
         input_row.addWidget(btn_add)
@@ -100,7 +109,8 @@ class HolidayManageDialog(_BaseDialog):
         btn_del_row = QHBoxLayout()
         btn_del_row.addStretch()
         self._btn_delete = QPushButton("删除选中")
-        self._btn_delete.setProperty("class", "action")
+        self._btn_delete.setToolTip("删除选中的节假日记录")
+        self._btn_delete.setProperty("class", "danger")
         self._btn_delete.clicked.connect(self._on_delete)
         btn_del_row.addWidget(self._btn_delete)
         self._form.addRow(btn_del_row)
@@ -127,6 +137,16 @@ class HolidayManageDialog(_BaseDialog):
             source_item.setFlags(source_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             source_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 2, source_item)
+
+        self._update_empty_state()
+
+    def _update_empty_state(self) -> None:
+        """更新空状态提示。"""
+        if self._table.rowCount() == 0:
+            self._empty_label.setGeometry(self._table.viewport().rect())
+            self._empty_label.show()
+        else:
+            self._empty_label.hide()
 
     def _on_add(self) -> None:
         """添加自定义节假日。"""

@@ -194,6 +194,7 @@ class ScheduleReportDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         btn_close = QPushButton("关闭")
+        btn_close.setToolTip("关闭报告")
         btn_close.setProperty("class", "primary")
         btn_close.setFixedWidth(100)
         btn_close.clicked.connect(self.accept)

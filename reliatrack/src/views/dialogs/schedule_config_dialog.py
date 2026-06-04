@@ -103,6 +103,7 @@ class ScheduleConfigDialog(_BaseDialog):
         skip_holiday_row.addWidget(self._chk_skip_holidays)
 
         self._btn_manage_holidays = QPushButton("管理...")
+        self._btn_manage_holidays.setToolTip("添加/编辑节假日")
         self._btn_manage_holidays.setProperty("class", "action")
         self._btn_manage_holidays.clicked.connect(self._on_manage_holidays)
         self._chk_skip_holidays.toggled.connect(

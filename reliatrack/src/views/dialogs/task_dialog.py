@@ -137,6 +137,7 @@ class TaskEditDialog(_BaseDialog):
         sample_layout.setSpacing(8)
 
         self._sample_select_btn = QPushButton("选择样品")
+        self._sample_select_btn.setToolTip("为任务关联测试样品")
         self._sample_select_btn.setProperty("class", "action")
         self._sample_select_btn.setFixedWidth(100)
         self._sample_select_btn.clicked.connect(self._open_sample_select)
@@ -254,6 +255,7 @@ class TaskEditDialog(_BaseDialog):
         self._dep_summary.setProperty("class", "subtext")
         self._dep_summary.setWordWrap(True)
         dep_btn = QPushButton("选择...")
+        dep_btn.setToolTip("选择前置依赖任务")
         dep_btn.setProperty("class", "action")
         dep_btn.setFixedHeight(26)
         dep_btn.clicked.connect(self._open_dep_selector)
@@ -408,6 +410,7 @@ class TaskEditDialog(_BaseDialog):
         self._log_file_edit.setPlaceholderText("选择设备原始日志文件路径…")
 
         browse_btn = QPushButton("浏览")
+        browse_btn.setToolTip("选择附件文件")
         browse_btn.setFixedWidth(80)
         browse_btn.clicked.connect(self._browse_log_file)
 
@@ -562,9 +565,11 @@ class TaskEditDialog(_BaseDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         btn_cancel = QPushButton("取消")
+        btn_cancel.setToolTip("取消")
         btn_cancel.setProperty("class", "action")
         btn_cancel.clicked.connect(dlg.reject)
         btn_ok = QPushButton("确定")
+        btn_ok.setToolTip("确认选择")
         btn_ok.setProperty("class", "primary")
         btn_ok.clicked.connect(dlg.accept)
         btn_row.addWidget(btn_cancel)

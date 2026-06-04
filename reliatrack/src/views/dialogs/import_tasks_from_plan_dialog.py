@@ -43,11 +43,13 @@ class ImportTasksFromPlanDialog(_BaseDialog):
         self._search.textChanged.connect(self._apply_filter)
         
         sel_all = QPushButton("全选")
+        sel_all.setToolTip("选中所有任务")
         sel_all.setProperty("class", "action")
         sel_all.setFixedWidth(60)
         sel_all.clicked.connect(self._select_all)
         
         desel_all = QPushButton("清空")
+        desel_all.setToolTip("取消所有选中")
         desel_all.setProperty("class", "action")
         desel_all.setFixedWidth(60)
         desel_all.clicked.connect(self._deselect_all)
@@ -91,10 +93,27 @@ class ImportTasksFromPlanDialog(_BaseDialog):
             self._table.setItem(row, 6, QTableWidgetItem(
                 f"{task.temperature} {task.humidity}".strip()
             ))
+
+        # 空状态提示
+        self._empty_label = QLabel("该计划无任务")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self._table)
+        self._empty_label.hide()
+        self._update_empty_state()
         
         self._table.itemChanged.connect(self._on_item_changed)
         self._form.addRow(self._table)
-    
+
+    def _update_empty_state(self) -> None:
+        """更新空状态提示。"""
+        if self._table.rowCount() == 0:
+            self._empty_label.setGeometry(self._table.viewport().rect())
+            self._empty_label.show()
+        else:
+            self._empty_label.hide()
+
     def _on_item_changed(self, item: QTableWidgetItem) -> None:
         if item.column() == 0:
             self._update_count()

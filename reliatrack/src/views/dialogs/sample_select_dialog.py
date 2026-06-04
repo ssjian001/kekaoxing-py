@@ -74,11 +74,13 @@ class SampleSelectDialog(_BaseDialog):
         self._search_edit.textChanged.connect(self._apply_filter)
 
         select_all_btn = QPushButton("全选")
+        select_all_btn.setToolTip("选中所有可见样品")
         select_all_btn.setProperty("class", "action")
         select_all_btn.setFixedWidth(60)
         select_all_btn.clicked.connect(self._select_all)
 
         deselect_all_btn = QPushButton("清空")
+        deselect_all_btn.setToolTip("取消所有选中")
         deselect_all_btn.setProperty("class", "action")
         deselect_all_btn.setFixedWidth(60)
         deselect_all_btn.clicked.connect(self._deselect_all)
@@ -113,6 +115,14 @@ class SampleSelectDialog(_BaseDialog):
         self._table.itemChanged.connect(self._on_item_changed)
 
         self._form.addRow(self._table)
+
+        # 空状态提示
+        self._empty_label = QLabel("无匹配样品")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self._table)
+        self._empty_label.hide()
 
         # ── 底部统计 ──
         self._stats_label = QLabel()
@@ -158,6 +168,18 @@ class SampleSelectDialog(_BaseDialog):
             self._table.setItem(row, 3, status_item)
 
         self._table.blockSignals(False)
+        self._update_empty_state()
+
+    def _update_empty_state(self) -> None:
+        """更新空状态提示。"""
+        visible = any(
+            not self._table.isRowHidden(r) for r in range(self._table.rowCount())
+        ) if self._table.rowCount() > 0 else False
+        if visible:
+            self._empty_label.hide()
+        else:
+            self._empty_label.setGeometry(self._table.viewport().rect())
+            self._empty_label.show()
 
     def _apply_filter(self, text: str) -> None:
         """按搜索文本过滤表格行。"""
@@ -169,6 +191,7 @@ class SampleSelectDialog(_BaseDialog):
             batch = batch_item.text().lower() if batch_item else ""
             match = not keyword or keyword in sn or keyword in batch
             self._table.setRowHidden(row, not match)
+        self._update_empty_state()
 
     def _on_item_changed(self, item: QTableWidgetItem) -> None:
         """勾选状态变更时更新统计。"""

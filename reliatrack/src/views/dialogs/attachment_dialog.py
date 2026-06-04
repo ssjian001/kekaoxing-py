@@ -101,16 +101,26 @@ class AttachmentDialog(_BaseDialog):
         self._list_widget.itemDoubleClicked.connect(self._on_item_double_clicked)
         self._form.addRow(self._list_widget)
 
+        # 空状态提示
+        self._empty_label = QLabel("暂无附件")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self._list_widget)
+        self._empty_label.hide()
+
         # 按钮行
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
         self._btn_add = QPushButton("添加附件")
+        self._btn_add.setToolTip("添加一个或多个附件文件")
         self._btn_add.setProperty("class", "primary")
         self._btn_add.clicked.connect(self._on_add_attachments)
         btn_layout.addWidget(self._btn_add)
 
         self._btn_delete = QPushButton("删除")
+        self._btn_delete.setToolTip("删除选中的附件")
         self._btn_delete.setProperty("class", "danger")
         self._btn_delete.setEnabled(False)
         self._btn_delete.clicked.connect(self._on_delete_attachment)
@@ -119,6 +129,7 @@ class AttachmentDialog(_BaseDialog):
         btn_layout.addStretch()
 
         self._btn_close = QPushButton("关闭")
+        self._btn_close.setToolTip("关闭")
         self._btn_close.setProperty("class", "action")
         self._btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(self._btn_close)
@@ -145,6 +156,15 @@ class AttachmentDialog(_BaseDialog):
             item = QListWidgetItem(item_text)
             item.setData(Qt.ItemDataRole.UserRole, att.id)
             self._list_widget.addItem(item)
+        self._update_empty_state()
+
+    def _update_empty_state(self) -> None:
+        """更新空状态提示。"""
+        if self._list_widget.count() == 0:
+            self._empty_label.setGeometry(self._list_widget.viewport().rect())
+            self._empty_label.show()
+        else:
+            self._empty_label.hide()
 
     def _update_delete_state(self) -> None:
         """更新删除按钮的启用状态。"""

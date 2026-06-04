@@ -95,6 +95,7 @@ class BatchImportDialog(_BaseDialog):
         file_bar.addWidget(self._lbl_file, 1)
 
         self._btn_browse = QPushButton("选择 Excel 文件")
+        self._btn_browse.setToolTip("选择要导入的 Excel 文件")
         self._btn_browse.setProperty("class", "action")
         self._btn_browse.clicked.connect(self._on_browse)
         file_bar.addWidget(self._btn_browse)
@@ -160,12 +161,14 @@ class BatchImportDialog(_BaseDialog):
         btn_bar.addStretch()
 
         self._btn_import = QPushButton("开始导入")
+        self._btn_import.setToolTip("按列映射导入数据")
         self._btn_import.setProperty("class", "primary")
         self._btn_import.setEnabled(False)
         self._btn_import.clicked.connect(self._on_import_clicked)
         btn_bar.addWidget(self._btn_import)
 
         self._btn_close = QPushButton("关闭")
+        self._btn_close.setToolTip("取消导入")
         self._btn_close.setProperty("class", "action")
         self._btn_close.clicked.connect(self._on_close)
         btn_bar.addWidget(self._btn_close)
