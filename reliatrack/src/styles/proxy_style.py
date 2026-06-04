@@ -62,16 +62,24 @@ class CheckboxProxyStyle(QProxyStyle):
         painter: QPainter,
         widget,
     ) -> None:
-        # 先让 Fusion 画外框和文本
+        # 先让 Fusion 画完整控件（外框+文本+默认箭头）
         super().drawComplexControl(control, option, painter, widget)
 
         disabled = bool(option.state & QStyle.StateFlag.State_Enabled) is False
 
-        # 画 up-button 区域
+        # 用输入框背景色覆盖 Fusion 默认箭头区域，再画自定义箭头
+        bg_color = QColor(_theme.BG_INPUT)
+
         up_rect = self.subControlRect(
             control, option, QStyle.SubControl.SC_SpinBoxUp, widget
         )
         if up_rect.isValid():
+            # 先用背景色覆盖 Fusion 的默认箭头
+            painter.save()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(bg_color))
+            painter.drawRect(up_rect)
+            painter.restore()
             hover_up = bool(option.state & QStyle.StateFlag.State_MouseOver) and bool(
                 option.activeSubControls & QStyle.SubControl.SC_SpinBoxUp
             )
@@ -79,11 +87,15 @@ class CheckboxProxyStyle(QProxyStyle):
                 painter, up_rect, up=True, hover=hover_up, disabled=disabled
             )
 
-        # 画 down-button 区域
         down_rect = self.subControlRect(
             control, option, QStyle.SubControl.SC_SpinBoxDown, widget
         )
         if down_rect.isValid():
+            painter.save()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(bg_color))
+            painter.drawRect(down_rect)
+            painter.restore()
             hover_down = bool(option.state & QStyle.StateFlag.State_MouseOver) and bool(
                 option.activeSubControls & QStyle.SubControl.SC_SpinBoxDown
             )
@@ -100,16 +112,21 @@ class CheckboxProxyStyle(QProxyStyle):
         painter: QPainter,
         widget,
     ) -> None:
-        # 先让 Fusion 画外框和文本
+        # 先让 Fusion 画完整控件（外框+文本+默认箭头）
         super().drawComplexControl(control, option, painter, widget)
 
         disabled = bool(option.state & QStyle.StateFlag.State_Enabled) is False
 
-        # 画下拉箭头
         arrow_rect = self.subControlRect(
             control, option, QStyle.SubControl.SC_ComboBoxArrow, widget
         )
         if arrow_rect.isValid():
+            # 用输入框背景色覆盖 Fusion 默认箭头
+            painter.save()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(QColor(_theme.BG_INPUT)))
+            painter.drawRect(arrow_rect)
+            painter.restore()
             hover = bool(option.state & QStyle.StateFlag.State_MouseOver)
             self._draw_arrow_button(
                 painter, arrow_rect, up=False, hover=hover, disabled=disabled
