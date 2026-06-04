@@ -162,41 +162,14 @@ QGroupBox::title {{
 }}
 
 /* ── 输入控件 ── */
-QLineEdit, QDoubleSpinBox, QComboBox {{
-    background-color: {BG_INPUT};
-    color: {FG_PRIMARY};
-    border: 1px solid {BORDER};
-    border-radius: 8px;
-    padding: 5px 8px;
-    min-height: 24px;
-}}
-QSpinBox {{
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox,
+QDateEdit, QTimeEdit, QDateTimeEdit {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     border-radius: 8px;
     padding: 2px 4px;
     min-height: 24px;
-}}
-QSpinBox::up-button, QSpinBox::down-button,
-QDoubleSpinBox::up-button, QDoubleSpinBox::down-button,
-QDateEdit::up-button, QDateEdit::down-button,
-QTimeEdit::up-button, QTimeEdit::down-button,
-QDateTimeEdit::up-button, QDateTimeEdit::down-button {{
-    width: 16px;
-    border: none;
-    background-color: {BORDER};
-}}
-QSpinBox::up-button:hover, QSpinBox::down-button:hover,
-QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover,
-QDateEdit::up-button:hover, QDateEdit::down-button:hover,
-QTimeEdit::up-button:hover, QTimeEdit::down-button:hover,
-QDateTimeEdit::up-button:hover, QDateTimeEdit::down-button:hover {{
-    background-color: {ACCENT};
-}}
-QComboBox::drop-down {{
-    border: none;
-    width: 24px;
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
@@ -496,16 +469,6 @@ QProgressBar::chunk {{
     border-radius: 3px;
 }}
 
-/* ── 日期选择 ── */
-QDateEdit, QTimeEdit, QDateTimeEdit {{
-    background-color: {BG_INPUT};
-    color: {FG_PRIMARY};
-    border: 1px solid {BORDER};
-    border-radius: 8px;
-    padding: 5px 8px;
-    min-height: 24px;
-}}
-
 /* ── 下拉列表弹出 ── */
 QComboBox QAbstractItemView {{
     background-color: {BG_DARK};
@@ -536,9 +499,6 @@ QComboBox[class="filter-combo"] {{
     background-color: {BG_INPUT}; color: {FG_PRIMARY};
     border: 1px solid {BORDER}; border-radius: 6px;
     padding: 4px 8px; font-size: 12px; min-height: 26px;
-}}
-QComboBox[class="filter-combo"]::drop-down {{
-    border: none; width: 24px;
 }}
 
 /* ── 面板标题（视图/卡片 header）── */
