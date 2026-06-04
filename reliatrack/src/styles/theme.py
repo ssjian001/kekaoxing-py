@@ -136,31 +136,6 @@ theme_host = _SignalHost()
 
 def _build_qss() -> str:
     """根据当前模块全局常量生成完整 QSS（每次调用都重新求值）。"""
-    # 动态生成箭头图标（颜色跟随色板，主题切换时自动更新）
-    from pathlib import Path
-    from PIL import Image, ImageDraw
-
-    _icons = Path(__file__).parent / "icons"
-    _icons.mkdir(exist_ok=True)
-
-    # 解析 FG_PRIMARY hex → RGB
-    _fg_hex = globals().get("FG_PRIMARY", "#1E293B").lstrip("#")
-    _fg_rgb = tuple(int(_fg_hex[i:i+2], 16) for i in (0, 2, 4))
-
-    def _gen_arrow(filename: str, w: int, h: int, points: list[tuple]) -> None:
-        path = _icons / filename
-        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.polygon(points, fill=(*_fg_rgb, 255))
-        img.save(path)
-
-    _gen_arrow("arrow-up.png", 12, 8, [(6, 0), (0, 7), (11, 7)])
-    _gen_arrow("arrow-down.png", 12, 8, [(0, 0), (11, 0), (6, 7)])
-    _gen_arrow("arrow-combo.png", 10, 7, [(0, 0), (9, 0), (5, 6)])
-
-    arrow_up = _icons / "arrow-up.png"
-    arrow_down = _icons / "arrow-down.png"
-    arrow_combo = _icons / "arrow-combo.png"
     return f"""
 /* ── 全局 ── */
 QDialog, QMainWindow {{
@@ -196,59 +171,7 @@ QDateEdit, QTimeEdit, QDateTimeEdit {{
     padding: 2px 4px;
     min-height: 24px;
 }}
-/* ── SpinBox/DateEdit 箭头 ── */
-QSpinBox::up-button, QDoubleSpinBox::up-button,
-QDateEdit::up-button, QTimeEdit::up-button, QDateTimeEdit::up-button {{
-    width: 16px;
-    border: none;
-    background-color: {BORDER};
-}}
-QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
-QDateEdit::up-button:hover, QTimeEdit::up-button:hover, QDateTimeEdit::up-button:hover {{
-    background-color: {ACCENT};
-}}
-QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
-QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
-    width: 12px;
-    height: 8px;
-    image: url({arrow_up});
-}}
-QSpinBox::down-button, QDoubleSpinBox::down-button,
-QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
-    width: 16px;
-    border: none;
-    background-color: {BORDER};
-}}
-QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover,
-QDateEdit::down-button:hover, QTimeEdit::down-button:hover, QDateTimeEdit::down-button:hover {{
-    background-color: {ACCENT};
-}}
-QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
-QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
-    width: 12px;
-    height: 8px;
-    image: url({arrow_down});
-}}
-/* ── SpinBox/DateEdit disabled ── */
-QSpinBox:disabled::up-button, QDoubleSpinBox:disabled::up-button,
-QDateEdit:disabled::up-button, QTimeEdit:disabled::up-button, QDateTimeEdit:disabled::up-button,
-QSpinBox:disabled::down-button, QDoubleSpinBox:disabled::down-button,
-QDateEdit:disabled::down-button, QTimeEdit:disabled::down-button, QDateTimeEdit:disabled::down-button {{
-    background-color: {BG_DARK};
-}}
-/* ── ComboBox 下拉箭头 ── */
-QComboBox::drop-down {{
-    border: none;
-    width: 24px;
-}}
-QComboBox::down-arrow {{
-    width: 10px;
-    height: 7px;
-    image: url({arrow_combo});
-}}
-QComboBox:disabled::drop-down {{
-    background-color: {BG_DARK};
-}}
+/* 箭头由 CheckboxProxyStyle.drawComplexControl 绘制，QSS 不覆盖子控件 */
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
 }}

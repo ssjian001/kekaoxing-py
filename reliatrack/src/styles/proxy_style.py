@@ -1,16 +1,25 @@
-"""自定义 QProxyStyle：为 QCheckBox / QRadioButton 绘制 ✓ 和圆点。"""
+"""自定义 QProxyStyle：为 QCheckBox / QRadioButton / SpinBox / DateEdit / ComboBox 绘制控件。"""
 
 from __future__ import annotations
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QProxyStyle, QStyle
+from PySide6.QtWidgets import (
+    QComboBox,
+    QProxyStyle,
+    QStyle,
+    QStyleOptionButton,
+    QStyleOptionComboBox,
+    QStyleOptionSpinBox,
+)
 
 import src.styles.theme as _theme
 
 
 class CheckboxProxyStyle(QProxyStyle):
-    """拦截 PE_IndicatorCheckBox / PE_IndicatorRadioButton 的绘制。"""
+    """拦截 CheckBox / RadioButton / SpinBox / ComboBox 的绘制。"""
+
+    # ── 入口 ──
 
     def drawPrimitive(
         self,
@@ -26,6 +35,130 @@ class CheckboxProxyStyle(QProxyStyle):
             self._draw_radio(option, painter)
             return
         super().drawPrimitive(element, option, painter, widget)
+
+    def drawComplexControl(
+        self,
+        control: QStyle.ComplexControl,
+        option,
+        painter: QPainter,
+        widget,
+    ) -> None:
+        # SpinBox / DateEdit / TimeEdit / DateTimeEdit
+        if control == QStyle.ComplexControl.CC_SpinBox:
+            self._draw_spinbox(control, option, painter, widget)
+            return
+        # ComboBox 下拉箭头
+        if control == QStyle.ComplexControl.CC_ComboBox:
+            self._draw_combobox(control, option, painter, widget)
+            return
+        super().drawComplexControl(control, option, painter, widget)
+
+    # ── SpinBox ──
+
+    def _draw_spinbox(
+        self,
+        control: QStyle.ComplexControl,
+        option: QStyleOptionSpinBox,
+        painter: QPainter,
+        widget,
+    ) -> None:
+        # 先让 Fusion 画外框和文本
+        super().drawComplexControl(control, option, painter, widget)
+
+        disabled = bool(option.state & QStyle.StateFlag.State_Enabled) is False
+
+        # 画 up-button 区域
+        up_rect = self.subControlRect(
+            control, option, QStyle.SubControl.SC_SpinBoxUp, widget
+        )
+        if up_rect.isValid():
+            hover_up = bool(option.state & QStyle.StateFlag.State_MouseOver) and bool(
+                option.activeSubControls & QStyle.SubControl.SC_SpinBoxUp
+            )
+            self._draw_arrow_button(
+                painter, up_rect, up=True, hover=hover_up, disabled=disabled
+            )
+
+        # 画 down-button 区域
+        down_rect = self.subControlRect(
+            control, option, QStyle.SubControl.SC_SpinBoxDown, widget
+        )
+        if down_rect.isValid():
+            hover_down = bool(option.state & QStyle.StateFlag.State_MouseOver) and bool(
+                option.activeSubControls & QStyle.SubControl.SC_SpinBoxDown
+            )
+            self._draw_arrow_button(
+                painter, down_rect, up=False, hover=hover_down, disabled=disabled
+            )
+
+    # ── ComboBox ──
+
+    def _draw_combobox(
+        self,
+        control: QStyle.ComplexControl,
+        option: QStyleOptionComboBox,
+        painter: QPainter,
+        widget,
+    ) -> None:
+        # 先让 Fusion 画外框和文本
+        super().drawComplexControl(control, option, painter, widget)
+
+        disabled = bool(option.state & QStyle.StateFlag.State_Enabled) is False
+
+        # 画下拉箭头
+        arrow_rect = self.subControlRect(
+            control, option, QStyle.SubControl.SC_ComboBoxArrow, widget
+        )
+        if arrow_rect.isValid():
+            hover = bool(option.state & QStyle.StateFlag.State_MouseOver)
+            self._draw_arrow_button(
+                painter, arrow_rect, up=False, hover=hover, disabled=disabled
+            )
+
+    # ── 通用箭头绘制 ──
+
+    @staticmethod
+    def _draw_arrow_button(
+        painter: QPainter,
+        rect: QRectF,
+        *,
+        up: bool,
+        hover: bool = False,
+        disabled: bool = False,
+    ) -> None:
+        """在给定矩形内画一个三角形箭头。"""
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        if disabled:
+            color = QColor(_theme.FG_MUTED)
+        elif hover:
+            color = QColor(_theme.ACCENT)
+        else:
+            color = QColor(_theme.FG_PRIMARY)
+
+        # 箭头占按钮区域 60% 大小，居中
+        pad_x = rect.width() * 0.20
+        pad_y = rect.height() * 0.20
+        r = QRectF(rect).adjusted(pad_x, pad_y, -pad_x, -pad_y)
+
+        path = QPainterPath()
+        if up:
+            # ▲ 上箭头
+            path.moveTo(r.center().x(), r.top())
+            path.lineTo(r.left(), r.bottom())
+            path.lineTo(r.right(), r.bottom())
+        else:
+            # ▼ 下箭头
+            path.moveTo(r.left(), r.top())
+            path.lineTo(r.right(), r.top())
+            path.lineTo(r.center().x(), r.bottom())
+        path.closeSubpath()
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(color))
+        painter.drawPath(path)
+        painter.restore()
 
     # ── CheckBox ──
     @staticmethod

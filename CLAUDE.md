@@ -107,7 +107,7 @@ bd dolt push          # 同步
 
 ## 已知 Qt 坑
 
-- **QSpinBox/QComboBox 子控件箭头用 `image` 属性 + PNG 文件**：Qt QSS 不支持 CSS border triangle（渲染为实心方块）。正确做法：用 `::up-button`/`::down-button` 设按钮背景 + `::up-arrow`/`::down-arrow` 用 `image: url(path/to/arrow.png)` 加载 PNG 箭头图标。图标文件在 `src/styles/icons/` 目录。不要试图只用 `width`/`height` 不设 `image`——Qt 会画空白。也不要用 CSS border trick——渲染为方块。详见 theme.py `_build_qss()` 开头的 `arrow_up`/`arrow_down`/`arrow_combo` 变量
+- **SpinBox/ComboBox 箭头由 CheckboxProxyStyle.drawComplexControl 绘制**：QSS 不碰子控件（`::up-button`/`::down-arrow` 等），由 `proxy_style.py` 的 `_draw_arrow_button()` 用 QPainterPath 画三角形。颜色从 `_theme` 色板取（FG_PRIMARY/ACCENT/FG_MUTED），hover/disabled 自动切换。好处：零文件 IO、零外部依赖（不需要 PIL/PNG）、主题切换自动生效
 - QPushButton 设 `background: transparent; border: none` 在 Windows 上不可见 → 必须有可见背景和边框
 - QLockFile: Qt5 `setStaleLockTimeout(ms)` → PySide6 6.x `setStaleLockTime(ms)`
 - **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`
