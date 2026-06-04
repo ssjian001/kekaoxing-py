@@ -172,7 +172,46 @@ QDateEdit, QTimeEdit, QDateTimeEdit {{
     min-height: 24px;
 }}
 /* ── SpinBox 子控件：用 QSS 绘制 +/- 按钮 ── */
-QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::up-button, QDoubleSpinBox::up-button {{
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 18px;
+    border-left: 1px solid {BORDER};
+    background-color: transparent;
+    border-top-right-radius: 7px;
+}}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {{
+    background-color: {BG_HOVER};
+}}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
+    width: 8px;
+    height: 8px;
+    /* ▲ 上三角 */
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 5px solid {FG_PRIMARY};
+}}
+QSpinBox::down-button, QDoubleSpinBox::down-button {{
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 18px;
+    border-left: 1px solid {BORDER};
+    background-color: transparent;
+    border-bottom-right-radius: 7px;
+}}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
+    background-color: {BG_HOVER};
+}}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
+    width: 8px;
+    height: 8px;
+    /* ▼ 下三角 */
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid {FG_PRIMARY};
+}}
+
+/* ── DateEdit/TimeEdit 子控件：三角形箭头 ── */
 QDateEdit::up-button, QTimeEdit::up-button, QDateTimeEdit::up-button {{
     subcontrol-origin: border;
     subcontrol-position: top right;
@@ -181,19 +220,16 @@ QDateEdit::up-button, QTimeEdit::up-button, QDateTimeEdit::up-button {{
     background-color: transparent;
     border-top-right-radius: 7px;
 }}
-QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
 QDateEdit::up-button:hover, QTimeEdit::up-button:hover, QDateTimeEdit::up-button:hover {{
     background-color: {BG_HOVER};
 }}
-QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
 QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
     width: 8px;
-    height: 2px;
-    /* + 号：两条横杠（一横一竖用 border 模拟） */
-    border-top: 2px solid {FG_PRIMARY};
-    border-bottom: 2px solid {FG_PRIMARY};
+    height: 8px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 5px solid {FG_PRIMARY};
 }}
-QSpinBox::down-button, QDoubleSpinBox::down-button,
 QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
     subcontrol-origin: border;
     subcontrol-position: bottom right;
@@ -202,16 +238,15 @@ QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
     background-color: transparent;
     border-bottom-right-radius: 7px;
 }}
-QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover,
 QDateEdit::down-button:hover, QTimeEdit::down-button:hover, QDateTimeEdit::down-button:hover {{
     background-color: {BG_HOVER};
 }}
-QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
 QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
     width: 8px;
-    height: 2px;
-    /* - 号：一条横杠 */
-    border-top: 2px solid {FG_PRIMARY};
+    height: 8px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid {FG_PRIMARY};
 }}
 
 /* ComboBox 下拉箭头 — 不覆盖，由 Fusion 默认绘制 */
