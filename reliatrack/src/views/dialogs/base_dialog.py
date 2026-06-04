@@ -118,6 +118,10 @@ class _BaseDialog(QDialog):
 
     # ── 辅助方法 ──────────────────────────────────────────────────
 
+    # 单行输入控件最大宽度（QFormLayout 内避免过度拉伸）
+    _FIELD_MAX_W = 350
+    _DATE_FIELD_W = 150
+
     def _add_text_field(
         self,
         label: str,
@@ -127,6 +131,7 @@ class _BaseDialog(QDialog):
     ) -> QLineEdit:
         """添加一行文本字段并返回控件。"""
         edit = QLineEdit(default)
+        edit.setMaximumWidth(self._FIELD_MAX_W)
         if placeholder:
             edit.setPlaceholderText(placeholder)
         if readonly:
@@ -144,6 +149,7 @@ class _BaseDialog(QDialog):
     ) -> QComboBox:
         """添加一行下拉框并返回控件。"""
         combo = QComboBox()
+        combo.setMaximumWidth(self._FIELD_MAX_W)
         combo.setEditable(editable)
         if placeholder:
             combo.setPlaceholderText(placeholder)
@@ -163,6 +169,7 @@ class _BaseDialog(QDialog):
         from PySide6.QtCore import QDate
 
         edit = QDateEdit()
+        edit.setFixedWidth(self._DATE_FIELD_W)
         edit.setCalendarPopup(True)
         edit.setDate(QDate.currentDate())
         edit.setDisplayFormat("yyyy-MM-dd")
