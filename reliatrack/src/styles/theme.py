@@ -178,23 +178,20 @@ QDateEdit::up-button, QTimeEdit::up-button, QDateTimeEdit::up-button {{
     subcontrol-position: top right;
     width: 18px;
     border-left: 1px solid {BORDER};
-    background-color: {ACCENT};
+    background-color: transparent;
     border-top-right-radius: 7px;
 }}
 QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
 QDateEdit::up-button:hover, QTimeEdit::up-button:hover, QDateTimeEdit::up-button:hover {{
-    background-color: {ACCENT};
+    background-color: {BG_HOVER};
 }}
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
 QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
-    width: 6px;
-    height: 6px;
-    /* + 号用粗边框画 */
-    border-left: 2px solid {MANTLE};
-    border-right: 2px solid {MANTLE};
-    border-top: 2px solid {MANTLE};
-    border-bottom: 2px solid {MANTLE};
-    border-radius: 1px;
+    width: 8px;
+    height: 2px;
+    /* + 号：两条横杠（一横一竖用 border 模拟） */
+    border-top: 2px solid {FG_PRIMARY};
+    border-bottom: 2px solid {FG_PRIMARY};
 }}
 QSpinBox::down-button, QDoubleSpinBox::down-button,
 QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
@@ -202,22 +199,19 @@ QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
     subcontrol-position: bottom right;
     width: 18px;
     border-left: 1px solid {BORDER};
-    background-color: {ACCENT};
+    background-color: transparent;
     border-bottom-right-radius: 7px;
 }}
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover,
 QDateEdit::down-button:hover, QTimeEdit::down-button:hover, QDateTimeEdit::down-button:hover {{
-    background-color: {ACCENT};
+    background-color: {BG_HOVER};
 }}
 QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
 QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
-    width: 6px;
+    width: 8px;
     height: 2px;
-    /* - 号用粗边框画 */
-    border-top: 2px solid {MANTLE};
-    border-bottom: none;
-    border-left: none;
-    border-right: none;
+    /* - 号：一条横杠 */
+    border-top: 2px solid {FG_PRIMARY};
 }}
 
 /* ComboBox 下拉箭头 — 不覆盖，由 Fusion 默认绘制 */
