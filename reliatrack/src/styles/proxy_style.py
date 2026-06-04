@@ -131,30 +131,46 @@ class CheckboxProxyStyle(QProxyStyle):
         hover: bool = False,
         disabled: bool = False,
     ) -> None:
-        """在给定矩形内画 +/- 标识。"""
+        """在给定矩形内画 +/− 几何图形（不依赖字体）。"""
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
 
         if disabled:
             color = QColor(_theme.FG_MUTED)
+            bg = QColor(_theme.SURFACE1)
         elif hover:
-            color = QColor(_theme.ACCENT)
+            color = QColor(_theme.MANTLE)
+            bg = QColor(_theme.ACCENT).lighter(120)
         else:
-            color = QColor(_theme.FG_PRIMARY)
+            color = QColor(_theme.MANTLE)
+            bg = QColor(_theme.ACCENT)
 
-        # 画蓝色圆角背景（按钮区域）
+        # 画圆角背景
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(QColor(_theme.ACCENT)))
+        painter.setBrush(QBrush(bg))
         painter.drawRoundedRect(rect, 4, 4)
 
-        # 绘制纯白 + 或 - 字符（确保可见）
-        painter.setPen(QPen(QColor(_theme.MANTLE), 2))
-        font = painter.font()
-        font.setPixelSize(max(12, int(rect.height() * 0.7)))
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "+" if up else "-")
+        # 用 QPainterPath 画 +/- 几何图形（纯矢量，不依赖字体）
+        pad = rect.width() * 0.22  # 内边距
+        inner = rect.adjusted(pad, pad, -pad, -pad)
+        cx = inner.center().x()
+        cy = inner.center().y()
+        thickness = max(2.0, inner.width() * 0.18)
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(color))
+
+        # 横杠（minus 和 plus 都需要）
+        bar = QRectF(cx - thickness * 2.5, cy - thickness / 2,
+                     thickness * 5, thickness)
+        painter.drawRoundedRect(bar, 1, 1)
+
+        if up:
+            # plus：再加一根竖杠
+            bar_v = QRectF(cx - thickness / 2, cy - thickness * 2.5,
+                           thickness, thickness * 5)
+            painter.drawRoundedRect(bar_v, 1, 1)
+
         painter.restore()
 
     # ── CheckBox ──

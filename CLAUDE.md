@@ -107,7 +107,7 @@ bd dolt push          # 同步
 
 ## 已知 Qt 坑
 
-- **SpinBox/ComboBox 箭头由 CheckboxProxyStyle.drawComplexControl 绘制**：QSS 不碰子控件（`::up-button`/`::down-arrow` 等），由 `proxy_style.py` 的 `_draw_arrow_button()` 用 QPainterPath 画三角形。颜色从 `_theme` 色板取（FG_PRIMARY/ACCENT/FG_MUTED），hover/disabled 自动切换。好处：零文件 IO、零外部依赖（不需要 PIL/PNG）、主题切换自动生效
+- **SpinBox/ComboBox 按钮由 CheckboxProxyStyle.drawComplexControl 绘制**：QSS 不碰子控件（`::up-button`/`::down-arrow` 等），由 `proxy_style.py` 的 `_draw_arrow_button()` 绘制白字蓝底圆角按钮上的 `+`/`-` 文字（SpinBox 上=+, 下=-; ComboBox = 向下 `-`）。按钮区域手动计算（控件内侧右 18px），不依赖 `subControlRect`（Linux 上返回 0 大小）。颜色用 ACCENT 背景 + MANTLE 文字（亮暗主题自适应）
 - QPushButton 设 `background: transparent; border: none` 在 Windows 上不可见 → 必须有可见背景和边框
 - QLockFile: Qt5 `setStaleLockTimeout(ms)` → PySide6 6.x `setStaleLockTime(ms)`
 - **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`
