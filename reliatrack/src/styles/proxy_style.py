@@ -143,9 +143,10 @@ class CheckboxProxyStyle(QProxyStyle):
         hover: bool = False,
         disabled: bool = False,
     ) -> None:
-        """在给定矩形内画一个三角形箭头。"""
+        """在给定矩形内画一个 Unicode ▲/▼ 箭头。"""
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
 
         if disabled:
             color = QColor(_theme.FG_MUTED)
@@ -154,27 +155,12 @@ class CheckboxProxyStyle(QProxyStyle):
         else:
             color = QColor(_theme.FG_PRIMARY)
 
-        # 箭头占按钮区域 60% 大小，居中
-        pad_x = rect.width() * 0.20
-        pad_y = rect.height() * 0.20
-        r = QRectF(rect).adjusted(pad_x, pad_y, -pad_x, -pad_y)
-
-        path = QPainterPath()
-        if up:
-            # ▲ 上箭头
-            path.moveTo(r.center().x(), r.top())
-            path.lineTo(r.left(), r.bottom())
-            path.lineTo(r.right(), r.bottom())
-        else:
-            # ▼ 下箭头
-            path.moveTo(r.left(), r.top())
-            path.lineTo(r.right(), r.top())
-            path.lineTo(r.center().x(), r.bottom())
-        path.closeSubpath()
-
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(color))
-        painter.drawPath(path)
+        # 用 Unicode 字符绘制箭头，比三角形填充更清晰可辨
+        painter.setPen(QPen(color))
+        font = painter.font()
+        font.setPixelSize(int(rect.height() * 0.85))
+        painter.setFont(font)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "▲" if up else "▼")
         painter.restore()
 
     # ── CheckBox ──
