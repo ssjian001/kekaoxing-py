@@ -62,8 +62,7 @@ class CheckboxProxyStyle(QProxyStyle):
         painter: QPainter,
         widget,
     ) -> None:
-        # 先让 Fusion 画完整控件（外框+文本），不画默认箭头
-        # 技巧：临时移除箭头状态，让 Fusion 跳过箭头绘制
+        # 画完整控件（外框+文本），不画默认箭头
         option2 = QStyleOptionSpinBox(option)
         option2.subControls = option.subControls & ~QStyle.SubControl.SC_SpinBoxUp
         option2.subControls = option2.subControls & ~QStyle.SubControl.SC_SpinBoxDown
@@ -71,42 +70,28 @@ class CheckboxProxyStyle(QProxyStyle):
         super().drawComplexControl(control, option2, painter, widget)
 
         disabled = bool(option.state & QStyle.StateFlag.State_Enabled) is False
-        frame_bg = QColor(_theme.BG_INPUT)
-
-        # 手动计算按钮区域：控件右侧，上下各半
         widget_rect = option.rect
-        btn_w = widget_rect.width() * 0.20  # 右侧约 20% 宽度
-        if btn_w < 16:
-            btn_w = 16
-        btn_h = widget_rect.height() / 2
-        if btn_h < 10:
-            btn_h = 10
 
-        # 上箭头
+        # 按钮画在控件内部右侧，避免 border-radius 裁剪
+        btn_w = 18
+        btn_h = widget_rect.height() / 2
+
         up_r = QRectF(
-            widget_rect.right() - btn_w, widget_rect.top(),
-            btn_w, btn_h,
+            widget_rect.right() - btn_w - 2, widget_rect.top() + 1,
+            btn_w, btn_h - 1,
+        )
+        down_r = QRectF(
+            widget_rect.right() - btn_w - 2, widget_rect.top() + btn_h,
+            btn_w, btn_h - 1,
         )
         hover_up = bool(option.state & QStyle.StateFlag.State_MouseOver) and bool(
             option.activeSubControls & QStyle.SubControl.SC_SpinBoxUp
         )
-        self._draw_arrow_button(
-            painter, up_r, up=True, hover=hover_up, disabled=disabled,
-            bg_color=frame_bg,
-        )
-
-        # 下箭头
-        down_r = QRectF(
-            widget_rect.right() - btn_w, widget_rect.top() + btn_h,
-            btn_w, btn_h,
-        )
         hover_down = bool(option.state & QStyle.StateFlag.State_MouseOver) and bool(
             option.activeSubControls & QStyle.SubControl.SC_SpinBoxDown
         )
-        self._draw_arrow_button(
-            painter, down_r, up=False, hover=hover_down, disabled=disabled,
-            bg_color=frame_bg,
-        )
+        self._draw_arrow_button(painter, up_r, up=True, hover=hover_up, disabled=disabled)
+        self._draw_arrow_button(painter, down_r, up=False, hover=hover_down, disabled=disabled)
 
     # ── ComboBox ──
 
@@ -117,29 +102,23 @@ class CheckboxProxyStyle(QProxyStyle):
         painter: QPainter,
         widget,
     ) -> None:
-        # 先让 Fusion 画完整控件（外框+文本），不画默认箭头
+        # 画完整控件，不画默认箭头
         option2 = QStyleOptionComboBox(option)
         option2.subControls = option.subControls & ~QStyle.SubControl.SC_ComboBoxArrow
         option2.activeSubControls = QStyle.SubControl.SC_None
         super().drawComplexControl(control, option2, painter, widget)
 
         disabled = bool(option.state & QStyle.StateFlag.State_Enabled) is False
-        frame_bg = QColor(_theme.BG_INPUT)
-
-        # 手动计算箭头区域：右侧约 20%
         widget_rect = option.rect
-        btn_w = widget_rect.width() * 0.20
-        if btn_w < 16:
-            btn_w = 16
+
+        # 向下箭头画在控件内部右侧
+        btn_w = 18
         arrow_r = QRectF(
-            widget_rect.right() - btn_w, widget_rect.top(),
-            btn_w, widget_rect.height(),
+            widget_rect.right() - btn_w - 2, widget_rect.top() + 1,
+            btn_w, widget_rect.height() - 2,
         )
         hover = bool(option.state & QStyle.StateFlag.State_MouseOver)
-        self._draw_arrow_button(
-            painter, arrow_r, up=False, hover=hover, disabled=disabled,
-            bg_color=frame_bg,
-        )
+        self._draw_arrow_button(painter, arrow_r, up=False, hover=hover, disabled=disabled)
 
     # ── 通用箭头绘制 ──
 
@@ -151,7 +130,6 @@ class CheckboxProxyStyle(QProxyStyle):
         up: bool,
         hover: bool = False,
         disabled: bool = False,
-        bg_color: QColor | None = None,
     ) -> None:
         """在给定矩形内画 +/- 标识。"""
         painter.save()
@@ -160,26 +138,23 @@ class CheckboxProxyStyle(QProxyStyle):
 
         if disabled:
             color = QColor(_theme.FG_MUTED)
-            bg = QColor(_theme.BG_DARK)
         elif hover:
             color = QColor(_theme.ACCENT)
-            bg = QColor(_theme.BG_HOVER)
         else:
             color = QColor(_theme.FG_PRIMARY)
-            bg = bg_color or QColor(_theme.BG_INPUT)
 
-        # 先用背景色清空按钮区域
+        # 画蓝色圆角背景（按钮区域）
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(bg))
-        painter.drawRoundedRect(rect, 3, 3)
+        painter.setBrush(QBrush(QColor(_theme.ACCENT)))
+        painter.drawRoundedRect(rect, 4, 4)
 
-        # 绘制 + 或 − 字符
-        painter.setPen(QPen(color, 2))
+        # 绘制纯白 + 或 - 字符（确保可见）
+        painter.setPen(QPen(QColor(_theme.MANTLE), 2))
         font = painter.font()
-        font.setPixelSize(int(rect.height() * 0.75))
+        font.setPixelSize(max(12, int(rect.height() * 0.7)))
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "+" if up else "−")
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "+" if up else "-")
         painter.restore()
 
     # ── CheckBox ──
