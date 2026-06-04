@@ -24,3 +24,4 @@ __pycache__/
 .prism-history.md
 data/logs/
 exports/
+src/styles/icons/

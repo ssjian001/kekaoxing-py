@@ -136,9 +136,28 @@ theme_host = _SignalHost()
 
 def _build_qss() -> str:
     """根据当前模块全局常量生成完整 QSS（每次调用都重新求值）。"""
-    # 箭头图标路径（QSS image 属性需要绝对路径）
+    # 动态生成箭头图标（颜色跟随色板，主题切换时自动更新）
     from pathlib import Path
+    from PIL import Image, ImageDraw
+
     _icons = Path(__file__).parent / "icons"
+    _icons.mkdir(exist_ok=True)
+
+    # 解析 FG_PRIMARY hex → RGB
+    _fg_hex = globals().get("FG_PRIMARY", "#1E293B").lstrip("#")
+    _fg_rgb = tuple(int(_fg_hex[i:i+2], 16) for i in (0, 2, 4))
+
+    def _gen_arrow(filename: str, w: int, h: int, points: list[tuple]) -> None:
+        path = _icons / filename
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.polygon(points, fill=(*_fg_rgb, 255))
+        img.save(path)
+
+    _gen_arrow("arrow-up.png", 12, 8, [(6, 0), (0, 7), (11, 7)])
+    _gen_arrow("arrow-down.png", 12, 8, [(0, 0), (11, 0), (6, 7)])
+    _gen_arrow("arrow-combo.png", 10, 7, [(0, 0), (9, 0), (5, 6)])
+
     arrow_up = _icons / "arrow-up.png"
     arrow_down = _icons / "arrow-down.png"
     arrow_combo = _icons / "arrow-combo.png"
