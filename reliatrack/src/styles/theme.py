@@ -194,43 +194,9 @@ QTimeEdit::up-button:hover, QTimeEdit::down-button:hover,
 QDateTimeEdit::up-button:hover, QDateTimeEdit::down-button:hover {{
     background-color: {ACCENT};
 }}
-QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
-QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
-    width: 0px;
-    height: 0px;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-bottom: 6px solid {FG_PRIMARY};
-}}
-QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled,
-QDateEdit::up-arrow:disabled, QTimeEdit::up-arrow:disabled, QDateTimeEdit::up-arrow:disabled {{
-    border-bottom-color: {FG_MUTED};
-}}
-QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
-QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
-    width: 0px;
-    height: 0px;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 6px solid {FG_PRIMARY};
-}}
-QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled,
-QDateEdit::down-arrow:disabled, QTimeEdit::down-arrow:disabled, QDateTimeEdit::down-arrow:disabled {{
-    border-top-color: {FG_MUTED};
-}}
 QComboBox::drop-down {{
     border: none;
     width: 24px;
-}}
-QComboBox::down-arrow {{
-    width: 0px;
-    height: 0px;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid {FG_PRIMARY};
-}}
-QComboBox::down-arrow:disabled {{
-    border-top-color: {FG_MUTED};
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
