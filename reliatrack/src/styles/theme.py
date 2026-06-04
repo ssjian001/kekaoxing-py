@@ -171,7 +171,71 @@ QDateEdit, QTimeEdit, QDateTimeEdit {{
     padding: 2px 4px;
     min-height: 24px;
 }}
-/* 箭头由 CheckboxProxyStyle.drawComplexControl 绘制，QSS 不覆盖子控件 */
+/* ── SpinBox 子控件：用 QSS 绘制 +/- 按钮 ── */
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QDateEdit::up-button, QTimeEdit::up-button, QDateTimeEdit::up-button {{
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 18px;
+    border-left: 1px solid {BORDER};
+    background-color: {ACCENT};
+    border-top-right-radius: 7px;
+}}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QDateEdit::up-button:hover, QTimeEdit::up-button:hover, QDateTimeEdit::up-button:hover {{
+    background-color: {ACCENT};
+}}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
+QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
+    width: 6px;
+    height: 6px;
+    /* + 号用粗边框画 */
+    border-left: 2px solid {MANTLE};
+    border-right: 2px solid {MANTLE};
+    border-top: 2px solid {MANTLE};
+    border-bottom: 2px solid {MANTLE};
+    border-radius: 1px;
+}}
+QSpinBox::down-button, QDoubleSpinBox::down-button,
+QDateEdit::down-button, QTimeEdit::down-button, QDateTimeEdit::down-button {{
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 18px;
+    border-left: 1px solid {BORDER};
+    background-color: {ACCENT};
+    border-bottom-right-radius: 7px;
+}}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover,
+QDateEdit::down-button:hover, QTimeEdit::down-button:hover, QDateTimeEdit::down-button:hover {{
+    background-color: {ACCENT};
+}}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
+QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
+    width: 6px;
+    height: 2px;
+    /* - 号用粗边框画 */
+    border-top: 2px solid {MANTLE};
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+}}
+
+/* ComboBox 下拉箭头 */
+QComboBox::drop-down {{
+    subcontrol-origin: border;
+    subcontrol-position: center right;
+    width: 18px;
+    border-left: 1px solid {BORDER};
+    border-top-right-radius: 7px;
+    border-bottom-right-radius: 7px;
+    background-color: {ACCENT};
+}}
+QComboBox::down-arrow {{
+    width: 6px;
+    height: 2px;
+    border-top: 2px solid {MANTLE};
+}}
+
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
 }}

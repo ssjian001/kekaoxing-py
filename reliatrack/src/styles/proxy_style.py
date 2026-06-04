@@ -145,31 +145,26 @@ class CheckboxProxyStyle(QProxyStyle):
             color = QColor(_theme.MANTLE)
             bg = QColor(_theme.ACCENT)
 
-        # 画圆角背景
+        # 先画大红底确认绘制区域
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(bg))
-        painter.drawRoundedRect(rect, 4, 4)
+        painter.setBrush(QBrush(QColor("#FF0000")))
+        painter.drawRect(rect)
 
-        # 用 QPainterPath 画 +/- 几何图形（纯矢量，不依赖字体）
-        pad = rect.width() * 0.22  # 内边距
-        inner = rect.adjusted(pad, pad, -pad, -pad)
+        # 白色几何 ＋ 或 −
+        inner = rect.adjusted(3, 3, -3, -3)
         cx = inner.center().x()
         cy = inner.center().y()
-        thickness = max(2.0, inner.width() * 0.18)
+        thick = max(2.0, inner.width() * 0.16)
 
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(color))
+        painter.setBrush(QBrush(QColor("#FFFFFF")))
 
-        # 横杠（minus 和 plus 都需要）
-        bar = QRectF(cx - thickness * 2.5, cy - thickness / 2,
-                     thickness * 5, thickness)
-        painter.drawRoundedRect(bar, 1, 1)
-
+        # 横杠（minus/plus 共用）
+        painter.drawRect(QRectF(cx - thick * 3, cy - thick / 2,
+                                thick * 6, thick))
         if up:
-            # plus：再加一根竖杠
-            bar_v = QRectF(cx - thickness / 2, cy - thickness * 2.5,
-                           thickness, thickness * 5)
-            painter.drawRoundedRect(bar_v, 1, 1)
+            # 竖杠（仅 plus）
+            painter.drawRect(QRectF(cx - thick / 2, cy - thick * 3,
+                                    thick, thick * 6))
 
         painter.restore()
 
