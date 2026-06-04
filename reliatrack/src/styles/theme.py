@@ -220,21 +220,7 @@ QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
     border-right: none;
 }}
 
-/* ComboBox 下拉箭头 */
-QComboBox::drop-down {{
-    subcontrol-origin: border;
-    subcontrol-position: center right;
-    width: 18px;
-    border-left: 1px solid {BORDER};
-    border-top-right-radius: 7px;
-    border-bottom-right-radius: 7px;
-    background-color: {ACCENT};
-}}
-QComboBox::down-arrow {{
-    width: 6px;
-    height: 2px;
-    border-top: 2px solid {MANTLE};
-}}
+/* ComboBox 下拉箭头 — 不覆盖，由 Fusion 默认绘制 */
 
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
