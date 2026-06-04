@@ -210,6 +210,13 @@ QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
     height: 8px;
     image: url({arrow_down});
 }}
+/* ── SpinBox/DateEdit disabled ── */
+QSpinBox:disabled::up-button, QDoubleSpinBox:disabled::up-button,
+QDateEdit:disabled::up-button, QTimeEdit:disabled::up-button, QDateTimeEdit:disabled::up-button,
+QSpinBox:disabled::down-button, QDoubleSpinBox:disabled::down-button,
+QDateEdit:disabled::down-button, QTimeEdit:disabled::down-button, QDateTimeEdit:disabled::down-button {{
+    background-color: {BG_DARK};
+}}
 /* ── ComboBox 下拉箭头 ── */
 QComboBox::drop-down {{
     border: none;
@@ -219,6 +226,9 @@ QComboBox::down-arrow {{
     width: 10px;
     height: 7px;
     image: url({arrow_combo});
+}}
+QComboBox:disabled::drop-down {{
+    background-color: {BG_DARK};
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
