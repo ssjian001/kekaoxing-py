@@ -107,7 +107,8 @@ bd dolt push          # 同步
 
 ## 已知 Qt 坑
 
-- 全局 QSS padding 侵占 QSpinBox 按钮 → QSpinBox 必须单独处理，padding 2px 4px
+- **QSpinBox/QComboBox 子控件不要在 QSS 中覆盖**：一旦定义了 `::up-button`/`::down-button`/`::drop-down` 等子控件规则，Qt 就不再用 Fusion 默认渲染箭头。如果不同时提供正确的 `::up-arrow`/`::down-arrow`，箭头要么空白要么变形。正确做法：**只设外框样式（背景/边框/padding/圆角），完全不碰子控件**，让 Fusion 用 QPalette 颜色画默认箭头。当前 theme.py 只有一条统一规则覆盖 QLineEdit/QSpinBox/QDoubleSpinBox/QComboBox/QDateEdit/QTimeEdit/QDateTimeEdit
+- **Qt QSS 不支持 CSS border triangle**：`width:0; border-left/right: transparent` 在浏览器里画三角形，在 Qt 里渲染成实心方块。不要用这个 trick 画 SpinBox/ComboBox 箭头
 - QPushButton 设 `background: transparent; border: none` 在 Windows 上不可见 → 必须有可见背景和边框
 - QLockFile: Qt5 `setStaleLockTimeout(ms)` → PySide6 6.x `setStaleLockTime(ms)`
 - **QSS 不支持 #RRGGBBAA 8 位 hex**（如 `#1e66f515` 无效）→ 必须用 `rgba(r,g,b,a)`
