@@ -48,6 +48,10 @@ class ExportService:
     def output_dir(self) -> Path:
         return self._output_dir
 
+    @output_dir.setter
+    def output_dir(self, value: str | Path) -> None:
+        self._output_dir = Path(value)
+
     def _ensure_dir(self) -> Path:
         self._output_dir.mkdir(parents=True, exist_ok=True)
         return self._output_dir

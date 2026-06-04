@@ -305,7 +305,7 @@ def export_report_pdf(
             f"测试结果总数: {total_results}  |  通过: {total_pass}  |  失败: {total_fail}  |  条件通过: {total_conditional}  |  通过率: {pass_rate}",
         ]
         overall_conclusion = _judge_conclusion(
-            total_pass, total_fail, total_conditional, total_results,
+            total_pass, total_fail, total_conditional,
             accept_criteria="",
         )
         stat_lines.append(f"总体判定结论: {overall_conclusion}")
@@ -336,7 +336,7 @@ def export_report_pdf(
             task_cond = sum(1 for x in _results if x.task_id == r.task_id and x.result == "conditional")
             accept_criteria = task_obj.accept_criteria if task_obj else ""
             conclusion = _judge_conclusion(
-                task_pass, task_fail, task_cond, 0,
+                task_pass, task_fail, task_cond,
                 accept_criteria=accept_criteria or "",
             )
             if idx > 1 and _results[idx - 2].task_id == r.task_id:
@@ -561,7 +561,7 @@ def export_dvpr_pdf(
                 row.append(Paragraph("—", cell_style))
         # 结论
         conclusion = _judge_conclusion(
-            task_pass, task_fail, task_conditional, 0,
+            task_pass, task_fail, task_conditional,
             accept_criteria=task.accept_criteria or "",
         )
         row.append(Paragraph(conclusion, cell_style))

@@ -119,7 +119,7 @@ class _ResultMatrixWidget(QWidget):
                 f"padding: 1px 8px; font-size: 12px; }}"
             )
         return (
-            f"QPushButton {{ background-color: transparent; color: {_t.SUBTEXT0}; "
+            f"QPushButton {{ background-color: {_t.BG_INPUT}; color: {_t.SUBTEXT0}; "
             f"border: 1px solid {_t.SURFACE1}; border-radius: 4px; "
             f"padding: 1px 8px; font-size: 12px; }}"
         )
@@ -323,6 +323,22 @@ class _ResultMatrixWidget(QWidget):
             self._summary_label.setProperty("class", "subtext")
 
     def refresh_theme(self) -> None:
-        """主题切换回调 — 刷新模式按钮内联样式。"""
+        """主题切换回调 — 刷新模式按钮和表格内联样式。"""
+        # 刷新模式按钮内联样式
         for i, btn in enumerate(self._mode_group.buttons()):
             btn.setStyleSheet(self._mode_qss(btn.isChecked()))
+
+        # 重写表格 QSS（主题色变化后需重新应用）
+        self._table.setStyleSheet(f"""
+            QTableWidget::item {{
+                padding: 0px;
+            }}
+        """)
+
+        # 用新主题色重建矩阵单元格
+        if self._last_tasks:
+            self.refresh(
+                self._last_tasks,
+                self._last_results,
+                self._last_sample_map,
+            )

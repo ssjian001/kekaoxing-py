@@ -953,20 +953,19 @@ def _migrate_v21(conn: apsw.Connection) -> None:
 
 
 def _migrate_v22(conn: apsw.Connection) -> None:
-    """v21→v22: test_tasks 加 manual_scheduled 列 + 迁移已有手动调整任务。
+    """v21→v22: test_tasks 加 manual_scheduled 列。
 
-    将所有 start_day > 0 的已有任务标记为手动排程（manual_scheduled=1），
-    保护它们不被后续自动排程覆盖。
+    不做批量标记 — start_day > 0 可能来自自动排程引擎的依赖链推算，
+    无法仅从 start_day 值区分"自动排程结果"和"用户手动调整"。
+    manual_scheduled 精确写入由以下入口负责：
+      - task_dialog: 用户编辑任务并设置预计日期时
+      - 甘特图拖拽: MoveTaskCommand
     """
     cols = {r[1] for r in conn.execute("PRAGMA table_info(test_tasks)").fetchall()}
     if "manual_scheduled" not in cols:
         conn.execute(
             "ALTER TABLE test_tasks ADD COLUMN manual_scheduled INTEGER NOT NULL DEFAULT 0"
         )
-    # 迁移：已有 start_day > 0 的任务视为手动调整过
-    conn.execute(
-        "UPDATE [test_tasks] SET manual_scheduled = 1 WHERE start_day > 0"
-    )
     conn.execute("INSERT INTO schema_version (version) VALUES (22)")
 
 

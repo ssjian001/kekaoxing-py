@@ -194,7 +194,7 @@ def _validate_output_path(path: str | Path, output_dir: Path) -> Path:
 
 def _judge_conclusion(
     pass_count: int, fail_count: int, conditional_count: int,
-    total_results: int, accept_criteria: str = "",
+    accept_criteria: str = "",
 ) -> str:
     """基于接收准则判定结论。
 

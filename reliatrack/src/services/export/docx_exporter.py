@@ -233,7 +233,7 @@ def export_to_word(
         pass_rate = f"{total_pass / total_results * 100:.1f}%" if total_results else "—"
 
         overall_conclusion = _judge_conclusion(
-            total_pass, total_fail, total_conditional, total_results,
+            total_pass, total_fail, total_conditional,
             accept_criteria="",
         )
         stat_lines = [
@@ -264,7 +264,7 @@ def export_to_word(
             task_cond = sum(1 for x in _results if x.task_id == r.task_id and x.result == "conditional")
             accept_criteria = task_obj.accept_criteria if task_obj else ""
             conclusion = _judge_conclusion(
-                task_pass, task_fail, task_cond, 0,
+                task_pass, task_fail, task_cond,
                 accept_criteria=accept_criteria or "",
             )
             if idx > 1 and _results[idx - 2].task_id == r.task_id:
@@ -389,7 +389,7 @@ def export_dvpr_excel(
                 row_data.append("S")
             else:
                 row_data.append("—")
-        row_data.append(_judge_conclusion(task_pass, task_fail, task_conditional, 0,
+        row_data.append(_judge_conclusion(task_pass, task_fail, task_conditional,
                                           accept_criteria=task.accept_criteria or ""))
         excel_write_row(ws2, idx, row_data, s)
 
@@ -559,7 +559,7 @@ def export_dvpr_docx(
                 row_vals.append("S")
             else:
                 row_vals.append("—")
-        row_vals.append(_judge_conclusion(task_pass, task_fail, task_conditional, 0,
+        row_vals.append(_judge_conclusion(task_pass, task_fail, task_conditional,
                                           accept_criteria=task.accept_criteria or ""))
 
         tr = dvpr_table.rows[idx]._tr

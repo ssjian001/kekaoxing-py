@@ -178,21 +178,59 @@ QSpinBox {{
     padding: 2px 4px;
     min-height: 24px;
 }}
-QSpinBox::up-button, QSpinBox::down-button {{
+QSpinBox::up-button, QSpinBox::down-button,
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button,
+QDateEdit::up-button, QDateEdit::down-button,
+QTimeEdit::up-button, QTimeEdit::down-button,
+QDateTimeEdit::up-button, QDateTimeEdit::down-button {{
     width: 16px;
     border: none;
     background-color: {BORDER};
 }}
-QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+QSpinBox::up-button:hover, QSpinBox::down-button:hover,
+QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover,
+QDateEdit::up-button:hover, QDateEdit::down-button:hover,
+QTimeEdit::up-button:hover, QTimeEdit::down-button:hover,
+QDateTimeEdit::up-button:hover, QDateTimeEdit::down-button:hover {{
     background-color: {ACCENT};
 }}
-QSpinBox::up-arrow {{
-    width: 8px;
-    height: 8px;
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow,
+QDateEdit::up-arrow, QTimeEdit::up-arrow, QDateTimeEdit::up-arrow {{
+    width: 0px;
+    height: 0px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 6px solid {FG_PRIMARY};
 }}
-QSpinBox::down-arrow {{
-    width: 8px;
-    height: 8px;
+QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled,
+QDateEdit::up-arrow:disabled, QTimeEdit::up-arrow:disabled, QDateTimeEdit::up-arrow:disabled {{
+    border-bottom-color: {FG_MUTED};
+}}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow,
+QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {{
+    width: 0px;
+    height: 0px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid {FG_PRIMARY};
+}}
+QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled,
+QDateEdit::down-arrow:disabled, QTimeEdit::down-arrow:disabled, QDateTimeEdit::down-arrow:disabled {{
+    border-top-color: {FG_MUTED};
+}}
+QComboBox::drop-down {{
+    border: none;
+    width: 24px;
+}}
+QComboBox::down-arrow {{
+    width: 0px;
+    height: 0px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid {FG_PRIMARY};
+}}
+QComboBox::down-arrow:disabled {{
+    border-top-color: {FG_MUTED};
 }}
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {ACCENT};
@@ -878,19 +916,3 @@ def get_palette() -> dict[str, str]:
     return dict(_PALETTES[_current_theme])
 
 
-def filter_combo_qss() -> str:
-    """筛选栏 ComboBox 统一样式（DRY）。"""
-    return f"""
-        QComboBox {{
-            background-color: {BG_INPUT}; color: {FG_PRIMARY};
-            border: 1px solid {BORDER}; border-radius: 6px;
-            padding: 4px 8px; font-size: 12px; min-height: 26px;
-        }}
-        QComboBox::drop-down {{
-            border: none; width: 24px;
-        }}
-        QComboBox QAbstractItemView {{
-            background-color: {BG_INPUT}; color: {FG_PRIMARY};
-            selection-background-color: {BG_HOVER};
-        }}
-    """

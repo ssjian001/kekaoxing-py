@@ -413,6 +413,7 @@ class IssueView(QWidget):
 
         # 严重度筛选
         self._severity_filter = QComboBox()
+        self._severity_filter.setProperty("class", "filter-combo")
         self._severity_filter.addItems(["全部严重度", "严重", "主要", "次要", "外观"])
         self._severity_filter.setFixedWidth(110)
         self._severity_filter.setToolTip("按严重度筛选")

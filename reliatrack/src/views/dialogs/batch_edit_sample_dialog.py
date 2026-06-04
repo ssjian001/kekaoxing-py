@@ -57,7 +57,7 @@ class BatchEditSampleDialog(_BaseDialog):
         # ── 提示 ──
         hint = QLabel("勾选要修改的字段，未勾选的字段保持原值不变。")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: gray; font-size: 11px; margin-bottom: 4px;")
+        hint.setProperty("class", "hint-label")
         self._form.addRow(hint)
 
         # ── 可批量编辑的字段 ──

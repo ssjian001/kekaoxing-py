@@ -50,7 +50,7 @@ class ExportHandlers:
             from src.services.export import ExportService
             svc = ExportService(output_dir=export_dir)
         else:
-            svc._output_dir = Path(export_dir)
+            svc.output_dir = export_dir
         return svc
 
     def _get_issues(self, ctrl, project_id: int | None):

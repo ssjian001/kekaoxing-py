@@ -54,6 +54,7 @@ class TestPlanView(QWidget):
         # ── 计划下拉 ──
         toolbar.addWidget(QLabel("计划:"))
         self._plan_combo = QComboBox()
+        self._plan_combo.setProperty("class", "filter-combo")
         self._plan_combo.setFixedWidth(180)
         self._plan_combo.setFixedHeight(28)
         toolbar.addWidget(self._plan_combo)

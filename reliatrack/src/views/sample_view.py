@@ -340,6 +340,7 @@ class _SampleUsageTab(QWidget):
         toolbar.addWidget(self._search_input)
 
         self._type_combo = QComboBox()
+        self._type_combo.setProperty("class", "filter-combo")
         self._type_combo.setFixedWidth(140)
         self._type_combo.addItem("全部类型", "")
         self._type_combo.addItem("入库", "check_in")
