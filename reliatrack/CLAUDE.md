@@ -102,9 +102,10 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 ### 导出服务
 
 - `export_service.py`（AppController.export_service）：8D 报告 PDF/Word 导出（reportlab + python-docx）
-- `export_handlers.py`：统一导出入口，支持按项目筛选（`_get_issues`/`_get_samples` 按 project_id 过滤）
-- `export_dialog.py`：导出选项对话框（内容类型 + 格式 + 项目筛选下拉）
-- 8D Word：`export_8d_docx()` — 结构与 PDF 一致（基本信息表、D1-D8 章节、签字栏），格式选择对话框
+- `export_handlers.py`：统一导出入口，6 种内容 × 3 种格式；综合报告/DVP&R 用 `plan.project_id` 过滤 Issue/Sample
+- `export_dialog.py`：导出选项对话框（内容类型 + 格式 + 项目筛选下拉，8D 类型自动隐藏项目筛选）
+- 综合报告（PDF/Word/Excel）：任务表和 Issue 表列定义已统一（任务 10 列、Issue 10 列）
+- PDF 页眉页脚字体：通过闭包捕获实际 `_FN`，避免 CJK fallback 路径崩溃
 - 信号链：issue_view `_on_export_8d` → `export_8d_requested` signal → `issue_handlers._handle_export_8d`（弹出 PDF/Word 选择）
 - CAPA 写入：`issue_view capa_record_added` → `issue_handlers._handle_capa_record_added` → `issue_service.add_capa_record`（列名白名单校验）
 - CAPA 编辑/删除：`capa_record_edited`/`capa_record_deleted` 信号 → `issue_handlers._handle_edit_capa`/`_handle_delete_capa` → service.update/delete
@@ -165,7 +166,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - **工具函数**: `card_qss(radius=12)` 和 `add_shadow(widget)` 在 `constants.py`，供所有 Tab/Dialog 复用
 - **QSS 类选择器（2026-06-01 重构）**: `theme.py` 的 `_build_qss()` 定义 50+ 业务类选择器，所有静态样式用 `setProperty("class", "xxx")` 引用；动态属性（如 `rate-class="good"`、`row-state="attention"`）用 `setProperty` + `style().unpolish(self)/polish(self)` 触发重算。**内联 `_t.X` 颜色需 `refresh_theme()` 同步**，当前共 7 处：`DashboardView` stat card + legend dots、`result_matrix` 模式按钮、已打开 dialog 的 `_ResultRow`、`IssueView` + `_FAPanel` + `_CAPAPanel` FA/CAPA 面板颜色。**所有 `from src.styles.theme import GREEN` 冻结导入已清理为 `import src.styles.theme as _t` 动态引用**。**新增选择器必加 `_build_qss()` 底部，禁止用内联 `_t.X` 常量**
 
-### Schema（v21）
+### Schema（v22）
 
 - **v21**：issues 加 `category`（责任类别 ME/EE/AE/SW/NPI/QE/Other），Issue 表格加类别列，状态筛选改多选；CheckBox/QRadioButton 用 QProxyStyle 绘制 ✓ 和圆点
 - **v20**：test_tasks 加 `task_prefix`（任务编号前缀），影响导出 header `#` → `序号`、task_table 列交互化
@@ -224,7 +225,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_arch_optimization.py` — 架构优化验证测试
 - `tests/test_handlers.py` — Handler 层集成测试
 - `tests/test_session_20260512.py` — 会话特定功能测试
-- 共 **341 个 pytest 测试**（326 通过 + 15 CI-only 跳过 test_boundary），全量通过
+- 共 **341 个 pytest 测试**，全量通过
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）

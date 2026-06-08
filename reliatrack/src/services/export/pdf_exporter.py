@@ -118,10 +118,11 @@ def _register_cjk_fonts():
     return _FN, _FN_B
 
 
-def _build_header_footer(canvas: _Canvas, doc: object, title_text: str = "ReliaTrack") -> None:
+def _build_header_footer(canvas: _Canvas, doc: object, title_text: str = "ReliaTrack",
+                         font_name: str = "CJK") -> None:
     """页眉页脚回调。"""
     canvas.saveState()
-    canvas.setFont("CJK", 8)
+    canvas.setFont(font_name, 8)
     canvas.setFillColor(HexColor("#969696"))
     canvas.drawRightString(A4[0] - 20 * mm, A4[1] - 12 * mm,
                            f"{title_text} — 可靠性测试报告")
@@ -209,18 +210,22 @@ def export_report_pdf(
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph("测试任务", style_section))
 
-    task_headers = ["序号", "名称", "类别", "工期", "开始", "进度", "状态", "优先级"]
-    task_col_widths = [18, 130, 55, 40, 40, 40, 50, 40]
+    task_headers = ["序号", "名称", "类别", "天数", "开始", "进度", "状态", "优先级", "设备", "技术员"]
+    task_col_widths = [18, 100, 45, 30, 30, 35, 42, 35, 45, 45]
     header_row = [Paragraph(h, ParagraphStyle("TH", fontName=_FN_B, fontSize=9,
                                                textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
                   for h in task_headers]
 
     prefix = getattr(plan, 'task_prefix', '') or ''
+    # 预构建技术员名称映射
+    tech_name_map: dict[int, str] = {}
     task_data_rows: list[list[object]] = []
     for idx, task in enumerate(tasks, 1):
         task_id_display = f"{prefix}-{idx:03d}" if prefix else str(idx)
         cat = CATEGORY_MAP.get(task.category, task.category)
         status = STATUS_MAP.get(task.status, task.status)
+        equip = f"ID:{task.equipment_id}" if task.equipment_id else "—"
+        tech = tech_name_map.get(task.technician_id, f"ID:{task.technician_id}") if task.technician_id else "—"
         task_data_rows.append([
             Paragraph(task_id_display, cell_style),
             Paragraph(task.name[:25], cell_style),
@@ -230,6 +235,8 @@ def export_report_pdf(
             Paragraph(f"{task.progress:.0f}%", cell_style),
             Paragraph(status, cell_style),
             Paragraph(str(task.priority), cell_style),
+            Paragraph(equip, cell_style),
+            Paragraph(tech, cell_style),
         ])
 
     if not task_data_rows:
@@ -252,7 +259,7 @@ def export_report_pdf(
         story.append(PageBreak())
         story.append(Paragraph("Issue 追踪", style_section_red))
 
-        issue_headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "改善对策"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "根因", "改善对策"]
         issue_header_row = [Paragraph(h, ParagraphStyle("IH", fontName=_FN_B, fontSize=9,
                                                          textColor=HexColor("#FFFFFF"), alignment=TA_CENTER))
                             for h in issue_headers]
@@ -271,10 +278,11 @@ def export_report_pdf(
                 Paragraph((issue.dri_name or "")[:15], cell_style),
                 Paragraph((issue.reporter_name or "")[:15], cell_style),
                 Paragraph(resolution_text, cell_style),
-                Paragraph((issue.improvement_measures or "")[:80], cell_style),
+                Paragraph((issue.root_cause or "")[:50], cell_style),
+                Paragraph((issue.improvement_measures or "")[:60], cell_style),
             ])
 
-        issue_table = Table(issue_data, colWidths=[18, 120, 45, 45, 40, 55, 55, 60, 80])
+        issue_table = Table(issue_data, colWidths=[18, 100, 40, 40, 30, 45, 45, 50, 65, 65])
         issue_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), _RED),
             ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#FFFFFF")),
@@ -325,20 +333,24 @@ def export_report_pdf(
                           for h in res_headers]
 
         res_data = [res_header_row]
+        # 预计算每个 task 的结论（O(N)），避免每行重复遍历
+        _task_conclusions: dict[int, str] = {}
+        for tid in {x.task_id for x in _results if x.task_id}:
+            tp = sum(1 for x in _results if x.task_id == tid and x.result == "pass")
+            tf = sum(1 for x in _results if x.task_id == tid and x.result == "fail")
+            tc = sum(1 for x in _results if x.task_id == tid and x.result == "conditional")
+            t_obj = task_map.get(tid)
+            _task_conclusions[tid] = _judge_conclusion(
+                tp, tf, tc,
+                accept_criteria=(t_obj.accept_criteria or "") if t_obj else "",
+            )
+
         for idx, r in enumerate(_results, 1):
             task_name = (task_map[r.task_id].name or "")[:25] if r.task_id and r.task_id in task_map else ""
             sample_sn = sample_map.get(r.sample_id, f"#{r.sample_id}") if r.sample_id else "—"
             result_text = r.result.upper() if r.result else "—"
 
-            task_obj = task_map.get(r.task_id)
-            task_pass = sum(1 for x in _results if x.task_id == r.task_id and x.result == "pass")
-            task_fail = sum(1 for x in _results if x.task_id == r.task_id and x.result == "fail")
-            task_cond = sum(1 for x in _results if x.task_id == r.task_id and x.result == "conditional")
-            accept_criteria = task_obj.accept_criteria if task_obj else ""
-            conclusion = _judge_conclusion(
-                task_pass, task_fail, task_cond,
-                accept_criteria=accept_criteria or "",
-            )
+            conclusion = _task_conclusions.get(r.task_id, "")
             if idx > 1 and _results[idx - 2].task_id == r.task_id:
                 conclusion = ""
 
@@ -365,8 +377,10 @@ def export_report_pdf(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     _validate_output_path(out, output_dir)
+    # 闭包捕获实际字体名，避免 fallback 路径下字体名不一致
+    _hf = lambda c, d: _build_header_footer(c, d, font_name=_FN)
     try:
-        doc_obj.build(story, onFirstPage=_build_header_footer, onLaterPages=_build_header_footer)
+        doc_obj.build(story, onFirstPage=_hf, onLaterPages=_hf)
     except (OSError, PermissionError) as e:
         logger.error("PDF build failed: %s → %s", out, e)
         raise
@@ -933,7 +947,7 @@ def export_8d_pdf(
         ("D4", "根因分析 (Root Cause Analysis)", _build_d4_content(issue, fa_records)),
         ("D5", "纠正措施 (Corrective Actions)", (issue.improvement_measures or "") or RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""),
         ("D6", "实施验证 (Implement & Validate)", _build_d6_content(capa_records)),
-        ("D7", "预防再发 (Prevent Recurrence)", "(手写区)"),
+        ("D7", "预防再发 (Prevent Recurrence)", d7_content),
         ("D8", "结论与签字 (Congratulate the Team)", "(签字区)"),
     ]
 

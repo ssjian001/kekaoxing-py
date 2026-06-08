@@ -86,6 +86,9 @@ class ExportHandlers:
         task_ids = [t.id for t in tasks if t.id is not None]
         results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
 
+        # 基于测试计划所属项目过滤 Issue/Samples，避免混入其他项目数据
+        plan_pid = plan.project_id or project_id
+
         if "Excel" in fmt:
             tech_names = {}
             if ctrl.technicians:
@@ -94,11 +97,11 @@ class ExportHandlers:
                         tech_names[tech.id] = tech.name
             return svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
         elif "Word" in fmt:
-            return svc.export_to_word(plan, tasks, self._get_issues(ctrl, project_id),
-                                      self._get_samples(ctrl, project_id), results=results)
+            return svc.export_to_word(plan, tasks, self._get_issues(ctrl, plan_pid),
+                                      self._get_samples(ctrl, plan_pid), results=results)
         else:
-            return svc.export_report_pdf(plan, tasks, self._get_issues(ctrl, project_id),
-                                         self._get_samples(ctrl, project_id), results=results)
+            return svc.export_report_pdf(plan, tasks, self._get_issues(ctrl, plan_pid),
+                                         self._get_samples(ctrl, plan_pid), results=results)
 
     def _export_issues(self, ctrl, svc, fmt: str, project_id: int | None) -> str:
         """导出 Issue 列表。"""
@@ -137,12 +140,15 @@ class ExportHandlers:
         task_ids = [t.id for t in tasks if t.id is not None]
         results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
 
+        # 基于测试计划所属项目过滤，避免混入其他项目数据
+        plan_pid = plan.project_id or project_id
+
         if "Word" in fmt:
-            return svc.export_to_word(plan, tasks, self._get_issues(ctrl, project_id),
-                                      self._get_samples(ctrl, project_id), results=results)
+            return svc.export_to_word(plan, tasks, self._get_issues(ctrl, plan_pid),
+                                      self._get_samples(ctrl, plan_pid), results=results)
         else:
-            return svc.export_report_pdf(plan, tasks, self._get_issues(ctrl, project_id),
-                                         self._get_samples(ctrl, project_id), results=results)
+            return svc.export_report_pdf(plan, tasks, self._get_issues(ctrl, plan_pid),
+                                         self._get_samples(ctrl, plan_pid), results=results)
 
     def _export_dvpr(self, ctrl, svc, fmt: str, project_id: int | None) -> str:
         """导出 DVP&R 报告。"""
@@ -156,8 +162,11 @@ class ExportHandlers:
 
         task_ids = [t.id for t in tasks if t.id is not None]
         results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
-        issues = self._get_issues(ctrl, project_id)
-        samples = self._get_samples(ctrl, project_id)
+
+        # 基于测试计划所属项目过滤，避免混入其他项目数据
+        plan_pid = plan.project_id or project_id
+        issues = self._get_issues(ctrl, plan_pid)
+        samples = self._get_samples(ctrl, plan_pid)
 
         if "Excel" in fmt:
             return svc.export_dvpr_excel(plan, tasks, results, issues, samples)

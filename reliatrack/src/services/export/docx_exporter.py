@@ -178,7 +178,7 @@ def export_to_word(
 
     # ── 任务列表表格 ──
     doc.add_heading("测试任务", level=2)
-    task_headers = ["序号", "名称", "类别", "状态", "天数", "设备", "技术员", "进度"]
+    task_headers = ["序号", "名称", "类别", "天数", "开始", "状态", "进度", "优先级", "设备", "技术员"]
     task_table = doc.add_table(rows=1 + len(tasks), cols=len(task_headers), style="Table Grid")
     task_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     _fill_row_cells(task_table.rows[0]._tr, task_headers, bold=True,
@@ -192,15 +192,16 @@ def export_to_word(
         _fill_row_cells(task_table.rows[idx]._tr, [
             _task_id_display, task.name,
             CATEGORY_MAP.get(task.category, task.category),
+            task.duration, f"D{task.start_day}",
             STATUS_MAP.get(task.status, task.status),
-            task.duration, equipment_name, technician_name,
-            f"{task.progress:.0f}%",
+            f"{task.progress:.0f}%", task.priority,
+            equipment_name, technician_name,
         ], center_cols={0})
 
     # ── Issue 列表表格 ──
     if issues:
         doc.add_heading("Issue 追踪", level=2)
-        issue_headers = ["序号", "Issue描述", "优先级", "状态", "DRI", "报告人", "解决结果", "根因", "改善对策"]
+        issue_headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "根因", "改善对策"]
         issue_table = doc.add_table(
             rows=1 + len(issues), cols=len(issue_headers), style="Table Grid"
         )
@@ -211,8 +212,9 @@ def export_to_word(
         for idx, issue in enumerate(issues, 1):
             resolution_text = RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""
             _fill_row_cells(issue_table.rows[idx]._tr, [
-                idx, issue.title, issue.priority,
+                issue.id, issue.title, issue.severity,
                 STATUS_MAP.get(issue.status, issue.status),
+                issue.priority,
                 issue.dri_name or "",
                 issue.reporter_name or "",
                 resolution_text,
@@ -254,19 +256,24 @@ def export_to_word(
                         color="FFFFFF", shade="339933",
                         center_cols=set(range(len(res_headers))))
 
+        # 预计算每个 task 的结论（O(N)），避免每行重复遍历
+        _task_conclusions: dict[int, str] = {}
+        for tid in {x.task_id for x in _results if x.task_id}:
+            tp = sum(1 for x in _results if x.task_id == tid and x.result == "pass")
+            tf = sum(1 for x in _results if x.task_id == tid and x.result == "fail")
+            tc = sum(1 for x in _results if x.task_id == tid and x.result == "conditional")
+            t_obj = task_map.get(tid)
+            _task_conclusions[tid] = _judge_conclusion(
+                tp, tf, tc,
+                accept_criteria=(t_obj.accept_criteria or "") if t_obj else "",
+            )
+
         for idx, r in enumerate(_results, 1):
             task_name = (task_map[r.task_id].name or "")[:25] if r.task_id and r.task_id in task_map else ""
             sample_sn = sample_map.get(r.sample_id, f"#{r.sample_id}") if r.sample_id else "—"
             result_text = r.result.upper() if r.result else "—"
-            task_obj = task_map.get(r.task_id)
-            task_pass = sum(1 for x in _results if x.task_id == r.task_id and x.result == "pass")
-            task_fail = sum(1 for x in _results if x.task_id == r.task_id and x.result == "fail")
-            task_cond = sum(1 for x in _results if x.task_id == r.task_id and x.result == "conditional")
-            accept_criteria = task_obj.accept_criteria if task_obj else ""
-            conclusion = _judge_conclusion(
-                task_pass, task_fail, task_cond,
-                accept_criteria=accept_criteria or "",
-            )
+
+            conclusion = _task_conclusions.get(r.task_id, "")
             if idx > 1 and _results[idx - 2].task_id == r.task_id:
                 conclusion = ""
             _fill_row_cells(res_table.rows[idx]._tr, [
@@ -836,7 +843,7 @@ def export_8d_docx(
         ("D4", "根因分析 (Root Cause Analysis)", _build_d4_content_docx(issue, fa_records)),
         ("D5", "纠正措施 (Corrective Actions)", (issue.improvement_measures or "") or RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""),
         ("D6", "实施验证 (Implement & Validate)", _build_d6_content_docx(capa_records)),
-        ("D7", "预防再发 (Prevent Recurrence)", "(手写区)"),
+        ("D7", "预防再发 (Prevent Recurrence)", d7_content),
         ("D8", "结论与签字 (Congratulate the Team)", "(签字区)"),
     ]
 

@@ -148,13 +148,13 @@ def _sanitize_filename(name: str) -> str:
 
 
 def _sanitize_path(path: str) -> str:
-    """清理完整路径中的非法文件名字符（只处理末尾的文件名部分）。"""
+    """清理路径中文件名部分的非法字符，不动目录分隔符和驱动器号。"""
     import re
-    # 只替换路径末尾文件名部分的非法字符，不动目录分隔符
-    safe = re.sub(r'[\\:*?"<>|]', '_', path)
-    # 路径中的正斜杠保留（Unix/URL 合法），反斜杠替换
-    safe = safe.replace('\\', '_')
-    return safe
+    p = Path(path)
+    # 只对文件名（最后一部分）做清理，目录部分保持原样
+    safe_stem = re.sub(r'[\\/:*?"<>|]', '_', p.stem)
+    safe_name = safe_stem + p.suffix
+    return str(p.with_name(safe_name))
 
 
 def excel_save(wb, filepath: str | None, filename: str, output_dir: Path) -> str:

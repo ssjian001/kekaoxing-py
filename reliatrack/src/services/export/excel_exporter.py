@@ -50,14 +50,19 @@ def export_tasks_excel(
         except ValueError:
             pass
 
-    res_map: dict[int, tuple[int, int]] = {}
+    # 预计算每个 task 的 pass/fail/conditional 计数（O(N) 一次性）
+    res_map: dict[int, tuple[int, int, int]] = {}
     if results:
         for r in results:
             if r.task_id:
-                p, t = res_map.get(r.task_id, (0, 0))
+                p, f, c = res_map.get(r.task_id, (0, 0, 0))
                 if r.result == "pass":
                     p += 1
-                res_map[r.task_id] = (p, t + 1)
+                elif r.result == "fail":
+                    f += 1
+                elif r.result == "conditional":
+                    c += 1
+                res_map[r.task_id] = (p, f, c)
 
     excel_write_title_block(
         ws, f"测试计划: {plan.name}", "A1:M1",
@@ -78,7 +83,8 @@ def export_tasks_excel(
         else:
             planned_start = str(task.start_day) if task.start_day else "—"
             planned_end = "—"
-        pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
+        pass_count, fail_count, cond_count = res_map.get(task.id, (0, 0, 0)) if task.id else (0, 0, 0)
+        total = pass_count + fail_count + cond_count
         rate_text = f"{pass_count}/{total}" if total > 0 else "—"
         tech_name = (technician_names or {}).get(task.technician_id, "") if task.technician_id else ""
 
