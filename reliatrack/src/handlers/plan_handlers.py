@@ -743,6 +743,8 @@ class PlanHandlers:
                 if issue_count:
                     msg += f"，自动创建 {issue_count} 条 Issue"
                 self._win.toast(msg, "success")
+                # 录入结果后自动更新任务进度和状态
+                self._auto_update_task_progress(ctrl, task.id)
                 self._win.ctrl.notify_data_changed("task")
                 self._win.ctrl.notify_data_changed("issue")
         dlg.deleteLater()
@@ -858,6 +860,44 @@ class PlanHandlers:
         if not parts:
             return ""
         return f"将同时删除：{'、'.join(parts)}。\n"
+
+    def _auto_update_task_progress(self, ctrl, task_id: int) -> None:
+        """录入结果后，根据已有结果自动计算任务进度和状态。
+
+        进度 = 有结果的样品数 / 计划关联样品总数 × 100。
+        状态：全部结果 pass 且进度=100 → completed；有 fail → failed；部分录入 → in_progress。
+        """
+        if not ctrl.test_plan_service or not ctrl.test_tasks:
+            return
+        task = ctrl.test_tasks.get_by_id(task_id)
+        if not task or not task.plan_id:
+            return
+        # 计划关联的样品数（即结果矩阵的总列数）
+        plan_samples = ctrl.sample_service.get_by_project(
+            ctrl.test_plan_service.get_plan(task.plan_id).project_id
+        ) if ctrl.sample_service and task.plan_id else []
+        # 此任务的样品列表（通过结果矩阵中实际使用的 sample_id）
+        plan = ctrl.test_plan_service.get_plan(task.plan_id)
+        if not plan:
+            return
+        sample_count = len(plan_samples) if plan_samples else 1  # 无样品时按 1 算
+        if sample_count == 0:
+            sample_count = 1
+        # 查已录入的结果数
+        results = ctrl.test_plan_service.get_task_results(task_id)
+        result_count = len(results)
+        # 计算进度
+        progress = min(result_count / sample_count * 100, 100.0)
+        # 计算状态
+        if result_count == 0:
+            status = "pending"
+        elif result_count >= sample_count and all(r.result == "pass" for r in results):
+            status = "completed"
+        elif any(r.result == "fail" for r in results):
+            status = "failed"
+        else:
+            status = "in_progress"
+        ctrl.test_plan_service.update_task(task_id, progress=progress, status=status)
 
     def _on_task_status_advance(self, task: object, new_status: str) -> None:
         """一键推进任务状态 — 自动填日期和进度。
