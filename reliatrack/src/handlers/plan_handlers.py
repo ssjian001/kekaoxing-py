@@ -864,23 +864,22 @@ class PlanHandlers:
     def _auto_update_task_progress(self, ctrl, task_id: int) -> None:
         """录入结果后，根据已有结果自动计算任务进度和状态。
 
-        进度 = 有结果的样品数 / 计划关联样品总数 × 100。
-        状态：全部结果 pass 且进度=100 → completed；有 fail → failed；部分录入 → in_progress。
+        进度 = 有结果的样品数 / 任务关联样品数 × 100。
+        状态：全部 pass 且录满 → completed；有 fail → failed；否则保留原状态。
         """
+        import json as _json
+
         if not ctrl.test_plan_service or not ctrl.test_tasks:
             return
         task = ctrl.test_tasks.get_by_id(task_id)
         if not task or not task.plan_id:
             return
-        # 计划关联的样品数（即结果矩阵的总列数）
-        plan_samples = ctrl.sample_service.get_by_project(
-            ctrl.test_plan_service.get_plan(task.plan_id).project_id
-        ) if ctrl.sample_service and task.plan_id else []
-        # 此任务的样品列表（通过结果矩阵中实际使用的 sample_id）
-        plan = ctrl.test_plan_service.get_plan(task.plan_id)
-        if not plan:
-            return
-        sample_count = len(plan_samples) if plan_samples else 1  # 无样品时按 1 算
+        # 任务关联的样品数（task.sample_ids JSON 数组）
+        try:
+            task_sample_ids = _json.loads(task.sample_ids) if task.sample_ids else []
+        except (ValueError, TypeError):
+            task_sample_ids = []
+        sample_count = len(task_sample_ids) if task_sample_ids else 1
         if sample_count == 0:
             sample_count = 1
         # 查已录入的结果数
@@ -896,6 +895,7 @@ class PlanHandlers:
         elif any(r.result == "fail" for r in results):
             status = "failed"
         else:
+            # 有结果但未录满或含 conditional → 进行中
             status = "in_progress"
         ctrl.test_plan_service.update_task(task_id, progress=progress, status=status)
 
