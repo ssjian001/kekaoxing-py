@@ -343,7 +343,7 @@ class RefreshHandlers:
             if plan_id is None:
                 return
             tasks = ctrl.test_plan_service.get_tasks(plan_id)
-            max_day = max((t.start_day + t.duration for t in tasks), default=30)
+            max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
 
             # 构建技术员映射 {technician_id: name}
             technician_map: dict[int, str] = {}

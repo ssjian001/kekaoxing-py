@@ -298,7 +298,7 @@ class TestPlanView(QWidget):
         for task in tasks:
             if task.status in ("completed", "skipped"):
                 continue
-            end_day = task.start_day + task.duration
+            end_day = (task.start_day or 0) + task.duration
             end_date = base + timedelta(days=end_day)
 
             # 超期

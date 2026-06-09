@@ -1031,7 +1031,7 @@ class _CAPADialog(_BaseDialog):
         data = {
             "action": self._action_edit.toPlainText().strip(),
             "due_date": self._due_date_edit.date().toString("yyyy-MM-dd")
-                if self._due_date_edit.date().isValid() and self._due_date_edit.date().year() >= 2020
+                if self._due_date_edit.date().isValid()
                 else "",
             "assignee_id": None,
             "assignee_name": assignee_name,

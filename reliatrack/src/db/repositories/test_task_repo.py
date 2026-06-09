@@ -25,7 +25,8 @@ class TestTaskRepository(BaseRepository):
         "equipment_id", "sample_ids", "duration", "start_day", "progress", "status",
         "priority", "environment", "log_file", "dependencies", "notes", "temperature",
         "humidity", "accept_criteria", "actual_start_date", "actual_end_date",
-        "sort_order", "created_at", "updated_at",
+        "sort_order", "manual_scheduled",
+        "created_at", "updated_at",
     ]
 
     def __init__(self, conn: apsw.Connection) -> None:

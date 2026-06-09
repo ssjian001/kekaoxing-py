@@ -147,7 +147,7 @@ def export_to_word(
     completed = sum(1 for t in tasks if t.status == "completed")
     in_progress = sum(1 for t in tasks if t.status == "in_progress")
     pending = sum(1 for t in tasks if t.status == "pending")
-    total_days = max((t.start_day + t.duration for t in tasks), default=0)
+    total_days = max(((t.start_day or 0) + t.duration for t in tasks), default=0)
     open_issues = sum(1 for i in issues if i.status in ("open", "analyzing"))
     in_stock = sum(1 for s in samples if s.status == "in_stock")
 

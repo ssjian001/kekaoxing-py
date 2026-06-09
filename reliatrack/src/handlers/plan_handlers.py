@@ -366,8 +366,8 @@ class PlanHandlers:
         if dlg.exec():
             data = dlg.get_data()
             kwargs = {k: v for k, v in data.items() if k != "id"}
-            # project_id 为 0 表示未选择项目，弹出提示
-            if kwargs.get("project_id") == 0:
+            # project_id 为 0 或 None 表示未选择项目，弹出提示
+            if not kwargs.get("project_id"):
                 QMessageBox.warning(self._win, "校验失败", "请选择关联项目后再创建计划。")
                 dlg.deleteLater()
                 return
@@ -465,7 +465,7 @@ class PlanHandlers:
             return
         plan = ctrl.test_plan_service.get_plan(plan_id)
         tasks = ctrl.test_plan_service.get_tasks(plan_id)
-        max_day = max((t.start_day + t.duration for t in tasks), default=30)
+        max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
 
         # 构建技术员映射
         technician_map: dict[int, str] = {}

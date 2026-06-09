@@ -27,6 +27,7 @@ class TestPlanRepository(BaseRepository):
             "status", "priority", "environment", "log_file", "dependencies",
             "notes", "temperature", "humidity", "accept_criteria",
             "actual_start_date", "actual_end_date", "sort_order",
+            "manual_scheduled",
             "created_at", "updated_at",
         )
         cols_sql = ", ".join(col_names)

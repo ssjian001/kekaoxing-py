@@ -176,7 +176,7 @@ class PlanEditDialog(_BaseDialog):
             "status": status_value,
         }
         # 始终包含 project_id，未选择时默认为 0
-        data["project_id"] = project_id if project_id is not None else 0
+        data["project_id"] = project_id
 
         # 编辑模式：附带 id
         if self._plan and self._plan.id is not None:
