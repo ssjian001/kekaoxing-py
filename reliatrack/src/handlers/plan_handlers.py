@@ -560,8 +560,8 @@ class PlanHandlers:
 
     def _on_refresh_all(self) -> None:
         """完整刷新。"""
-        if hasattr(self._win, 'refresh_all'):
-            self._win.refresh_all()
+        if hasattr(self._win, '_refresh_all'):
+            self._win._refresh_all()
 
     def _is_archived_plan(self) -> bool:
         """检查当前选中计划是否为归档状态；是则弹出 toast 并返回 True。"""
