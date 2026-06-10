@@ -17,6 +17,7 @@ class TestPlanStatus(str, Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     PAUSED = "paused"
+    ARCHIVED = "archived"
 
 
 class TestTaskStatus(str, Enum):

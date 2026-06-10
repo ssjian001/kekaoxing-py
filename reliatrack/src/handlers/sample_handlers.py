@@ -123,7 +123,7 @@ class SampleHandlers:
         task_list: list = []
         filter_pid = self._win.get_project_filter_id()
         if filter_pid and ctrl.test_plan_service:
-            plans = ctrl.test_plan_service.get_plans_by_project(filter_pid)
+            plans = ctrl.test_plan_service.get_active_plans_by_project(filter_pid)
             for p in plans:
                 if p.id is not None:
                     task_list.extend(ctrl.test_plan_service.get_tasks(p.id))

@@ -84,6 +84,7 @@ TEST_PLAN_STATUS_COLORS: dict[str, str] = {
     "in_progress": STATUS_BLUE,
     "completed": STATUS_GREEN,
     "paused": STATUS_YELLOW,
+    "archived": STATUS_SURFACE,
 }
 
 # 测试任务状态

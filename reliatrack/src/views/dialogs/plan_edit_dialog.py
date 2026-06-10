@@ -109,7 +109,15 @@ class PlanEditDialog(_BaseDialog):
         self._add_separator()
 
         # ── 状态 ──
-        status_labels = [label for _, label in self._STATUS_LABELS]
+        is_archived = plan is not None and plan.status == "archived"
+        if is_archived:
+            # 归档计划：状态固定显示"已归档"，不可编辑
+            editable_status_labels = [label for val, label in self._STATUS_LABELS
+                                      if val == "archived"]
+        else:
+            # 非归档计划：排除 archived 选项
+            editable_status_labels = [label for val, label in self._STATUS_LABELS
+                                      if val != "archived"]
         current_status = "draft"
         if plan:
             for val, label in self._STATUS_LABELS:
@@ -118,9 +126,11 @@ class PlanEditDialog(_BaseDialog):
                     break
         self._status_combo = self._add_combo_field(
             "状态",
-            items=status_labels,
+            items=editable_status_labels,
             default=current_status,
         )
+        if is_archived:
+            self._status_combo.setEnabled(False)
 
         # 自动建议前缀
         if not is_edit or not (plan and plan.task_prefix):

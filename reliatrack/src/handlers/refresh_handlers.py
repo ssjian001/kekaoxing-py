@@ -183,7 +183,7 @@ class RefreshHandlers:
         if filter_plan_id:
             filtered_tasks = ctrl.test_tasks.get_by_plan(filter_plan_id)
         elif filter_project_id and ctrl.test_plan_service:
-            filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id)
+            filtered_tasks = ctrl.test_plan_service.get_tasks_by_project(filter_project_id, exclude_archived=True)
         else:
             filtered_tasks = ctrl.test_tasks.list_all()
         self._win.issue_view.set_context_data(tasks=filtered_tasks)
@@ -241,9 +241,9 @@ class RefreshHandlers:
         plan_count = 0
         if ctrl.test_plan_service:
             p_list = (
-                ctrl.test_plan_service.get_plans_by_project(filter_project_id)
+                ctrl.test_plan_service.get_active_plans_by_project(filter_project_id)
                 if filter_project_id
-                else ctrl.test_plan_service.list_all_plans()
+                else ctrl.test_plan_service.list_all_active_plans()
             )
             plan_count = len(p_list) if p_list else 0
 
@@ -320,13 +320,16 @@ class RefreshHandlers:
         if not ctrl or not ctrl.test_plan_service or not ctrl.test_tasks:
             return
         filter_project_id = self._get_filter_project_id()
-        # 按项目筛选计划
+        show_archived = getattr(self._win.test_plan_view, 'show_archived', False)
+        # 按项目筛选计划（默认排除归档）
         if filter_project_id:
             all_plans = ctrl.test_plan_service.get_plans_by_project(
                 filter_project_id
             )
         else:
             all_plans = ctrl.test_plan_service.list_all_plans()
+        if not show_archived:
+            all_plans = [p for p in all_plans if p.status != "archived"]
         # 保存当前选中索引 — 通过公共方法设置 combo 并恢复选中
         current_plan_id = self._win.test_plan_view.get_selected_plan_id()
         plan_names = [p.name for p in all_plans]

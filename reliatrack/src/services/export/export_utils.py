@@ -18,6 +18,7 @@ from src.constants import (
     TASK_STATUS_LABELS,
     ISSUE_STATUS_LABELS,
     SAMPLE_STATUS_LABELS,
+    PLAN_STATUS_OPTIONS,
 )
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ CATEGORY_MAP = {
 
 # Merged status → Chinese label map
 STATUS_MAP: dict[str, str] = {
+    **dict(PLAN_STATUS_OPTIONS),
     **TASK_STATUS_LABELS,
     **ISSUE_STATUS_LABELS,
     **SAMPLE_STATUS_LABELS,

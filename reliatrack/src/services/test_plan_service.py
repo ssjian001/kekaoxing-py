@@ -34,6 +34,16 @@ class TestPlanService:
     def get_plans_by_project(self, project_id: int) -> list[TestPlan]:
         return self._plan_repo.get_by_project(project_id)
 
+    def get_active_plans_by_project(self, project_id: int) -> list[TestPlan]:
+        """获取项目下非归档的计划（不含 archived）。"""
+        return [p for p in self._plan_repo.get_by_project(project_id)
+                if p.status != "archived"]
+
+    def get_archived_plans_by_project(self, project_id: int) -> list[TestPlan]:
+        """获取项目下已归档的计划。"""
+        return [p for p in self._plan_repo.get_by_project(project_id)
+                if p.status == "archived"]
+
     def update_plan(self, plan_id: int, **kwargs: object) -> None:
         self._plan_repo.update(plan_id, **kwargs)
 
@@ -53,6 +63,11 @@ class TestPlanService:
     def list_all_plans(self) -> list[TestPlan]:
         return self._plan_repo.list_all()
 
+    def list_all_active_plans(self) -> list[TestPlan]:
+        """获取所有非归档的计划。"""
+        return [p for p in self._plan_repo.list_all()
+                if p.status != "archived"]
+
     # ── 任务 ──
 
     def create_task(self, plan_id: int, name: str, **kwargs: object) -> int:
@@ -64,9 +79,22 @@ class TestPlanService:
     def get_tasks(self, plan_id: int) -> list[TestTask]:
         return self._plan_repo.get_tasks(plan_id)
 
-    def get_tasks_by_project(self, project_id: int) -> list[TestTask]:
-        """按项目获取任务（SQL 过滤，非全表加载）。"""
-        return self._task_repo.get_by_project(project_id)
+    def get_tasks_by_project(self, project_id: int, *,
+                             exclude_archived: bool = False) -> list[TestTask]:
+        """按项目获取任务（SQL 过滤，非全表加载）。
+
+        Args:
+            exclude_archived: 为 True 时排除已归档计划的任务。
+        """
+        tasks = self._task_repo.get_by_project(project_id)
+        if exclude_archived:
+            archived_plan_ids: set[int] = set()
+            for p in self._plan_repo.get_by_project(project_id):
+                if p.status == "archived" and p.id is not None:
+                    archived_plan_ids.add(p.id)
+            if archived_plan_ids:
+                tasks = [t for t in tasks if t.plan_id not in archived_plan_ids]
+        return tasks
 
     def get_task_dependencies(self, task_id: int) -> list[TestTask]:
         return self._task_repo.get_dependencies(task_id)

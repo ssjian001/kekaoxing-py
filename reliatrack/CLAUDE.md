@@ -132,6 +132,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - 一键总结报告按钮：`plan_handlers._on_summary_report` 组装数据 → `ExportService.export_to_word`
 - 依赖编辑：弹出式对话框（QListWidget checkbox 多选），按排程排序 + 当前任务参照行，保存时校验自依赖和 ID 有效性
 - 从计划导入：`plan_handlers._on_import_from_plan` → 选来源计划（QInputDialog）→ 勾选任务（ImportTasksFromPlanDialog）→ `service.import_tasks_from_plan` 批量复制模板字段
+- 计划归档：已完成计划可归档（`_on_plan_archive`），归档后从默认视图隐藏，可通过"显示已归档"复选框查看；归档计划只读（任务增删改、结果录入、甘特图拖拽、排程、导入全部拦截 toast）；取消归档恢复为 completed
 - 结果录入对话框（`test_result_dialog.py`）：pending 行蓝色高亮、判定准则显示、环境值批量填充、`_update_row_style()` 状态机
 
 ### 排程引擎
@@ -225,7 +226,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_arch_optimization.py` — 架构优化验证测试
 - `tests/test_handlers.py` — Handler 层集成测试
 - `tests/test_session_20260512.py` — 会话特定功能测试
-- 共 **341 个 pytest 测试**，全量通过
+- 共 **341 个 pytest 测试**（340 通过，1 个预有失败 test_boundary.py::test_plan_edit_dialog）
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）

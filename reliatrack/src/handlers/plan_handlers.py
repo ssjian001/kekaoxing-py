@@ -44,7 +44,11 @@ class PlanHandlers:
         v.act_add_plan.triggered.connect(self._on_plan_add)
         v.act_edit_plan.triggered.connect(self._on_plan_edit)
         v.act_delete_plan.triggered.connect(self._on_plan_delete)
+        v.act_archive_plan.triggered.connect(self._on_plan_archive)
+        v.act_unarchive_plan.triggered.connect(self._on_plan_unarchive)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
+        v._plan_combo.currentIndexChanged.connect(self._update_plan_menu)
+        v._chk_show_archived.toggled.connect(self._on_refresh_all)
         # 任务管理菜单
         v.act_add_task.triggered.connect(self._on_task_add)
         v.act_edit_task.triggered.connect(self._on_task_edit_menu)
@@ -72,6 +76,8 @@ class PlanHandlers:
         4. 用户确认 → apply_schedule 写 DB + undo
         5. 用户重新排程 → 带 user_locked_days 重跑预览
         """
+        if self._is_archived_plan():
+            return
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.scheduler_service:
             return
@@ -186,6 +192,8 @@ class PlanHandlers:
 
     def _on_gantt_task_moved(self, task_id: int, new_start_day: int) -> None:
         """甘特图拖拽移动任务后，写回数据库并注册撤销。"""
+        if self._is_archived_plan():
+            return
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_tasks:
             return
@@ -204,6 +212,8 @@ class PlanHandlers:
 
     def _on_import_from_plan(self) -> None:
         """从同项目其他计划导入任务。"""
+        if self._is_archived_plan():
+            return
         from PySide6.QtCore import Qt
         from PySide6.QtWidgets import QInputDialog
         from src.views.dialogs.import_tasks_from_plan_dialog import ImportTasksFromPlanDialog
@@ -273,6 +283,8 @@ class PlanHandlers:
 
     def _on_task_batch_import(self) -> None:
         """测试任务批量导入。"""
+        if self._is_archived_plan():
+            return
         ctrl = self._win.ctrl
         if ctrl is None or ctrl.test_plan_service is None:
             return
@@ -455,6 +467,114 @@ class PlanHandlers:
             catch_value_error=True,
         )
 
+    def _on_plan_archive(self) -> None:
+        """归档当前选中的已完成计划。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self._win.toast("请先选中一个测试计划", "info")
+            return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if plan is None:
+            return
+        if plan.status != "completed":
+            self._win.toast("只有已完成计划可以归档", "warning")
+            return
+        reply = QMessageBox.question(
+            self._win,
+            "确认归档",
+            f"确定要将计划「{plan.name}」归档吗？\n"
+            f"归档后计划将从默认视图中隐藏，数据和导出不受影响。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.update_plan,
+            action_args=(plan_id,),
+            action_kwargs={"status": "archived"},
+            toast_msg=f"计划「{plan.name}」已归档",
+            entity="plan",
+            error_title="归档失败",
+        )
+
+    def _on_plan_unarchive(self) -> None:
+        """取消归档，恢复为已完成。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self._win.toast("请先选中一个测试计划", "info")
+            return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if plan is None:
+            return
+        if plan.status != "archived":
+            return
+        reply = QMessageBox.question(
+            self._win,
+            "确认取消归档",
+            f"确定要将计划「{plan.name}」恢复为非归档状态吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.update_plan,
+            action_args=(plan_id,),
+            action_kwargs={"status": "completed"},
+            toast_msg=f"计划「{plan.name}」已取消归档",
+            entity="plan",
+            error_title="取消归档失败",
+        )
+
+    def _update_plan_menu(self) -> None:
+        """根据当前选中计划的状态更新菜单可见性。"""
+        ctrl = self._win.ctrl
+        v = self._win.test_plan_view
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        plan_id = v.get_selected_plan_id()
+        if plan_id is None:
+            v.act_archive_plan.setVisible(False)
+            v.act_unarchive_plan.setVisible(False)
+            return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if plan is None:
+            v.act_archive_plan.setVisible(False)
+            v.act_unarchive_plan.setVisible(False)
+            return
+        v.act_archive_plan.setVisible(plan.status == "completed")
+        v.act_unarchive_plan.setVisible(plan.status == "archived")
+
+    def _on_refresh_all(self) -> None:
+        """完整刷新。"""
+        if hasattr(self._win, 'refresh_all'):
+            self._win.refresh_all()
+
+    def _is_archived_plan(self) -> bool:
+        """检查当前选中计划是否为归档状态；是则弹出 toast 并返回 True。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return False
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            return False
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if plan is None:
+            return False
+        if plan.status == "archived":
+            self._win.toast("归档计划为只读，不可进行此操作", "warning")
+            return True
+        return False
+
     def _on_plan_changed(self, index: int) -> None:
         """切换测试计划时刷新任务列表。"""
         ctrl = self._win.ctrl
@@ -533,6 +653,8 @@ class PlanHandlers:
 
     def _on_task_add(self) -> None:
         """新建测试任务。"""
+        if self._is_archived_plan():
+            return
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
@@ -567,6 +689,8 @@ class PlanHandlers:
 
     def _on_task_edit_menu(self) -> None:
         """菜单触发：选中行后编辑任务。"""
+        if self._is_archived_plan():
+            return
         table = self._win.test_plan_view.task_table
         row = table.currentRow()
         task = table.get_task_at_row(row)
@@ -577,6 +701,8 @@ class PlanHandlers:
 
     def _on_task_delete_menu(self) -> None:
         """菜单触发：选中行后删除任务。"""
+        if self._is_archived_plan():
+            return
         table = self._win.test_plan_view.task_table
         row = table.currentRow()
         task = table.get_task_at_row(row)
@@ -587,6 +713,8 @@ class PlanHandlers:
 
     def _on_task_edit(self, task) -> None:
         """编辑测试任务。"""
+        if self._is_archived_plan():
+            return
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
@@ -629,6 +757,8 @@ class PlanHandlers:
 
     def _on_record_result(self) -> None:
         """录入测试结果 — 选中任务后打开结果录入弹窗。"""
+        if self._is_archived_plan():
+            return
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
@@ -808,7 +938,13 @@ class PlanHandlers:
 
     def _on_task_delete(self, task) -> None:
         """删除测试任务（不可撤销 — 级联子数据将一并删除）。"""
+        # 检查所属计划是否已归档
         ctrl = self._win.ctrl
+        if task and task.plan_id and ctrl and ctrl.test_plan_service:
+            plan = ctrl.test_plan_service.get_plan(task.plan_id)
+            if plan and plan.status == "archived":
+                self._win.toast("归档计划中的任务不可删除", "warning")
+                return
         if not ctrl or not ctrl.test_plan_service:
             return
         if task.id is None:
@@ -906,6 +1042,13 @@ class PlanHandlers:
             task: TestTask 对象。
             new_status: 目标状态 ("in_progress" 或 "completed")。
         """
+        # 检查所属计划是否已归档
+        ctrl = self._win.ctrl
+        if task and hasattr(task, 'plan_id') and task.plan_id and ctrl and ctrl.test_plan_service:
+            plan = ctrl.test_plan_service.get_plan(task.plan_id)
+            if plan and plan.status == "archived":
+                self._win.toast("归档计划中的任务不可变更状态", "warning")
+                return
         from src.models.test_plan import TestTask
         from datetime import date as _date
 

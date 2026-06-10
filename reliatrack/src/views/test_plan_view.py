@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QLabel,
     QComboBox,
+    QCheckBox,
     QFrame,
     QMenu,
     QMessageBox,
@@ -38,6 +39,8 @@ class TestPlanView(QWidget):
 
     # 转发甘特图拖拽信号
     task_moved = Signal(int, int)  # (task_id, new_start_day)
+
+    show_archived: bool = False  # 是否显示已归档计划
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -64,6 +67,10 @@ class TestPlanView(QWidget):
         self._act_add_plan = self._plan_menu.addAction("新建计划")
         self._act_edit_plan = self._plan_menu.addAction("编辑计划")
         self._plan_menu.addSeparator()
+        self._act_archive_plan = self._plan_menu.addAction("归档计划")
+        self._act_unarchive_plan = self._plan_menu.addAction("取消归档")
+        self._act_unarchive_plan.setVisible(False)
+        self._plan_menu.addSeparator()
         self._act_delete_plan = self._plan_menu.addAction("删除计划")
 
         self._btn_plan_manage = QToolButton()
@@ -72,8 +79,14 @@ class TestPlanView(QWidget):
         self._btn_plan_manage.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_plan_manage.setProperty("class", "action")
         self._btn_plan_manage.setFixedHeight(28)
-        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除")
+        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除、归档")
         toolbar.addWidget(self._btn_plan_manage)
+
+        # ── 显示归档 ──
+        self._chk_show_archived = QCheckBox("显示已归档")
+        self._chk_show_archived.setFixedHeight(28)
+        self._chk_show_archived.toggled.connect(self._on_toggle_archived)
+        toolbar.addWidget(self._chk_show_archived)
 
         # ── 任务管理 ──
         self._task_menu = QMenu(self)
@@ -413,6 +426,14 @@ class TestPlanView(QWidget):
         return self._act_delete_plan
 
     @property
+    def act_archive_plan(self) -> QAction:
+        return self._act_archive_plan
+
+    @property
+    def act_unarchive_plan(self) -> QAction:
+        return self._act_unarchive_plan
+
+    @property
     def btn_schedule(self) -> QPushButton:
         return self._btn_schedule
 
@@ -484,6 +505,10 @@ class TestPlanView(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes and self._on_delete_task:
             self._on_delete_task(task)
+
+    def _on_toggle_archived(self, checked: bool) -> None:
+        """显示/隐藏已归档计划切换。"""
+        self.show_archived = checked
 
 
 # ═══════════════════════════════════════════════════════════════════
