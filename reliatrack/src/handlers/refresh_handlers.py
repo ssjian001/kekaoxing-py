@@ -330,6 +330,9 @@ class RefreshHandlers:
             all_plans = ctrl.test_plan_service.list_all_plans()
         if not show_archived:
             all_plans = [p for p in all_plans if p.status != "archived"]
+        print(f"[DEBUG] _refresh_plans: filter_project_id={filter_project_id}, show_archived={show_archived}, plans={len(all_plans)}")
+        for p in all_plans:
+            print(f"[DEBUG]   plan id={p.id} status='{p.status}' name={p.name[:40]}")
         # 保存当前选中索引 — 通过公共方法设置 combo 并恢复选中
         current_plan_id = self._win.test_plan_view.get_selected_plan_id()
         plan_names = [p.name for p in all_plans]

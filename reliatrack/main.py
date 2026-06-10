@@ -518,7 +518,9 @@ class MainWindow(QMainWindow):
         else:
             # 选了项目 → 填充该项目的计划列表（排除归档）
             plans = ctrl.test_plan_service.get_active_plans_by_project(project_id)
+            print(f"[DEBUG] refresh_plan_combo: project_id={project_id}, plans={len(plans)}")
             for p in plans:
+                print(f"[DEBUG]   plan id={p.id} status='{p.status}' name={p.name[:40]}")
                 self._plan_filter_combo.addItem(p.name, p.id)
             self._plan_filter_combo.setEnabled(True)
 
