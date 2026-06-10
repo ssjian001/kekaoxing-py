@@ -371,6 +371,8 @@ class TestPlanView(QWidget):
             self._plan_combo.setItemData(i, name, Qt.ItemDataRole.ToolTipRole)
         self._plan_ids = plan_ids or list(range(len(plan_names)))
         self._plan_combo.blockSignals(False)
+        # blockSignals 期间 index 可能变化，手动触发菜单更新
+        self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
 
     def set_plans_and_restore(
         self, plan_names: list[str], plan_ids: list[int], restore_id: int | None = None,
@@ -396,6 +398,8 @@ class TestPlanView(QWidget):
         if self._plan_combo.count() > 0:
             self._plan_combo.setCurrentIndex(restore_idx)
         self._plan_combo.blockSignals(False)
+        # blockSignals 期间 index 可能变化，手动触发菜单更新
+        self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
 
     def get_selected_plan_id(self) -> int | None:
         """获取当前选中计划的 ID。"""
