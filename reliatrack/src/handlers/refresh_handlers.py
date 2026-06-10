@@ -321,14 +321,18 @@ class RefreshHandlers:
             return
         filter_project_id = self._get_filter_project_id()
         show_archived = getattr(self._win.test_plan_view, 'show_archived', False)
-        # 按项目筛选计划（默认排除归档）
+        # 按项目筛选计划（根据归档视图模式过滤）
         if filter_project_id:
             all_plans = ctrl.test_plan_service.get_plans_by_project(
                 filter_project_id
             )
         else:
             all_plans = ctrl.test_plan_service.list_all_plans()
-        if not show_archived:
+        if show_archived:
+            # 归档视图：只显示已归档的计划
+            all_plans = [p for p in all_plans if p.status == "archived"]
+        else:
+            # 正常视图：排除归档的计划
             all_plans = [p for p in all_plans if p.status != "archived"]
         # 保存当前选中索引 — 通过公共方法设置 combo 并恢复选中
         current_plan_id = self._win.test_plan_view.get_selected_plan_id()

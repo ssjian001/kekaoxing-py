@@ -548,6 +548,13 @@ class PlanHandlers:
         v = self._win.test_plan_view
         v.show_archived = checked
         v._btn_archived.setText("返回计划" if checked else "查看归档")
+        # 归档视图下禁用写入操作
+        v.act_add_plan.setEnabled(not checked)
+        v.act_add_task.setEnabled(not checked)
+        v.act_import_tasks.setEnabled(not checked)
+        v.act_import_from_plan.setEnabled(not checked)
+        v.btn_schedule.setEnabled(not checked)
+        v.btn_record_result.setEnabled(not checked)
         self._on_refresh_all()
         if hasattr(self._win, 'refresh_plan_combo'):
             self._win.refresh_plan_combo()
