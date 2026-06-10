@@ -10,7 +10,7 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack
 ## 数据库
 
 - **位置**：`data/reliatrack.db`（自动创建）
-- **Schema 版本**：v21
+- **Schema 版本**：v22
 - **备份**：`data/backups/` 目录下自动/手动备份
 - **迁移**：`.venv/bin/python3 migrate.py`（运行 pending migrations）
 
@@ -26,7 +26,7 @@ cp data/reliatrack.db "data/backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
 ## 测试
 
 ```bash
-# 单元测试（216 项）
+# 单元测试（326 项）
 .venv/bin/python -m pytest tests/ -v
 
 # E2E 测试（脚本式，需 offscreen 模式）

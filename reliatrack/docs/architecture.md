@@ -19,7 +19,7 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v21
+### Schema 版本：v22
 
 - **v21**：Issue 责任类别（ME/EE/AE/SW/NPI/QE/Other）+ 状态多选筛选 + CheckBox QProxyStyle
 - **v20**：任务编号前缀
