@@ -516,8 +516,8 @@ class MainWindow(QMainWindow):
             # 全部项目 → 禁用计划筛选
             self._plan_filter_combo.setEnabled(False)
         else:
-            # 选了项目 → 填充该项目的计划列表
-            plans = ctrl.test_plan_service.get_plans_by_project(project_id)
+            # 选了项目 → 填充该项目的计划列表（排除归档）
+            plans = ctrl.test_plan_service.get_active_plans_by_project(project_id)
             for p in plans:
                 self._plan_filter_combo.addItem(p.name, p.id)
             self._plan_filter_combo.setEnabled(True)
