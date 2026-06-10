@@ -503,6 +503,8 @@ class PlanHandlers:
         )
         if ok:
             self._on_refresh_all()
+            if hasattr(self._win, 'refresh_plan_combo'):
+                self._win.refresh_plan_combo()
 
     def _on_plan_unarchive(self) -> None:
         """取消归档，恢复为已完成。"""
@@ -538,6 +540,8 @@ class PlanHandlers:
         )
         if ok:
             self._on_refresh_all()
+            if hasattr(self._win, 'refresh_plan_combo'):
+                self._win.refresh_plan_combo()
 
     def _update_plan_menu(self) -> None:
         """根据当前选中计划的状态更新菜单可见性。"""
