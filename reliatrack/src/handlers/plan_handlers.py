@@ -48,7 +48,7 @@ class PlanHandlers:
         v.act_unarchive_plan.triggered.connect(self._on_plan_unarchive)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
         v._plan_combo.currentIndexChanged.connect(self._update_plan_menu)
-        v._chk_show_archived.toggled.connect(self._on_refresh_all)
+        v._btn_archived.toggled.connect(self._on_toggle_archived_view)
         # 任务管理菜单
         v.act_add_task.triggered.connect(self._on_task_add)
         v.act_edit_task.triggered.connect(self._on_task_edit_menu)
@@ -542,6 +542,15 @@ class PlanHandlers:
             self._on_refresh_all()
             if hasattr(self._win, 'refresh_plan_combo'):
                 self._win.refresh_plan_combo()
+
+    def _on_toggle_archived_view(self, checked: bool) -> None:
+        """切换查看归档计划视图。"""
+        v = self._win.test_plan_view
+        v.show_archived = checked
+        v._btn_archived.setText("返回计划" if checked else "查看归档")
+        self._on_refresh_all()
+        if hasattr(self._win, 'refresh_plan_combo'):
+            self._win.refresh_plan_combo()
 
     def _update_plan_menu(self) -> None:
         """根据当前选中计划的状态更新菜单可见性。"""

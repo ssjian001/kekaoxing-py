@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QToolButton,
     QLabel,
     QComboBox,
-    QCheckBox,
     QFrame,
     QMenu,
     QMessageBox,
@@ -82,11 +81,15 @@ class TestPlanView(QWidget):
         self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除、归档")
         toolbar.addWidget(self._btn_plan_manage)
 
-        # ── 显示归档 ──
-        self._chk_show_archived = QCheckBox("显示已归档")
-        self._chk_show_archived.setFixedHeight(28)
-        self._chk_show_archived.toggled.connect(self._on_toggle_archived)
-        toolbar.addWidget(self._chk_show_archived)
+        # ── 查看归档 ──
+        self._btn_archived = QToolButton()
+        self._btn_archived.setText("查看归档")
+        self._btn_archived.setCheckable(True)
+        self._btn_archived.setProperty("class", "action")
+        self._btn_archived.setFixedHeight(28)
+        self._btn_archived.setToolTip("切换查看已归档的计划")
+        self._btn_archived.toggled.connect(self._on_toggle_archived)
+        toolbar.addWidget(self._btn_archived)
 
         # ── 任务管理 ──
         self._task_menu = QMenu(self)
