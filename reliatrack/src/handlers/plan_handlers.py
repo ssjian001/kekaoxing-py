@@ -492,7 +492,7 @@ class PlanHandlers:
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        exec_crud(
+        ok = exec_crud(
             win=self._win,
             action=ctrl.test_plan_service.update_plan,
             action_args=(plan_id,),
@@ -501,6 +501,8 @@ class PlanHandlers:
             entity="plan",
             error_title="归档失败",
         )
+        if ok:
+            self._on_refresh_all()
 
     def _on_plan_unarchive(self) -> None:
         """取消归档，恢复为已完成。"""
@@ -525,7 +527,7 @@ class PlanHandlers:
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        exec_crud(
+        ok = exec_crud(
             win=self._win,
             action=ctrl.test_plan_service.update_plan,
             action_args=(plan_id,),
@@ -534,6 +536,8 @@ class PlanHandlers:
             entity="plan",
             error_title="取消归档失败",
         )
+        if ok:
+            self._on_refresh_all()
 
     def _update_plan_menu(self) -> None:
         """根据当前选中计划的状态更新菜单可见性。"""
