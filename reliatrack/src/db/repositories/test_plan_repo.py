@@ -19,6 +19,17 @@ class TestPlanRepository(BaseRepository):
     def get_by_project(self, project_id: int) -> list[TestPlan]:
         return self.list_all(project_id=project_id)
 
+    def get_active_by_project(self, project_id: int) -> list[TestPlan]:
+        """获取项目下非归档的计划（SQL 层过滤）。"""
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        rows = self._conn.execute(
+            f"SELECT {cols_sql} FROM [test_plans] "
+            f"WHERE project_id = ? AND status != ? ORDER BY id",
+            (project_id, "archived"),
+        ).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
+
     def get_tasks(self, plan_id: int) -> list[TestTask]:
         """获取计划下所有测试任务。"""
         col_names = (

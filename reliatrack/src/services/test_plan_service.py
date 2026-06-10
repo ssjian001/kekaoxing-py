@@ -35,9 +35,8 @@ class TestPlanService:
         return self._plan_repo.get_by_project(project_id)
 
     def get_active_plans_by_project(self, project_id: int) -> list[TestPlan]:
-        """获取项目下非归档的计划（不含 archived）。"""
-        return [p for p in self._plan_repo.get_by_project(project_id)
-                if p.status != "archived"]
+        """获取项目下非归档的计划（SQL 层过滤，不含 archived）。"""
+        return self._plan_repo.get_active_by_project(project_id)
 
     def get_archived_plans_by_project(self, project_id: int) -> list[TestPlan]:
         """获取项目下已归档的计划。"""
