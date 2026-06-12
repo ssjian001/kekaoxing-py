@@ -160,7 +160,7 @@ class PlanEditDialog(_BaseDialog):
         新建时不返回 id，编辑时返回 id。
         """
         # 解析项目 ID
-        project_id: int | None = None
+        project_id = 0
         proj_text = self._project_combo.currentText()
         if proj_text != "（无）" and " — " in proj_text:
             try:
