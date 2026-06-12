@@ -83,6 +83,14 @@ def show() -> None:
         issues = issue_svc.get_by_project(proj_id)
         samples = sample_svc.get_by_project(proj_id)
 
+        # 选择导出计划（多计划项目）
+        selected_plan = None
+        if plans:
+            plan_sel_map = {p.name: p for p in plans if p.name}
+            if plan_sel_map:
+                plan_sel_name = st.selectbox("选择导出计划", list(plan_sel_map.keys()), key="export_plan")
+                selected_plan = plan_sel_map[plan_sel_name]
+
         # 也获取项目对象
         proj_obj = p_svc.get(proj_id)
 
@@ -92,12 +100,12 @@ def show() -> None:
         with col_e1:
             st.markdown("##### Excel")
             if st.button("📊 导出任务 Excel", use_container_width=True):
-                if plans and plans[0].id:
-                    tasks = plan_svc.get_tasks(plans[0].id)
+                if selected_plan and selected_plan.id:
+                    tasks = plan_svc.get_tasks(selected_plan.id)
                     buf = io.BytesIO()
                     try:
                         path = export_service.export_tasks_excel(
-                            plans[0], tasks, filepath=f"/tmp/report_{export_proj}.xlsx"
+                            selected_plan, tasks, filepath=f"/tmp/report_{export_proj}.xlsx"
                         )
                         with open(path, "rb") as f:
                             buf.write(f.read())
@@ -132,8 +140,8 @@ def show() -> None:
         with col_e2:
             st.markdown("##### PDF")
             if st.button("📄 导出报告 PDF", use_container_width=True):
-                if plans and proj_obj:
-                    tasks = plan_svc.get_tasks(plans[0].id) if plans[0].id else []
+                if selected_plan and proj_obj:
+                    tasks = plan_svc.get_tasks(selected_plan.id) if selected_plan.id else []
                     buf = io.BytesIO()
                     try:
                         path = export_service.export_report_pdf(
@@ -152,13 +160,13 @@ def show() -> None:
                         st.error(f"导出失败: {e}")
 
             if st.button("📄 导出 DVPR PDF", use_container_width=True):
-                if plans and plans[0].id:
-                    tasks = plan_svc.get_tasks(plans[0].id)
+                if selected_plan and selected_plan.id:
+                    tasks = plan_svc.get_tasks(selected_plan.id)
                     results = plan_svc.get_task_results(tasks[0].id) if tasks else []
                     buf = io.BytesIO()
                     try:
                         path = export_service.export_dvpr_pdf(
-                            plans[0], tasks, results, issues, samples,
+                            selected_plan, tasks, results, issues, samples,
                             filepath=f"/tmp/dvpr_{export_proj}.pdf"
                         )
                         with open(path, "rb") as f:
@@ -176,8 +184,8 @@ def show() -> None:
         with col_e3:
             st.markdown("##### Word")
             if st.button("📝 导出 Word 报告", use_container_width=True):
-                if plans and proj_obj:
-                    tasks = plan_svc.get_tasks(plans[0].id) if plans[0].id else []
+                if selected_plan and proj_obj:
+                    tasks = plan_svc.get_tasks(selected_plan.id) if selected_plan.id else []
                     buf = io.BytesIO()
                     try:
                         path = export_service.export_to_word(

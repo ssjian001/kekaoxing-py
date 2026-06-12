@@ -31,12 +31,6 @@ from src.services import (
     SampleService, TestPlanService, IssueService,
     SchedulerService, KnowledgeService, ExportService,
 )
-from src.constants import (
-    PROJECT_STATUS_REVERSE, SAMPLE_STATUS_REVERSE,
-    TASK_STATUS_LABELS, RESULT_OPTIONS,
-    ISSUE_STATUS_LABELS, SEVERITY_OPTIONS, PRIORITY_LABELS,
-    ISSUE_CATEGORY_OPTIONS,
-)
 
 
 # ── 数据库连接（缓存） ─────────────────────────────────────
@@ -128,11 +122,3 @@ def status_badge(status: str) -> str:
     """返回带状态图标的标签字符串。"""
     icon = STATUS_COLORS.get(status, "⚪")
     return f"{icon} {status}"
-
-
-# ── 通用 CRUD 侧边栏表单辅助 ──────────────────────────────
-
-def sidebar_form(title: str) -> st.sidebar:
-    """创建一个干净的侧边栏表单区域。"""
-    st.sidebar.markdown(f"---\n### {title}")
-    return st.sidebar

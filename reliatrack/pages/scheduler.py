@@ -4,6 +4,7 @@ from __future__ import annotations
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime, timedelta
 
 from pages._shared import get_services, dataclass_to_df
 from src.models.test_plan import TestTask
@@ -97,16 +98,18 @@ def show() -> None:
         st.subheader("📊 甘特图")
         if tasks:
             gantt_data = []
+            base_date = datetime.strptime(start_date, "%Y-%m-%d") if isinstance(start_date, str) and start_date else datetime.today()
             for t in tasks:
                 if t.id is None:
                     continue
                 task_start_day = t.start_day or 0
-                # 简单日期映射：从 start_date 偏移
+                start_dt = base_date + timedelta(days=task_start_day)
+                end_dt = base_date + timedelta(days=task_start_day + t.duration)
                 gantt_data.append({
-                    "任务": t.name or f"Task#{t.id}",
-                    "开始(天)": task_start_day,
-                    "结束(天)": task_start_day + t.duration,
-                    "工期": t.duration,
+                    "任务": t.name or f"任务#{t.id}",
+                    "开始日期": start_dt,
+                    "结束日期": end_dt,
+                    "工期(天)": t.duration,
                     "状态": t.status or "pending",
                     "设备": t.equipment_id or "—",
                 })
@@ -115,15 +118,15 @@ def show() -> None:
                 df_gantt = pd.DataFrame(gantt_data)
                 fig = px.timeline(
                     df_gantt,
-                    x_start="开始(天)",
-                    x_end="结束(天)",
+                    x_start="开始日期",
+                    x_end="结束日期",
                     y="任务",
                     color="状态",
-                    hover_data=["工期", "设备"],
+                    hover_data=["工期(天)", "设备"],
                     title=f"测试排程 — {plan_name}",
                 )
                 fig.update_yaxes(autorange="reversed")
-                fig.update_layout(xaxis_title="天数", height=400)
+                fig.update_layout(xaxis_title="日期", height=400)
                 st.plotly_chart(fig, use_container_width=True)
 
         # 任务详细列表
@@ -149,7 +152,8 @@ def show() -> None:
         if st.button("✅ 应用排程到数据库", type="primary"):
             changes = []
             for t in tasks:
-                if t.id is not None and t.start_day != original.get(t.id):
+                orig = original.get(t.id)
+                if t.id is not None and orig is not None and t.start_day != orig:
                     changes.append((t.id, t.start_day or 0))
             if changes and plan.id:
                 sched_svc.apply_schedule(plan.id, changes)

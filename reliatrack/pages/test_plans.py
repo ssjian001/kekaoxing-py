@@ -31,13 +31,11 @@ def show() -> None:
         with st.form("plan_form", clear_on_submit=True):
             pname = st.text_input("计划名称 *")
             test_std = st.text_input("测试标准")
-            status_idx = 0
-            status_val = PLAN_STATUS_OPTIONS[status_idx][0]
             submitted = st.form_submit_button("创建", type="primary")
             if submitted and pname:
                 plan_svc.create_plan(
                     project_id=proj_id, name=pname,
-                    test_standard=test_std, status=status_val,
+                    test_standard=test_std, status=PLAN_STATUS_OPTIONS[0][0],
                 )
                 st.success(f"计划「{pname}」已创建")
                 st.rerun()
@@ -56,10 +54,13 @@ def show() -> None:
     # ── 计划操作 ──
     col_plan1, col_plan2, col_plan3 = st.columns(3)
     with col_plan1:
-        new_status_idx = 0
         st.caption("更新计划状态")
         status_opts = dict(PLAN_STATUS_OPTIONS)
+        rev = {v: k for k, v in status_opts.items()}
+        cur_label = rev.get(plan.status, list(status_opts.values())[0])
         new_status = st.selectbox("状态", list(status_opts.values()),
+                                  index=list(status_opts.values()).index(cur_label)
+                                  if cur_label in status_opts.values() else 0,
                                   key="plan_status")
         if st.button("更新状态"):
             rev = {v: k for k, v in status_opts.items()}

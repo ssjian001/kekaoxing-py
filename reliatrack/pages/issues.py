@@ -65,13 +65,13 @@ def show() -> None:
 
     # 应用筛选
     status_rev = {v: k for k, v in ISSUE_STATUS_LABELS.items()}
-    sev_rev = {v: k for k, v in dict(SEVERITY_OPTIONS).items()}
+    sev_map = dict(SEVERITY_OPTIONS)  # {"严重":"critical", "主要":"major", ...}
     filtered = all_issues
     if status_filter:
         filter_statuses = {status_rev[s] for s in status_filter if s in status_rev}
         filtered = [i for i in filtered if i.status in filter_statuses]
     if severity_filter:
-        filter_sevs = {sev_rev[s] for s in severity_filter if s in sev_rev}
+        filter_sevs = {sev_map[s] for s in severity_filter if s in sev_map}
         filtered = [i for i in filtered if i.severity in filter_sevs]
 
     # ── 显示表格 ──

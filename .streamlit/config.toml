@@ -1,0 +1,10 @@
+[client]
+showSidebarNavigation = false
+toolbarMode = "minimal"
+
+[server]
+fileWatcherType = "none"
+runOnSave = false
+
+[browser]
+gatherUsageStats = false

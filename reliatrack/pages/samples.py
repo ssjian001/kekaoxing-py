@@ -5,7 +5,6 @@ import streamlit as st
 import pandas as pd
 
 from pages._shared import get_services, dataclass_to_df
-from src.constants import SAMPLE_STATUS_REVERSE, SAMPLE_STATUS_LABELS
 
 
 def show() -> None:

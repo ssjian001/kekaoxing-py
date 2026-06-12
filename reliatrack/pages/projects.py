@@ -96,6 +96,8 @@ def show() -> None:
                 st.rerun()
 
         st.markdown("#### 危险操作")
+        if "confirm_delete_proj" not in st.session_state:
+            st.session_state.confirm_delete_proj = False
         if st.button("删除项目", type="secondary", use_container_width=True):
             if proj.id:
                 stats = p_svc.cascade_stats(proj.id)
@@ -106,8 +108,11 @@ def show() -> None:
                         f"{stats['samples']} 个样品、{stats['issues']} 个 Issue。"
                         f"共计 {total} 条记录。"
                     )
-                confirm = st.checkbox("确认删除？")
-                if confirm:
-                    p_svc.delete(proj.id)
-                    st.success("已删除")
-                    st.rerun()
+                st.session_state.confirm_delete_proj = True
+        if st.session_state.confirm_delete_proj:
+            confirm = st.checkbox("确认删除？此操作不可撤销", key="del_confirm")
+            if confirm and proj.id:
+                p_svc.delete(proj.id)
+                st.success("已删除")
+                st.session_state.confirm_delete_proj = False
+                st.rerun()
