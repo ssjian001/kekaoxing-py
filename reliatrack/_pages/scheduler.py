@@ -1,4 +1,4 @@
-"""📅 排程管理页面 — Plotly 甘特图 + 排程参数配置。"""
+"""排程管理页面 — Plotly 甘特图 + 排程参数配置。"""
 from __future__ import annotations
 
 import streamlit as st
@@ -6,11 +6,13 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 
-from pages._shared import get_services, dataclass_to_df
+from reliatrack._pages._shared import (
+    get_services, dataclass_to_df, render_pagination, render_delete_confirm,
+)
 from src.models.test_plan import TestTask
 
 
-def show() -> None:
+def render() -> None:
     st.title("排程管理")
     svc = get_services()
     sched_svc = svc["scheduler"]
@@ -37,7 +39,7 @@ def show() -> None:
     plan = plan_map[plan_name]
 
     # ── 排程参数配置 ──
-    with st.expander("⚙️ 排程参数", expanded=True):
+    with st.expander("排程参数", expanded=True):
         col_p1, col_p2, col_p3 = st.columns(3)
         with col_p1:
             skip_weekends = st.checkbox("跳过周末", value=True)
@@ -46,11 +48,13 @@ def show() -> None:
             deadline = st.text_input("截止日期 (YYYY-MM-DD)", value="")
             lock_existing = st.checkbox("锁定已有排程", value=False)
         with col_p3:
-            daily_start_limit = st.number_input("每日最大启动数", min_value=0, value=0,
-                                                help="0=不限制")
+            daily_start_limit = st.number_input(
+                "每日最大启动数", min_value=0, value=0,
+                help="0=不限制",
+            )
 
     # ── 执行排程（预览） ──
-    if st.button("🚀 执行自动排程", type="primary"):
+    if st.button("执行自动排程", type="primary"):
         if plan.id:
             result = sched_svc.preview_schedule(
                 plan_id=plan.id,
@@ -76,30 +80,40 @@ def show() -> None:
         start_date = sched_result["start_date"]
         equipment = sched_result["equipment"]
 
-        # 报告摘要
+        # ── 报告摘要（2 行 x 2 列） ──
         st.markdown("---")
-        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
-        with col_r1:
+        row1a, row1b = st.columns(2)
+        with row1a:
             st.metric("总任务数", report.get("task_count", 0))
-        with col_r2:
+        with row1b:
             st.metric("更新任务", report.get("updated_count", 0))
-        with col_r3:
+        row2a, row2b = st.columns(2)
+        with row2a:
             st.metric("总工期(天)", report.get("total_days", 0))
-        with col_r4:
+        with row2b:
             imp = report.get("improvement", 0)
-            st.metric("优化率", f"{imp:.1%}" if isinstance(imp, float) else imp)
+            st.metric(
+                "优化率",
+                f"{imp:.1%}" if isinstance(imp, float) else imp,
+            )
 
         # 瓶颈提示
         bottlenecks = report.get("bottlenecks", [])
         if bottlenecks:
-            st.warning("⚠️ 瓶颈设备: " + "; ".join(bottlenecks))
+            st.warning("瓶颈设备: " + "; ".join(bottlenecks))
 
-        # 甘特图
+        # ── 甘特图 ──
         st.subheader("甘特图")
-        view_mode = st.radio("甘特图模式", ["按状态", "按设备"], horizontal=True, key="gantt_view")
+        view_mode = st.radio(
+            "甘特图模式", ["按状态", "按设备"], horizontal=True, key="gantt_view",
+        )
         if tasks:
             gantt_data = []
-            base_date = datetime.strptime(start_date, "%Y-%m-%d") if isinstance(start_date, str) and start_date else datetime.today()
+            base_date = (
+                datetime.strptime(start_date, "%Y-%m-%d")
+                if isinstance(start_date, str) and start_date
+                else datetime.today()
+            )
             for t in tasks:
                 if t.id is None:
                     continue
@@ -112,7 +126,7 @@ def show() -> None:
                     "结束日期": end_dt,
                     "工期(天)": t.duration,
                     "状态": t.status or "pending",
-                    "设备": t.equipment_id or "—",
+                    "设备": t.equipment_id or "-",
                 })
 
             if gantt_data:
@@ -131,28 +145,36 @@ def show() -> None:
                 fig.update_layout(xaxis_title="日期", height=400)
                 st.plotly_chart(fig, use_container_width=True)
 
-                if st.button("📷 导出甘特图 PNG"):
+                # PNG 导出（合并为一步）
+                if st.button("导出甘特图 PNG"):
                     try:
                         import plotly.io as pio
-                        png_bytes = pio.to_image(fig, format="png", width=1200, height=600)
+
+                        png_bytes = pio.to_image(
+                            fig, format="png", width=1200, height=600,
+                        )
                         st.download_button(
-                            "下载 PNG", data=png_bytes, file_name=f"gantt_{plan_name}.png",
+                            "下载 PNG",
+                            data=png_bytes,
+                            file_name=f"gantt_{plan_name}.png",
                             mime="image/png",
                         )
                     except Exception as e:
                         st.error(f"导出失败: {e}")
 
-        # 任务详细列表
+        # ── 任务详细列表 ──
         st.subheader("排程任务明细")
         task_df = dataclass_to_df(
             tasks,
-            exclude={"id", "plan_id", "sample_ids", "environment",
-                     "dependencies", "log_file", "sort_order", "manual_scheduled",
-                     "accept_criteria", "temperature", "humidity",
-                     "actual_start_date", "actual_end_date",
-                     "technician_id", "equipment_id",
-                     "test_standard", "category", "notes", "priority",
-                     "progress"},
+            exclude={
+                "id", "plan_id", "sample_ids", "environment",
+                "dependencies", "log_file", "sort_order", "manual_scheduled",
+                "accept_criteria", "temperature", "humidity",
+                "actual_start_date", "actual_end_date",
+                "technician_id", "equipment_id",
+                "test_standard", "category", "notes", "priority",
+                "progress",
+            },
             rename={
                 "name": "任务名称", "duration": "工期",
                 "start_day": "起始日", "status": "状态",
@@ -161,8 +183,8 @@ def show() -> None:
         )
         st.dataframe(task_df, use_container_width=True, hide_index=True)
 
-        # 应用排程
-        if st.button("✅ 应用排程到数据库", type="primary"):
+        # ── 应用排程 ──
+        if st.button("应用排程到数据库", type="primary"):
             changes = []
             for t in tasks:
                 orig = original.get(t.id)

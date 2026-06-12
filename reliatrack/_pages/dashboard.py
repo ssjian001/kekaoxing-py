@@ -1,0 +1,147 @@
+"""仪表盘页面 — KPI 卡片 + 进度饼图 + 近期活动。"""
+
+from __future__ import annotations
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+from reliatrack._pages._shared import get_services, dataclass_to_df
+from src.constants import (
+    SAMPLE_STATUS_LABELS,
+    ISSUE_STATUS_LABELS,
+    PROJECT_STATUS_REVERSE,
+)
+
+
+def render() -> None:
+    st.title("仪表盘")
+    svc = get_services()
+
+    # 获取数据
+    projects = svc["project"].list_all()
+    samples = svc["sample"].list_all()
+    plans = svc["plan"].list_all_plans()
+    issues = svc["issue"].list_all()
+
+    # 统计
+    total_projects = len(projects)
+    total_samples = len(samples)
+    total_plans = len(plans)
+    total_issues = len(issues)
+
+    active_issues = sum(1 for i in issues if i.status in ("open", "analyzing"))
+    in_progress_tasks = 0
+    for plan in plans:
+        if plan.id:
+            try:
+                in_progress_tasks += sum(
+                    1 for t in svc["plan"].get_tasks(plan.id)
+                    if t.status == "in_progress"
+                )
+            except Exception:
+                pass
+
+    # KPI 卡片 — 2 行（第一行 3 个，第二行 2 个）
+    row1 = st.columns(3)
+    with row1[0]:
+        with st.container(border=True):
+            st.metric("项目数", total_projects)
+    with row1[1]:
+        with st.container(border=True):
+            st.metric("样品数", total_samples)
+    with row1[2]:
+        with st.container(border=True):
+            st.metric("计划数", total_plans)
+
+    row2 = st.columns(2)
+    with row2[0]:
+        with st.container(border=True):
+            st.metric("进行中任务", in_progress_tasks)
+    with row2[1]:
+        with st.container(border=True):
+            st.metric("待处理 Issue", active_issues)
+
+    st.markdown("---")
+
+    # 饼图：样品状态分布 + Issue 状态分布
+    col_left, col_right = st.columns(2)
+    with col_left:
+        st.subheader("样品状态分布")
+        if samples:
+            status_counts: dict[str, int] = {}
+            for s in samples:
+                label = SAMPLE_STATUS_LABELS.get(s.status, s.status)
+                status_counts[label] = status_counts.get(label, 0) + 1
+            df_status = pd.DataFrame(
+                list(status_counts.items()), columns=["状态", "数量"]
+            )
+            fig = px.pie(
+                df_status,
+                names="状态",
+                values="数量",
+                title="样品状态",
+                hole=0.4,
+            )
+            fig.update_traces(textinfo="label+percent")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("暂无样品。请在侧边栏创建。")
+
+    with col_right:
+        st.subheader("Issue 状态分布")
+        if issues:
+            issue_counts: dict[str, int] = {}
+            for i in issues:
+                label = ISSUE_STATUS_LABELS.get(i.status, i.status)
+                issue_counts[label] = issue_counts.get(label, 0) + 1
+            df_issue = pd.DataFrame(
+                list(issue_counts.items()), columns=["状态", "数量"]
+            )
+            fig2 = px.pie(
+                df_issue,
+                names="状态",
+                values="数量",
+                title="Issue 状态",
+                hole=0.4,
+            )
+            fig2.update_traces(textinfo="label+percent")
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("暂无 Issue。请在侧边栏创建。")
+
+    st.markdown("---")
+
+    # 近期活动表
+    st.subheader("项目列表")
+    if projects:
+        df = dataclass_to_df(
+            projects,
+            exclude={"description"},
+            rename={
+                "id": "ID",
+                "name": "项目名称",
+                "product": "产品",
+                "customer": "客户",
+                "status": "状态",
+                "created_at": "创建时间",
+            },
+            columns=["ID", "项目名称", "产品", "客户", "状态", "创建时间"],
+        )
+        if not df.empty and "状态" in df.columns:
+            df["状态"] = df["状态"].map(lambda x: PROJECT_STATUS_REVERSE.get(x, x))
+        st.dataframe(
+            df,
+            column_config={
+                "ID": st.column_config.NumberColumn(width="small"),
+                "项目名称": st.column_config.TextColumn(width="medium"),
+                "产品": st.column_config.TextColumn(width="medium"),
+                "客户": st.column_config.TextColumn(width="medium"),
+                "状态": st.column_config.TextColumn(width="small"),
+                "创建时间": st.column_config.TextColumn(width="medium"),
+            },
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("暂无项目。请在项目管理页面创建。")
