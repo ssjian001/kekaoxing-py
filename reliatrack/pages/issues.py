@@ -25,25 +25,28 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新建 Issue")
         with st.form("issue_form", clear_on_submit=True):
-            title = st.text_input("标题 *")
+            title = st.text_input("标题 *", max_chars=200)
             proj_name = st.selectbox("项目", list(proj_map.keys()) + ["无"], key="iss_proj")
             severity_opts = dict(SEVERITY_OPTIONS)
             severity = st.selectbox("严重度", list(severity_opts.keys()), index=1)
             cat_opts = dict(ISSUE_CATEGORY_OPTIONS)
             category = st.selectbox("责任类别", list(cat_opts.keys()), index=0)
-            failure_mode = st.text_input("失效模式")
-            description = st.text_area("描述")
+            failure_mode = st.text_input("失效模式", max_chars=200)
+            description = st.text_area("描述", max_chars=2000)
             if st.form_submit_button("创建", type="primary"):
-                pid = proj_map.get(proj_name)
-                issue_svc.create(
-                    title=title, project_id=pid,
-                    severity=severity_opts[severity],
-                    category=cat_opts[category],
-                    failure_mode=failure_mode,
-                    description=description,
-                )
-                st.success(f"Issue「{title}」已创建")
-                st.rerun()
+                if not title:
+                    st.error("请填写必填字段")
+                else:
+                    pid = proj_map.get(proj_name)
+                    issue_svc.create(
+                        title=title, project_id=pid,
+                        severity=severity_opts[severity],
+                        category=cat_opts[category],
+                        failure_mode=failure_mode,
+                        description=description,
+                    )
+                    st.success(f"Issue「{title}」已创建")
+                    st.rerun()
 
     # ── 筛选 ──
     all_issues = issue_svc.list_all()
@@ -74,10 +77,39 @@ def show() -> None:
         filter_sevs = {sev_map[s] for s in severity_filter if s in sev_map}
         filtered = [i for i in filtered if i.severity in filter_sevs]
 
+    # ── 关键词搜索 ──
+    search_term = st.text_input(
+        "🔍 搜索...",
+        placeholder="输入标题/失效模式过滤...",
+        key="search_issue",
+    )
+    if search_term:
+        stxt = search_term.lower()
+        filtered = [
+            i
+            for i in filtered
+            if stxt in (i.title or "").lower()
+            or stxt in (i.failure_mode or "").lower()
+        ]
+
     # ── 显示表格 ──
+    PAGE_SIZE = 50
+    if "page_issues" not in st.session_state:
+        st.session_state["page_issues"] = 1
+
     if filtered:
+        total = len(filtered)
+        total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+        page = st.session_state["page_issues"]
+        if page > total_pages:
+            st.session_state["page_issues"] = total_pages
+            page = total_pages
+        start = (page - 1) * PAGE_SIZE
+        end = start + PAGE_SIZE
+        page_data = filtered[start:end]
+
         df = dataclass_to_df(
-            filtered,
+            page_data,
             exclude={"id", "plan_id", "task_id", "sample_id",
                      "failure_stage", "root_cause", "improvement_measures",
                      "reporter_name", "failure_code", "occurrence_count",
@@ -94,6 +126,19 @@ def show() -> None:
                      "类别", "DRI", "失效模式", "创建时间"],
         )
         st.dataframe(df, use_container_width=True, hide_index=True)
+
+        if total_pages > 1:
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                if st.button("◀ 上一页", disabled=page <= 1):
+                    st.session_state["page_issues"] -= 1
+                    st.rerun()
+            with col2:
+                st.write(f"第 {page}/{total_pages} 页（共 {total} 条）")
+            with col3:
+                if st.button("下一页 ▶", disabled=page >= total_pages):
+                    st.session_state["page_issues"] += 1
+                    st.rerun()
     else:
         st.info("暂无 Issue 数据")
 
@@ -128,8 +173,8 @@ def show() -> None:
 
     with col_i2:
         st.markdown("#### 编辑")
-        new_title = st.text_input("标题", value=iss.title, key="iss_edit_title")
-        new_desc = st.text_area("描述", value=iss.description, key="iss_edit_desc")
+        new_title = st.text_input("标题", value=iss.title, max_chars=200, key="iss_edit_title")
+        new_desc = st.text_area("描述", value=iss.description, max_chars=2000, key="iss_edit_desc")
         if st.button("保存修改"):
             issue_svc.update(iss.id, title=new_title, description=new_desc)
             st.success("已更新")
@@ -158,23 +203,26 @@ def show() -> None:
     # 新增 FA 步骤
     with st.expander("➕ 新增 FA 步骤"):
         with st.form("fa_form", clear_on_submit=True):
-            step_title = st.text_input("步骤标题 *")
+            step_title = st.text_input("步骤标题 *", max_chars=200)
             fa_method = st.selectbox("分析方法",
                                      ["外观检查", "切片分析", "CT扫描",
                                       "SEM", "EDS", "XRF", "热分析",
                                       "电性能测试", "其他"])
-            findings = st.text_area("发现")
-            possible_cause = st.text_area("可能原因")
+            findings = st.text_area("发现", max_chars=2000)
+            possible_cause = st.text_area("可能原因", max_chars=2000)
             cause_cat = st.selectbox("原因分类",
                                      ["", "人", "机", "料", "法", "环", "测"])
             if st.form_submit_button("添加 FA 步骤"):
-                issue_svc.add_fa_record(
-                    iss.id, step_title=step_title, method=fa_method,
-                    findings=findings, possible_cause=possible_cause,
-                    cause_category=cause_cat,
-                )
-                st.success("FA 步骤已添加")
-                st.rerun()
+                if not step_title:
+                    st.error("请填写必填字段")
+                else:
+                    issue_svc.add_fa_record(
+                        iss.id, step_title=step_title, method=fa_method,
+                        findings=findings, possible_cause=possible_cause,
+                        cause_category=cause_cat,
+                    )
+                    st.success("FA 步骤已添加")
+                    st.rerun()
 
     # ── CAPA 跟踪 ──
     st.markdown("---")
@@ -197,16 +245,20 @@ def show() -> None:
 
     with st.expander("➕ 新增 CAPA 措施"):
         with st.form("capa_form", clear_on_submit=True):
-            action = st.text_area("措施描述 *")
-            assignee_name = st.text_input("责任人")
-            due_date = st.text_input("截止日期 (YYYY-MM-DD)")
+            action = st.text_area("措施描述 *", max_chars=2000)
+            assignee_name = st.text_input("责任人", max_chars=200)
+            due_date = st.text_input("截止日期 (YYYY-MM-DD)", max_chars=30,
+                                     placeholder="如: 2026-12-31")
             if st.form_submit_button("添加 CAPA"):
-                issue_svc.add_capa_record(
-                    iss.id, action=action,
-                    assignee_name=assignee_name, due_date=due_date,
-                )
-                st.success("CAPA 措施已添加")
-                st.rerun()
+                if not action:
+                    st.error("请填写必填字段")
+                else:
+                    issue_svc.add_capa_record(
+                        iss.id, action=action,
+                        assignee_name=assignee_name, due_date=due_date,
+                    )
+                    st.success("CAPA 措施已添加")
+                    st.rerun()
 
     # ── 删除 Issue ──
     st.markdown("---")

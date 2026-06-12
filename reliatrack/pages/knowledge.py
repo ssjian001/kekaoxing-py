@@ -33,31 +33,48 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新增知识条目")
         with st.form("knowledge_form", clear_on_submit=True):
-            category = st.text_input("类别 *")
-            failure_mode = st.text_input("失效模式")
-            cause_analysis = st.text_area("原因分析")
-            improvement = st.text_area("改进措施")
-            ref_std = st.text_input("参考标准")
-            keywords_str = st.text_input("关键词（逗号分隔）")
-            summary = st.text_area("摘要")
+            category = st.text_input("类别 *", max_chars=200)
+            failure_mode = st.text_input("失效模式", max_chars=200)
+            cause_analysis = st.text_area("原因分析", max_chars=2000)
+            improvement = st.text_area("改进措施", max_chars=2000)
+            ref_std = st.text_input("参考标准", max_chars=200)
+            keywords_str = st.text_input("关键词（逗号分隔）", max_chars=200)
+            summary = st.text_area("摘要", max_chars=2000)
             if st.form_submit_button("创建", type="primary"):
-                k_svc.create(
-                    category=category, failure_mode=failure_mode,
-                    cause_analysis=cause_analysis,
-                    improvement=improvement,
-                    reference_standard=ref_std,
-                    keywords=keywords_str,
-                    summary=summary,
-                )
-                st.success("知识条目已创建")
-                st.rerun()
+                if not category:
+                    st.error("请填写必填字段")
+                else:
+                    k_svc.create(
+                        category=category, failure_mode=failure_mode,
+                        cause_analysis=cause_analysis,
+                        improvement=improvement,
+                        reference_standard=ref_std,
+                        keywords=keywords_str,
+                        summary=summary,
+                    )
+                    st.success("知识条目已创建")
+                    st.rerun()
 
     # ── 显示列表 ──
-    st.subheader(f"共 {len(entries)} 条记录")
+    PAGE_SIZE = 50
+    if "page_knowledge" not in st.session_state:
+        st.session_state["page_knowledge"] = 1
+
+    total = len(entries)
+    st.subheader(f"共 {total} 条记录")
 
     if entries:
+        total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+        page = st.session_state["page_knowledge"]
+        if page > total_pages:
+            st.session_state["page_knowledge"] = total_pages
+            page = total_pages
+        start = (page - 1) * PAGE_SIZE
+        end = start + PAGE_SIZE
+        page_data = entries[start:end]
+
         df = dataclass_to_df(
-            entries,
+            page_data,
             exclude={"id", "root_cause", "resolution", "related_issues"},
             rename={
                 "category": "类别", "failure_mode": "失效模式",
@@ -72,6 +89,19 @@ def show() -> None:
         )
         st.dataframe(df, use_container_width=True, hide_index=True)
 
+        if total_pages > 1:
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col1:
+                if st.button("◀ 上一页", disabled=page <= 1):
+                    st.session_state["page_knowledge"] -= 1
+                    st.rerun()
+            with col2:
+                st.write(f"第 {page}/{total_pages} 页（共 {total} 条）")
+            with col3:
+                if st.button("下一页 ▶", disabled=page >= total_pages):
+                    st.session_state["page_knowledge"] += 1
+                    st.rerun()
+
         # ── 编辑/查看详情 ──
         st.markdown("---")
         entry_map = {f"{e.summary or e.failure_mode or f'ID:{e.id}'}": e
@@ -83,13 +113,13 @@ def show() -> None:
 
             with st.expander("📝 查看/编辑详情", expanded=True):
                 with st.form("kb_edit_form"):
-                    new_summary = st.text_input("摘要", value=entry.summary)
-                    new_category = st.text_input("类别", value=entry.category)
-                    new_fm = st.text_input("失效模式", value=entry.failure_mode)
-                    new_cause = st.text_area("原因分析", value=entry.cause_analysis)
-                    new_improve = st.text_area("改进措施", value=entry.improvement)
-                    new_std = st.text_input("参考标准", value=entry.reference_standard)
-                    new_kw = st.text_input("关键词", value=entry.keywords)
+                    new_summary = st.text_input("摘要", value=entry.summary, max_chars=200)
+                    new_category = st.text_input("类别", value=entry.category, max_chars=200)
+                    new_fm = st.text_input("失效模式", value=entry.failure_mode, max_chars=200)
+                    new_cause = st.text_area("原因分析", value=entry.cause_analysis, max_chars=2000)
+                    new_improve = st.text_area("改进措施", value=entry.improvement, max_chars=2000)
+                    new_std = st.text_input("参考标准", value=entry.reference_standard, max_chars=200)
+                    new_kw = st.text_input("关键词", value=entry.keywords, max_chars=200)
                     if st.form_submit_button("保存修改"):
                         k_svc.update(
                             entry.id,

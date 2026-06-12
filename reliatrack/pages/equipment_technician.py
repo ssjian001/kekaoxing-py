@@ -27,32 +27,55 @@ def show() -> None:
             st.markdown("---")
             st.markdown("### 新增设备")
             with st.form("equipment_form", clear_on_submit=True):
-                eq_name = st.text_input("设备名称 *")
-                eq_type = st.text_input("类型")
-                eq_model = st.text_input("型号")
-                eq_location = st.text_input("位置")
+                eq_name = st.text_input("设备名称 *", max_chars=200)
+                eq_type = st.text_input("类型", max_chars=200)
+                eq_model = st.text_input("型号", max_chars=200)
+                eq_location = st.text_input("位置", max_chars=200)
                 eq_status = st.selectbox(
                     "状态", list(EQUIPMENT_STATUS_LABELS.values()), index=0
                 )
-                eq_asset = st.text_input("资产编号")
-                eq_manu = st.text_input("制造商")
-                eq_cal = st.text_input("校准日期 (YYYY-MM-DD)")
-                eq_next_cal = st.text_input("下次校准日期")
+                eq_asset = st.text_input("资产编号", max_chars=200)
+                eq_manu = st.text_input("制造商", max_chars=200)
+                eq_cal = st.text_input("校准日期 (YYYY-MM-DD)", max_chars=30,
+                                       placeholder="如: 2026-06-01")
+                eq_next_cal = st.text_input("下次校准日期", max_chars=30,
+                                            placeholder="如: 2027-06-01")
                 if st.form_submit_button("添加", type="primary"):
-                    status_rev = {v: k for k, v in EQUIPMENT_STATUS_LABELS.items()}
-                    eq_svc.create(
-                        name=eq_name, type=eq_type, model=eq_model,
-                        location=eq_location,
-                        status=status_rev.get(eq_status, "available"),
-                        asset_no=eq_asset, manufacturer=eq_manu,
-                        calibration_date=eq_cal,
-                        next_calibration_date=eq_next_cal,
-                    )
-                    st.success(f"设备「{eq_name}」已添加")
-                    st.rerun()
+                    if not eq_name:
+                        st.error("请填写必填字段")
+                    else:
+                        status_rev = {v: k for k, v in EQUIPMENT_STATUS_LABELS.items()}
+                        eq_svc.create(
+                            name=eq_name, type=eq_type, model=eq_model,
+                            location=eq_location,
+                            status=status_rev.get(eq_status, "available"),
+                            asset_no=eq_asset, manufacturer=eq_manu,
+                            calibration_date=eq_cal,
+                            next_calibration_date=eq_next_cal,
+                        )
+                        st.success(f"设备「{eq_name}」已添加")
+                        st.rerun()
 
         # 设备列表
         equipments = eq_svc.list_all()
+
+        # ── 搜索过滤 ──
+        search_term_eq = st.text_input(
+            "🔍 搜索设备...",
+            placeholder="输入设备名称/型号/位置/资产编号过滤...",
+            key="search_eq",
+        )
+        if search_term_eq:
+            stxt = search_term_eq.lower()
+            equipments = [
+                e
+                for e in equipments
+                if stxt in (e.name or "").lower()
+                or stxt in (e.model or "").lower()
+                or stxt in (e.location or "").lower()
+                or stxt in (e.asset_no or "").lower()
+            ]
+
         if equipments:
             df = dataclass_to_df(
                 equipments,
@@ -78,8 +101,8 @@ def show() -> None:
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
                     st.markdown("#### 编辑")
-                    new_eq_name = st.text_input("名称", value=eq.name, key="eq_edit_name")
-                    new_eq_loc = st.text_input("位置", value=eq.location, key="eq_edit_loc")
+                    new_eq_name = st.text_input("名称", value=eq.name, max_chars=200, key="eq_edit_name")
+                    new_eq_loc = st.text_input("位置", value=eq.location, max_chars=200, key="eq_edit_loc")
                     status_rev = {v: k for k, v in EQUIPMENT_STATUS_LABELS.items()}
                     cur_status_label = status_rev.get(eq.status, eq.status)
                     new_eq_status = st.selectbox(
@@ -116,22 +139,41 @@ def show() -> None:
         # 侧边栏：新增技术员（已在设备表同侧边栏复用，这里用主界面）
         with st.expander("➕ 新增技术员"):
             with st.form("tech_form", clear_on_submit=True):
-                t_name = st.text_input("姓名 *")
-                t_emp_id = st.text_input("工号")
-                t_role = st.text_input("职位")
-                t_dept = st.text_input("部门")
-                t_phone = st.text_input("电话")
-                t_email = st.text_input("邮箱")
+                t_name = st.text_input("姓名 *", max_chars=200)
+                t_emp_id = st.text_input("工号", max_chars=200)
+                t_role = st.text_input("职位", max_chars=200)
+                t_dept = st.text_input("部门", max_chars=200)
+                t_phone = st.text_input("电话", max_chars=200)
+                t_email = st.text_input("邮箱", max_chars=200)
                 if st.form_submit_button("添加", type="primary"):
-                    tech_svc.create(
-                        name=t_name, employee_id=t_emp_id,
-                        role=t_role, department=t_dept,
-                        phone=t_phone, email=t_email,
-                    )
-                    st.success(f"技术员「{t_name}」已添加")
-                    st.rerun()
+                    if not t_name:
+                        st.error("请填写必填字段")
+                    else:
+                        tech_svc.create(
+                            name=t_name, employee_id=t_emp_id,
+                            role=t_role, department=t_dept,
+                            phone=t_phone, email=t_email,
+                        )
+                        st.success(f"技术员「{t_name}」已添加")
+                        st.rerun()
 
         technicians = tech_svc.list_all()
+
+        # ── 搜索过滤 ──
+        search_term_tech = st.text_input(
+            "🔍 搜索技术员...",
+            placeholder="输入姓名/工号过滤...",
+            key="search_tech",
+        )
+        if search_term_tech:
+            stxt = search_term_tech.lower()
+            technicians = [
+                t
+                for t in technicians
+                if stxt in (t.name or "").lower()
+                or stxt in (t.employee_id or "").lower()
+            ]
+
         if technicians:
             df_tech = dataclass_to_df(
                 technicians,

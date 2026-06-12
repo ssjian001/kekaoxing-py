@@ -18,19 +18,37 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新建项目")
         with st.form("project_form", clear_on_submit=True):
-            name = st.text_input("项目名称 *")
-            product = st.text_input("产品")
-            customer = st.text_input("客户")
-            description = st.text_area("描述")
+            name = st.text_input("项目名称 *", max_chars=200)
+            product = st.text_input("产品", max_chars=200)
+            customer = st.text_input("客户", max_chars=200)
+            description = st.text_area("描述", max_chars=2000)
             submitted = st.form_submit_button("创建", type="primary")
             if submitted and name:
                 p_svc.create(name=name, product=product,
                              customer=customer, description=description)
                 st.success(f"项目「{name}」已创建")
                 st.rerun()
+            elif submitted:
+                st.error("请填写必填字段")
 
     # ── 主区域：项目列表 ──
     projects = p_svc.list_all()
+
+    # ── 搜索过滤 ──
+    search_term = st.text_input(
+        "🔍 搜索...",
+        placeholder="输入项目名称/产品/客户过滤...",
+        key="search_project",
+    )
+    if search_term:
+        stxt = search_term.lower()
+        projects = [
+            p
+            for p in projects
+            if stxt in (p.name or "").lower()
+            or stxt in (p.product or "").lower()
+            or stxt in (p.customer or "").lower()
+        ]
 
     df = dataclass_to_df(
         projects,
@@ -59,10 +77,10 @@ def show() -> None:
 
     with col1:
         st.markdown("#### 编辑")
-        new_name = st.text_input("名称", value=proj.name, key="edit_name")
-        new_product = st.text_input("产品", value=proj.product, key="edit_product")
-        new_customer = st.text_input("客户", value=proj.customer, key="edit_customer")
-        new_desc = st.text_area("描述", value=proj.description, key="edit_desc")
+        new_name = st.text_input("名称", value=proj.name, max_chars=200, key="edit_name")
+        new_product = st.text_input("产品", value=proj.product, max_chars=200, key="edit_product")
+        new_customer = st.text_input("客户", value=proj.customer, max_chars=200, key="edit_customer")
+        new_desc = st.text_area("描述", value=proj.description, max_chars=2000, key="edit_desc")
         if st.button("保存修改", type="primary"):
             upd = {}
             if new_name != proj.name:
