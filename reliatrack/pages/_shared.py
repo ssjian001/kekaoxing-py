@@ -109,7 +109,7 @@ STATUS_COLORS: dict[str, str] = {
     # 任务
     "pending": "⚪", "in_progress": "🟡", "completed": "🟢", "skipped": "⚫",
     # 计划
-    "draft": "⚪", "paused": "🟡", "archived": "⚫",
+    "draft": "⚪", "in_progress": "🟡", "completed": "🟢", "paused": "🟡", "archived": "⚫",
     # Issue
     "open": "🔴", "analyzing": "🟡", "verified": "🔵", "closed": "🟢",
     # 设备

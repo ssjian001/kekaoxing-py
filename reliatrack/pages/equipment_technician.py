@@ -103,19 +103,15 @@ def show() -> None:
                     st.markdown("#### 编辑")
                     new_eq_name = st.text_input("名称", value=eq.name, max_chars=200, key="eq_edit_name")
                     new_eq_loc = st.text_input("位置", value=eq.location, max_chars=200, key="eq_edit_loc")
-                    status_rev = {v: k for k, v in EQUIPMENT_STATUS_LABELS.items()}
-                    cur_status_label = status_rev.get(eq.status, eq.status)
+                    cur_status_label = EQUIPMENT_STATUS_LABELS.get(eq.status, "可用")
                     new_eq_status = st.selectbox(
-                        "状态", list(status_rev.keys()),
-                        index=list(status_rev.keys()).index(cur_status_label)
-                        if cur_status_label in status_rev else 0,
+                        "状态", list(EQUIPMENT_STATUS_LABELS.values()),
+                        index=list(EQUIPMENT_STATUS_LABELS.values()).index(cur_status_label) if cur_status_label in EQUIPMENT_STATUS_LABELS.values() else 0,
                         key="eq_edit_status",
                     )
                     if st.button("保存"):
-                        eq_svc.update(
-                            eq.id, name=new_eq_name, location=new_eq_loc,
-                            status=status_rev[new_eq_status],
-                        )
+                        status_rev = {v: k for k, v in EQUIPMENT_STATUS_LABELS.items()}
+                        eq_svc.update(eq.id, name=new_eq_name, location=new_eq_loc, status=status_rev[new_eq_status])
                         st.success("已更新")
                         st.rerun()
 

@@ -50,6 +50,8 @@ def show() -> None:
 
     plan_map = {p.name: p for p in plans if p.name}
     plan_name = st.selectbox("选择测试计划", list(plan_map.keys()), key="plan_sel")
+    # 重置删除确认（切换计划时）
+    st.session_state.confirm_delete_plan = False
     plan = plan_map[plan_name]
     st.caption(f"状态: {plan.status} | 标准: {plan.test_standard} | 日期: {plan.start_date} ~ {plan.end_date}")
 
@@ -58,8 +60,7 @@ def show() -> None:
     with col_plan1:
         st.caption("更新计划状态")
         status_opts = dict(PLAN_STATUS_OPTIONS)
-        rev = {v: k for k, v in status_opts.items()}
-        cur_label = rev.get(plan.status, list(status_opts.values())[0])
+        cur_label = status_opts.get(plan.status, list(status_opts.values())[0])
         new_status = st.selectbox("状态", list(status_opts.values()),
                                   index=list(status_opts.values()).index(cur_label)
                                   if cur_label in status_opts.values() else 0,

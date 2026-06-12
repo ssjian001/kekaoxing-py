@@ -141,8 +141,7 @@ def show() -> None:
         with col_b1:
             select_all = st.checkbox("全选", key="iss_select_all")
             if select_all:
-                for i in range(len(display_df)):
-                    st.session_state[f"iss_table_editor_sel_{i}"] = True
+                display_df["选择"] = True
         with col_b2:
             batch_status = st.selectbox(
                 "批量更新状态", list(status_opts.keys()),
@@ -177,12 +176,16 @@ def show() -> None:
             with col1:
                 if st.button("◀ 上一页", disabled=page <= 1):
                     st.session_state["page_issues"] -= 1
+                    if "iss_table" in st.session_state:
+                        del st.session_state["iss_table"]
                     st.rerun()
             with col2:
                 st.write(f"第 {page}/{total_pages} 页（共 {total} 条）")
             with col3:
                 if st.button("下一页 ▶", disabled=page >= total_pages):
                     st.session_state["page_issues"] += 1
+                    if "iss_table" in st.session_state:
+                        del st.session_state["iss_table"]
                     st.rerun()
     else:
         st.info("暂无 Issue 数据")
@@ -203,17 +206,15 @@ def show() -> None:
     col_i1, col_i2 = st.columns(2)
     with col_i1:
         st.markdown("#### 更新状态")
-        status_opts = {v: k for k, v in ISSUE_STATUS_LABELS.items()}
-        current_label = status_opts.get(iss.status, iss.status)
+        current_label = ISSUE_STATUS_LABELS.get(iss.status, "待处理")
+        status_rev = {v: k for k, v in ISSUE_STATUS_LABELS.items()}
         new_status_label = st.selectbox(
-            "新状态", list(status_opts.keys()),
-            index=list(status_opts.keys()).index(current_label)
-            if current_label in status_opts else 0,
+            "新状态", list(ISSUE_STATUS_LABELS.values()),
+            index=list(ISSUE_STATUS_LABELS.values()).index(current_label) if current_label in ISSUE_STATUS_LABELS.values() else 0,
             key="iss_new_status",
         )
         if st.button("更新状态"):
-            issue_svc.update_status(iss.id, status_opts[new_status_label])
-            st.success(f"状态已更新为 {new_status_label}")
+            issue_svc.update_status(iss.id, status_rev[new_status_label])
             st.rerun()
 
     with col_i2:

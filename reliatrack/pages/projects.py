@@ -68,6 +68,9 @@ def show() -> None:
         st.info("暂无项目")
         return
 
+    # 重置删除确认（切换项目时）
+    st.session_state.confirm_delete_proj = False
+
     # 选择项目进行操作
     proj_names = {p.name: p for p in projects if p.name}
     selected_name = st.selectbox("选择项目", list(proj_names.keys()))
@@ -95,22 +98,23 @@ def show() -> None:
                 p_svc.update(proj.id, **upd)
                 st.success("已更新")
                 st.rerun()
+            if not upd:
+                st.info("没有需要保存的修改")
 
     with col2:
         st.markdown("#### 状态切换")
-        status_opts = {v: k for k, v in PROJECT_STATUS_REVERSE.items()}
-        current_label = status_opts.get(proj.status, proj.status)
+        status_opts = PROJECT_STATUS_REVERSE  # {"active":"进行中", ...}
+        current_label = status_opts.get(proj.status, "进行中")
         new_status_label = st.selectbox(
-            "状态", list(status_opts.keys()),
-            index=list(status_opts.keys()).index(current_label)
-            if current_label in status_opts else 0,
+            "状态", list(status_opts.values()),
+            index=list(status_opts.values()).index(current_label) if current_label in status_opts.values() else 0,
             key="status_sel",
         )
         if st.button("更新状态"):
-            new_status_val = status_opts[new_status_label]
+            rev_map = {v: k for k, v in status_opts.items()}
+            new_status_val = rev_map[new_status_label]
             if proj.id:
                 p_svc.update(proj.id, status=new_status_val)
-                st.success(f"状态已更新为 {new_status_label}")
                 st.rerun()
 
         st.markdown("#### 危险操作")
