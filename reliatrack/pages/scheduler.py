@@ -96,6 +96,7 @@ def show() -> None:
 
         # 甘特图
         st.subheader("📊 甘特图")
+        view_mode = st.radio("甘特图模式", ["按状态", "按设备"], horizontal=True, key="gantt_view")
         if tasks:
             gantt_data = []
             base_date = datetime.strptime(start_date, "%Y-%m-%d") if isinstance(start_date, str) and start_date else datetime.today()
@@ -116,18 +117,30 @@ def show() -> None:
 
             if gantt_data:
                 df_gantt = pd.DataFrame(gantt_data)
+                color_col = "状态" if view_mode == "按状态" else "设备"
                 fig = px.timeline(
                     df_gantt,
                     x_start="开始日期",
                     x_end="结束日期",
                     y="任务",
-                    color="状态",
+                    color=color_col,
                     hover_data=["工期(天)", "设备"],
                     title=f"测试排程 — {plan_name}",
                 )
                 fig.update_yaxes(autorange="reversed")
                 fig.update_layout(xaxis_title="日期", height=400)
                 st.plotly_chart(fig, use_container_width=True)
+
+                if st.button("📷 导出甘特图 PNG"):
+                    try:
+                        import plotly.io as pio
+                        png_bytes = pio.to_image(fig, format="png", width=1200, height=600)
+                        st.download_button(
+                            "下载 PNG", data=png_bytes, file_name=f"gantt_{plan_name}.png",
+                            mime="image/png",
+                        )
+                    except Exception as e:
+                        st.error(f"导出失败: {e}")
 
         # 任务详细列表
         st.subheader("排程任务明细")

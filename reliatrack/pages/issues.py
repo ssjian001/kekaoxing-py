@@ -125,7 +125,52 @@ def show() -> None:
             columns=["标题", "项目ID", "严重度", "状态", "优先级",
                      "类别", "DRI", "失效模式", "创建时间"],
         )
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        display_df = df.copy()
+        display_df.insert(0, "选择", False)
+
+        # ── 批量操作栏 ──
+        prev_edited = st.session_state.get("iss_table")
+        selected_ids = []
+        if prev_edited is not None and "选择" in prev_edited.columns:
+            selected_mask = prev_edited["选择"].tolist()
+            selected_indices = [i for i, sel in enumerate(selected_mask) if sel]
+            selected_ids = [page_data[i].id for i in selected_indices if page_data[i].id]
+
+        status_opts = {v: k for k, v in ISSUE_STATUS_LABELS.items()}
+        col_b1, col_b2, col_b3, col_b4 = st.columns([1, 2, 2, 2])
+        with col_b1:
+            select_all = st.checkbox("全选", key="iss_select_all")
+            if select_all:
+                for i in range(len(display_df)):
+                    st.session_state[f"iss_table_editor_sel_{i}"] = True
+        with col_b2:
+            batch_status = st.selectbox(
+                "批量更新状态", list(status_opts.keys()),
+                key="iss_batch_status",
+                disabled=not selected_ids,
+            )
+        with col_b3:
+            batch_assign = st.selectbox(
+                "批量分配", ["未分配"],
+                key="iss_batch_assign",
+                disabled=not selected_ids,
+            )
+        with col_b4:
+            if st.button("执行批量操作", disabled=not selected_ids):
+                for iid in selected_ids:
+                    if batch_status:
+                        issue_svc.update_status(iid, status_opts[batch_status])
+                st.success(f"已更新 {len(selected_ids)} 个 Issue")
+                st.rerun()
+
+        edited = st.data_editor(
+            display_df,
+            column_config={"选择": st.column_config.CheckboxColumn("选择")},
+            use_container_width=True,
+            hide_index=True,
+            disabled=[c for c in display_df.columns if c != "选择"],
+            key="iss_table",
+        )
 
         if total_pages > 1:
             col1, col2, col3 = st.columns([1, 2, 1])

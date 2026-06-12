@@ -113,11 +113,14 @@ def show() -> None:
 
             with st.expander("📝 查看/编辑详情", expanded=True):
                 with st.form("kb_edit_form"):
-                    new_summary = st.text_input("摘要", value=entry.summary, max_chars=200)
+                    new_summary = st.text_area("摘要", value=entry.summary, max_chars=2000)
+                    st.markdown(entry.summary or "*（空）*")
                     new_category = st.text_input("类别", value=entry.category, max_chars=200)
                     new_fm = st.text_input("失效模式", value=entry.failure_mode, max_chars=200)
                     new_cause = st.text_area("原因分析", value=entry.cause_analysis, max_chars=2000)
+                    st.markdown(entry.cause_analysis or "*（空）*")
                     new_improve = st.text_area("改进措施", value=entry.improvement, max_chars=2000)
+                    st.markdown(entry.improvement or "*（空）*")
                     new_std = st.text_input("参考标准", value=entry.reference_standard, max_chars=200)
                     new_kw = st.text_input("关键词", value=entry.keywords, max_chars=200)
                     if st.form_submit_button("保存修改"):
