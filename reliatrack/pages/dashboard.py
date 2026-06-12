@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 
 from pages._shared import get_services, dataclass_to_df
+from src.constants import SAMPLE_STATUS_LABELS, ISSUE_STATUS_LABELS, PROJECT_STATUS_REVERSE
 
 
 def show() -> None:
@@ -58,7 +59,9 @@ def show() -> None:
         if samples:
             status_counts: dict[str, int] = {}
             for s in samples:
-                status_counts[s.status] = status_counts.get(s.status, 0) + 1
+                status_counts[SAMPLE_STATUS_LABELS.get(s.status, s.status)] = (
+                    status_counts.get(SAMPLE_STATUS_LABELS.get(s.status, s.status), 0) + 1
+                )
             df_status = pd.DataFrame(
                 list(status_counts.items()), columns=["状态", "数量"]
             )
@@ -73,7 +76,9 @@ def show() -> None:
         if issues:
             issue_counts: dict[str, int] = {}
             for i in issues:
-                issue_counts[i.status] = issue_counts.get(i.status, 0) + 1
+                issue_counts[ISSUE_STATUS_LABELS.get(i.status, i.status)] = (
+                    issue_counts.get(ISSUE_STATUS_LABELS.get(i.status, i.status), 0) + 1
+                )
             df_issue = pd.DataFrame(
                 list(issue_counts.items()), columns=["状态", "数量"]
             )
@@ -101,6 +106,8 @@ def show() -> None:
             },
             columns=["ID", "项目名称", "产品", "客户", "状态", "创建时间"],
         )
+        if not df.empty and "状态" in df.columns:
+            df["状态"] = df["状态"].map(lambda x: PROJECT_STATUS_REVERSE.get(x, x))
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
         st.info("暂无项目数据")

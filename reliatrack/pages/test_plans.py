@@ -54,7 +54,7 @@ def show() -> None:
     st.caption(f"状态: {plan.status} | 标准: {plan.test_standard} | 日期: {plan.start_date} ~ {plan.end_date}")
 
     # ── 计划操作 ──
-    col_plan1, col_plan2, col_plan3 = st.columns(3)
+    col_plan1, col_plan2 = st.columns(2)
     with col_plan1:
         st.caption("更新计划状态")
         status_opts = dict(PLAN_STATUS_OPTIONS)
@@ -71,10 +71,16 @@ def show() -> None:
             st.rerun()
 
     with col_plan2:
+        if "confirm_delete_plan" not in st.session_state:
+            st.session_state.confirm_delete_plan = False
         if st.button("删除计划", type="secondary"):
-            if plan.id:
+            st.session_state.confirm_delete_plan = True
+        if st.session_state.confirm_delete_plan:
+            confirm = st.checkbox("确认删除？将同时删除所有任务", key="del_plan_confirm")
+            if confirm and plan.id:
                 plan_svc.delete_plan(plan.id)
                 st.success("已删除")
+                st.session_state.confirm_delete_plan = False
                 st.rerun()
 
     st.markdown("---")

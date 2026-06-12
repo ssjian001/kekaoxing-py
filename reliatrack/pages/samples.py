@@ -44,14 +44,23 @@ def show() -> None:
     samples = s_svc.list_all()
 
     # ── 搜索过滤 ──
+    if "prev_search_sample" not in st.session_state:
+        st.session_state["prev_search_sample"] = ""
+
     search_term = st.text_input(
         "🔍 搜索...",
         placeholder="输入序号/批次/规格/供应商过滤...",
         key="search_sample",
     )
+
+    if search_term != st.session_state["prev_search_sample"]:
+        st.session_state["page_samples"] = 1
+        st.session_state["prev_search_sample"] = search_term
+
+    filtered_samples = samples  # 默认全量
     if search_term:
         stxt = search_term.lower()
-        samples = [
+        filtered_samples = [
             s
             for s in samples
             if stxt in (s.sn or "").lower()
@@ -64,8 +73,8 @@ def show() -> None:
     if "page_samples" not in st.session_state:
         st.session_state["page_samples"] = 1
 
-    total = len(samples)
-    if samples:
+    total = len(filtered_samples)
+    if filtered_samples:
         total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
         page = st.session_state["page_samples"]
         if page > total_pages:
@@ -73,7 +82,7 @@ def show() -> None:
             page = total_pages
         start = (page - 1) * PAGE_SIZE
         end = start + PAGE_SIZE
-        page_data = samples[start:end]
+        page_data = filtered_samples[start:end]
 
         df = dataclass_to_df(
             page_data,
@@ -118,7 +127,7 @@ def show() -> None:
         st.markdown("#### 出库")
         purpose = st.text_input("用途", key="out_purpose")
         if st.button("出库"):
-            if sel.status not in ("available", "returned"):
+            if sel.status not in ("in_stock", "returned"):
                 st.error("当前状态不允许出库操作")
             else:
                 s_svc.add_transaction(sel.id, "check_out", purpose=purpose)

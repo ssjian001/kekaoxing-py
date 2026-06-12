@@ -192,12 +192,27 @@ def show() -> None:
             if tech_map:
                 t_sel = st.selectbox("选择技术员操作", list(tech_map.keys()), key="tech_sel")
                 tech = tech_map[t_sel]
-                if st.button("删除技术员", type="secondary"):
-                    try:
-                        tech_svc.delete(tech.id)
-                        st.success("已删除")
+
+                col_t1, col_t2 = st.columns(2)
+                with col_t1:
+                    st.markdown("#### 编辑")
+                    new_t_name = st.text_input("姓名", value=tech.name, max_chars=200, key="t_edit_name")
+                    new_t_role = st.text_input("职位", value=tech.role, max_chars=200, key="t_edit_role")
+                    new_t_dept = st.text_input("部门", value=tech.department, max_chars=200, key="t_edit_dept")
+                    new_t_phone = st.text_input("电话", value=tech.phone, max_chars=200, key="t_edit_phone")
+                    if st.button("保存"):
+                        tech_svc.update(tech.id, name=new_t_name, role=new_t_role,
+                                      department=new_t_dept, phone=new_t_phone)
+                        st.success("已更新")
                         st.rerun()
-                    except ValueError as e:
-                        st.error(str(e))
+
+                with col_t2:
+                    if st.button("删除技术员", type="secondary"):
+                        try:
+                            tech_svc.delete(tech.id)
+                            st.success("已删除")
+                            st.rerun()
+                        except ValueError as e:
+                            st.error(str(e))
         else:
             st.info("暂无技术员数据")
