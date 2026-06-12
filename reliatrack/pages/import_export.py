@@ -10,7 +10,7 @@ from src.services.import_service import import_equipment, import_technicians
 
 
 def show() -> None:
-    st.title("📤 导入 / 导出")
+    st.title("导入 / 导出")
     svc = get_services()
 
     tab1, tab2 = st.tabs(["📥 批量导入", "📤 导出"])

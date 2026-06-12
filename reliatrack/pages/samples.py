@@ -8,7 +8,7 @@ from pages._shared import get_services, dataclass_to_df
 
 
 def show() -> None:
-    st.title("🔬 样品管理")
+    st.title("样品管理")
     svc = get_services()
     s_svc = svc["sample"]
     p_svc = svc["project"]
@@ -22,6 +22,7 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新增样品（入库）")
         with st.form("sample_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             sn = st.text_input("序列号 SN *", max_chars=100)
             batch_no = st.text_input("批次号", max_chars=200)
             spec = st.text_input("规格型号", max_chars=200)
@@ -111,7 +112,7 @@ def show() -> None:
                     st.session_state["page_samples"] += 1
                     st.rerun()
     else:
-        st.info("暂无样品")
+        st.info("暂无样品。请在左侧「新增样品」表单中入库。")
         return
 
     st.markdown("---")

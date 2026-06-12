@@ -9,7 +9,7 @@ from src.constants import PLAN_STATUS_OPTIONS, RESULT_OPTIONS, TASK_STATUS_LABEL
 
 
 def show() -> None:
-    st.title("📋 测试计划")
+    st.title("测试计划")
     svc = get_services()
     plan_svc = svc["plan"]
     p_svc = svc["project"]
@@ -29,6 +29,7 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新建测试计划")
         with st.form("plan_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             pname = st.text_input("计划名称 *", max_chars=200)
             test_std = st.text_input("测试标准", max_chars=200)
             submitted = st.form_submit_button("创建", type="primary")
@@ -99,6 +100,7 @@ def show() -> None:
         # 新建任务
         with st.expander("➕ 新建任务"):
             with st.form("task_form", clear_on_submit=True):
+                st.caption("标 * 为必填")
                 tname = st.text_input("任务名称 *", max_chars=200)
                 category = st.text_input("类别", max_chars=200)
                 t_std = st.text_input("测试标准", max_chars=200)
@@ -238,8 +240,8 @@ def show() -> None:
                 # 构建矩阵数据
                 RESULT_SYMBOLS = {"pass": "P", "fail": "F", "conditional": "C",
                                   "pending": "—", "skip": "S"}
-                RESULT_COLORS = {"pass": "#4CAF50", "fail": "#F44336",
-                                 "conditional": "#FF9800", "pending": "#E0E0E0",
+                RESULT_COLORS = {"pass": "#22c55e", "fail": "#ef4444",
+                                 "conditional": "#f59e0b", "pending": "#E0E0E0",
                                  "skip": "#9E9E9E"}
 
                 # 收集所有样品SN
@@ -250,17 +252,18 @@ def show() -> None:
                     task_results[key] = r.result
 
                 # 构建 HTML
-                html = ['<table style="border-collapse:collapse;font-size:14px;width:100%">']
+                html = ['<style>td:hover{background:#f1f5f9!important}</style>']
+                html.append('<table style="border-collapse:collapse;font-size:14px;width:100%">')
                 # 表头
-                html.append('<tr><th style="border:1px solid #ddd;padding:6px;background:#f5f5f5">任务</th>')
+                html.append('<tr><th style="border:1px solid #ddd;padding:6px;background:#f8fafc;font-weight:bold;position:sticky;left:0;z-index:2">任务</th>')
                 for sn in sample_sns:
-                    html.append(f'<th style="border:1px solid #ddd;padding:6px;background:#f5f5f5">{sn}</th>')
-                html.append('<th style="border:1px solid #ddd;padding:6px;background:#f5f5f5">通过率</th></tr>')
+                    html.append(f'<th style="border:1px solid #ddd;padding:6px;background:#f8fafc">{sn}</th>')
+                html.append('<th style="border:1px solid #ddd;padding:6px;background:#f8fafc">通过率</th></tr>')
 
                 for t in tasks:
                     if not t.id or not t.name:
                         continue
-                    html.append(f'<tr><td style="border:1px solid #ddd;padding:6px">{t.name}</td>')
+                    html.append(f'<tr><td style="border:1px solid #ddd;padding:6px;font-weight:bold;background:#ffffff;position:sticky;left:0;z-index:1">{t.name}</td>')
                     pass_count = 0
                     total_count = 0
                     for sn in sample_sns:
@@ -280,7 +283,7 @@ def show() -> None:
                     html.append(f'<td style="border:1px solid #ddd;padding:6px;text-align:center;font-weight:bold">{rate}</td></tr>')
 
                 # 样品通过率行
-                html.append('<tr><td style="border:1px solid #ddd;padding:6px;background:#f5f5f5;font-weight:bold">通过率</td>')
+                html.append('<tr><td style="border:1px solid #ddd;padding:6px;background:#f8fafc;font-weight:bold">通过率</td>')
                 for sn in sample_sns:
                     sid = next((k for k, v in samples.items() if v == sn), None)
                     pass_count = 0
@@ -292,8 +295,8 @@ def show() -> None:
                             if result == "pass":
                                 pass_count += 1
                     rate = f"{pass_count}/{total_count}" if total_count else "—"
-                    html.append(f'<td style="border:1px solid #ddd;padding:6px;text-align:center;background:#f5f5f5;font-weight:bold">{rate}</td>')
-                html.append('<td style="border:1px solid #ddd;padding:6px;background:#f5f5f5"></td></tr>')
+                    html.append(f'<td style="border:1px solid #ddd;padding:6px;text-align:center;background:#f8fafc;font-weight:bold">{rate}</td>')
+                html.append('<td style="border:1px solid #ddd;padding:6px;background:#f8fafc"></td></tr>')
                 html.append('</table>')
 
                 st.markdown("".join(html), unsafe_allow_html=True)

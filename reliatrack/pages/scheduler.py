@@ -11,7 +11,7 @@ from src.models.test_plan import TestTask
 
 
 def show() -> None:
-    st.title("📅 排程管理")
+    st.title("排程管理")
     svc = get_services()
     sched_svc = svc["scheduler"]
     plan_svc = svc["plan"]
@@ -95,7 +95,7 @@ def show() -> None:
             st.warning("⚠️ 瓶颈设备: " + "; ".join(bottlenecks))
 
         # 甘特图
-        st.subheader("📊 甘特图")
+        st.subheader("甘特图")
         view_mode = st.radio("甘特图模式", ["按状态", "按设备"], horizontal=True, key="gantt_view")
         if tasks:
             gantt_data = []

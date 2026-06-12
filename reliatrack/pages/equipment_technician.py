@@ -9,7 +9,7 @@ from src.constants import EQUIPMENT_STATUS_LABELS
 
 
 def show() -> None:
-    st.title("🔧 设备与人员管理")
+    st.title("设备与人员管理")
     svc = get_services()
     eq_svc = svc["equipment"]
     tech_svc = svc["technician"]
@@ -27,6 +27,7 @@ def show() -> None:
             st.markdown("---")
             st.markdown("### 新增设备")
             with st.form("equipment_form", clear_on_submit=True):
+                st.caption("标 * 为必填")
                 eq_name = st.text_input("设备名称 *", max_chars=200)
                 eq_type = st.text_input("类型", max_chars=200)
                 eq_model = st.text_input("型号", max_chars=200)
@@ -124,7 +125,7 @@ def show() -> None:
                         except ValueError as e:
                             st.error(str(e))
         else:
-            st.info("暂无设备数据")
+            st.info("暂无设备。请在左侧「新增设备」表单中添加。")
 
     # ═══════════════════════════════════════════════════════════════
     #  技术员
@@ -135,6 +136,7 @@ def show() -> None:
         # 侧边栏：新增技术员（已在设备表同侧边栏复用，这里用主界面）
         with st.expander("➕ 新增技术员"):
             with st.form("tech_form", clear_on_submit=True):
+                st.caption("标 * 为必填")
                 t_name = st.text_input("姓名 *", max_chars=200)
                 t_emp_id = st.text_input("工号", max_chars=200)
                 t_role = st.text_input("职位", max_chars=200)
@@ -211,4 +213,4 @@ def show() -> None:
                         except ValueError as e:
                             st.error(str(e))
         else:
-            st.info("暂无技术员数据")
+            st.info("暂无技术员。请点击上方「新增技术员」添加。")

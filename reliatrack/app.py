@@ -25,7 +25,7 @@ st.set_page_config(
 
 def main() -> None:
     """应用入口：侧边栏导航 + 页面路由。"""
-    st.sidebar.markdown("# 🔬 ReliaTrack")
+    st.sidebar.markdown("## ReliaTrack")
     st.sidebar.caption("可靠性测试管理系统")
     st.sidebar.markdown("---")
 

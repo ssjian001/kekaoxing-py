@@ -8,7 +8,7 @@ from pages._shared import get_services, dataclass_to_df
 
 
 def show() -> None:
-    st.title("📚 知识库")
+    st.title("知识库")
     svc = get_services()
     k_svc = svc["knowledge"]
 
@@ -33,6 +33,7 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新增知识条目")
         with st.form("knowledge_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             category = st.text_input("类别 *", max_chars=200)
             failure_mode = st.text_input("失效模式", max_chars=200)
             cause_analysis = st.text_area("原因分析", max_chars=2000)
@@ -139,4 +140,4 @@ def show() -> None:
                     st.success("已删除")
                     st.rerun()
     else:
-        st.info("暂无知识库条目" if not keyword else "未找到匹配条目")
+        st.info("暂无知识条目。请在左侧「新增知识条目」表单中创建。" if not keyword else "未找到匹配条目")

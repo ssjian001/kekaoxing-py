@@ -12,7 +12,7 @@ from src.constants import (
 
 
 def show() -> None:
-    st.title("⚠️ Issue 管理")
+    st.title("Issue 管理")
     svc = get_services()
     issue_svc = svc["issue"]
     p_svc = svc["project"]
@@ -25,6 +25,7 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新建 Issue")
         with st.form("issue_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             title = st.text_input("标题 *", max_chars=200)
             proj_name = st.selectbox("项目", list(proj_map.keys()) + ["无"], key="iss_proj")
             severity_opts = dict(SEVERITY_OPTIONS)
@@ -188,7 +189,7 @@ def show() -> None:
                         del st.session_state["iss_table"]
                     st.rerun()
     else:
-        st.info("暂无 Issue 数据")
+        st.info("暂无 Issue。请在左侧「新建 Issue」表单中创建。")
 
     if not filtered:
         return
@@ -228,7 +229,7 @@ def show() -> None:
 
     # ── FA 分析记录 ──
     st.markdown("---")
-    st.subheader("🔬 FA 分析记录")
+    st.subheader("FA 分析记录")
     fa_records = issue_svc.get_fa_records(iss.id)
     if fa_records:
         fa_df = dataclass_to_df(
@@ -249,6 +250,7 @@ def show() -> None:
     # 新增 FA 步骤
     with st.expander("➕ 新增 FA 步骤"):
         with st.form("fa_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             step_title = st.text_input("步骤标题 *", max_chars=200)
             fa_method = st.selectbox("分析方法",
                                      ["外观检查", "切片分析", "CT扫描",
@@ -272,7 +274,7 @@ def show() -> None:
 
     # ── CAPA 跟踪 ──
     st.markdown("---")
-    st.subheader("📋 CAPA 跟踪")
+    st.subheader("CAPA 跟踪")
     capa_records = issue_svc.get_capa_records(iss.id)
     if capa_records:
         capa_df = dataclass_to_df(
@@ -291,6 +293,7 @@ def show() -> None:
 
     with st.expander("➕ 新增 CAPA 措施"):
         with st.form("capa_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             action = st.text_area("措施描述 *", max_chars=2000)
             assignee_name = st.text_input("责任人", max_chars=200)
             due_date = st.text_input("截止日期 (YYYY-MM-DD)", max_chars=30,

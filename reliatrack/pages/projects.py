@@ -9,7 +9,7 @@ from src.constants import PROJECT_STATUS_REVERSE
 
 
 def show() -> None:
-    st.title("📁 项目管理")
+    st.title("项目管理")
     svc = get_services()
     p_svc = svc["project"]
 
@@ -18,6 +18,7 @@ def show() -> None:
         st.markdown("---")
         st.markdown("### 新建项目")
         with st.form("project_form", clear_on_submit=True):
+            st.caption("标 * 为必填")
             name = st.text_input("项目名称 *", max_chars=200)
             product = st.text_input("产品", max_chars=200)
             customer = st.text_input("客户", max_chars=200)
@@ -65,7 +66,7 @@ def show() -> None:
     st.subheader("项目操作")
 
     if not projects:
-        st.info("暂无项目")
+        st.info("暂无项目数据。请在左侧「新建项目」表单中创建。")
         return
 
     # 重置删除确认（切换项目时）

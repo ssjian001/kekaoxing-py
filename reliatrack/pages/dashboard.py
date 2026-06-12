@@ -10,7 +10,7 @@ from src.constants import SAMPLE_STATUS_LABELS, ISSUE_STATUS_LABELS, PROJECT_STA
 
 
 def show() -> None:
-    st.title("📊 仪表盘")
+    st.title("仪表盘")
     svc = get_services()
 
     # 获取数据
@@ -40,15 +40,15 @@ def show() -> None:
     # KPI 卡片
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric("📁 项目数", total_projects)
+        st.metric("项目数", total_projects)
     with col2:
-        st.metric("🔬 样品数", total_samples)
+        st.metric("样品数", total_samples)
     with col3:
-        st.metric("📋 计划数", total_plans)
+        st.metric("计划数", total_plans)
     with col4:
-        st.metric("⚙️ 进行中任务", in_progress_tasks)
+        st.metric("进行中任务", in_progress_tasks)
     with col5:
-        st.metric("⚠️ 待处理 Issue", active_issues)
+        st.metric("待处理 Issue", active_issues)
 
     st.markdown("---")
 
@@ -69,7 +69,7 @@ def show() -> None:
                          title="样品状态", hole=0.4)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("暂无样品数据")
+            st.info("暂无样品。请前往「样品管理」入库。")
 
     with col_right:
         st.subheader("Issue 状态分布")
@@ -86,7 +86,7 @@ def show() -> None:
                           title="Issue 状态", hole=0.4)
             st.plotly_chart(fig2, use_container_width=True)
         else:
-            st.info("暂无 Issue 数据")
+            st.info("暂无 Issue。请在左侧「新建 Issue」表单中创建。")
 
     st.markdown("---")
 
@@ -110,4 +110,4 @@ def show() -> None:
             df["状态"] = df["状态"].map(lambda x: PROJECT_STATUS_REVERSE.get(x, x))
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
-        st.info("暂无项目数据")
+        st.info("暂无项目。请前往「项目管理」创建第一个项目。")
