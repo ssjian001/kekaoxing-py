@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import sys
+import os
+
+# 确保 reliatrack 包可被 import（兼容所有 OS / 工作目录）
+_HERE = os.path.dirname(os.path.abspath(__file__))          # reliatrack/
+_PARENT = os.path.dirname(_HERE)                             # kekaoxing-py/
+if _PARENT not in sys.path:
+    sys.path.insert(0, _PARENT)
+
 import streamlit as st
 
 st.set_page_config(page_title="ReliaTrack", layout="wide", page_icon="🔬")
