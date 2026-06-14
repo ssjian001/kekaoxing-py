@@ -226,7 +226,7 @@ project/sample/plan/issue/equipment/knowledge/technician/refresh/export + 全局
 - `tests/test_arch_optimization.py` — 架构优化验证测试
 - `tests/test_handlers.py` — Handler 层集成测试
 - `tests/test_session_20260512.py` — 会话特定功能测试
-- 共 **327 个 pytest 测试**（326 通过，1 个预有失败 test_boundary.py::test_plan_edit_dialog）
+- 共 **341 个 pytest 测试**（341 通过）
 - `conftest.py` 提供 `:memory:` 数据库 fixture
 
 ### CI/CD（2026-05-10）
