@@ -163,3 +163,49 @@ class CAPARecord:
         _valid_status = {s.value for s in CAPAStatus}
         if self.status not in _valid_status:
             raise ValueError(f"无效的 CAPA 状态: {self.status!r}，合法值: {sorted(_valid_status)}")
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Bug Tracker — v23 新增模型
+# ═══════════════════════════════════════════════════════════════════
+
+
+class IssueLinkType(str, Enum):
+    """Issue 关联类型。"""
+    RELATES_TO = "relates_to"
+    BLOCKS = "blocks"
+    DUPLICATES = "duplicates"
+    CHILD_OF = "child_of"
+
+
+@dataclass
+class IssueComment:
+    """Issue 评论。"""
+    id: Optional[int] = None
+    issue_id: int = 0
+    author_name: str = ""
+    content: str = ""
+    is_deleted: int = 0
+    created_at: str = ""
+
+
+@dataclass
+class IssueActivityLog:
+    """Issue 活动日志 — 自动记录字段变更。"""
+    id: Optional[int] = None
+    issue_id: int = 0
+    field: str = ""           # status / severity / assignee_id / priority / resolution / category
+    old_value: str = ""
+    new_value: str = ""
+    operator: str = ""
+    created_at: str = ""
+
+
+@dataclass
+class IssueLink:
+    """Issue 间关联。"""
+    id: Optional[int] = None
+    source_id: int = 0
+    target_id: int = 0
+    link_type: str = IssueLinkType.RELATES_TO.value
+    created_at: str = ""

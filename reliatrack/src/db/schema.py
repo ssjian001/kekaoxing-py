@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -234,6 +234,38 @@ _DDL_TABLES: list[str] = [
         updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
+    # ── Issue 评论（v23 新增）──
+    """CREATE TABLE IF NOT EXISTS issue_comments (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        author_name TEXT    NOT NULL DEFAULT '',
+        content     TEXT    NOT NULL,
+        is_deleted  INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+    )""",
+
+    # ── Issue 活动日志（v23 新增 — 自动记录字段变更）──
+    """CREATE TABLE IF NOT EXISTS issue_activity_log (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        field       TEXT    NOT NULL,
+        old_value   TEXT    NOT NULL DEFAULT '',
+        new_value   TEXT    NOT NULL DEFAULT '',
+        operator    TEXT    NOT NULL DEFAULT '',
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+    )""",
+
+    # ── Issue 关联（v23 新增 — 阻塞/重复/关联等关系）──
+    """CREATE TABLE IF NOT EXISTS issue_links (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_id   INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        target_id   INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        link_type   TEXT    NOT NULL DEFAULT 'relates_to',
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+        CHECK(source_id != target_id),
+        UNIQUE(source_id, target_id, link_type)
+    )""",
+
     # ── 知识库（Phase 2 预建）──
     """CREATE TABLE IF NOT EXISTS knowledge_entries (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -303,6 +335,15 @@ _DDL_INDEXES: list[str] = [
     # capa_records
     "CREATE INDEX IF NOT EXISTS idx_capa_issue ON capa_records(issue_id)",
     "CREATE INDEX IF NOT EXISTS idx_capa_status ON capa_records(status)",
+    # issue_comments (v23)
+    "CREATE INDEX IF NOT EXISTS idx_comments_issue ON issue_comments(issue_id)",
+    "CREATE INDEX IF NOT EXISTS idx_comments_created ON issue_comments(created_at)",
+    # issue_activity_log (v23)
+    "CREATE INDEX IF NOT EXISTS idx_activity_issue ON issue_activity_log(issue_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_created ON issue_activity_log(created_at)",
+    # issue_links (v23)
+    "CREATE INDEX IF NOT EXISTS idx_links_source ON issue_links(source_id)",
+    "CREATE INDEX IF NOT EXISTS idx_links_target ON issue_links(target_id)",
     # knowledge_entries
     "CREATE INDEX IF NOT EXISTS idx_knowledge_mode ON knowledge_entries(failure_mode)",
     # equipment
@@ -969,6 +1010,53 @@ def _migrate_v22(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (22)")
 
 
+def _migrate_v23(conn: apsw.Connection) -> None:
+    """v22→v23: 新增 issue_comments / issue_activity_log / issue_links 三张表。
+
+    纯新表，不修改现有表结构，不影响现有数据。
+    新表在 _DDL_TABLES 中定义（CREATE TABLE IF NOT EXISTS），此处执行 DDL 重建即可。
+    """
+    new_tables = [
+        """CREATE TABLE IF NOT EXISTS issue_comments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            author_name TEXT    NOT NULL DEFAULT '',
+            content     TEXT    NOT NULL,
+            is_deleted  INTEGER NOT NULL DEFAULT 0,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""",
+        """CREATE TABLE IF NOT EXISTS issue_activity_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            field       TEXT    NOT NULL,
+            old_value   TEXT    NOT NULL DEFAULT '',
+            new_value   TEXT    NOT NULL DEFAULT '',
+            operator    TEXT    NOT NULL DEFAULT '',
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""",
+        """CREATE TABLE IF NOT EXISTS issue_links (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_id   INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            target_id   INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+            link_type   TEXT    NOT NULL DEFAULT 'relates_to',
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            CHECK(source_id != target_id),
+            UNIQUE(source_id, target_id, link_type)
+        )""",
+    ]
+    new_indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_comments_issue ON issue_comments(issue_id)",
+        "CREATE INDEX IF NOT EXISTS idx_comments_created ON issue_comments(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_activity_issue ON issue_activity_log(issue_id)",
+        "CREATE INDEX IF NOT EXISTS idx_activity_created ON issue_activity_log(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_links_source ON issue_links(source_id)",
+        "CREATE INDEX IF NOT EXISTS idx_links_target ON issue_links(target_id)",
+    ]
+    for ddl in new_tables + new_indexes:
+        conn.execute(ddl)
+    conn.execute("INSERT INTO schema_version (version) VALUES (23)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -992,6 +1080,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (20, _migrate_v20),
     (21, _migrate_v21),
     (22, _migrate_v22),
+    (23, _migrate_v23),
 ]
 
 
@@ -1191,6 +1280,17 @@ def init_schema(conn: apsw.Connection) -> int:
             logger.exception("Schema migration v22 failed")
             raise
 
+    # v23: 新增 issue_comments / issue_activity_log / issue_links
+    if current < 23:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v23(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v23 failed")
+            raise
+
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）
     _validate_schema_integrity(conn)
 
@@ -1203,6 +1303,7 @@ def _validate_schema_integrity(conn: apsw.Connection) -> None:
         "projects", "equipment", "technicians", "samples",
         "sample_transactions", "test_plans", "test_tasks", "test_results",
         "issues", "issue_attachments", "fa_records", "capa_records",
+        "issue_comments", "issue_activity_log", "issue_links",
         "knowledge_entries", "settings", "holidays",
     ]
     missing = []

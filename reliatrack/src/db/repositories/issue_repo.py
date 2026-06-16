@@ -9,7 +9,10 @@ import apsw
 from typing import Any, cast
 from pathlib import Path
 
-from src.models.issue import Issue, FARecord, IssueAttachment, CAPARecord
+from src.models.issue import (
+    Issue, FARecord, IssueAttachment, CAPARecord,
+    IssueComment, IssueActivityLog, IssueLink,
+)
 from src.db.connection import DEFAULT_ATTACHMENTS_DIR
 from src.db.repositories.base import BaseRepository
 
@@ -459,3 +462,86 @@ class CAPARecordRepository(BaseRepository):
 
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "capa_records", CAPARecord)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Bug Tracker — v23 新增：评论 / 活动日志 / 关联
+# ═══════════════════════════════════════════════════════════════════
+
+
+class IssueCommentRepository(BaseRepository):
+    """Issue 评论数据访问。"""
+
+    def __init__(self, conn: apsw.Connection) -> None:
+        super().__init__(conn, "issue_comments", IssueComment)
+
+    def get_by_issue(self, issue_id: int) -> list[IssueComment]:
+        """获取某 Issue 的所有未删除评论（按时间升序）。"""
+        rows = self._conn.execute(
+            "SELECT * FROM [issue_comments] WHERE issue_id = ? AND is_deleted = 0 ORDER BY created_at ASC",
+            (issue_id,),
+        ).fetchall()
+        cols = [d[1] for d in self._conn.execute("PRAGMA table_info([issue_comments])").fetchall()]
+        return [IssueComment(**dict(zip(cols, row))) for row in rows]
+
+    def soft_delete(self, comment_id: int) -> None:
+        """软删除评论。"""
+        self._conn.execute(
+            "UPDATE [issue_comments] SET is_deleted = 1 WHERE id = ?",
+            (comment_id,),
+        )
+
+
+class IssueActivityLogRepository(BaseRepository):
+    """Issue 活动日志数据访问。"""
+
+    def __init__(self, conn: apsw.Connection) -> None:
+        super().__init__(conn, "issue_activity_log", IssueActivityLog)
+
+    def add(self, issue_id: int, field: str, old_value: str, new_value: str, operator: str = "") -> int:
+        """写入一条活动日志。"""
+        self._conn.execute(
+            "INSERT INTO [issue_activity_log] (issue_id, field, old_value, new_value, operator)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (issue_id, field, str(old_value), str(new_value), operator),
+        )
+        row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
+        return row[0] if row else 0
+
+    def get_by_issue(self, issue_id: int) -> list[IssueActivityLog]:
+        """获取某 Issue 的活动日志（按时间升序）。"""
+        rows = self._conn.execute(
+            "SELECT * FROM [issue_activity_log] WHERE issue_id = ? ORDER BY created_at ASC",
+            (issue_id,),
+        ).fetchall()
+        cols = [d[1] for d in self._conn.execute("PRAGMA table_info([issue_activity_log])").fetchall()]
+        return [IssueActivityLog(**dict(zip(cols, row))) for row in rows]
+
+
+class IssueLinkRepository(BaseRepository):
+    """Issue 关联数据访问。"""
+
+    def __init__(self, conn: apsw.Connection) -> None:
+        super().__init__(conn, "issue_links", IssueLink)
+
+    def add(self, source_id: int, target_id: int, link_type: str = "relates_to") -> int:
+        """创建关联。source/target 相同或重复关联会抛 ConstraintError。"""
+        self._conn.execute(
+            "INSERT INTO [issue_links] (source_id, target_id, link_type) VALUES (?, ?, ?)",
+            (source_id, target_id, link_type),
+        )
+        row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
+        return row[0] if row else 0
+
+    def get_for_issue(self, issue_id: int) -> list[IssueLink]:
+        """获取某 Issue 的所有关联（双向 — source 和 target 都查）。"""
+        rows = self._conn.execute(
+            "SELECT * FROM [issue_links] WHERE source_id = ? OR target_id = ? ORDER BY created_at DESC",
+            (issue_id, issue_id),
+        ).fetchall()
+        cols = [d[1] for d in self._conn.execute("PRAGMA table_info([issue_links])").fetchall()]
+        return [IssueLink(**dict(zip(cols, row))) for row in rows]
+
+    def delete(self, id: int) -> None:
+        """删除关联。"""
+        self._conn.execute("DELETE FROM [issue_links] WHERE id = ?", (id,))
