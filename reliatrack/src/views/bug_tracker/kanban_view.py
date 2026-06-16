@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from PySide6.QtCore import QEvent, QMimeData, QPoint, Qt, Signal, QTimer
 from PySide6.QtGui import (
@@ -104,8 +104,8 @@ class _KanbanCard(QFrame):
     drag_started = Signal(int)   # 拖拽开始
 
     # 卡片固定尺寸
-    CARD_WIDTH = 240
-    CARD_HEIGHT = 78
+    CARD_WIDTH = 180
+    CARD_HEIGHT = 68
 
     def __init__(self, issue: Issue, aging_days: int = 0,
                  parent: QWidget | None = None) -> None:
@@ -311,7 +311,7 @@ class _KanbanColumn(QFrame):
 
     status_changed = Signal(int, str)  # issue_id, new_status
 
-    COLUMN_WIDTH = 270
+    COLUMN_WIDTH = 210
 
     def __init__(self, status: str, label: str,
                  service: IssueService | None = None,
@@ -468,6 +468,7 @@ class _KanbanColumn(QFrame):
             item = self._card_layout.takeAt(0)
             if item and item.widget():
                 item.widget().setParent(None)
+                item.widget().deleteLater()
 
     def _update_count(self) -> None:
         count = len(self._cards)
@@ -586,11 +587,14 @@ class BugKanbanView(QWidget):
     _COLUMN_STATUSES = ["open", "analyzing", "verified", "closed"]
 
     def __init__(self, service: IssueService,
-                 parent: QWidget | None = None) -> None:
+                 parent: QWidget | None = None,
+                 undo_manager=None) -> None:
         super().__init__(parent)
         self._service = service
+        self._undo_manager = undo_manager
         self._columns: dict[str, _KanbanColumn] = {}
         self._all_issues: list[Issue] = []
+        self._filters: dict[str, Any] = {}
         self._operator: str = ""  # 当前操作人
 
         self._setup_ui()
@@ -676,6 +680,29 @@ class BugKanbanView(QWidget):
                 if search_text in i.title.lower()
             ]
 
+        # 应用外部筛选条件（跳过 status — 看板按列展示）
+        if self._filters:
+            sev = self._filters.get("severity")
+            priority = self._filters.get("priority")
+            assignee = self._filters.get("assignee_id")
+            date_from = self._filters.get("date_from")
+            date_to = self._filters.get("date_to")
+
+            filtered = []
+            for i in issues:
+                if sev and i.severity not in sev:
+                    continue
+                if priority and i.priority not in priority:
+                    continue
+                if assignee and i.assignee_id != assignee:
+                    continue
+                if date_from and (i.created_at or "") < date_from:
+                    continue
+                if date_to and (i.created_at or "") > date_to:
+                    continue
+                filtered.append(i)
+            issues = filtered
+
         self._all_issues = issues
 
         for status in self._COLUMN_STATUSES:
@@ -719,6 +746,11 @@ class BugKanbanView(QWidget):
 
     def set_issues(self) -> None:
         """外部调用来加载/刷新数据。"""
+        self._load_issues()
+
+    def set_filters(self, filters: dict[str, Any]) -> None:
+        """设置筛选条件并刷新。"""
+        self._filters = filters
         self._load_issues()
 
     # ── 工具栏操作 ────────────────────────────────────────────

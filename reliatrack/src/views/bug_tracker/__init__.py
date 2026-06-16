@@ -22,6 +22,7 @@ from src.views.bug_tracker.detail_dialog import IssueDetailDialog
 from src.views.bug_tracker.resolve_dialog import ResolveDialog
 from src.views.bug_tracker.shortcuts import (
     register_bug_tracker_shortcuts,
+    install_shortcut_focus_guard,
     ShortcutHandler,
     QuickSearchDialog,
 )
@@ -36,9 +37,11 @@ class BugTrackerView(QWidget):
         self,
         issue_service: IssueService,
         parent: QWidget | None = None,
+        undo_manager=None,
     ) -> None:
         super().__init__(parent)
         self._svc = issue_service
+        self._undo_manager = undo_manager
 
         # 子视图
         self._kanban_view: BugKanbanView | None = None
@@ -94,10 +97,10 @@ class BugTrackerView(QWidget):
         if self._kanban_view is not None:
             return
 
-        self._kanban_view = BugKanbanView(self._svc)
+        self._kanban_view = BugKanbanView(self._svc, undo_manager=self._undo_manager)
         self._stack.addWidget(self._kanban_view)
 
-        self._list_view = BugListView(self._svc)
+        self._list_view = BugListView(self._svc, undo_manager=self._undo_manager)
         self._stack.addWidget(self._list_view)
 
         # 信号桥接
@@ -151,10 +154,9 @@ class BugTrackerView(QWidget):
     def _on_filter_changed(self, filters: dict[str, Any]) -> None:
         """筛选变更时同步到其他视图。"""
         self._current_filters = filters
-        # 如果当前在看板视图，也应用筛选
-        if self._stack.currentIndex() == 0 and self._kanban_view:
-            # 看板视图也支持外部设置筛选（重新加载）
-            self._kanban_view.refresh()
+        # 同步筛选条件到看板视图
+        if self._kanban_view:
+            self._kanban_view.set_filters(filters)
 
     def _refresh_all(self) -> None:
         """刷新所有视图。"""
@@ -172,7 +174,8 @@ class BugTrackerView(QWidget):
         handler.on_quick_search = self._on_quick_search
         handler.on_focus_search = self._on_focus_search
         handler.on_navigate_column = self._on_navigate_column
-        register_bug_tracker_shortcuts(self, handler)
+        shortcuts = register_bug_tracker_shortcuts(self, handler)
+        install_shortcut_focus_guard(shortcuts, self)
 
     def _on_quick_create(self) -> None:
         """C 键 / Ctrl+N — 快速创建。"""

@@ -51,6 +51,8 @@ class IssueService:
         - closed → open: reopen，允许
         - analyzing/verified → open: 回退，允许
         """
+        if issue is None:
+            raise ValueError("can_transition requires an issue object")
         from src.constants import ISSUE_TRANSITIONS
 
         if current_status == target_status:

@@ -446,10 +446,12 @@ class BatchOperationDialog(QDialog):
         issue_ids: list[int],
         issue_service: IssueService,
         parent: QWidget | None = None,
+        undo_manager=None,
     ):
         super().__init__(parent)
         self._issue_ids = issue_ids
         self._service = issue_service
+        self._undo_manager = undo_manager
 
         self.setWindowTitle(f"批量操作 — 已选 {len(issue_ids)} 个 Issue")
         self.setMinimumSize(400, 300)
@@ -546,8 +548,21 @@ class BatchOperationDialog(QDialog):
         failed = 0
         for issue_id in self._issue_ids:
             try:
+                # 获取旧值用于 undo
+                old_issue = self._service.get(issue_id)
+                old_value = getattr(old_issue, field, None) if old_issue else None
+
                 self._service.update(issue_id, operator="batch", **{field: target_value})
                 updated += 1
+
+                # 推送 undo 命令
+                if self._undo_manager is not None and old_issue is not None:
+                    from src.services.undo_manager import UpdateFieldCommand
+                    cmd = UpdateFieldCommand(
+                        self._service._repo, issue_id, field,
+                        old_value, target_value, "Issue",
+                    )
+                    self._undo_manager._undo_stack.append(cmd)
             except Exception:
                 failed += 1
 
@@ -576,9 +591,11 @@ class BugListView(QWidget):
         self,
         issue_service: IssueService,
         parent: QWidget | None = None,
+        undo_manager=None,
     ):
         super().__init__(parent)
         self._service = issue_service
+        self._undo_manager = undo_manager
         self._all_issues: list[Issue] = []
         self._technician_names: list[str] = []
         self._filter_visible = True
@@ -815,7 +832,8 @@ class BugListView(QWidget):
             ToastWidget.show_toast(self, "请先勾选 Issue", ToastWidget.WARNING)
             return
 
-        dialog = BatchOperationDialog(ids, self._service, self)
+        dialog = BatchOperationDialog(ids, self._service, self,
+                                      undo_manager=self._undo_manager)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             summary = dialog.result_summary()
             if summary:

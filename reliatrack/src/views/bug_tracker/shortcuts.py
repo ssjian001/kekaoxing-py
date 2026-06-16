@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem,
-    QWidget, QLabel, QApplication,
+    QWidget, QLabel, QApplication, QTextEdit,
 )
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -13,31 +13,60 @@ from src.models.issue import Issue
 from src.styles.constants import *
 
 
-def register_bug_tracker_shortcuts(parent: QWidget, handler: ShortcutHandler) -> None:
-    s = QShortcut(QKeySequence("c"), parent)
-    s.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-    s.activated.connect(handler.on_quick_create)
+def register_bug_tracker_shortcuts(parent: QWidget, handler: ShortcutHandler) -> dict[str, QShortcut]:
+    """注册快捷键，返回 shortcut 字典供 focus guard 管理。"""
+    s_c = QShortcut(QKeySequence("c"), parent)
+    s_c.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    s_c.activated.connect(handler.on_quick_create)
 
-    s2 = QShortcut(QKeySequence("Ctrl+N"), parent)
-    s2.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-    s2.activated.connect(handler.on_quick_create)
+    s_ctrl_n = QShortcut(QKeySequence("Ctrl+N"), parent)
+    s_ctrl_n.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    s_ctrl_n.activated.connect(handler.on_quick_create)
 
-    s3 = QShortcut(QKeySequence("Ctrl+K"), parent)
-    s3.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-    s3.activated.connect(handler.on_quick_search)
+    s_ctrl_k = QShortcut(QKeySequence("Ctrl+K"), parent)
+    s_ctrl_k.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    s_ctrl_k.activated.connect(handler.on_quick_search)
 
-    s4 = QShortcut(QKeySequence("/"), parent)
-    s4.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-    s4.activated.connect(handler.on_focus_search)
+    s_slash = QShortcut(QKeySequence("/"), parent)
+    s_slash.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    s_slash.activated.connect(handler.on_focus_search)
 
-    # 看板左右箭头切换列
-    s5 = QShortcut(QKeySequence(Qt.Key.Key_Left), parent)
-    s5.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-    s5.activated.connect(lambda: handler.on_navigate_column(-1))
+    # 看板左右箭头切换列（仅在非输入控件聚焦时生效）
+    s_left = QShortcut(QKeySequence(Qt.Key.Key_Left), parent)
+    s_left.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    s_left.activated.connect(lambda: handler.on_navigate_column(-1))
 
-    s6 = QShortcut(QKeySequence(Qt.Key.Key_Right), parent)
-    s6.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-    s6.activated.connect(lambda: handler.on_navigate_column(1))
+    s_right = QShortcut(QKeySequence(Qt.Key.Key_Right), parent)
+    s_right.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+    s_right.activated.connect(lambda: handler.on_navigate_column(1))
+
+    return {
+        "c": s_c,
+        "ctrl_n": s_ctrl_n,
+        "ctrl_k": s_ctrl_k,
+        "slash": s_slash,
+        "left": s_left,
+        "right": s_right,
+    }
+
+
+def install_shortcut_focus_guard(
+    shortcuts: dict[str, QShortcut],
+    parent: QWidget,
+) -> None:
+    """监控焦点变化，文本输入框聚焦时禁用单字符/方向快捷键。"""
+    _single_char_keys = {"c", "left", "right"}  # / 和 Ctrl+ 组合键不需要保护
+
+    def _on_focus_changed(obj: QWidget | None) -> None:
+        is_input = isinstance(obj, (QLineEdit, QTextEdit))
+        for key in _single_char_keys:
+            sc = shortcuts.get(key)
+            if sc is not None:
+                sc.setEnabled(not is_input)
+
+    app = QApplication.instance()
+    if app is not None:
+        app.focusObjectChanged.connect(_on_focus_changed)
 
 
 class ShortcutHandler:
