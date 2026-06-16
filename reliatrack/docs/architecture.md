@@ -16,11 +16,16 @@ Project ──< TestPlan ──< TestTask >── Sample
    ├──< Issue ──< FARecord
    │         ──< CAPARecord
    │         ──< IssueAttachment
+   │         ──< IssueComment
+   │         ──< IssueActivityLog
+   │         ──< IssueLink
    └──< Knowledge
 ```
 
-### Schema 版本：v22
+### Schema 版本：v23
 
+- **v23**：Bug 管理系统（新增 issue_comments/issue_activity_log/issue_links 表 + 看板/列表/详情弹窗 + 状态机含 reopen + 活动日志自动记录 + aging + resolution 强制 + Dashboard KPI）
+- **v22**：归档视图完善（toggle 按钮 + SQL 层过滤 + 联动刷新）；test_plan_edit_dialog 配置修复
 - **v21**：Issue 责任类别（ME/EE/AE/SW/NPI/QE/Other）+ 状态多选筛选 + CheckBox QProxyStyle
 - **v20**：任务编号前缀
 - **v17**：Issue 软删除试点（`is_deleted`/`deleted_at` 列，`list_all` 过滤）
@@ -36,7 +41,7 @@ Project ──< TestPlan ──< TestTask >── Sample
 ```
 View (Qt UI)
   ↓ Signal
-Handler (信号处理器, 11个类)
+Handler (信号处理器, 10个类)
   ↓ 调用
 Service (业务逻辑)
   ↓ 调用
@@ -50,17 +55,18 @@ SQLite (apsw)
 - **Services**：业务规则（调度、导入导出、统计计算）
 - **Repositories**：单表 CRUD，封装 SQL 细节
 
-## 7 个 Tab
+## 8 个 Tab
 
 | 索引 | Tab | 核心组件 |
 |-----|-----|---------|
-| 0 | 📊 仪表盘 | SaaS v2: Header + 测试进度堆叠条卡片(_StackedBar) + 左栏(3KPI+环形图) + 右栏(4KPI+进度环+严重度条), QPainter |
+| 0 | 📊 仪表盘 | SaaS v2: Header + 测试进度堆叠条卡片(_StackedBar) + 左栏(3KPI+环形图) + 右栏(4KPI+进度环+严重度条) + Bug KPI(待处理/本周关闭/平均停留/aging警告), QPainter |
 | 1 | 📁 项目管理 | 项目 CRUD + 搜索过滤 |
 | 2 | 📦 样品管理 | 样品池 + 出入库记录 + Excel 批量导入 |
 | 3 | 📋 测试计划 | 任务表（13列含预计日期）+ 甘特图（预计/实际切换+设备颜色编码）+ 自动排程 + 结果矩阵（3种显示模式+Tooltip+行列统计）+ 失效模式分析Tab（类别统计+TopN+未关联Issue警告）+ 今日摘要栏 + 一键总结报告 + 导出按项目筛选 + 依赖弹出选择 |
 | 4 | 🐛 Issue 追踪 | Issue CRUD(9列含DRI) + FA 分析 + CAPA 措施（负责人+验证人自由输入）+ FA/CAPA↔Issue 双向联动 + 自动创建 Issue(fail→Issue) + 8D PDF/Word 导出 + 状态/严重度筛选 |
 | 5 | 🔧 设备管理 | 设备 CRUD + 校准管理 + 技术员管理（内部子 Tab） |
 | 6 | 📚 知识库 | 失效模式 CRUD + 关键词搜索 |
+| 7 | 🐛 Bug 管理 | 看板(4列拖拽+aging色块+closed折叠) / 列表(筛选面板+批量操作) Tab切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建 C键 + 关闭 resolution强制
 
 ## 排程引擎
 
