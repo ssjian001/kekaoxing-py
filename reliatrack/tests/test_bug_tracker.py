@@ -418,3 +418,100 @@ class TestAgingCalculation:
         # 刚创建的 issue，aging 应为 0
         assert isinstance(days, int)
         assert days == 0, f"刚创建的 issue aging 应为 0，实际为 {days}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Dashboard 集成 — Bug Tracker 4 指标冒烟测试
+#  回归崩溃 #62e6cb3: ctrl.issues(repo) vs ctrl.issue_service(svc)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestDashboardBugTrackerMetrics:
+    """验证 _collect_dashboard_data 的 Bug Tracker 4 指标计算不崩溃。
+
+    回归测试 #62e6cb3 — delegate_task 混用 repo/service API 导致
+    AttributeError: 'IssueRepository' object has no attribute 'get_aging_days'
+    """
+
+    @staticmethod
+    def _make_mock_ctrl(db_conn):
+        """构造 mock AppController（真实 repos + services）。"""
+        from types import SimpleNamespace
+        from src.db.repositories import (
+            IssueRepository, TestTaskRepository, TestResultRepository,
+            TestPlanRepository, ProjectRepository, SampleRepository,
+            TechnicianRepository, KnowledgeRepository,
+        )
+        from src.services.issue_service import IssueService
+        from src.services.project_service import ProjectService
+        from src.services.sample_service import SampleService
+        from src.services.test_plan_service import TestPlanService
+        from src.services.knowledge_service import KnowledgeService
+
+        issue_repo = IssueRepository(db_conn)
+        plan_repo = TestPlanRepository(db_conn)
+        task_repo = TestTaskRepository(db_conn)
+        result_repo = TestResultRepository(db_conn)
+        sample_repo = SampleRepository(db_conn)
+        project_repo = ProjectRepository(db_conn)
+
+        issue_svc = IssueService(issue_repo, db_conn)
+        return SimpleNamespace(
+            _conn=db_conn,
+            issues=issue_repo,
+            issue_service=issue_svc,
+            test_tasks=task_repo,
+            test_results=result_repo,
+            project_service=ProjectService(project_repo, plan_repo, task_repo, sample_repo, issue_repo),
+            sample_service=SampleService(sample_repo, result_repo, issue_repo),
+            test_plan_service=TestPlanService(plan_repo, task_repo, result_repo),
+            technicians=TechnicianRepository(db_conn),
+            knowledge_service=KnowledgeService(KnowledgeRepository(db_conn)),
+        )
+
+    @staticmethod
+    def _make_mock_handlers(ctrl):
+        """构造 RefreshHandlers（跳过 __init__，设最小属性）。"""
+        from types import SimpleNamespace
+        from src.handlers.refresh_handlers import RefreshHandlers
+
+        class _MockIssueView:
+            def set_context_data(self, **kwargs): pass
+
+        win = SimpleNamespace(ctrl=ctrl, issue_view=_MockIssueView())
+        handlers = RefreshHandlers.__new__(RefreshHandlers)  # type: ignore
+        handlers._win = win  # type: ignore
+        handlers._cached_projects = None
+        handlers._cached_samples = None
+        return handlers
+
+    def test_dashboard_data_has_bug_tracker_fields(self, db_conn):
+        """_collect_dashboard_data 返回的 DashboardData 含 4 个 Bug Tracker 字段。"""
+        ctrl = self._make_mock_ctrl(db_conn)
+        handlers = self._make_mock_handlers(ctrl)
+        svc = ctrl.issue_service
+
+        # 插入测试 issue
+        svc.create(title="开放Bug1", status="open", severity="major")
+        svc.create(title="分析中Bug1", status="analyzing", severity="critical")
+        svc.create(title="已关闭Bug1", status="closed", resolution="fixed")
+
+        data = handlers._collect_dashboard_data(ctrl, None, None)
+
+        assert data is not None
+        assert data.pending_count == 2, f"pending_count 应为 2（open+analyzing），实际 {data.pending_count}"
+        assert isinstance(data.weekly_closed, int) and data.weekly_closed >= 0
+        assert isinstance(data.avg_age_days, (int, float))
+        assert isinstance(data.aging_warning_count, int)
+
+    def test_dashboard_no_crash_with_empty_db(self, db_conn):
+        """空 DB 时 _collect_dashboard_data 不崩溃（回归 #62e6cb3）。"""
+        ctrl = self._make_mock_ctrl(db_conn)
+        handlers = self._make_mock_handlers(ctrl)
+
+        data = handlers._collect_dashboard_data(ctrl, None, None)
+
+        assert data is not None
+        assert data.pending_count == 0
+        assert data.avg_age_days == 0
+        assert data.aging_warning_count == 0
