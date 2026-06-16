@@ -605,6 +605,8 @@ class DashboardData:
         "health_score", "plan_count", "technician_count",
         "pass_count", "fail_count",
         "last_update", "pass_rate_trend", "capa_trend",
+        # Bug Tracker 4 指标
+        "pending_count", "weekly_closed", "avg_age_days", "aging_warning_count",
     )
 
     def __init__(self, **kwargs: object) -> None:
@@ -660,6 +662,8 @@ class DashboardView(QWidget):
             self._card_wait, self._card_fail,
             self._card_issues, self._card_issue_close,
             self._card_capa,
+            self._card_pending, self._card_week_close,
+            self._card_avg_age, self._card_aging,
         ):
             card.setProperty("class", "card-bg")
             # 大数字颜色是语义色（DASH_SUCCESS/SUBTEXT0 等），需重新读取
@@ -771,6 +775,19 @@ class DashboardView(QWidget):
         gb.addWidget(self._card_capa)
         right.addLayout(gb)
 
+        # Bug Tracker 4 指标
+        gb2 = QHBoxLayout()
+        gb2.setSpacing(10)
+        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4)
+        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4)
+        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4)
+        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4)
+        gb2.addWidget(self._card_pending)
+        gb2.addWidget(self._card_week_close)
+        gb2.addWidget(self._card_avg_age)
+        gb2.addWidget(self._card_aging)
+        right.addLayout(gb2)
+
         # 进度环（两个独立卡片）
         ring_row = QHBoxLayout()
         ring_row.setSpacing(10)
@@ -849,6 +866,12 @@ class DashboardView(QWidget):
         self._card_issue_close.set_value(str(data.issue_closed_count))
         cr = data.capa_completion_rate
         self._card_capa.set_value(f"{cr:.0f}%" if cr is not None else "—%")
+
+        # Bug Tracker 4 指标
+        self._card_pending.set_value(str(data.pending_count))
+        self._card_week_close.set_value(str(data.weekly_closed))
+        self._card_avg_age.set_value(f"{data.avg_age_days:.0f}天" if data.avg_age_days else "—")
+        self._card_aging.set_value(str(data.aging_warning_count))
 
         # 进度环
         ic = data.issue_count or 0

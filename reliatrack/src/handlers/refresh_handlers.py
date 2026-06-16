@@ -198,6 +198,26 @@ class RefreshHandlers:
         issue_closed_count = sum(1 for iss in issues_list if iss.status == "closed")
         issue_severity_data = ctrl.issues.count_by_severity(project_id=filter_project_id)
 
+        # ── Bug Tracker 4 指标 ──
+        pending_issues = [i for i in issues_list if i.status in ("open", "analyzing")]
+        pending_count = len(pending_issues)
+
+        # 本周关闭数（从活动日志查）
+        weekly_closed = 0
+        if hasattr(ctrl, '_conn') and ctrl._conn:
+            row = ctrl._conn.execute(
+                "SELECT COUNT(*) FROM issue_activity_log WHERE field='status' AND new_value='closed' AND created_at >= date('now', '-7 days', 'localtime')"
+            ).fetchone()
+            if row:
+                weekly_closed = row[0]
+
+        # 平均停留天数
+        aging_days_list = [ctrl.issues.get_aging_days(i.id) for i in pending_issues if i.id]
+        avg_age_days = sum(aging_days_list) / len(aging_days_list) if aging_days_list else 0
+
+        # Aging 超期警告
+        aging_warning_count = sum(1 for d in aging_days_list if d > 7)
+
         # ── 通过率 ──
         pass_rate: float | None = None
         total_pass = 0
@@ -278,6 +298,11 @@ class RefreshHandlers:
             pass_count=total_pass if task_ids else 0,
             fail_count=max(total_result - total_pass, 0) if task_ids else 0,
             technician_count=ctrl.technicians.count() if ctrl.technicians else 0,
+            # Bug Tracker 4 指标
+            pending_count=pending_count,
+            weekly_closed=weekly_closed,
+            avg_age_days=avg_age_days,
+            aging_warning_count=aging_warning_count,
         )
 
     def _refresh_dashboard(self) -> None:
