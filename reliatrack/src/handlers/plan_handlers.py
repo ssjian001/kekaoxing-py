@@ -844,52 +844,53 @@ class PlanHandlers:
             saved = 0
             deleted_count = 0
             issue_count = 0
-            for item in all_data:
-                # 已有结果标记删除 → 删除
-                if item.get("deleted") and item.get("result_id"):
-                    ctrl.test_plan_service.delete_result(item["result_id"])
-                    deleted_count += 1
-                # 未删除 → 保存（sample_id 可为 None，表示无样品关联的整体结论）
-                elif not item.get("deleted"):
-                    ctrl.test_plan_service.save_result(
-                        task_id=task.id,
-                        sample_id=item["sample_id"],
-                        result=item["result"],
-                        test_date=item["test_date"],
-                        measured_value=item.get("measured_value", ""),
-                        notes=item.get("notes", ""),
-                        tester_id=item.get("tester_id"),
-                        environment=item.get("environment", "{}"),
-                    )
-                    saved += 1
-                    # 自动创建 Issue
-                    if item.get("create_issue") and item.get("result") == "fail":
-                        if ctrl.issue_service:
-                            try:
-                                sample_name = item.get("sample_name", "")
-                                title = task.name
-                                if sample_name:
-                                    title += f" - {sample_name}"
-                                # 通过 plan_id 获取 project_id（TestTask 无 project_id 字段）
-                                issue_project_id: int | None = None
-                                if task.plan_id and ctrl.test_plan_service:
-                                    plan = ctrl.test_plan_service.get_plan(task.plan_id)
-                                    if plan:
-                                        issue_project_id = plan.project_id or None
-                                ctrl.issue_service.create(
-                                    title=title,
-                                    project_id=issue_project_id,
-                                    plan_id=task.plan_id if hasattr(task, "plan_id") else None,
-                                    task_id=task.id,
-                                    sample_id=item.get("sample_id"),
-                                    failure_mode="不通过",
-                                    severity="major",
-                                    status="open",
-                                    description=f"自动创建：测试任务「{task.name}」{'样品「' + sample_name + '」' if sample_name else ''}结果不通过",
-                                )
-                                issue_count += 1
-                            except Exception:
-                                logger.exception("Auto-create issue failed for task=%s", task.id)
+            with ctrl.test_plan_service._result_repo.transaction():
+                for item in all_data:
+                    # 已有结果标记删除 → 删除
+                    if item.get("deleted") and item.get("result_id"):
+                        ctrl.test_plan_service.delete_result(item["result_id"])
+                        deleted_count += 1
+                    # 未删除 → 保存（sample_id 可为 None，表示无样品关联的整体结论）
+                    elif not item.get("deleted"):
+                        ctrl.test_plan_service.save_result(
+                            task_id=task.id,
+                            sample_id=item["sample_id"],
+                            result=item["result"],
+                            test_date=item["test_date"],
+                            measured_value=item.get("measured_value", ""),
+                            notes=item.get("notes", ""),
+                            tester_id=item.get("tester_id"),
+                            environment=item.get("environment", "{}"),
+                        )
+                        saved += 1
+                        # 自动创建 Issue
+                        if item.get("create_issue") and item.get("result") == "fail":
+                            if ctrl.issue_service:
+                                try:
+                                    sample_name = item.get("sample_name", "")
+                                    title = task.name
+                                    if sample_name:
+                                        title += f" - {sample_name}"
+                                    # 通过 plan_id 获取 project_id（TestTask 无 project_id 字段）
+                                    issue_project_id: int | None = None
+                                    if task.plan_id and ctrl.test_plan_service:
+                                        plan = ctrl.test_plan_service.get_plan(task.plan_id)
+                                        if plan:
+                                            issue_project_id = plan.project_id or None
+                                    ctrl.issue_service.create(
+                                        title=title,
+                                        project_id=issue_project_id,
+                                        plan_id=task.plan_id if hasattr(task, "plan_id") else None,
+                                        task_id=task.id,
+                                        sample_id=item.get("sample_id"),
+                                        failure_mode="不通过",
+                                        severity="major",
+                                        status="open",
+                                        description=f"自动创建：测试任务「{task.name}」{'样品「' + sample_name + '」' if sample_name else ''}结果不通过",
+                                    )
+                                    issue_count += 1
+                                except Exception:
+                                    logger.exception("Auto-create issue failed for task=%s", task.id)
             if saved > 0 or deleted_count > 0:
                 msg = f"已保存 {saved} 条测试结果（任务: {task.name}）"
                 if deleted_count:

@@ -225,6 +225,10 @@ class SchedulePreviewDialog(QDialog):
             ("任务数", f"{task_count}", _t.MAUVE),
             ("已调整", f"{updated_count}", _t.PEACH),
         ]
+        # 循环依赖任务提示
+        skipped = report.get("skipped_cycle_tasks", [])
+        if skipped:
+            cards.append(("循环依赖跳过", f"{len(skipped)}", _t.RED))
         for label, value, color in cards:
             card = QFrame()
             card.setProperty("class", "stat-card")

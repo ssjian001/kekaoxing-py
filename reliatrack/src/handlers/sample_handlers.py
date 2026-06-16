@@ -98,13 +98,17 @@ class SampleHandlers:
                 current_filter = self._win.get_project_filter_id()
                 if current_filter is not None and sample_project_id != current_filter:
                     self._win.project_filter_combo.setCurrentIndex(0)
-                # 同步创建入库记录
+                # 同步创建入库记录（与入库操作原子化）
                 created = ctrl.sample_service.get_by_sn(data["sn"])
                 if created is not None and created.id is not None:
-                    ctrl.sample_service.add_transaction(
-                        sample_id=created.id,
-                        txn_type="check_in",
-                    )
+                    try:
+                        with ctrl.sample_service._repo.transaction():
+                            ctrl.sample_service.add_transaction(
+                                sample_id=created.id,
+                                txn_type="check_in",
+                            )
+                    except Exception:
+                        logger.exception("check_in transaction failed for sample=%s", created.id)
         dlg.deleteLater()
 
     def _on_sample_checkout(self) -> None:

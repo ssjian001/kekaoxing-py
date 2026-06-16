@@ -135,7 +135,7 @@ class TestTaskRepository(BaseRepository):
         issues 及其子表（fa_records, capa_records, issue_attachments）由
         FK ON DELETE CASCADE 自动级联清理。
         """
-        # 收集附件文件路径（磁盘清理，CASCADE 不处理文件系统）
+        # 收集附件文件路径（CASCADE 后无法再查询）
         attachment_paths = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] ia "
             "JOIN [issues] i ON ia.issue_id = i.id "
@@ -144,10 +144,12 @@ class TestTaskRepository(BaseRepository):
             (plan_id,),
         ).fetchall()
         from src.db.repositories.issue_repo import IssueRepository
+        # 先执行 DB 删除（事务内），成功后再清理磁盘文件
+        with self.transaction():
+            cursor = self._conn.execute(
+                "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,),
+            )
+        # DB 删除成功后，清理磁盘附件文件（best-effort）
         for (fp,) in attachment_paths:
             IssueRepository._remove_disk_file(fp)
-        # FK CASCADE: test_tasks → issues → fa_records/capa_records/issue_attachments
-        cursor = self._conn.execute(
-            "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,),
-        )
         return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0

@@ -360,7 +360,7 @@ def compress_schedule(
         earliest = 0
         for dep_id in dep_map.get(task.id, []):
             dep_task = id_to_task.get(dep_id)
-            if dep_task and dep_task.status != "completed" and dep_task.start_day >= 0:
+            if dep_task and dep_task.start_day >= 0:
                 dep_end = _work_day_end(
                     dep_task.start_day, dep_task.duration,
                     config.skip_weekends, config.start_date,

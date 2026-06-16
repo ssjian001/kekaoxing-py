@@ -403,7 +403,7 @@ class IssueRepository(BaseRepository):
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "
-                "WHERE i.project_id = ?",
+                "WHERE i.project_id = ? AND i.is_deleted = 0",
                 (project_id,),
             ).fetchone()
         else:
@@ -416,7 +416,7 @@ class IssueRepository(BaseRepository):
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "
-                "WHERE i.project_id = ? AND cr.status IN ('completed', 'verified')",
+                "WHERE i.project_id = ? AND cr.status IN ('completed', 'verified') AND i.is_deleted = 0",
                 (project_id,),
             ).fetchone()
         else:

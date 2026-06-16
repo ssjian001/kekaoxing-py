@@ -188,11 +188,12 @@ class RefreshHandlers:
             filtered_tasks = ctrl.test_tasks.list_all()
         self._win.issue_view.set_context_data(tasks=filtered_tasks)
 
-        # ── Issue ──
-        issues_list = (
-            ctrl.issues.get_by_project(filter_project_id) if filter_project_id
-            else ctrl.issues.list_all()
-        )
+        # ── Issue ──（与 Issue 视图一致：含未分配项目的 Issue）
+        if filter_project_id:
+            issues_list = ctrl.issues.get_by_project(filter_project_id)
+            issues_list += ctrl.issues.get_unassigned()
+        else:
+            issues_list = ctrl.issues.list_all()
         issues = len(issues_list)
         issue_closed_count = sum(1 for iss in issues_list if iss.status == "closed")
         issue_severity_data = ctrl.issues.count_by_severity(project_id=filter_project_id)

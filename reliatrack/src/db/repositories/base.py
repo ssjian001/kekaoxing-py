@@ -257,16 +257,22 @@ class BaseRepository:
 
 
 class _Transaction:
-    """事务上下文管理器。"""
+    """事务上下文管理器（支持嵌套 — 外层已有事务时跳过 BEGIN/COMMIT）。"""
 
     def __init__(self, repo: BaseRepository) -> None:
         self._repo = repo
+        self._owns_transaction = False
 
     def __enter__(self) -> _Transaction:
-        self._repo.begin_transaction()
+        # 如果已在事务中，不重复 BEGIN（SQLite 不支持嵌套事务）
+        if not self._repo.conn.in_transaction:
+            self._repo.begin_transaction()
+            self._owns_transaction = True
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        if not self._owns_transaction:
+            return
         if exc_type is not None:
             self._repo.rollback()
         else:

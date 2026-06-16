@@ -395,9 +395,12 @@ class IssueHandlers:
             fa_records = ctrl.issue_service.get_fa_records(issue_id)
             updates: dict = {}
 
-            # 状态联动: open → analyzing
+            # 状态联动: open → analyzing (有FA记录时)
             if issue.status == "open" and fa_records:
                 updates["status"] = "analyzing"
+            # 状态联动: analyzing → open (FA记录全删时回退)
+            elif issue.status == "analyzing" and not fa_records:
+                updates["status"] = "open"
 
             # 根因联动: 确认的原因（confirmed=1）汇总
             confirmed_causes = [
