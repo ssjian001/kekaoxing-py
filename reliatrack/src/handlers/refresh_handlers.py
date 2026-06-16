@@ -212,7 +212,11 @@ class RefreshHandlers:
                 weekly_closed = row[0]
 
         # 平均停留天数
-        aging_days_list = [ctrl.issues.get_aging_days(i.id) for i in pending_issues if i.id]
+        aging_days_list = [
+            ctrl.issue_service.get_aging_days(i.id)
+            for i in pending_issues
+            if i.id and ctrl.issue_service is not None
+        ]
         avg_age_days = sum(aging_days_list) / len(aging_days_list) if aging_days_list else 0
 
         # Aging 超期警告

@@ -38,6 +38,7 @@ from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
 from src.views.test_plan_view import TestPlanView
 from src.views.issue_view import IssueView
+from src.views.bug_tracker import BugTrackerView
 from src.views.equipment_view import EquipmentView
 from src.views.technician_view import TechnicianView
 from src.views.project_view import ProjectView
@@ -150,6 +151,11 @@ class MainWindow(QMainWindow):
         # Tab 6: 知识库
         self._knowledge_view = KnowledgeView()
         self._tab_widget.addTab(self._knowledge_view, "知识库")
+
+        # Tab 7: Bug 管理（看板/列表）
+        assert self._ctrl.issue_service is not None, "IssueService must be initialized"
+        self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service)
+        self._tab_widget.addTab(self._bug_tracker_view, "Bug 管理")
 
         # 恢复上次选中的 Tab
         settings = QSettings()

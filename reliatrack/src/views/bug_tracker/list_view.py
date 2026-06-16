@@ -726,6 +726,11 @@ class BugListView(QWidget):
         self._all_issues = issues
         self._apply_filters()
 
+    def refresh(self) -> None:
+        """从 IssueService 重新加载所有 Issue。"""
+        issues = self._service.list_all() if self._service else []
+        self.set_issues(issues)
+
     def set_technician_names(self, names: list[str]) -> None:
         """设置指派人名称列表。"""
         self._technician_names = names

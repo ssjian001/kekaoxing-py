@@ -108,6 +108,10 @@ class BugTrackerView(QWidget):
         self._list_view.refresh_requested.connect(self._refresh_all)
         self._list_view.filter_changed.connect(self._on_filter_changed)
 
+        # 首次加载数据
+        self._kanban_view.refresh()
+        self._list_view.refresh()
+
         self._switch_tab(0)
 
     def _switch_tab(self, index: int) -> None:
