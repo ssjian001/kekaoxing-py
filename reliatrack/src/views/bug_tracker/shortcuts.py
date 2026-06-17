@@ -62,7 +62,10 @@ def install_shortcut_focus_guard(
         for key in _single_char_keys:
             sc = shortcuts.get(key)
             if sc is not None:
-                sc.setEnabled(not is_input)
+                try:
+                    sc.setEnabled(not is_input)
+                except RuntimeError:
+                    pass  # 关闭过程中 C++ 对象已删除，忽略
 
     app = QApplication.instance()
     if app is not None:
