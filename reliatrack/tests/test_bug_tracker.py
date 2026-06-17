@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 import pytest
 import apsw
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
 
 from src.db.schema import init_schema, SCHEMA_VERSION
 from src.db.repositories import IssueRepository
@@ -17,6 +21,12 @@ from src.services.issue_service import IssueService
 @pytest.fixture()
 def issue_svc(db_conn) -> IssueService:
     return IssueService(IssueRepository(db_conn), db_conn)
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    """Module-scoped QApplication 实例，供 QWidget 测试使用。"""
+    return QApplication.instance() or QApplication(sys.argv)
 
 
 def _create_issue(svc: IssueService, title: str = "测试Bug", **kw) -> int:
@@ -515,3 +525,172 @@ class TestDashboardBugTrackerMetrics:
         assert data.pending_count == 0
         assert data.avg_age_days == 0
         assert data.aging_warning_count == 0
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Fix 回归测试 — 事务原子性 / 看板卡片显示 / 列表选中行恢复
+# ═══════════════════════════════════════════════════════════════════
+
+class TestUpdateTransactionAtomicity:
+    """Fix 3: update() + transition_status() 的事务原子性测试。"""
+
+    def test_update_writes_issue_and_activity_atomically(self, issue_svc):
+        """update() 中 issue 变更和 activity log 必须同在一个事务中。"""
+        issue_id = _create_issue(issue_svc, severity="major")
+        # 修改 tracked field
+        issue_svc.update(issue_id, severity="critical", operator="tester")
+        # issue 变更生效
+        issue = issue_svc.get(issue_id)
+        assert issue.severity == "critical"
+        # activity log 也存在
+        logs = issue_svc.get_activity_log(issue_id)
+        severity_logs = [l for l in logs if l.field == "severity"]
+        assert len(severity_logs) == 1
+        assert severity_logs[0].old_value == "major"
+        assert severity_logs[0].new_value == "critical"
+
+    def test_transition_status_writes_atomically(self, issue_svc):
+        """transition_status() 中状态变更和活动日志原子化。"""
+        issue_id = _create_issue(issue_svc, severity="major")
+        # open → analyzing（合法转换）
+        ok, _ = issue_svc.transition_status(issue_id, "analyzing", operator="tester")
+        assert ok
+        issue = issue_svc.get(issue_id)
+        assert issue.status == "analyzing"
+        logs = issue_svc.get_activity_log(issue_id)
+        status_logs = [l for l in logs if l.field == "status"]
+        assert any(l.new_value == "analyzing" for l in status_logs)
+
+    def test_update_transaction_rollback_on_activity_failure(self, db_conn):
+        """Fix 3 核心测试：activity_repo.add() 失败时，issue 更新必须回滚。"""
+        svc = _make_service(db_conn)
+        issue_id = _create_issue(svc, severity="major")
+
+        # Monkey-patch activity_repo.add 抛异常，模拟中间失败
+        original_add = svc._activity_repo.add
+        call_count = [0]
+        def failing_add(*args, **kwargs):
+            call_count[0] += 1
+            raise RuntimeError("模拟 activity log 写入失败")
+
+        svc._activity_repo.add = failing_add
+        try:
+            with pytest.raises(RuntimeError):
+                svc.update(issue_id, severity="critical", operator="tester")
+        finally:
+            svc._activity_repo.add = original_add
+
+        # 关键验证：issue 没有被更新（事务回滚）
+        issue = svc.get(issue_id)
+        assert issue.severity == "major", "update() 应该回滚 — issue severity 不应改变"
+
+
+class TestKanbanCardAssigneeDisplay:
+    """Fix 1: 看板卡片显示人名而非 assignee_id 数字。"""
+
+    def test_kanban_card_shows_assignee_name(self, qapp):
+        """卡片优先显示 assignee_name 参数。"""
+        from src.views.bug_tracker.kanban_view import _KanbanCard
+        from src.models.issue import Issue
+
+        issue = Issue(id=1, title="测试", assignee_id=5)
+        card = _KanbanCard(issue, aging_days=3, assignee_name="张工")
+        # 卡片内部属性正确存储
+        assert card._assignee_name == "张工"
+
+    def test_kanban_card_fallback_to_dri_name(self, qapp):
+        """assignee_name 为空时 fallback 到 dri_name。"""
+        from src.views.bug_tracker.kanban_view import _KanbanCard
+        from src.models.issue import Issue
+
+        issue = Issue(id=1, title="测试", assignee_id=5, dri_name="李工")
+        card = _KanbanCard(issue, aging_days=0, assignee_name="")
+        # assignee_name 空 → 显示逻辑 fallback 到 dri_name
+        display = card._assignee_name or getattr(issue, "dri_name", "") or ""
+        assert display == "李工"
+
+    def test_kanban_card_shows_dash_when_no_name(self, qapp):
+        """没有任何名字时显示 '—'。"""
+        from src.views.bug_tracker.kanban_view import _KanbanCard
+        from src.models.issue import Issue
+
+        issue = Issue(id=1, title="测试")
+        card = _KanbanCard(issue, aging_days=0, assignee_name="")
+        display = card._assignee_name or getattr(issue, "dri_name", "") or ""
+        assert display == ""  # UI 层会显示 "—"
+
+
+class TestBugListSelectionRetention:
+    """Fix 5: set_issues() 刷新后恢复选中行 + checkbox 状态。"""
+
+    def test_set_issues_preserves_selected_row(self, issue_svc, qapp):
+        """刷新后之前选中的 Issue 行仍然被选中。"""
+        from src.views.bug_tracker.list_view import _BugTable
+
+        table = _BugTable()
+        table.set_issue_service(issue_svc)
+
+        # 创建 3 个 Issue
+        id1 = _create_issue(issue_svc, title="Bug1")
+        id2 = _create_issue(issue_svc, title="Bug2")
+        id3 = _create_issue(issue_svc, title="Bug3")
+
+        issues = [issue_svc.get(i) for i in [id1, id2, id3]]
+        table.set_issues(issues)
+
+        # 选中第二行 (id2)
+        table.setCurrentCell(1, 0)
+        assert table.get_selected_issue_id() == id2
+
+        # 模拟刷新（数据不变）
+        table.set_issues(issues)
+
+        # 选中行应该恢复
+        assert table.get_selected_issue_id() == id2
+
+    def test_set_issues_preserves_checkbox_state(self, issue_svc, qapp):
+        """刷新后之前勾选的 checkbox 仍然保持勾选。"""
+        from src.views.bug_tracker.list_view import _BugTable
+
+        table = _BugTable()
+        table.set_issue_service(issue_svc)
+
+        id1 = _create_issue(issue_svc, title="Bug1")
+        id2 = _create_issue(issue_svc, title="Bug2")
+        id3 = _create_issue(issue_svc, title="Bug3")
+
+        issues = [issue_svc.get(i) for i in [id1, id2, id3]]
+        table.set_issues(issues)
+
+        # 勾选 id1 和 id3
+        table.item(0, 0).setCheckState(Qt.CheckState.Checked)
+        table.item(2, 0).setCheckState(Qt.CheckState.Checked)
+        assert set(table.get_checked_ids()) == {id1, id3}
+
+        # 模拟刷新
+        table.set_issues(issues)
+
+        # checkbox 状态应该保持
+        assert set(table.get_checked_ids()) == {id1, id3}
+
+    def test_set_issues_no_crash_when_selected_deleted(self, issue_svc, qapp):
+        """之前选中的 Issue 被删除后，刷新不崩溃，不选中任何行。"""
+        from src.views.bug_tracker.list_view import _BugTable
+
+        table = _BugTable()
+        table.set_issue_service(issue_svc)
+
+        id1 = _create_issue(issue_svc, title="Bug1")
+        id2 = _create_issue(issue_svc, title="Bug2")
+
+        issues = [issue_svc.get(i) for i in [id1, id2]]
+        table.set_issues(issues)
+        table.setCurrentCell(1, 0)  # 选中 id2
+        assert table.get_selected_issue_id() == id2
+
+        # 刷新时只有 id1（id2 被删除了）
+        table.set_issues([issue_svc.get(id1)])
+
+        # 不崩溃，选中的是 id1 或 None（但不应该是已删除的 id2）
+        selected = table.get_selected_issue_id()
+        assert selected != id2

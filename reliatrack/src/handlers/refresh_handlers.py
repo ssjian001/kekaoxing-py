@@ -437,7 +437,7 @@ class RefreshHandlers:
             )
 
     def _refresh_issues(self) -> None:
-        """刷新 Issue 追踪视图。"""
+        """刷新 Issue 追踪视图 + Bug Tracker 视图。"""
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
@@ -451,10 +451,20 @@ class RefreshHandlers:
             all_issues = ctrl.issue_service.list_all()
         # 注入技术员列表供 CAPA 弹窗使用（通过公共方法）
         if ctrl.technician_service:
+            technicians = ctrl.technician_service.list_all()
             self._win.issue_view.set_context_data(
-                technicians=ctrl.technician_service.list_all(),
+                technicians=technicians,
             )
+            # 构建 technician_map 并注入 Bug Tracker（Fix 1: 看板卡片显示人名）
+            tech_map = {t.id: t.name for t in technicians if t.id is not None}
+            bug_tracker = getattr(self._win, '_bug_tracker_view', None)
+            if bug_tracker is not None:
+                bug_tracker.set_technician_map(tech_map)
         self._win.issue_view.refresh(all_issues)
+        # 同步刷新 Bug Tracker 视图（Fix 6: 之前遗漏，导致 Tab 切换看到过时数据）
+        bug_tracker = getattr(self._win, '_bug_tracker_view', None)
+        if bug_tracker is not None:
+            bug_tracker.refresh()
 
     def _refresh_equipment(self) -> None:
         """刷新设备管理视图。"""

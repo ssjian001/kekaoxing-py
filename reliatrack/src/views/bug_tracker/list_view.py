@@ -113,20 +113,28 @@ class _BugTable(QTableWidget):
         self._issue_service = service
 
     def set_issues(self, issues: list[Issue]) -> None:
-        """填充或刷新表格数据。"""
+        """填充或刷新表格数据（Fix 5: 保留选中行 + checkbox 状态）。"""
+        # 保存当前选中行 ID 和已勾选 ID
+        saved_selected = self.get_selected_issue_id()
+        saved_checks: set = set(self.get_checked_ids())
+
         self._issues = issues
         self.setSortingEnabled(False)
         self.setRowCount(len(issues))
 
         for row, issue in enumerate(issues):
-            # Checkbox 列（col 0）
+            # Checkbox 列（col 0）— 恢复勾选状态
             chk_item = QTableWidgetItem()
             chk_item.setFlags(
                 Qt.ItemFlag.ItemIsUserCheckable
                 | Qt.ItemFlag.ItemIsEnabled
                 | Qt.ItemFlag.ItemIsSelectable
             )
-            chk_item.setCheckState(Qt.CheckState.Unchecked)
+            check_state = (
+                Qt.CheckState.Checked if issue.id in saved_checks
+                else Qt.CheckState.Unchecked
+            )
+            chk_item.setCheckState(check_state)
             chk_item.setData(Qt.ItemDataRole.UserRole, issue.id)
             chk_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.setItem(row, 0, chk_item)
@@ -168,6 +176,14 @@ class _BugTable(QTableWidget):
             self.setItem(row, 7, aging_item)
 
         self.setSortingEnabled(True)
+
+        # 恢复选中行（排序后按 ID 查找新位置）
+        if saved_selected is not None:
+            for row in range(self.rowCount()):
+                item = self.item(row, 0)
+                if item and item.data(Qt.ItemDataRole.UserRole) == saved_selected:
+                    self.setCurrentCell(row, 0)
+                    break
 
     def _get_aging_days(self, issue_id: int) -> int:
         """通过 IssueService 获取 aging 天数。"""
@@ -821,7 +837,10 @@ class BugListView(QWidget):
         self.card_double_clicked.emit(issue_id)
 
         dialog = IssueDetailDialog(issue, self._service, self)
-        dialog.exec()
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
 
     # ── 批量操作 ──────────────────────────────────────────────
 

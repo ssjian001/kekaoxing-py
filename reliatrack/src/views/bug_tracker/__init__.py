@@ -149,7 +149,10 @@ class BugTrackerView(QWidget):
             ToastWidget.show(self, "Issue 不存在", duration=2)
             return
         dlg = IssueDetailDialog(issue, self._svc, self)
-        dlg.exec()
+        try:
+            dlg.exec()
+        finally:
+            dlg.deleteLater()
 
     def _on_filter_changed(self, filters: dict[str, Any]) -> None:
         """筛选变更时同步到其他视图。"""
@@ -227,6 +230,11 @@ class BugTrackerView(QWidget):
             self._build_views()
         else:
             self._refresh_all()
+
+    def set_technician_map(self, tech_map: dict[int, str]) -> None:
+        """Fix 1: 转发 technician_map 到看板视图。"""
+        if self._kanban_view:
+            self._kanban_view.set_technician_map(tech_map)
 
     def refresh_theme(self) -> None:
         """主题切换后刷新。"""

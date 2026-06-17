@@ -92,14 +92,16 @@ class IssueService:
         if target == "open" and old_status in ("closed", "verified"):
             kwargs["resolution"] = ""
 
-        self._repo.update(issue_id, **kwargs)
-        # 活动日志
-        self._activity_repo.add(issue_id, "status", old_status, target, operator)
-        if "resolution" in kwargs:
-            self._activity_repo.add(
-                issue_id, "resolution",
-                issue.resolution or "", str(kwargs["resolution"]), operator,
-            )
+        # 事务包裹：update + activity log 原子化
+        with self._repo.transaction():
+            self._repo.update(issue_id, **kwargs)
+            # 活动日志
+            self._activity_repo.add(issue_id, "status", old_status, target, operator)
+            if "resolution" in kwargs:
+                self._activity_repo.add(
+                    issue_id, "resolution",
+                    issue.resolution or "", str(kwargs["resolution"]), operator,
+                )
         return True, ""
 
     # ── Issue CRUD（带活动日志）──
@@ -148,19 +150,20 @@ class IssueService:
                     old_issue.status, new_status, allowed,
                 )
 
-        self._repo.update(issue_id, **kwargs)
-
-        # 自动记录活动日志
-        if old_issue is not None:
-            for field in _TRACKED_FIELDS:
-                if field not in kwargs:
-                    continue
-                old_val = getattr(old_issue, field, "")
-                new_val = kwargs[field]
-                if str(old_val) != str(new_val):
-                    self._activity_repo.add(
-                        issue_id, field, str(old_val), str(new_val), operator,
-                    )
+        # 事务包裹：update + activity log 原子化，避免状态已变但日志缺失
+        with self._repo.transaction():
+            self._repo.update(issue_id, **kwargs)
+            # 自动记录活动日志
+            if old_issue is not None:
+                for field in _TRACKED_FIELDS:
+                    if field not in kwargs:
+                        continue
+                    old_val = getattr(old_issue, field, "")
+                    new_val = kwargs[field]
+                    if str(old_val) != str(new_val):
+                        self._activity_repo.add(
+                            issue_id, field, str(old_val), str(new_val), operator,
+                        )
 
     def update_status(self, issue_id: int, status: str) -> None:
         self._repo.update_status(issue_id, status)

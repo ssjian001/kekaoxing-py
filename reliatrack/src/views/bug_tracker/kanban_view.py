@@ -108,10 +108,12 @@ class _KanbanCard(QFrame):
     CARD_HEIGHT = 68
 
     def __init__(self, issue: Issue, aging_days: int = 0,
+                 assignee_name: str = "",
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._issue = issue
         self._aging_days = aging_days
+        self._assignee_name = assignee_name  # Fix 1: 解析后的人名（非 ID）
         self._drag_start_pos: QPoint | None = None
         self._drag_started = False
 
@@ -179,10 +181,10 @@ class _KanbanCard(QFrame):
 
         meta_row.addStretch()
 
-        # 指派人
-        assignee = self._issue.assignee_id or ""
-        if assignee:
-            assignee_label = QLabel(str(assignee))
+        # 指派人（Fix 1: 显示人名，不再显示数字 ID）
+        display_name = self._assignee_name or getattr(self._issue, "dri_name", "") or ""
+        if display_name:
+            assignee_label = QLabel(display_name)
         else:
             assignee_label = QLabel("—")
         assignee_label.setFont(_FONT_CARD_META)
@@ -596,6 +598,7 @@ class BugKanbanView(QWidget):
         self._all_issues: list[Issue] = []
         self._filters: dict[str, Any] = {}
         self._operator: str = ""  # 当前操作人
+        self._technician_map: dict[int, str] = {}  # Fix 1: assignee_id → 人名映射
 
         self._setup_ui()
 
@@ -718,17 +721,22 @@ class BugKanbanView(QWidget):
                 except Exception:
                     aging = 0
 
-                card = _KanbanCard(issue, aging)
+                card = _KanbanCard(
+                    issue, aging,
+                    assignee_name=self._technician_map.get(issue.assignee_id, "")
+                    if issue.assignee_id else "",
+                )
                 card.double_clicked.connect(self._on_card_double_clicked)
 
                 if status == "closed":
-                    # 按 created_at 判断是否近 30 天
+                    # Fix 2: 按 updated_at（关闭操作时间）判断是否近 30 天，
+                    # 而非 created_at（创建时间），避免刚关闭的老 Issue 被折叠
                     from datetime import datetime, timedelta
-                    created = issue.created_at or ""
+                    updated = issue.updated_at or issue.created_at or ""
                     is_recent = False
-                    if created:
+                    if updated:
                         try:
-                            dt = datetime.strptime(created[:10], "%Y-%m-%d")
+                            dt = datetime.strptime(updated[:10], "%Y-%m-%d")
                             is_recent = (
                                 datetime.now() - dt
                             ) <= timedelta(days=_CLOSED_FOLD_DAYS)
@@ -828,6 +836,10 @@ class BugKanbanView(QWidget):
     def set_operator(self, operator: str) -> None:
         """设置当前操作人（用于活动日志）。"""
         self._operator = operator
+
+    def set_technician_map(self, tech_map: dict[int, str]) -> None:
+        """Fix 1: 注入 assignee_id → 人名映射，看板卡片显示人名而非数字 ID。"""
+        self._technician_map = tech_map
 
     def refresh(self) -> None:
         """外部刷新入口。"""
