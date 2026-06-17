@@ -827,20 +827,8 @@ class BugListView(QWidget):
         self._empty_label.setVisible(len(filtered) == 0)
 
     def _on_card_double_click(self, issue_id: int) -> None:
-        """双击打开详情弹窗。"""
-        from src.views.bug_tracker.detail_dialog import IssueDetailDialog
-
-        issue = self._table.get_issue_by_id(issue_id)
-        if not issue:
-            return
-        # 先发射信号（父视图可能拦截）
+        """双击行 — 发射信号给父视图打开详情弹窗。"""
         self.card_double_clicked.emit(issue_id)
-
-        dialog = IssueDetailDialog(issue, self._service, self)
-        try:
-            dialog.exec()
-        finally:
-            dialog.deleteLater()
 
     # ── 批量操作 ──────────────────────────────────────────────
 
