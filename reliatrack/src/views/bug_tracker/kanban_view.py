@@ -118,7 +118,9 @@ class _KanbanCard(QFrame):
         self._drag_started = False
 
         self.setProperty("class", "kanban-card")
-        self.setFixedSize(self.CARD_WIDTH, self.CARD_HEIGHT)
+        # 宽度跟随列伸缩，高度固定
+        self.setMinimumHeight(self.CARD_HEIGHT)
+        self.setMaximumHeight(self.CARD_HEIGHT)
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         self.setAcceptDrops(False)
         self._setup_ui()
@@ -327,7 +329,7 @@ class _KanbanColumn(QFrame):
         self._is_closed_col = (status == "closed")
 
         self.setProperty("class", "kanban-column")
-        self.setFixedWidth(self.COLUMN_WIDTH)
+        self.setMinimumWidth(self.COLUMN_WIDTH)  # 最小宽，允许拉伸填满空间
         self.setAcceptDrops(True)
         self._setup_ui()
 
@@ -661,8 +663,7 @@ class BugKanbanView(QWidget):
             col.status_changed.connect(self._on_card_dropped)
             self._columns[status] = col
             columns_layout.addWidget(col)
-
-        columns_layout.addStretch()
+            columns_layout.setStretchFactor(col, 1)  # 4 列等分可用空间
 
         scroll.setWidget(columns_widget)
         root_layout.addWidget(scroll)
