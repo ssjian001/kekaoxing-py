@@ -694,3 +694,84 @@ class TestBugListSelectionRetention:
         # 不崩溃，选中的是 id1 或 None（但不应该是已删除的 id2）
         selected = table.get_selected_issue_id()
         assert selected != id2
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Fix 7: Bug Tracker 项目筛选 — BugTrackerView._get_filtered_issues()
+# ═══════════════════════════════════════════════════════════════════
+
+class TestBugTrackerProjectFilter:
+    """Bug 管理页按项目筛选 Issue（与 Issue 视图逻辑一致）。"""
+
+    def test_no_filter_returns_all(self, db_conn, qapp):
+        """无项目筛选时返回所有 Issue。"""
+        from src.views.bug_tracker import BugTrackerView
+
+        svc = _make_service(db_conn)
+        tracker = BugTrackerView(svc)
+        tracker._build_views()  # 首次加载
+
+        # 无筛选 → list_all
+        issues = tracker._get_filtered_issues()
+        assert len(issues) == 0  # 空 DB
+
+        # 加 3 个 Issue
+        _create_issue(svc, title="Bug1")
+        _create_issue(svc, title="Bug2")
+        _create_issue(svc, title="Bug3")
+
+        issues = tracker._get_filtered_issues()
+        assert len(issues) == 3
+
+    def test_with_project_filter_returns_filtered(self, db_conn, qapp):
+        """有项目筛选时只返回该项目的 Issue + 未关联项目的 Issue。"""
+        from src.views.bug_tracker import BugTrackerView
+
+        svc = _make_service(db_conn)
+        tracker = BugTrackerView(svc)
+        tracker._build_views()
+
+        # 创建项目
+        db_conn.execute(
+            "INSERT INTO projects (name, product, customer, description, status) "
+            "VALUES ('项目A', '产品A', '客户A', '', 'active')"
+        )
+        proj_row = db_conn.execute(
+            "SELECT id FROM projects WHERE name='项目A'"
+        ).fetchone()
+        pid_a = proj_row[0]
+
+        # 3 个 Issue：2 个属于项目A，1 个无项目
+        svc.create(title="项目A-Bug1", project_id=pid_a)
+        svc.create(title="项目A-Bug2", project_id=pid_a)
+        svc.create(title="无项目-Bug")
+
+        # 无筛选 → 全部 3 条
+        assert len(tracker._get_filtered_issues()) == 3
+
+        # 筛选项目A → 2 条（项目A）+ 1 条（无项目）= 3 条
+        tracker.set_project_filter(pid_a)
+        filtered = tracker._get_filtered_issues()
+        assert len(filtered) == 3  # 项目A 的 + 未关联的
+
+        # 创建项目B，验证不串扰
+        db_conn.execute(
+            "INSERT INTO projects (name, product, customer, description, status) "
+            "VALUES ('项目B', '产品B', '客户B', '', 'active')"
+        )
+        proj_b_row = db_conn.execute(
+            "SELECT id FROM projects WHERE name='项目B'"
+        ).fetchone()
+        pid_b = proj_b_row[0]
+        svc.create(title="项目B-Bug", project_id=pid_b)
+
+        # 无筛选 → 4 条
+        tracker.set_project_filter(None)
+        assert len(tracker._get_filtered_issues()) == 4
+
+        # 筛选项目A → 3 条（项目A 的 2 条 + 无项目 1 条，不含项目B）
+        tracker.set_project_filter(pid_a)
+        filtered = tracker._get_filtered_issues()
+        assert len(filtered) == 3
+        titles = [i.title for i in filtered]
+        assert "项目B-Bug" not in titles

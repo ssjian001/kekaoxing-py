@@ -461,9 +461,10 @@ class RefreshHandlers:
             if bug_tracker is not None:
                 bug_tracker.set_technician_map(tech_map)
         self._win.issue_view.refresh(all_issues)
-        # 同步刷新 Bug Tracker 视图（Fix 6: 之前遗漏，导致 Tab 切换看到过时数据）
+        # 同步刷新 Bug Tracker 视图（注入项目筛选 ID + 刷新数据）
         bug_tracker = getattr(self._win, '_bug_tracker_view', None)
         if bug_tracker is not None:
+            bug_tracker.set_project_filter(filter_project_id)
             bug_tracker.refresh()
 
     def _refresh_equipment(self) -> None:

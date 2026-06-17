@@ -42,6 +42,7 @@ class BugTrackerView(QWidget):
         super().__init__(parent)
         self._svc = issue_service
         self._undo_manager = undo_manager
+        self._project_filter_id: int | None = None  # 项目筛选 ID
 
         # 子视图
         self._kanban_view: BugKanbanView | None = None
@@ -111,9 +112,8 @@ class BugTrackerView(QWidget):
         self._list_view.refresh_requested.connect(self._refresh_all)
         self._list_view.filter_changed.connect(self._on_filter_changed)
 
-        # 首次加载数据
-        self._kanban_view.refresh()
-        self._list_view.refresh()
+        # 首次加载数据（统一走 _refresh_all 注入筛选后数据）
+        self._refresh_all()
 
         self._switch_tab(0)
 
@@ -161,12 +161,26 @@ class BugTrackerView(QWidget):
         if self._kanban_view:
             self._kanban_view.set_filters(filters)
 
+    def _get_filtered_issues(self) -> list:
+        """获取按项目筛选的 Issue 列表（与 Issue 视图逻辑一致）。"""
+        pid = self._project_filter_id
+        if pid is not None:
+            project_issues = self._svc.get_by_project(pid)
+            null_issues = self._svc.get_unassigned()
+            return project_issues + null_issues
+        return self._svc.list_all()
+
+    def set_project_filter(self, pid: int | None) -> None:
+        """设置项目筛选 ID（与顶部项目下拉框联动）。"""
+        self._project_filter_id = pid
+
     def _refresh_all(self) -> None:
-        """刷新所有视图。"""
+        """刷新所有视图（统一注入已按项目筛选的数据）。"""
+        issues = self._get_filtered_issues()
         if self._kanban_view:
-            self._kanban_view.refresh()
+            self._kanban_view.set_issues(issues)
         if self._list_view:
-            self._list_view.refresh()
+            self._list_view.set_issues(issues)
         self._update_stats()
 
     # ── 快捷键处理 ──

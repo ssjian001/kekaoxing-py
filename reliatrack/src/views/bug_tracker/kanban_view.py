@@ -599,6 +599,7 @@ class BugKanbanView(QWidget):
         self._filters: dict[str, Any] = {}
         self._operator: str = ""  # 当前操作人
         self._technician_map: dict[int, str] = {}  # Fix 1: assignee_id → 人名映射
+        self._base_issues: list[Issue] = []  # 外部注入的已筛选数据（不再自行 list_all）
 
         self._setup_ui()
 
@@ -669,13 +670,10 @@ class BugKanbanView(QWidget):
     # ── 数据加载 ──────────────────────────────────────────────
 
     def _load_issues(self) -> None:
-        """从 IssueService 加载所有 Issue 并分发到各列。"""
+        """从 _base_issues（已按项目筛选）分发到各列。"""
         search_text = self._search_input.text().strip().lower()
 
-        try:
-            issues = self._service.list_all()
-        except Exception:
-            issues = []
+        issues = list(self._base_issues)
 
         if search_text:
             issues = [
@@ -752,8 +750,10 @@ class BugKanbanView(QWidget):
             col = self._columns[status]
             col.set_cards(cards, history_cards if status == "closed" else None)
 
-    def set_issues(self) -> None:
-        """外部调用来加载/刷新数据。"""
+    def set_issues(self, issues: list[Issue] | None = None) -> None:
+        """外部注入已筛选数据，然后渲染。"""
+        if issues is not None:
+            self._base_issues = issues
         self._load_issues()
 
     def set_filters(self, filters: dict[str, Any]) -> None:
