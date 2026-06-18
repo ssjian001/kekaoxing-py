@@ -43,6 +43,7 @@ class BugTrackerView(QWidget):
         self._svc = issue_service
         self._undo_manager = undo_manager
         self._project_filter_id: int | None = None  # 项目筛选 ID
+        self._technician_map: dict[int, str] = {}   # assignee_id → 人名（detail_dialog 用）
 
         # 子视图
         self._kanban_view: BugKanbanView | None = None
@@ -148,7 +149,8 @@ class BugTrackerView(QWidget):
         if issue is None:
             ToastWidget.show(self, "Issue 不存在", duration=2)
             return
-        dlg = IssueDetailDialog(issue, self._svc, self)
+        dlg = IssueDetailDialog(issue, self._svc, self,
+                                technician_map=self._technician_map)
         try:
             dlg.exec()
         finally:
@@ -246,9 +248,12 @@ class BugTrackerView(QWidget):
             self._refresh_all()
 
     def set_technician_map(self, tech_map: dict[int, str]) -> None:
-        """Fix 1: 转发 technician_map 到看板视图。"""
+        """转发 technician_map 到看板 + 列表视图。"""
+        self._technician_map = tech_map
         if self._kanban_view:
             self._kanban_view.set_technician_map(tech_map)
+        if self._list_view:
+            self._list_view.set_technician_map(tech_map)
 
     def refresh_theme(self) -> None:
         """主题切换后刷新。"""

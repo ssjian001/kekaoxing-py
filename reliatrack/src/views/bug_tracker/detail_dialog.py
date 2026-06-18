@@ -40,10 +40,12 @@ class IssueDetailDialog(QDialog):
         issue: Issue,
         issue_service,
         parent: QWidget | None = None,
+        technician_map: dict[int, str] | None = None,
     ) -> None:
         super().__init__(parent)
         self._issue = issue
         self._service = issue_service
+        self._technician_map = technician_map or {}
 
         self.setWindowTitle(f"Issue #{issue.id} 详情")
         self.setFixedSize(640, 520)
@@ -438,6 +440,18 @@ class IssueDetailDialog(QDialog):
             map_label = {"assignee_id": "负责人", "priority": "优先级",
                          "resolution": "处理结果", "category": "类别"}
             field_label = map_label.get(field, field)
+            # assignee_id 翻译成人名
+            if field == "assignee_id":
+                def _translate_assignee(val: str) -> str:
+                    if not val or val == "None":
+                        return "（无）"
+                    try:
+                        tid = int(val)
+                        return self._technician_map.get(tid, f"#{tid}")
+                    except (ValueError, TypeError):
+                        return val
+                old_val = _translate_assignee(old_val)
+                new_val = _translate_assignee(new_val)
             change_text = f"{field_label}: {old_val} → {new_val}"
 
         if operator:

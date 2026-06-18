@@ -98,6 +98,7 @@ class _BugTable(QTableWidget):
         self.setSortingEnabled(True)
         self._issues: list[Issue] = []
         self._issue_service: IssueService | None = None
+        self._technician_map: dict[int, str] = {}  # assignee_id → 人名
         # checkbox 列不参与排序
         self.horizontalHeader().setSortIndicatorShown(True)
 
@@ -111,6 +112,10 @@ class _BugTable(QTableWidget):
     def set_issue_service(self, service: IssueService) -> None:
         """注入 IssueService（用于 aging 计算）。"""
         self._issue_service = service
+
+    def set_technician_map(self, tech_map: dict[int, str]) -> None:
+        """注入 assignee_id → 人名映射（指派人列渲染用）。"""
+        self._technician_map = tech_map
 
     def set_issues(self, issues: list[Issue]) -> None:
         """填充或刷新表格数据（Fix 5: 保留选中行 + checkbox 状态）。"""
@@ -146,7 +151,8 @@ class _BugTable(QTableWidget):
                 SEVERITY_LABELS.get(issue.severity, issue.severity),
                 ISSUE_STATUS_LABELS.get(issue.status, issue.status),
                 PRIORITY_LABELS.get(issue.priority, f"P{issue.priority}"),
-                getattr(issue, "dri_name", "") or "",
+                self._technician_map.get(issue.assignee_id, "")
+                    if issue.assignee_id else "",
                 "",  # Aging — 单独处理
                 (issue.created_at or "")[:10],
                 str(issue.task_id or ""),
@@ -334,7 +340,7 @@ class FilterPanel(QFrame):
         # ── 指派人 ──
         form.addWidget(QLabel("指派人"))
         self._assignee_combo = QComboBox()
-        self._assignee_combo.addItem("全部")
+        self._assignee_combo.addItem("全部", None)
         self._assignee_combo.currentIndexChanged.connect(self._emit_filter)
         form.addWidget(self._assignee_combo)
 
@@ -366,17 +372,17 @@ class FilterPanel(QFrame):
         scroll.setWidget(container)
         layout.addWidget(scroll, stretch=1)
 
-    def set_assignee_options(self, names: list[str]) -> None:
-        """设置指派人下拉选项（由父视图注入）。"""
-        current = self._assignee_combo.currentText()
+    def set_assignee_options(self, tech_map: dict[int, str]) -> None:
+        """设置指派人下拉选项（顯示人名，data 存 assignee_id）。"""
+        current_id = self._assignee_combo.currentData()
         self._assignee_combo.clear()
-        self._assignee_combo.addItem("全部")
-        for name in names:
-            if name:
-                self._assignee_combo.addItem(name)
-        idx = self._assignee_combo.findText(current)
-        if idx >= 0:
-            self._assignee_combo.setCurrentIndex(idx)
+        self._assignee_combo.addItem("全部", None)
+        for tid, name in sorted(tech_map.items(), key=lambda x: x[1]):
+            self._assignee_combo.addItem(name, tid)
+        if current_id is not None:
+            idx = self._assignee_combo.findData(current_id)
+            if idx >= 0:
+                self._assignee_combo.setCurrentIndex(idx)
 
     def get_filters(self) -> dict:
         """获取当前筛选条件。"""
@@ -393,7 +399,7 @@ class FilterPanel(QFrame):
                 int(eng[1:]) for eng, cb in self._priority_checks.items()
                 if cb.isChecked()
             ],
-            "assignee": self._assignee_combo.currentText(),
+            "assignee_id": self._assignee_combo.currentData(),
             "date_start": self._date_start.date().toString("yyyy-MM-dd")
                 if self._date_start.date() != self._date_start.minimumDate() else "",
             "date_end": self._date_end.date().toString("yyyy-MM-dd")
@@ -415,10 +421,13 @@ class FilterPanel(QFrame):
             pri_label = int(eng[1:])
             cb.setChecked(pri_label in pri_list)
 
-        assignee = filters.get("assignee", "全部")
-        idx = self._assignee_combo.findText(assignee)
-        if idx >= 0:
-            self._assignee_combo.setCurrentIndex(idx)
+        assignee_id = filters.get("assignee_id")
+        if assignee_id is None:
+            self._assignee_combo.setCurrentIndex(0)
+        else:
+            idx = self._assignee_combo.findData(assignee_id)
+            if idx >= 0:
+                self._assignee_combo.setCurrentIndex(idx)
 
         date_start = filters.get("date_start", "")
         if date_start:
@@ -463,11 +472,13 @@ class BatchOperationDialog(QDialog):
         issue_service: IssueService,
         parent: QWidget | None = None,
         undo_manager=None,
+        technician_map: dict[int, str] | None = None,
     ):
         super().__init__(parent)
         self._issue_ids = issue_ids
         self._service = issue_service
         self._undo_manager = undo_manager
+        self._technician_map = technician_map or {}
 
         self.setWindowTitle(f"批量操作 — 已选 {len(issue_ids)} 个 Issue")
         self.setMinimumSize(400, 300)
@@ -522,6 +533,7 @@ class BatchOperationDialog(QDialog):
 
     def _update_value_widget(self, operation: str) -> None:
         """根据操作类型更新目标值下拉选项。"""
+        self._value_combo.setEditable(False)
         self._value_combo.clear()
         if operation == "改状态":
             for eng, chn in [("open", "待处理"), ("analyzing", "分析中"),
@@ -535,8 +547,9 @@ class BatchOperationDialog(QDialog):
             for i in range(1, 6):
                 self._value_combo.addItem(f"P{i}", i)
         elif operation == "指派":
-            self._value_combo.setEditable(True)
-            self._value_combo.setPlaceholderText("输入指派人 ID")
+            self._value_combo.addItem("（清除指派）", None)
+            for tid, name in sorted(self._technician_map.items(), key=lambda x: x[1]):
+                self._value_combo.addItem(name, tid)
 
     def _execute_batch(self) -> None:
         """执行批量操作，逐个 issue 调用 update()。"""
@@ -613,7 +626,7 @@ class BugListView(QWidget):
         self._service = issue_service
         self._undo_manager = undo_manager
         self._all_issues: list[Issue] = []
-        self._technician_names: list[str] = []
+        self._technician_map: dict[int, str] = {}
         self._filter_visible = True
 
         self._setup_ui()
@@ -764,10 +777,11 @@ class BugListView(QWidget):
         issues = self._service.list_all() if self._service else []
         self.set_issues(issues)
 
-    def set_technician_names(self, names: list[str]) -> None:
-        """设置指派人名称列表。"""
-        self._technician_names = names
-        self._filter_panel.set_assignee_options(names)
+    def set_technician_map(self, tech_map: dict[int, str]) -> None:
+        """设置 assignee_id → 人名映射（表格渲染/筛选/批量操作共用）。"""
+        self._technician_map = tech_map
+        self._table.set_technician_map(tech_map)
+        self._filter_panel.set_assignee_options(tech_map)
 
     def set_filters(self, filters: dict) -> None:
         """外部设置筛选条件（跨视图同步）。"""
@@ -802,11 +816,10 @@ class BugListView(QWidget):
             if filters["priority"] and issue.priority not in filters["priority"]:
                 continue
 
-            # 指派人
-            assignee_filter = filters["assignee"]
-            if assignee_filter and assignee_filter != "全部":
-                dri = getattr(issue, "dri_name", "") or ""
-                if dri != assignee_filter:
+            # 指派人（按 assignee_id 过滤）
+            assignee_id_filter = filters.get("assignee_id")
+            if assignee_id_filter is not None:
+                if issue.assignee_id != assignee_id_filter:
                     continue
 
             # 创建日期范围
@@ -840,7 +853,8 @@ class BugListView(QWidget):
             return
 
         dialog = BatchOperationDialog(ids, self._service, self,
-                                      undo_manager=self._undo_manager)
+                                      undo_manager=self._undo_manager,
+                                      technician_map=self._technician_map)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             summary = dialog.result_summary()
             if summary:
