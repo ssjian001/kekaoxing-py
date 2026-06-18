@@ -476,12 +476,17 @@ class RefreshHandlers:
         self._win.equipment_view.refresh(all_equipment)
 
     def _refresh_technicians(self) -> None:
-        """刷新技术员管理视图。"""
+        """刷新技术员管理视图 + 同步 Bug Tracker 的 technician_map。"""
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.technician_service:
             return
         all_technicians = ctrl.technician_service.list_all()
         self._win.technician_view.refresh(all_technicians)
+        # 同步 Bug Tracker 的 technician_map（technician 增刪改名後即時更新）
+        bug_tracker = getattr(self._win, '_bug_tracker_view', None)
+        if bug_tracker is not None:
+            tech_map = {t.id: t.name for t in all_technicians if t.id is not None}
+            bug_tracker.set_technician_map(tech_map)
 
     def _refresh_knowledge(self) -> None:
         """刷新知识库视图。"""

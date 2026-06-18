@@ -105,6 +105,11 @@ class BugTrackerView(QWidget):
         self._list_view = BugListView(self._svc, undo_manager=self._undo_manager)
         self._stack.addWidget(self._list_view)
 
+        # 注入已缓存的 technician_map（set_technician_map 可能在 _build_views 前调用）
+        if self._technician_map:
+            self._kanban_view.set_technician_map(self._technician_map)
+            self._list_view.set_technician_map(self._technician_map)
+
         # 信号桥接
         self._kanban_view.card_double_clicked.connect(self._on_open_detail)
         self._kanban_view.refresh_requested.connect(self._refresh_all)
