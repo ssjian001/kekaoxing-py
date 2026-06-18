@@ -133,7 +133,7 @@ class BugTrackerView(QWidget):
     def _update_stats(self) -> None:
         """更新统计信息。"""
         try:
-            issues = self._svc.list_all()
+            issues = self._get_filtered_issues()
             total = len(issues)
             open_count = sum(1 for i in issues if i.status == "open")
             self._stats_label.setText(
@@ -213,7 +213,7 @@ class BugTrackerView(QWidget):
 
     def _on_quick_search(self) -> None:
         """Ctrl+K — 快捷搜索。"""
-        issues = self._svc.list_all() if self._svc else []
+        issues = self._get_filtered_issues() if self._svc else []
         dlg = QuickSearchDialog(issues, self)
         dlg.issue_selected.connect(self._on_open_detail)
         dlg.show()
