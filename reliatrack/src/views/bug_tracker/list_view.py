@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+import logging
+logger = logging.getLogger("views.bug_tracker.list_view")
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -197,6 +199,7 @@ class _BugTable(QTableWidget):
             try:
                 return self._issue_service.get_aging_days(issue_id)
             except Exception:
+                logger.exception("_get_aging_days() failed")
                 return 0
         return 0
 
@@ -593,6 +596,7 @@ class BatchOperationDialog(QDialog):
                     )
                     self._undo_manager._undo_stack.append(cmd)
             except Exception:
+                logger.exception("Error in list_view")
                 failed += 1
 
         self._result_summary = f"已更新 {updated} 条，失败 {failed} 条"

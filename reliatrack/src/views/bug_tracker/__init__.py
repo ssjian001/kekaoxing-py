@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import logging
+logger = logging.getLogger("views.bug_tracker.__init__")
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget,
     QLabel, QSizePolicy,
@@ -146,6 +148,7 @@ class BugTrackerView(QWidget):
                 f"共 {total} 个 Issue · 待处理 {open_count}"
             )
         except Exception:
+            logger.exception("_update_stats() failed")
             self._stats_label.setText("")
 
     def _on_open_detail(self, issue_id: int) -> None:
@@ -216,6 +219,7 @@ class BugTrackerView(QWidget):
                     )
                     self._refresh_all()
                 except Exception as exc:
+                    logger.exception("_on_quick_create() failed")
                     ToastWidget.show(self, f"创建失败: {exc}", duration=3)
 
     def _on_quick_search(self) -> None:

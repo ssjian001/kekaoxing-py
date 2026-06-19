@@ -35,6 +35,7 @@ class ProjectHandlers:
         try:
             stats = service.cascade_stats(project_id)
         except Exception:
+            logger.exception("Cascade stats failed")
             return "关联数据将一并删除。\n"
         total = sum(stats.values())
         if total == 0:

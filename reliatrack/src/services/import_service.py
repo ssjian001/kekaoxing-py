@@ -72,9 +72,11 @@ def import_equipment(
                     seen_this_batch.add(name)
                     result.success += 1
                 except Exception as e:
+                    logger.exception("Error in import_service")
                     result.errors.append(f"第 {idx} 行: 设备「{name}」导入失败 — {e}")
                     raise  # 触发事务回滚
     except Exception:
+        logger.exception("Error in import_service")
         # 事务已回滚，success 计数无效
         result.success = 0
     return result
@@ -119,9 +121,11 @@ def import_technicians(
                     seen_this_batch.add(key)
                     result.success += 1
                 except Exception as e:
+                    logger.exception("Error in import_service")
                     result.errors.append(f"第 {idx} 行: 技术员「{name}」导入失败 — {e}")
                     raise  # 触发事务回滚
     except Exception:
+        logger.exception("Error in import_service")
         # 事务已回滚，success 计数无效
         result.success = 0
     return result

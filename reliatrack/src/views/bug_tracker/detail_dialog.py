@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -310,6 +314,7 @@ class IssueDetailDialog(QDialog):
             else:
                 self._attach_list.setText("无附件")
         except Exception:
+            logger.exception("_load_attachments() failed")
             self._attach_list.setText("加载附件失败")
 
     def _load_comments(self) -> None:
@@ -317,6 +322,7 @@ class IssueDetailDialog(QDialog):
         try:
             comments = self._service.get_comments(self._issue.id)
         except Exception:
+            logger.exception("_load_comments() failed")
             comments = []
 
         # 清空评论区域
@@ -390,6 +396,7 @@ class IssueDetailDialog(QDialog):
         try:
             activities = self._service.get_activity_with_duration(self._issue.id)
         except Exception:
+            logger.exception("_load_activity() failed")
             activities = []
 
         self._clear_layout(self._activity_layout)
@@ -478,6 +485,7 @@ class IssueDetailDialog(QDialog):
         try:
             records = self._service.get_fa_records(self._issue.id)
         except Exception:
+            logger.exception("_load_fa_records() failed")
             records = []
         self._fa_panel.set_fa_records(records)
 
@@ -486,6 +494,7 @@ class IssueDetailDialog(QDialog):
         try:
             records = self._service.get_capa_records(self._issue.id)
         except Exception:
+            logger.exception("_load_capa_records() failed")
             records = []
         self._capa_panel.set_capa_records(records)
 
@@ -504,6 +513,7 @@ class IssueDetailDialog(QDialog):
             self._comment_input.clear()
             self._load_comments()
         except Exception:
+            logger.exception("_on_send_comment() failed")
             pass
 
     def _on_delete_comment(self, comment_id: int) -> None:
@@ -521,6 +531,7 @@ class IssueDetailDialog(QDialog):
             self._service.delete_comment(comment_id)
             self._load_comments()
         except Exception:
+            logger.exception("_on_delete_comment() failed")
             pass
 
     # ── 辅助 ────────────────────────────────────────────────────────
@@ -531,6 +542,7 @@ class IssueDetailDialog(QDialog):
             days = self._service.get_aging_days(self._issue.id)
             return f"{days} 天"
         except Exception:
+            logger.exception("_get_aging_text() failed")
             return "-"
 
     @staticmethod

@@ -77,6 +77,7 @@ class BackupService:
             logger.info("备份已创建: %s (%d bytes)",
                         dest_path, dest_path.stat().st_size)
         except Exception as exc:
+            logger.exception("Error in backup_service")
             if dest_path.exists():
                 dest_path.unlink(missing_ok=True)
             raise RuntimeError("备份失败") from exc
@@ -119,6 +120,7 @@ class BackupService:
             finally:
                 conn.close()
         except Exception as exc:
+            logger.exception("Error in backup_service")
             raise ValueError(f"无法读取备份文件: {exc}") from exc
 
         if version == 0:

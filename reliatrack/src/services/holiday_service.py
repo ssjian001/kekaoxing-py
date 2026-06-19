@@ -106,6 +106,7 @@ class HolidayService:
             )
             self._conn.execute("COMMIT")
         except Exception:
+            logger.exception("Holiday service error")
             self._conn.execute("ROLLBACK")
             raise
         after = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]

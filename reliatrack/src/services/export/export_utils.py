@@ -78,6 +78,7 @@ def get_cjk_font() -> str:
                     _CJK_FONT = r.stdout.strip()
                     break
             except Exception:
+                logger.exception("Export utils error")
                 continue
         if _CJK_FONT is None:
             _CJK_FONT = "Noto Sans CJK SC"

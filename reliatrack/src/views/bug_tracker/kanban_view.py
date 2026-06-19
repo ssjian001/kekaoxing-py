@@ -1,5 +1,7 @@
 """看板视图 — BugKanbanView + _KanbanCard + _KanbanColumn。
 
+import logging
+logger = logging.getLogger(__name__)
 4 列（open / analyzing / verified / closed）布局，支持：
   - 跨列拖拽（QDrag + dropEvent + transition_status）
   - 卡片 aging 色块（<3d 绿 / 3-7d 黄 / >7d 红）
@@ -718,6 +720,7 @@ class BugKanbanView(QWidget):
                         issue.id if issue.id is not None else 0
                     )
                 except Exception:
+                    logger.exception("Error in kanban_view")
                     aging = 0
 
                 card = _KanbanCard(
@@ -791,6 +794,7 @@ class BugKanbanView(QWidget):
                         self._load_issues()
                         self.refresh_requested.emit()
                 except Exception as exc:
+                    logger.exception("Error in kanban_view")
                     ToastWidget.show_toast(
                         self, f"创建失败: {exc}",
                         ToastWidget.ERROR,

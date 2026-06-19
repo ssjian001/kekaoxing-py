@@ -89,9 +89,9 @@ _DDL_TABLES: list[str] = [
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         sample_id       INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
         type            TEXT    NOT NULL,
-        operator_id     INTEGER REFERENCES technicians(id),
+        operator_id     INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         purpose         TEXT    NOT NULL DEFAULT '',
-        related_task_id INTEGER DEFAULT NULL,
+        related_task_id INTEGER DEFAULT NULL REFERENCES test_tasks(id) ON DELETE SET NULL,
         expected_return TEXT    DEFAULT '',
         actual_return   TEXT    DEFAULT '',
         notes           TEXT    NOT NULL DEFAULT '',
@@ -120,8 +120,8 @@ _DDL_TABLES: list[str] = [
         name            TEXT    NOT NULL,
         category        TEXT    NOT NULL DEFAULT '',
         test_standard   TEXT    NOT NULL DEFAULT '',
-        technician_id   INTEGER REFERENCES technicians(id),
-        equipment_id    INTEGER REFERENCES equipment(id),
+        technician_id   INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+        equipment_id    INTEGER REFERENCES equipment(id) ON DELETE SET NULL,
         sample_ids      TEXT    NOT NULL DEFAULT '[]',
         duration        INTEGER NOT NULL DEFAULT 1,
         start_day       INTEGER NOT NULL DEFAULT 0,
@@ -150,7 +150,7 @@ _DDL_TABLES: list[str] = [
         sample_id       INTEGER DEFAULT NULL REFERENCES samples(id) ON DELETE SET NULL,
         result          TEXT    NOT NULL DEFAULT 'pending',
         test_date       TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
-        tester_id       INTEGER REFERENCES technicians(id),
+        tester_id       INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         environment     TEXT    NOT NULL DEFAULT '{}',
         notes           TEXT    NOT NULL DEFAULT '',
         attachments     TEXT    NOT NULL DEFAULT '[]',
@@ -172,7 +172,7 @@ _DDL_TABLES: list[str] = [
         severity        TEXT    NOT NULL DEFAULT 'major',
         status          TEXT    NOT NULL DEFAULT 'open',
         priority        INTEGER NOT NULL DEFAULT 3,
-        assignee_id     INTEGER REFERENCES technicians(id),
+        assignee_id     INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         category        TEXT    NOT NULL DEFAULT '',
         root_cause      TEXT    NOT NULL DEFAULT '',
         resolution      TEXT    NOT NULL DEFAULT '',
@@ -200,7 +200,7 @@ _DDL_TABLES: list[str] = [
         cause_category  TEXT    NOT NULL DEFAULT '',
         failure_mechanism TEXT  NOT NULL DEFAULT '',
         confirmed       INTEGER NOT NULL DEFAULT 0,
-        analyst_id      INTEGER REFERENCES technicians(id),
+        analyst_id      INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         attachments     TEXT    NOT NULL DEFAULT '[]',
         created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
@@ -220,12 +220,12 @@ _DDL_TABLES: list[str] = [
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
         action              TEXT    NOT NULL,
-        assignee_id         INTEGER REFERENCES technicians(id),
+        assignee_id         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         assignee_name       TEXT    NOT NULL DEFAULT '',
         due_date            TEXT    NOT NULL DEFAULT '',
         status              TEXT    NOT NULL DEFAULT 'pending',
         verification_result TEXT    NOT NULL DEFAULT '',
-        verified_by         INTEGER REFERENCES technicians(id),
+        verified_by         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         verifier_name     TEXT    DEFAULT '',
         root_cause          TEXT    DEFAULT '',
         effectiveness       TEXT    DEFAULT '',
@@ -479,11 +479,11 @@ def _migrate_v7(conn: apsw.Connection) -> None:
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             issue_id            INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
             action              TEXT    NOT NULL,
-            assignee_id         INTEGER REFERENCES technicians(id),
+            assignee_id         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
             due_date            TEXT    NOT NULL DEFAULT '',
             status              TEXT    NOT NULL DEFAULT 'pending',
             verification_result TEXT    NOT NULL DEFAULT '',
-            verified_by         INTEGER REFERENCES technicians(id),
+            verified_by         INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
             created_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             updated_at          TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         )"""
@@ -644,6 +644,7 @@ def _rebuild_table(conn: apsw.Connection, name: str, new_ddl: str) -> None:
     try:
         conn.execute(f"INSERT INTO [{name}_new] ({cols_str}) SELECT {cols_str} FROM [{name}]")
     except Exception:
+        logger.exception("DDL rebuild failed")
         # 迁移失败：清理 _new 表，保留原始数据不丢失
         conn.execute(f"DROP TABLE IF EXISTS [{name}_new]")
         raise

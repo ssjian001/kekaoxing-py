@@ -15,10 +15,13 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from pathlib import Path
 
 import apsw
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_DB_DIR = Path.home() / ".reliatrack"
 _DEFAULT_DB_NAME = "reliatrack.db"
@@ -101,7 +104,6 @@ def close_all_connections() -> None:
             try:
                 conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning("WAL checkpoint 失败: %s", exc)
+                logger.exception("WAL checkpoint failed")
             conn.close()
         _connections.clear()
