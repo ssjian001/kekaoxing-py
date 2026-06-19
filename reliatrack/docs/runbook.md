@@ -26,7 +26,7 @@ cp data/reliatrack.db "data/backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
 ## 测试
 
 ```bash
-# 单元测试（369 项）
+# 单元测试（380 项）
 .venv/bin/python -m pytest tests/ -v
 
 # E2E 测试（脚本式，需 offscreen 模式）
