@@ -173,6 +173,11 @@ def excel_save(wb, filepath: str | None, filename: str, output_dir: Path) -> str
         wb.save(str(resolved))
     except (OSError, PermissionError) as e:
         logger.error("Excel save failed: %s → %s", resolved, e)
+        if resolved.exists():
+            try:
+                resolved.unlink()
+            except OSError:
+                pass
         raise
     return str(resolved)
 

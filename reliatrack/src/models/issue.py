@@ -45,6 +45,16 @@ class AttachmentType(str, Enum):
     OTHER = "other"
 
 
+class FAType(str, Enum):
+    """FA 分析类型。"""
+    ROOT_CAUSE = "root_cause"
+    FAILURE_ANALYSIS = "failure_analysis"
+    MATERIAL_ANALYSIS = "material_analysis"
+    MECHANICAL = "mechanical"
+    ELECTRICAL = "electrical"
+    OTHER = "other"
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  Dataclass Models
 # ═══════════════════════════════════════════════════════════════════
@@ -117,8 +127,28 @@ class FARecord:
     failure_mechanism: str = ""  # 失效机理分类
     confirmed: int = 0        # 是否确认: 0=待定, 1=确认, 2=排除
     analyst_id: Optional[int] = None
+    fa_type: Optional[str] = None  # 分析类型（FAType 枚举值）
+    severity: int = 0              # 严重度等级 1-5
     attachments: str = "[]"   # JSON
     created_at: str = ""
+
+    def __post_init__(self):
+        # 防御性类型转换和修正
+        if self.fa_type is not None:
+            _valid_fa = {t.value for t in FAType}
+            if self.fa_type not in _valid_fa:
+                import warnings
+                warnings.warn(f"Unknown FARecord.fa_type: {self.fa_type!r}")
+        if isinstance(self.severity, str):
+            try:
+                self.severity = int(self.severity)
+            except (ValueError, TypeError):
+                self.severity = 0
+        if isinstance(self.confirmed, str):
+            try:
+                self.confirmed = int(self.confirmed)
+            except (ValueError, TypeError):
+                self.confirmed = 0
 
 
 @dataclass
@@ -130,6 +160,11 @@ class IssueAttachment:
     file_type: str = AttachmentType.IMAGE.value
     description: str = ""
     created_at: str = ""
+
+    def __post_init__(self):
+        if not self.file_path:
+            import warnings
+            warnings.warn("IssueAttachment.file_path is empty")
 
 
 class CAPAStatus(str, Enum):
@@ -188,6 +223,17 @@ class IssueComment:
     is_deleted: int = 0
     created_at: str = ""
 
+    def __post_init__(self):
+        if self.author_name is None:
+            self.author_name = ""
+        if self.content is None:
+            self.content = ""
+        if isinstance(self.is_deleted, str):
+            try:
+                self.is_deleted = int(self.is_deleted)
+            except (ValueError, TypeError):
+                self.is_deleted = 0
+
 
 @dataclass
 class IssueActivityLog:
@@ -209,3 +255,7 @@ class IssueLink:
     target_id: int = 0
     link_type: str = IssueLinkType.RELATES_TO.value
     created_at: str = ""
+
+    def __post_init__(self):
+        if self.link_type is None:
+            self.link_type = IssueLinkType.RELATES_TO.value

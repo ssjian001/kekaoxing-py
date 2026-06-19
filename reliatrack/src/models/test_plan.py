@@ -20,6 +20,15 @@ class TestPlanStatus(str, Enum):
     ARCHIVED = "archived"
 
 
+class PlanType(str, Enum):
+    """测试计划类型。"""
+    STANDARD = "standard"
+    QUICK = "quick"
+    FULL = "full"
+    REGRESSION = "regression"
+    OTHER = "other"
+
+
 class TestTaskStatus(str, Enum):
     """测试任务状态。"""
     PENDING = "pending"
@@ -51,10 +60,18 @@ class TestPlan:
     start_date: str = ""
     end_date: str = ""
     status: str = TestPlanStatus.DRAFT.value
+    plan_type: str = PlanType.STANDARD.value  # 计划类型
     apqp_phase: str = ""       # APQP 阶段: P1/P2/P3/P4/P5
     task_prefix: str = ""      # 任务编号前缀 (如 "HTG" → HTG-001)
     created_at: str = ""
     updated_at: str = ""
+
+    def __post_init__(self):
+        # 防御性默认值修正
+        if self.status is None:
+            self.status = "planning"
+        if self.plan_type is None:
+            self.plan_type = PlanType.STANDARD.value
 
 
 @dataclass

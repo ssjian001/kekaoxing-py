@@ -67,5 +67,16 @@ class SampleTransaction:
     related_task_id: Optional[int] = None
     expected_return: str = "" # 预计归还日期
     actual_return: str = ""   # 实际归还日期
+    quantity: float = 0.0     # 数量（出入库数量）
     notes: str = ""
     created_at: str = ""
+
+    def __post_init__(self):
+        # 防御性类型转换
+        if self.type is None:
+            self.type = TransactionType.CHECK_OUT.value
+        if isinstance(self.quantity, str):
+            try:
+                self.quantity = float(self.quantity)
+            except (ValueError, TypeError):
+                self.quantity = 0.0

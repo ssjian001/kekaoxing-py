@@ -383,6 +383,11 @@ def export_report_pdf(
         doc_obj.build(story, onFirstPage=_hf, onLaterPages=_hf)
     except (OSError, PermissionError) as e:
         logger.error("PDF build failed: %s → %s", out, e)
+        if os.path.exists(out):
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
         raise
     return os.path.abspath(out)
 

@@ -178,12 +178,12 @@ class DeleteEntityCommand(Command):
 
     def undo(self) -> None:
         if self._cascade_children:
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                None, "无法撤销",
-                "此操作涉及关联数据（CASCADE 子记录），无法撤销。",
+            logger.warning(
+                "DeleteEntityCommand.undo: entity=%s id=%d had cascade children; "
+                "parent record will be restored but child references may have been "
+                "set to NULL by ON DELETE SET NULL",
+                self._entity_name, self._entity_id,
             )
-            return
         if self._saved_data and self._saved_data.get("id") is not None:
             # 检查原 ID 是否已被新记录占用
             existing = self._repo.get_by_id(self._saved_data["id"])
@@ -199,6 +199,30 @@ class DeleteEntityCommand(Command):
             else:
                 # 显式插入原始 ID，保持外键引用完整性
                 self._repo.insert(**self._saved_data)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  复合命令
+# ═══════════════════════════════════════════════════════════════════
+
+class MacroCommand(Command):
+    """复合命令 — 封装多个子命令，undo/redo 倒序执行。"""
+
+    def __init__(self, commands: list[Command], description: str = ""):
+        self._commands = list(commands)
+        self.description = description or f"复合操作({len(commands)}步)"
+
+    def do(self) -> None:
+        for cmd in self._commands:
+            cmd.do()
+
+    def undo(self) -> None:
+        for cmd in reversed(self._commands):
+            cmd.undo()
+
+    def redo(self) -> None:
+        for cmd in self._commands:
+            cmd.redo() if hasattr(cmd, 'redo') else cmd.do()
 
 
 class BatchEditSamplesCommand(Command):

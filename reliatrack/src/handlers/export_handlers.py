@@ -254,15 +254,22 @@ class ExportHandlers:
             return
 
         export_dir = self._get_export_dir()
+        _generated_path: Path | None = None
         try:
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             svc = self._get_svc(ctrl, export_dir)
             path = handler(ctrl, svc, fmt, project_id)
+            _generated_path = Path(path) if path else None
             self._win.toast(f"已导出: {path}", "success")
         except ValueError as e:
             self._win.toast(str(e), "info")
         except Exception as e:
             logger.exception("Export failed")
+            if _generated_path and _generated_path.exists():
+                try:
+                    _generated_path.unlink()
+                except OSError:
+                    logger.warning("Failed to clean partial export: %s", _generated_path)
             QMessageBox.critical(self._win, "导出失败", f"导出时发生错误:\n{e}")
         finally:
             QApplication.restoreOverrideCursor()
