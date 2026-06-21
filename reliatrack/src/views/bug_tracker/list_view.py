@@ -73,7 +73,7 @@ _BUG_TABLE_SPECS = [
     ("严重度", "interactive", 70),
     ("状态", "interactive", 80),
     ("优先级", "interactive", 60),
-    ("指派人", "interactive", 80),
+    ("DRI", "interactive", 80),
     ("Aging", "interactive", 70),
     ("创建时间", "interactive", 100),
     ("任务", "interactive", 80),
@@ -100,7 +100,7 @@ class _BugTable(QTableWidget):
         self.setSortingEnabled(True)
         self._issues: list[Issue] = []
         self._issue_service: IssueService | None = None
-        self._technician_map: dict[int, str] = {}  # assignee_id → 人名
+        self._technician_map: dict[int, str] = {}  # 保留供 detail_dialog 活动日志翻译（DRI 列不再使用）
         # checkbox 列不参与排序
         self.horizontalHeader().setSortIndicatorShown(True)
 
@@ -153,8 +153,7 @@ class _BugTable(QTableWidget):
                 SEVERITY_LABELS.get(issue.severity, issue.severity),
                 ISSUE_STATUS_LABELS.get(issue.status, issue.status),
                 PRIORITY_LABELS.get(issue.priority, f"P{issue.priority}"),
-                self._technician_map.get(issue.assignee_id, "")
-                    if issue.assignee_id else "",
+                issue.dri_name or "",
                 "",  # Aging — 单独处理
                 (issue.created_at or "")[:10],
                 str(issue.task_id or ""),
@@ -258,7 +257,7 @@ class _BugTable(QTableWidget):
 # ═══════════════════════════════════════════════════════════════
 
 class FilterPanel(QFrame):
-    """可折叠的筛选面板 — 状态/严重度/优先级/指派人/日期范围。"""
+    """可折叠的筛选面板 — 状态/严重度/优先级/DRI/日期范围。"""
 
     filter_changed = Signal(dict)  # filters: dict
 
@@ -340,12 +339,12 @@ class FilterPanel(QFrame):
             pri_group.addWidget(cb)
         form.addLayout(pri_group)
 
-        # ── 指派人 ──
-        form.addWidget(QLabel("指派人"))
-        self._assignee_combo = QComboBox()
-        self._assignee_combo.addItem("全部", None)
-        self._assignee_combo.currentIndexChanged.connect(self._emit_filter)
-        form.addWidget(self._assignee_combo)
+        # ── DRI ──
+        form.addWidget(QLabel("DRI"))
+        self._dri_combo = QComboBox()
+        self._dri_combo.addItem("全部", None)
+        self._dri_combo.currentIndexChanged.connect(self._emit_filter)
+        form.addWidget(self._dri_combo)
 
         # ── 创建日期范围 ──
         form.addWidget(QLabel("创建日期"))
@@ -375,17 +374,17 @@ class FilterPanel(QFrame):
         scroll.setWidget(container)
         layout.addWidget(scroll, stretch=1)
 
-    def set_assignee_options(self, tech_map: dict[int, str]) -> None:
-        """设置指派人下拉选项（顯示人名，data 存 assignee_id）。"""
-        current_id = self._assignee_combo.currentData()
-        self._assignee_combo.clear()
-        self._assignee_combo.addItem("全部", None)
-        for tid, name in sorted(tech_map.items(), key=lambda x: x[1]):
-            self._assignee_combo.addItem(name, tid)
-        if current_id is not None:
-            idx = self._assignee_combo.findData(current_id)
+    def set_dri_options(self, dri_names: list[str]) -> None:
+        """设置 DRI 下拉选项（从现有 Issue 的 dri_name 去重填充）。"""
+        current = self._dri_combo.currentData()
+        self._dri_combo.clear()
+        self._dri_combo.addItem("全部", None)
+        for name in sorted(set(n for n in dri_names if n)):
+            self._dri_combo.addItem(name, name)
+        if current is not None:
+            idx = self._dri_combo.findData(current)
             if idx >= 0:
-                self._assignee_combo.setCurrentIndex(idx)
+                self._dri_combo.setCurrentIndex(idx)
 
     def get_filters(self) -> dict:
         """获取当前筛选条件。"""
@@ -402,7 +401,7 @@ class FilterPanel(QFrame):
                 int(eng[1:]) for eng, cb in self._priority_checks.items()
                 if cb.isChecked()
             ],
-            "assignee_id": self._assignee_combo.currentData(),
+            "dri_name": self._dri_combo.currentData(),
             "date_start": self._date_start.date().toString("yyyy-MM-dd")
                 if self._date_start.date() != self._date_start.minimumDate() else "",
             "date_end": self._date_end.date().toString("yyyy-MM-dd")
@@ -424,13 +423,13 @@ class FilterPanel(QFrame):
             pri_label = int(eng[1:])
             cb.setChecked(pri_label in pri_list)
 
-        assignee_id = filters.get("assignee_id")
-        if assignee_id is None:
-            self._assignee_combo.setCurrentIndex(0)
+        dri_name = filters.get("dri_name")
+        if dri_name is None:
+            self._dri_combo.setCurrentIndex(0)
         else:
-            idx = self._assignee_combo.findData(assignee_id)
+            idx = self._dri_combo.findData(dri_name)
             if idx >= 0:
-                self._assignee_combo.setCurrentIndex(idx)
+                self._dri_combo.setCurrentIndex(idx)
 
         date_start = filters.get("date_start", "")
         if date_start:
@@ -456,7 +455,7 @@ class FilterPanel(QFrame):
             cb.setChecked(True)
         for cb in self._priority_checks.values():
             cb.setChecked(True)
-        self._assignee_combo.setCurrentIndex(0)
+        self._dri_combo.setCurrentIndex(0)
         self._date_start.setDate(QDate.currentDate().addMonths(-1))
         self._date_end.setDate(QDate.currentDate())
         self._emit_filter()
@@ -467,7 +466,7 @@ class FilterPanel(QFrame):
 # ═══════════════════════════════════════════════════════════════
 
 class BatchOperationDialog(QDialog):
-    """批量操作对话框 — 改状态/改严重度/改优先级/指派。"""
+    """批量操作对话框 — 改状态/改严重度/改优先级/设置DRI。"""
 
     def __init__(
         self,
@@ -475,13 +474,13 @@ class BatchOperationDialog(QDialog):
         issue_service: IssueService,
         parent: QWidget | None = None,
         undo_manager=None,
-        technician_map: dict[int, str] | None = None,
+        dri_names: list[str] | None = None,
     ):
         super().__init__(parent)
         self._issue_ids = issue_ids
         self._service = issue_service
         self._undo_manager = undo_manager
-        self._technician_map = technician_map or {}
+        self._dri_names = dri_names or []
 
         self.setWindowTitle(f"批量操作 — 已选 {len(issue_ids)} 个 Issue")
         self.setMinimumSize(400, 300)
@@ -511,7 +510,7 @@ class BatchOperationDialog(QDialog):
         op_row = QHBoxLayout()
         op_row.addWidget(QLabel("操作:"))
         self._op_combo = QComboBox()
-        self._op_combo.addItems(["改状态", "改严重度", "改优先级", "指派"])
+        self._op_combo.addItems(["改状态", "改严重度", "改优先级", "设置DRI"])
         self._op_combo.currentTextChanged.connect(self._update_value_widget)
         op_row.addWidget(self._op_combo, stretch=1)
         layout.addLayout(op_row)
@@ -549,28 +548,26 @@ class BatchOperationDialog(QDialog):
         elif operation == "改优先级":
             for i in range(1, 6):
                 self._value_combo.addItem(f"P{i}", i)
-        elif operation == "指派":
-            self._value_combo.addItem("（清除指派）", None)
-            for tid, name in sorted(self._technician_map.items(), key=lambda x: x[1]):
-                self._value_combo.addItem(name, tid)
+        elif operation == "设置DRI":
+            self._value_combo.setEditable(True)
+            self._value_combo.addItem("（清除DRI）", "")
+            for name in sorted(set(self._dri_names)):
+                self._value_combo.addItem(name, name)
 
     def _execute_batch(self) -> None:
         """执行批量操作，逐个 issue 调用 update()。"""
         operation = self._op_combo.currentText()
         target_value = self._value_combo.currentData()
-        if target_value is None and self._value_combo.isEditable():
-            try:
-                target_value = int(self._value_combo.currentText())
-            except (ValueError, TypeError):
-                ToastWidget.show_toast(self, "请输入有效的指派人 ID", ToastWidget.ERROR)
-                return
+        # 设置DRI 可编辑模式：手动输入时 currentData() 返回 None，取文本
+        if operation == "设置DRI" and target_value is None:
+            target_value = self._value_combo.currentText().strip()
 
         # 映射操作 → kwargs field
         field_map = {
             "改状态": "status",
             "改严重度": "severity",
             "改优先级": "priority",
-            "指派": "assignee_id",
+            "设置DRI": "dri_name",
         }
         field = field_map.get(operation, "")
         if not field:
@@ -709,10 +706,10 @@ class BugListView(QWidget):
         self._btn_batch_status.clicked.connect(lambda: self._open_batch_dialog("改状态"))
         toolbar.addWidget(self._btn_batch_status)
 
-        self._btn_batch_assign = QPushButton("批量指派")
+        self._btn_batch_assign = QPushButton("批量设置DRI")
         self._btn_batch_assign.setProperty("class", "action")
         self._btn_batch_assign.setEnabled(False)
-        self._btn_batch_assign.clicked.connect(lambda: self._open_batch_dialog("指派"))
+        self._btn_batch_assign.clicked.connect(lambda: self._open_batch_dialog("设置DRI"))
         toolbar.addWidget(self._btn_batch_assign)
 
         # 刷新按钮
@@ -774,6 +771,8 @@ class BugListView(QWidget):
     def set_issues(self, issues: list[Issue]) -> None:
         """设置 Issue 列表（全量缓存，筛选后显示）。"""
         self._all_issues = issues
+        # 提取 DRI 去重填充筛选下拉
+        self._filter_panel.set_dri_options([i.dri_name for i in issues if i.dri_name])
         self._apply_filters()
 
     def refresh(self) -> None:
@@ -782,10 +781,9 @@ class BugListView(QWidget):
         self.set_issues(issues)
 
     def set_technician_map(self, tech_map: dict[int, str]) -> None:
-        """设置 assignee_id → 人名映射（表格渲染/筛选/批量操作共用）。"""
+        """保留供 detail_dialog 活动日志翻译（DRI 列/筛选已改用 dri_name）。"""
         self._technician_map = tech_map
         self._table.set_technician_map(tech_map)
-        self._filter_panel.set_assignee_options(tech_map)
 
     def set_filters(self, filters: dict) -> None:
         """外部设置筛选条件（跨视图同步）。"""
@@ -820,10 +818,10 @@ class BugListView(QWidget):
             if filters["priority"] and issue.priority not in filters["priority"]:
                 continue
 
-            # 指派人（按 assignee_id 过滤）
-            assignee_id_filter = filters.get("assignee_id")
-            if assignee_id_filter is not None:
-                if issue.assignee_id != assignee_id_filter:
+            # DRI（按 dri_name 过滤）
+            dri_filter = filters.get("dri_name")
+            if dri_filter is not None:
+                if (issue.dri_name or "") != dri_filter:
                     continue
 
             # 创建日期范围
@@ -858,7 +856,7 @@ class BugListView(QWidget):
 
         dialog = BatchOperationDialog(ids, self._service, self,
                                       undo_manager=self._undo_manager,
-                                      technician_map=self._technician_map)
+                                      dri_names=[i.dri_name for i in self._all_issues])
         if dialog.exec() == QDialog.DialogCode.Accepted:
             summary = dialog.result_summary()
             if summary:

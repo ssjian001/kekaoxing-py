@@ -444,7 +444,7 @@ class IssueDetailDialog(QDialog):
             new_label = SEVERITY_LABELS.get(new_val, new_val)
             change_text = f"严重度: {old_label} → {new_label}"
         else:
-            map_label = {"assignee_id": "负责人", "priority": "优先级",
+            map_label = {"assignee_id": "负责人", "dri_name": "DRI", "priority": "优先级",
                          "resolution": "处理结果", "category": "类别"}
             field_label = map_label.get(field, field)
             # assignee_id 翻译成人名

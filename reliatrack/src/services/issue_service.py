@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # 活动日志追踪的字段（变更时自动记录）
 _TRACKED_FIELDS = {
     "status", "severity", "assignee_id", "priority", "resolution", "category",
+    "dri_name",
 }
 
 

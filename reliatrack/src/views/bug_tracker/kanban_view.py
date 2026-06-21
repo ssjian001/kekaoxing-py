@@ -688,7 +688,7 @@ class BugKanbanView(QWidget):
         if self._filters:
             sev = self._filters.get("severity")
             priority = self._filters.get("priority")
-            assignee = self._filters.get("assignee_id")
+            dri = self._filters.get("dri_name")
             date_from = self._filters.get("date_from")
             date_to = self._filters.get("date_to")
 
@@ -698,7 +698,7 @@ class BugKanbanView(QWidget):
                     continue
                 if priority and i.priority not in priority:
                     continue
-                if assignee and i.assignee_id != assignee:
+                if dri and (i.dri_name or "") != dri:
                     continue
                 if date_from and (i.created_at or "") < date_from:
                     continue
@@ -725,8 +725,7 @@ class BugKanbanView(QWidget):
 
                 card = _KanbanCard(
                     issue, aging,
-                    assignee_name=self._technician_map.get(issue.assignee_id, "")
-                    if issue.assignee_id else "",
+                    assignee_name=issue.dri_name or "",
                 )
                 card.double_clicked.connect(self._on_card_double_clicked)
 
