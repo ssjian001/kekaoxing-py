@@ -736,7 +736,16 @@ class DashboardView(QWidget):
         self._section_titles: list[QLabel] = []
         sec1 = self._mk_section_title("测试执行概览")
         self._section_titles.append(sec1)
-        left.addWidget(sec1)
+        tr1 = QHBoxLayout()
+        tr1.setSpacing(8)
+        tr1.addWidget(sec1)
+        tr1.addStretch()
+        self._ctx_label_left = QLabel("")
+        self._ctx_label_left.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px;"
+        )
+        tr1.addWidget(self._ctx_label_left)
+        left.addLayout(tr1)
 
         # KPI 4 卡（已完成 / 进行中 / 待开始 / Fail）
         ga = QHBoxLayout()
@@ -762,7 +771,16 @@ class DashboardView(QWidget):
         right.setSpacing(12)
         sec2 = self._mk_section_title("质量与问题概览")
         self._section_titles.append(sec2)
-        right.addWidget(sec2)
+        tr2 = QHBoxLayout()
+        tr2.setSpacing(8)
+        tr2.addWidget(sec2)
+        tr2.addStretch()
+        self._ctx_label_right = QLabel("")
+        self._ctx_label_right.setStyleSheet(
+            f"color: {_theme.SUBTEXT0}; font-size: 11px;"
+        )
+        tr2.addWidget(self._ctx_label_right)
+        right.addLayout(tr2)
 
         # KPI 3 卡
         gb = QHBoxLayout()
@@ -831,6 +849,9 @@ class DashboardView(QWidget):
 
         # Header
         self._update_filter(data.project_name, data.plan_name)
+        ctx = f"{data.project_name or '全部项目'}{' / ' + data.plan_name if data.plan_name else ''}"
+        self._ctx_label_left.setText(ctx)
+        self._ctx_label_right.setText(ctx)
         self._time_label.setText(
             f"最后更新：{data.last_update}" if data.last_update else ""
         )
