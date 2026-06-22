@@ -70,3 +70,16 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+## Tab 增删/重排 — 索引全局同步
+
+移除或重排 QTabWidget 的 Tab 时，tab 索引在多处以**魔法数字**出现，
+分散在不同文件和抽象层级中。只搜 `addTab` / `currentIndex` 不够。
+
+**必须全局搜索以下模式**（跨整个项目）：
+- `_StatCard(` / `tab_index=` — 仪表盘卡片跳转
+- `search_map` / `_on_shortcut_` — 快捷键索引映射
+- `setCurrentIndex(` — 直接索引调用
+- `card_clicked` — 仪表盘信号携带的索引值
+
+**原则**：改 Tab 结构 = 改索引。列出所有引用点 → 逐个更新 → 确认 → 提交。
