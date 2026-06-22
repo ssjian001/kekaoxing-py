@@ -46,8 +46,8 @@ def mock_win(issue_service: IssueService) -> MagicMock:
     ctrl = MagicMock()
     ctrl.issue_service = issue_service
     win.ctrl = ctrl
-    win.issue_view = MagicMock()
-    win.issue_view.get_selected_issue_id.return_value = None
+    win.bug_tracker_view = MagicMock()
+    win.bug_tracker_view.get_selected_issue_id.return_value = None
     return win
 
 
@@ -419,7 +419,7 @@ class TestHandleFARecordAdded:
         sample_issue: int,
     ) -> None:
         """FA-Handler1: FA 记录添加 → FA 面板刷新 + sync 联动触发。"""
-        mock_win.issue_view.get_selected_issue_id.return_value = sample_issue
+        mock_win.bug_tracker_view.get_selected_issue_id.return_value = sample_issue
 
         data = {
             "issue_id": sample_issue,
@@ -431,8 +431,8 @@ class TestHandleFARecordAdded:
         handlers._handle_fa_record_added(data)
 
         # 验证 FA 面板被刷新
-        mock_win.issue_view.refresh_fa.assert_called_once()
-        fa_records = mock_win.issue_view.refresh_fa.call_args[0][0]
+        mock_win.bug_tracker_view.refresh_fa.assert_called_once()
+        fa_records = mock_win.bug_tracker_view.refresh_fa.call_args[0][0]
         assert len(fa_records) == 1
         assert fa_records[0].possible_cause == "虚焊"
 
@@ -455,7 +455,7 @@ class TestHandleFARecordAdded:
         # issue_id 为 None → handler 应直接 return
         handlers._handle_fa_record_added(data)
         # 不应调用 refresh_fa
-        mock_win.issue_view.refresh_fa.assert_not_called()
+        mock_win.bug_tracker_view.refresh_fa.assert_not_called()
 
     def test_fa_record_added_missing_issue_id_key(
         self,
@@ -465,7 +465,7 @@ class TestHandleFARecordAdded:
         """FA-Handler3: data 中无 issue_id 键 → 不崩溃。"""
         data = {"step_no": 1, "step_title": "测试"}
         handlers._handle_fa_record_added(data)
-        mock_win.issue_view.refresh_fa.assert_not_called()
+        mock_win.bug_tracker_view.refresh_fa.assert_not_called()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -484,7 +484,7 @@ class TestHandleCAPARecordAdded:
         sample_issue: int,
     ) -> None:
         """CAPA-Handler1: CAPA 记录添加 → CAPA 面板刷新 + sync 联动触发。"""
-        mock_win.issue_view.get_selected_issue_id.return_value = sample_issue
+        mock_win.bug_tracker_view.get_selected_issue_id.return_value = sample_issue
 
         data = {
             "issue_id": sample_issue,
@@ -494,8 +494,8 @@ class TestHandleCAPARecordAdded:
         handlers._handle_capa_record_added(data)
 
         # 验证 CAPA 面板被刷新
-        mock_win.issue_view.refresh_capa.assert_called_once()
-        capa_records = mock_win.issue_view.refresh_capa.call_args[0][0]
+        mock_win.bug_tracker_view.refresh_capa.assert_called_once()
+        capa_records = mock_win.bug_tracker_view.refresh_capa.call_args[0][0]
         assert len(capa_records) == 1
         assert capa_records[0].action == "更换供应商"
 
@@ -515,7 +515,7 @@ class TestHandleCAPARecordAdded:
         """CAPA-Handler2: issue_id 为 None → 不崩溃。"""
         data = {"action": "测试措施"}
         handlers._handle_capa_record_added(data)
-        mock_win.issue_view.refresh_capa.assert_not_called()
+        mock_win.bug_tracker_view.refresh_capa.assert_not_called()
 
 
 # ══════════════════════════════════════════════════════════════

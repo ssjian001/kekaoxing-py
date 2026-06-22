@@ -485,10 +485,11 @@ class TestDashboardBugTrackerMetrics:
         from types import SimpleNamespace
         from src.handlers.refresh_handlers import RefreshHandlers
 
-        class _MockIssueView:
+        class _MockBugTrackerView:
             def set_context_data(self, **kwargs): pass
+            def refresh(self, issues=None): pass
 
-        win = SimpleNamespace(ctrl=ctrl, issue_view=_MockIssueView())
+        win = SimpleNamespace(ctrl=ctrl, bug_tracker_view=_MockBugTrackerView())
         handlers = RefreshHandlers.__new__(RefreshHandlers)  # type: ignore
         handlers._win = win  # type: ignore
         handlers._cached_projects = None

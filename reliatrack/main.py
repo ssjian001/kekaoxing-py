@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QPushButton,
 )
-from PySide6.QtCore import QTimer, QSettings
+from PySide6.QtCore import QTimer, QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
@@ -37,7 +37,7 @@ from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
 from src.views.test_plan_view import TestPlanView
-from src.views.issue_view import IssueView
+# IssueView 不再单独实例化（已合并到 BugTrackerView），import 保留供 test/ref 使用
 from src.views.bug_tracker import BugTrackerView
 from src.views.equipment_view import EquipmentView
 from src.views.technician_view import TechnicianView
@@ -136,9 +136,7 @@ class MainWindow(QMainWindow):
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "测试计划")
 
-        # Tab 4: Issue 追踪
-        self._issue_view = IssueView()
-        self._tab_widget.addTab(self._issue_view, "Issue 追踪")
+        # Tab 4: Issue 追踪（已合并到 Bug 管理，不再独立显示）
 
         # Tab 5: 设备 & 技术员管理（内部双 tab）
         self._equip_tech_tabs = QTabWidget()
@@ -155,7 +153,7 @@ class MainWindow(QMainWindow):
         # Tab 7: Bug 管理（看板/列表）
         assert self._ctrl.issue_service is not None, "IssueService must be initialized"
         self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
-        self._tab_widget.addTab(self._bug_tracker_view, "Bug 管理")
+        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
 
         # 恢复上次选中的 Tab
         settings = QSettings()
@@ -173,23 +171,25 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._tab_widget)
         self.setCentralWidget(central)
 
-        # 全局项目筛选器 — 在 tab_widget 之前插入
-        self._create_filter_bar(layout)
+        # 全局项目筛选器 — 作为 Tab 右侧 corner widget
+        self._create_filter_bar()
 
-    def _create_filter_bar(self, layout: QVBoxLayout) -> None:
-        """创建项目/计划筛选栏（注入到 layout 顶部）。"""
+    def _create_filter_bar(self) -> None:
+        """创建项目/计划筛选栏 — 作为 TabWidget 右上角 corner widget。"""
         filter_bar = QHBoxLayout()
+        filter_bar.setContentsMargins(8, 0, 8, 0)
+        filter_bar.setSpacing(6)
         self._filter_label = QLabel("项目筛选:")
         self._filter_label.setProperty("class", "filter-label")
         self._project_filter_combo = QComboBox()
-        self._project_filter_combo.setMinimumWidth(200)
+        self._project_filter_combo.setMinimumWidth(160)
         self._project_filter_combo.setProperty("class", "filter-combo")
         self._project_filter_combo.addItem("全部项目", None)
 
         self._plan_filter_label = QLabel("计划:")
         self._plan_filter_label.setProperty("class", "filter-label")
         self._plan_filter_combo = QComboBox()
-        self._plan_filter_combo.setMinimumWidth(180)
+        self._plan_filter_combo.setMinimumWidth(140)
         self._plan_filter_combo.setProperty("class", "filter-combo")
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)
@@ -198,11 +198,12 @@ class MainWindow(QMainWindow):
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(self._plan_filter_label)
         filter_bar.addWidget(self._plan_filter_combo)
-        filter_bar.addStretch()
+
         self._filter_layout = QWidget()
         self._filter_layout.setLayout(filter_bar)
         self._filter_layout.setProperty("class", "filter-bar")
-        layout.insertWidget(0, self._filter_layout)
+        # 挂载到 TabWidget 右上角 — Tab 标签在左，筛选在右，同一行
+        self._tab_widget.setCornerWidget(self._filter_layout, Qt.Corner.TopRightCorner)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
 
@@ -273,7 +274,7 @@ class MainWindow(QMainWindow):
         - 已打开 dialog 中的 _ResultRow/_btn_pass_all（已有 refresh_theme）
         """
         # 1. 长驻视图的剩余 refresh_theme
-        for view in (self._dashboard, self._issue_view):
+        for view in (self._dashboard, self._bug_tracker_view):
             if hasattr(view, "refresh_theme"):
                 view.refresh_theme()
 
@@ -324,11 +325,11 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_add()
         elif idx == 4:
-            self._issue_view._btn_add.click()
+            self._equipment_handlers._on_equipment_add()
         elif idx == 5:
-            self._equipment_view.btn_add.click()
+            self._knowledge_handlers._on_knowledge_add()
         elif idx == 6:
-            self._knowledge_view.btn_add.click()
+            self._bug_tracker_view._act_new_issue.trigger()
 
     def _on_shortcut_delete(self) -> None:
         """Delete: 删除当前 Tab 的选中项。"""
@@ -360,9 +361,9 @@ class MainWindow(QMainWindow):
             1: lambda: self._project_view.search_input,
             2: lambda: self._sample_view.pool_tab.search_input,
             3: lambda: self._test_plan_view._search_edit,
-            4: lambda: self._issue_view._search_input,
-            5: lambda: self._equipment_view._search_edit,
-            6: lambda: self._knowledge_view._search_edit,
+            4: lambda: self._equipment_view._search_edit,
+            5: lambda: self._knowledge_view._search_edit,
+            6: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
         }
         idx = self._tab_widget.currentIndex()
         getter = search_map.get(idx)
@@ -457,8 +458,14 @@ class MainWindow(QMainWindow):
         return self._test_plan_view
 
     @property
-    def issue_view(self) -> IssueView:
-        return self._issue_view
+    def bug_tracker_view(self):
+        """Bug Tracker 视图（合并了 Issue 追踪功能）。"""
+        return self._bug_tracker_view
+
+    @property
+    def issue_view(self):
+        """兼容别名 — 返回 bug_tracker_view（Issue 追踪已合并）。"""
+        return self._bug_tracker_view
 
     @property
     def sample_view(self) -> SampleView:
