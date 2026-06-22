@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
         # Tab 7: Bug 管理（看板/列表）
         assert self._ctrl.issue_service is not None, "IssueService must be initialized"
         self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
-        self._tab_widget.addTab(self._bug_tracker_view, "Bug 管理")
+        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
 
         # 恢复上次选中的 Tab
         settings = QSettings()

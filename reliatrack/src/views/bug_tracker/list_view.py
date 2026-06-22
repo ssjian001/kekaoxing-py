@@ -1091,6 +1091,29 @@ class BugListView(QWidget):
             self.issue_saved.emit(dlg.get_data())
         dlg.deleteLater()
 
+    def open_edit_issue_dialog(self) -> None:
+        """打开编辑 Issue 弹窗。"""
+        issue_id = self.get_selected_issue_id()
+        if issue_id is None:
+            QMessageBox.information(self, "提示", "请先在列表中选中一个 Issue。")
+            return
+        issue = self._table.get_issue_by_id(issue_id)
+        if issue is None:
+            return
+        dlg = IssueEditDialog(
+            issue=issue,
+            project_list=self._project_list,
+            task_list=self._task_list,
+            sample_list=self._sample_list,
+            knowledge_list=self._knowledge_list,
+            parent=self,
+        )
+        if dlg.exec():
+            data = dlg.get_data()
+            data["id"] = issue.id
+            self.issue_saved.emit(data)
+        dlg.deleteLater()
+
     # ── 刷新主题 ──────────────────────────────────────────────
 
     def refresh_theme(self) -> None:

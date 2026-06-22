@@ -88,22 +88,30 @@ class BugTrackerView(QWidget):
         tab_bar = QHBoxLayout()
         tab_bar.setSpacing(2)
 
-        self._tab_kanban = QPushButton("看板")
+        # 看板/列表/更多 统一用 QToolButton + tab 样式
+        self._tab_kanban = QToolButton()
+        self._tab_kanban.setText("看板")
         self._tab_kanban.setProperty("class", "tab-active")
         self._tab_kanban.setFixedHeight(30)
+        self._tab_kanban.setCheckable(True)
+        self._tab_kanban.setChecked(True)
         self._tab_kanban.clicked.connect(lambda: self._switch_tab(0))
         tab_bar.addWidget(self._tab_kanban)
 
-        self._tab_list = QPushButton("列表")
+        self._tab_list = QToolButton()
+        self._tab_list.setText("列表")
         self._tab_list.setProperty("class", "tab-inactive")
         self._tab_list.setFixedHeight(30)
+        self._tab_list.setCheckable(True)
         self._tab_list.clicked.connect(lambda: self._switch_tab(1))
         tab_bar.addWidget(self._tab_list)
 
-        # 更多操作（附件/导出8D/新建Issue）
+        # 更多操作菜单
         self._more_menu = QMenu(self)
         self._act_new_issue = self._more_menu.addAction("新建 Issue")
         self._act_new_issue.setToolTip("新建 Issue (Ctrl+N)")
+        self._act_edit_issue = self._more_menu.addAction("编辑 Issue")
+        self._act_edit_issue.setToolTip("编辑选中的 Issue")
         self._more_menu.addSeparator()
         self._more_menu.addAction(self._act_attachments)
         self._act_export_8d = self._more_menu.addAction("导出 8D 报告")
@@ -113,7 +121,7 @@ class BugTrackerView(QWidget):
         self._btn_more.setText("更多")
         self._btn_more.setMenu(self._more_menu)
         self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self._btn_more.setProperty("class", "action")
+        self._btn_more.setProperty("class", "tab-inactive")
         self._btn_more.setFixedHeight(30)
         tab_bar.addWidget(self._btn_more)
 
@@ -175,6 +183,7 @@ class BugTrackerView(QWidget):
 
         # 更多操作按钮
         self._act_new_issue.triggered.connect(self._list_view.open_create_issue_dialog)
+        self._act_edit_issue.triggered.connect(self._list_view.open_edit_issue_dialog)
         self._act_export_8d.triggered.connect(self._on_export_8d)
 
         # 首次加载数据（统一走 _refresh_all 注入筛选后数据）
@@ -186,11 +195,12 @@ class BugTrackerView(QWidget):
         """切换 0=看板 / 1=列表。"""
         self._tab_kanban.setProperty("class", "tab-active" if index == 0 else "tab-inactive")
         self._tab_list.setProperty("class", "tab-active" if index == 1 else "tab-inactive")
+        self._tab_kanban.setChecked(index == 0)
+        self._tab_list.setChecked(index == 1)
         # 刷新样式
-        self._tab_kanban.style().unpolish(self._tab_kanban)
-        self._tab_kanban.style().polish(self._tab_kanban)
-        self._tab_list.style().unpolish(self._tab_list)
-        self._tab_list.style().polish(self._tab_list)
+        for btn in (self._tab_kanban, self._tab_list):
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
 
         self._stack.setCurrentIndex(index)
         self._update_stats()
