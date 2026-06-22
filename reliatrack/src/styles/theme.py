@@ -295,6 +295,20 @@ QToolButton[class="action"]::menu-indicator {{
     width: 0;
 }}
 
+/* ── Tab 切换按钮 ── */
+QToolButton[class="tab-active"] {{
+    background-color: {ACCENT}; color: {MANTLE};
+    border-radius: 6px; padding: 4px 14px; font-weight: bold;
+    border: none;
+}}
+QToolButton[class="tab-inactive"] {{
+    background-color: transparent; color: {FG_SECONDARY};
+    border-radius: 6px; padding: 4px 14px; border: none;
+}}
+QToolButton[class="tab-inactive"]:hover {{
+    background-color: {BG_HOVER};
+}}
+
 /* ── 列表 ── */
 QListWidget {{
     background-color: {BG_DARK};
@@ -535,6 +549,9 @@ QLabel[class="filter-label"] {{
 }}
 QWidget[class="filter-bar"] {{
     background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
+}}
+QLabel[class="filter-group-label"] {{
+    color: {FG_SECONDARY}; font-size: 12px; font-weight: bold; padding-right: 4px;
 }}
 QComboBox[class="filter-combo"] {{
     background-color: {BG_INPUT}; color: {FG_PRIMARY};

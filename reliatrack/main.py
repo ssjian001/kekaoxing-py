@@ -37,7 +37,7 @@ from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
 from src.views.test_plan_view import TestPlanView
-from src.views.issue_view import IssueView
+# IssueView 不再单独实例化（已合并到 BugTrackerView），import 保留供 test/ref 使用
 from src.views.bug_tracker import BugTrackerView
 from src.views.equipment_view import EquipmentView
 from src.views.technician_view import TechnicianView
@@ -325,12 +325,11 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_add()
         elif idx == 4:
-            # Issue 追踪已合并到 Bug 管理 (Tab 7→idx 7)
-            self._bug_tracker_view._act_new_issue.trigger()
+            self._equipment_handlers._on_equipment_add()
         elif idx == 5:
-            self._equipment_view.btn_add.click()
+            self._knowledge_handlers._on_knowledge_add()
         elif idx == 6:
-            self._knowledge_view.btn_add.click()
+            self._bug_tracker_view._act_new_issue.trigger()
 
     def _on_shortcut_delete(self) -> None:
         """Delete: 删除当前 Tab 的选中项。"""
@@ -362,9 +361,9 @@ class MainWindow(QMainWindow):
             1: lambda: self._project_view.search_input,
             2: lambda: self._sample_view.pool_tab.search_input,
             3: lambda: self._test_plan_view._search_edit,
-            4: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
-            5: lambda: self._equipment_view._search_edit,
-            6: lambda: self._knowledge_view._search_edit,
+            4: lambda: self._equipment_view._search_edit,
+            5: lambda: self._knowledge_view._search_edit,
+            6: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
         }
         idx = self._tab_widget.currentIndex()
         getter = search_map.get(idx)

@@ -457,15 +457,10 @@ class RefreshHandlers:
             )
             # 构建 technician_map 并注入 Bug Tracker（Fix 1: 看板卡片显示人名）
             tech_map = {t.id: t.name for t in technicians if t.id is not None}
-            bug_tracker = getattr(self._win, '_bug_tracker_view', None)
-            if bug_tracker is not None:
-                bug_tracker.set_technician_map(tech_map)
-        self._win.bug_tracker_view.refresh(all_issues)
+            self._win.bug_tracker_view.set_technician_map(tech_map)
         # 同步刷新 Bug Tracker 视图（注入项目筛选 ID + 刷新数据）
-        bug_tracker = getattr(self._win, '_bug_tracker_view', None)
-        if bug_tracker is not None:
-            bug_tracker.set_project_filter(filter_project_id)
-            bug_tracker.refresh()
+        self._win.bug_tracker_view.set_project_filter(filter_project_id)
+        self._win.bug_tracker_view.refresh()
 
     def _refresh_equipment(self) -> None:
         """刷新设备管理视图。"""

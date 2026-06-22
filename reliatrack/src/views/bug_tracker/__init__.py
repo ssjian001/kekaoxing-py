@@ -268,8 +268,8 @@ class BugTrackerView(QWidget):
             self._list_view.refresh_capa(records)
 
     def set_context_data(self, **kwargs):
-        """转发上下文数据到 BugListView（_list_view 延迟构建时缓存）。"""
-        self._pending_context = kwargs
+        """转发上下文数据到 BugListView（_list_view 延迟构建时缓存合并）。"""
+        self._pending_context.update(kwargs)
         if self._list_view:
             self._list_view.set_context_data(**kwargs)
 
