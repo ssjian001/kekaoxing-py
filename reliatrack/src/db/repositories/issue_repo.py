@@ -148,7 +148,18 @@ class IssueRepository(BaseRepository):
         )
 
     def get_by_project(self, project_id: int) -> list[Issue]:
-        return self.list_all(project_id=project_id)
+        """获取项目下未删除且未关联已归档计划的 Issue。"""
+        cols_list = self._columns()
+        cols_sql = ", ".join(f"i.[{c}]" for c in cols_list)
+        rows = self._conn.execute(f"""
+            SELECT {cols_sql} FROM [issues] i
+            LEFT JOIN [test_tasks] tt ON i.task_id = tt.id
+            LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id)
+            WHERE i.project_id = ? AND i.is_deleted = 0
+              AND (tp.status IS NULL OR tp.status != 'archived')
+            ORDER BY i.id
+        """, (project_id,)).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
 
     def get_unassigned(self) -> list[Issue]:
         """返回未关联项目 (project_id IS NULL) 且未软删除的 Issue。
