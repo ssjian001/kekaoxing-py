@@ -27,7 +27,7 @@ class IssueHandlers:
 
     def connect_signals(self) -> None:
         win = self._win
-        v = win.issue_view
+        v = win.bug_tracker_view
         v.issue_saved.connect(self._handle_issue_saved)
         v.issue_deleted.connect(self._handle_issue_deleted)
         v.issue_selected.connect(self._handle_issue_selected)
@@ -45,7 +45,7 @@ class IssueHandlers:
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
-        issue_id = self._win.issue_view.get_selected_issue_id()
+        issue_id = self._win.bug_tracker_view.get_selected_issue_id()
         if issue_id is None:
             self._win.toast("请先选中一个 Issue", "info")
             return
@@ -174,17 +174,17 @@ class IssueHandlers:
         if issue_id is None:
             self._current_fa_records = []
             self._current_capa_records = []
-            self._win.issue_view.refresh_fa([])
-            self._win.issue_view.refresh_capa([])
+            self._win.bug_tracker_view.refresh_fa([])
+            self._win.bug_tracker_view.refresh_capa([])
             return
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.issue_service:
             return
         self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-        self._win.issue_view.refresh_fa(self._current_fa_records)
+        self._win.bug_tracker_view.refresh_fa(self._current_fa_records)
         # CAPA 记录
         self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-        self._win.issue_view.refresh_capa(self._current_capa_records)
+        self._win.bug_tracker_view.refresh_capa(self._current_capa_records)
 
     def _handle_fa_record_added(self, data: dict) -> None:
         """FA 记录添加后回调。自动联动更新 Issue。"""
@@ -199,7 +199,7 @@ class IssueHandlers:
             ctrl.issue_service.add_fa_record(issue_id, **fa_data)
             # 刷新 FA 面板
             self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-            self._win.issue_view.refresh_fa(self._current_fa_records)
+            self._win.bug_tracker_view.refresh_fa(self._current_fa_records)
             # ── 联动: FA → Issue ──
             self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA 步骤已添加", "success")
@@ -220,10 +220,10 @@ class IssueHandlers:
             update_data = {k: v for k, v in data.items() if k not in ("id", "issue_id")}
             ctrl.issue_service.update_fa_record(fa_id, **update_data)
             # 刷新 FA 面板
-            issue_id = self._win.issue_view.get_selected_issue_id()
+            issue_id = self._win.bug_tracker_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-                self._win.issue_view.refresh_fa(self._current_fa_records)
+                self._win.bug_tracker_view.refresh_fa(self._current_fa_records)
                 self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA #{fa_id} 已更新", "success")
             self._win.ctrl.notify_data_changed("issue")
@@ -240,10 +240,10 @@ class IssueHandlers:
             cmd = ctrl.issue_service.create_fa_delete_command(fa_id)
             ctrl.undo_manager.execute(cmd)
             # 刷新 FA 面板
-            issue_id = self._win.issue_view.get_selected_issue_id()
+            issue_id = self._win.bug_tracker_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_fa_records = ctrl.issue_service.get_fa_records(issue_id)
-                self._win.issue_view.refresh_fa(self._current_fa_records)
+                self._win.bug_tracker_view.refresh_fa(self._current_fa_records)
                 self._sync_issue_from_fa(issue_id)
             self._win.toast(f"FA #{fa_id} 已删除", "success")
             self._win.ctrl.notify_data_changed("issue")
@@ -264,7 +264,7 @@ class IssueHandlers:
             ctrl.issue_service.add_capa_record(issue_id, **record_data)
             # 刷新 CAPA 面板
             self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-            self._win.issue_view.refresh_capa(self._current_capa_records)
+            self._win.bug_tracker_view.refresh_capa(self._current_capa_records)
             # ── 联动: CAPA → Issue ──
             self._sync_issue_from_capa(issue_id)
             self._win.toast("CAPA 措施已添加", "success")
@@ -285,10 +285,10 @@ class IssueHandlers:
             update_data = {k: v for k, v in data.items() if k != "id"}
             ctrl.issue_service.update_capa_record(capa_id, **update_data)
             # 刷新 CAPA 面板：从当前选中 Issue 重新加载
-            issue_id = self._win.issue_view.get_selected_issue_id()
+            issue_id = self._win.bug_tracker_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-                self._win.issue_view.refresh_capa(self._current_capa_records)
+                self._win.bug_tracker_view.refresh_capa(self._current_capa_records)
                 # ── 联动: CAPA → Issue ──
                 self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已更新", "success")
@@ -306,10 +306,10 @@ class IssueHandlers:
             cmd = ctrl.issue_service.create_capa_delete_command(capa_id)
             ctrl.undo_manager.execute(cmd)
             # 刷新 CAPA 面板
-            issue_id = self._win.issue_view.get_selected_issue_id()
+            issue_id = self._win.bug_tracker_view.get_selected_issue_id()
             if issue_id is not None:
                 self._current_capa_records = ctrl.issue_service.get_capa_records(issue_id)
-                self._win.issue_view.refresh_capa(self._current_capa_records)
+                self._win.bug_tracker_view.refresh_capa(self._current_capa_records)
                 # ── 联动: CAPA → Issue ──
                 self._sync_issue_from_capa(issue_id)
             self._win.toast(f"CAPA #{capa_id} 已删除", "success")

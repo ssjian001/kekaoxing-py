@@ -136,9 +136,7 @@ class MainWindow(QMainWindow):
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "测试计划")
 
-        # Tab 4: Issue 追踪
-        self._issue_view = IssueView()
-        self._tab_widget.addTab(self._issue_view, "Issue 追踪")
+        # Tab 4: Issue 追踪（已合并到 Bug 管理，不再独立显示）
 
         # Tab 5: 设备 & 技术员管理（内部双 tab）
         self._equip_tech_tabs = QTabWidget()
@@ -273,7 +271,7 @@ class MainWindow(QMainWindow):
         - 已打开 dialog 中的 _ResultRow/_btn_pass_all（已有 refresh_theme）
         """
         # 1. 长驻视图的剩余 refresh_theme
-        for view in (self._dashboard, self._issue_view):
+        for view in (self._dashboard, self._bug_tracker_view):
             if hasattr(view, "refresh_theme"):
                 view.refresh_theme()
 
@@ -324,7 +322,8 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_add()
         elif idx == 4:
-            self._issue_view._btn_add.click()
+            # Issue 追踪已合并到 Bug 管理 (Tab 7→idx 7)
+            self._bug_tracker_view._act_new_issue.trigger()
         elif idx == 5:
             self._equipment_view.btn_add.click()
         elif idx == 6:
@@ -360,7 +359,7 @@ class MainWindow(QMainWindow):
             1: lambda: self._project_view.search_input,
             2: lambda: self._sample_view.pool_tab.search_input,
             3: lambda: self._test_plan_view._search_edit,
-            4: lambda: self._issue_view._search_input,
+            4: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
             5: lambda: self._equipment_view._search_edit,
             6: lambda: self._knowledge_view._search_edit,
         }
@@ -457,8 +456,14 @@ class MainWindow(QMainWindow):
         return self._test_plan_view
 
     @property
-    def issue_view(self) -> IssueView:
-        return self._issue_view
+    def bug_tracker_view(self):
+        """Bug Tracker 视图（合并了 Issue 追踪功能）。"""
+        return self._bug_tracker_view
+
+    @property
+    def issue_view(self):
+        """兼容别名 — 返回 bug_tracker_view（Issue 追踪已合并）。"""
+        return self._bug_tracker_view
 
     @property
     def sample_view(self) -> SampleView:
