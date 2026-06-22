@@ -108,6 +108,8 @@ class TestTaskRepository(BaseRepository):
                 placeholders = ','.join(['?'] * len(plan_ids))
                 where = f"WHERE plan_id IN ({placeholders})"
                 params = plan_ids
+            else:
+                where = "WHERE 0"  # 无计划时返回空集，避免统计所有项目
         sql = f"SELECT status, COUNT(*) FROM [test_tasks] {where} GROUP BY status"
         return dict(self._conn.execute(sql, params).fetchall())
 

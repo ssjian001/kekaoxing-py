@@ -862,7 +862,7 @@ class DashboardView(QWidget):
             total=data.task_total or 0,
             completed=data.task_completed or 0,
             pass_count=data.pass_count or 0,
-            fail_count=data.fail_count or 0,
+            fail_count=data.failed_task_count or 0,
             in_progress=data.task_in_progress or 0,
             pass_rate=data.pass_rate,
             last_update=data.last_update,
@@ -872,7 +872,7 @@ class DashboardView(QWidget):
         self._card_done.set_value(str(data.task_completed))
         self._card_active.set_value(str(data.task_in_progress))
         self._card_wait.set_value(str(data.task_pending))
-        self._card_fail.set_value(str(data.fail_count or 0))
+        self._card_fail.set_value(str(data.failed_task_count or 0))
 
         # 环形图
         task_map = {

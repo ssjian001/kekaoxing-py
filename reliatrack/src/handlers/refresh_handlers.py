@@ -200,7 +200,7 @@ class RefreshHandlers:
 
         # ── Bug Tracker 4 指标 ──
         pending_issues = [i for i in issues_list if i.status in ("open", "analyzing")]
-        pending_count = len(pending_issues)
+        pending_issue_count = len(pending_issues)
 
         # 本周关闭数（从活动日志查）
         weekly_closed = 0
@@ -303,7 +303,7 @@ class RefreshHandlers:
             fail_count=max(total_result - total_pass, 0) if task_ids else 0,
             technician_count=ctrl.technicians.count() if ctrl.technicians else 0,
             # Bug Tracker 4 指标
-            pending_count=pending_count,
+            pending_count=pending_issue_count,
             weekly_closed=weekly_closed,
             avg_age_days=avg_age_days,
             aging_warning_count=aging_warning_count,
