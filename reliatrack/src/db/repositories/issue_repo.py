@@ -112,16 +112,17 @@ class IssueRepository(BaseRepository):
         return row[0] if row else 0
 
     def count_by_severity(self, project_id: int | None = None) -> dict[str, int]:
-        """按严重度分组计数，可选按 project_id 过滤。始终排除已软删除。"""
+        """按严重度分组计数，可选按 project_id 过滤。始终排除已软删除。
+
+        过滤逻辑与 get_by_project 一致：仅 project_id = ?（不含 task_id OR 扩展）。
+        """
         if project_id:
             sql = (
                 "SELECT severity, COUNT(*) FROM [issues] "
-                "WHERE is_deleted = 0 AND "
-                "(project_id = ? OR task_id IN (SELECT id FROM [test_tasks] "
-                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?))) "
+                "WHERE is_deleted = 0 AND project_id = ? "
                 "GROUP BY severity"
             )
-            return dict(self._conn.execute(sql, (project_id, project_id)).fetchall())
+            return dict(self._conn.execute(sql, (project_id,)).fetchall())
         return dict(
             self._conn.execute(
                 "SELECT severity, COUNT(*) FROM [issues] WHERE is_deleted = 0 GROUP BY severity"
@@ -129,16 +130,17 @@ class IssueRepository(BaseRepository):
         )
 
     def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
-        """按状态分组计数，可选按 project_id 过滤。始终排除已软删除。"""
+        """按状态分组计数，可选按 project_id 过滤。始终排除已软删除。
+
+        过滤逻辑与 get_by_project 一致：仅 project_id = ?（不含 task_id OR 扩展）。
+        """
         if project_id:
             sql = (
                 "SELECT status, COUNT(*) FROM [issues] "
-                "WHERE is_deleted = 0 AND "
-                "(project_id = ? OR task_id IN (SELECT id FROM [test_tasks] "
-                "WHERE plan_id IN (SELECT id FROM [test_plans] WHERE project_id = ?))) "
+                "WHERE is_deleted = 0 AND project_id = ? "
                 "GROUP BY status"
             )
-            return dict(self._conn.execute(sql, (project_id, project_id)).fetchall())
+            return dict(self._conn.execute(sql, (project_id,)).fetchall())
         return dict(
             self._conn.execute(
                 "SELECT status, COUNT(*) FROM [issues] WHERE is_deleted = 0 GROUP BY status"
