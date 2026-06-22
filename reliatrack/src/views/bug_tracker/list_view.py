@@ -279,7 +279,7 @@ class FilterPanel(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setProperty("class", "filter-panel")
-        self.setFixedWidth(220)
+        self.setFixedWidth(250)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(PADDING_MEDIUM, PADDING_MEDIUM, PADDING_MEDIUM, PADDING_MEDIUM)
@@ -657,7 +657,7 @@ class BugListView(QWidget):
         splitter.addWidget(self._table)
 
         # 初始比例
-        splitter.setSizes([220, 800])
+        splitter.setSizes([250, 800])
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         self._splitter = splitter

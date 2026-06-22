@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "last_updated": "2026-06-10",
-    "schema_version": 21,
-    "tests": "340 passed + 1 pre-existing failure (test_boundary.py, --ignore to skip)"
+    "last_updated": "2026-06-19",
+    "schema_version": 23,
+    "tests": "380 passed (round 2 audit + fix 1eb2061)"
   },
   "features": [
     {

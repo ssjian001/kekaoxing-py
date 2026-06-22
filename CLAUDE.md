@@ -132,7 +132,7 @@ bd dolt push          # 同步
 
 1. `cat progress/current.md` — 读取上次进度
 2. `cat feature_list.json` — 确认当前功能状态
-3. `bash init.sh` — 验证环境（语法检查+测试）
+3. 验证环境：`cd reliatrack && .venv/bin/python -m pytest tests/ -x -q | tail -5`
 4. 如果 progress 中有未完成任务，从断点继续
 
 ## 完成定义（Definition of Done）
@@ -151,13 +151,6 @@ bd dolt push          # 同步
 - **不越界** — 不修改当前功能范围外的代码，除非用户明确要求
 - **不擅自移动/删除 UI 元素** — 除非用户明确要求
 - **依赖顺序** — 查看 feature_list.json 的 dependencies 字段，先做被依赖的功能
-
-## 验证入口
-
-运行 `bash init.sh` 执行环境验证：
-- Python 语法检查（py_compile）
-- 数据库 schema 一致性检查
-- 测试套件（区分 GUI/非 GUI）
 
 ## 会话交接
 
