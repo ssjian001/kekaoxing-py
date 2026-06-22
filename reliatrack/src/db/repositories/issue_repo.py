@@ -112,15 +112,15 @@ class IssueRepository(BaseRepository):
         return row[0] if row else 0
 
     def count_by_severity(self, project_id: int | None = None) -> dict[str, int]:
-        """按严重度分组计数，可选按 project_id 过滤。始终排除已软删除。
-
-        过滤逻辑与 get_by_project 一致：仅 project_id = ?（不含 task_id OR 扩展）。
-        """
+        """按严重度分组计数，可选按 project_id 过滤。始终排除已软删除和已归档计划的 Issue。"""
         if project_id:
             sql = (
-                "SELECT severity, COUNT(*) FROM [issues] "
-                "WHERE is_deleted = 0 AND project_id = ? "
-                "GROUP BY severity"
+                "SELECT i.severity, COUNT(*) FROM [issues] i "
+                "LEFT JOIN [test_tasks] tt ON i.task_id = tt.id "
+                "LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id) "
+                "WHERE i.is_deleted = 0 AND i.project_id = ? "
+                "AND (tp.status IS NULL OR tp.status != 'archived') "
+                "GROUP BY i.severity"
             )
             return dict(self._conn.execute(sql, (project_id,)).fetchall())
         return dict(
@@ -130,15 +130,15 @@ class IssueRepository(BaseRepository):
         )
 
     def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
-        """按状态分组计数，可选按 project_id 过滤。始终排除已软删除。
-
-        过滤逻辑与 get_by_project 一致：仅 project_id = ?（不含 task_id OR 扩展）。
-        """
+        """按状态分组计数，可选按 project_id 过滤。始终排除已软删除和已归档计划的 Issue。"""
         if project_id:
             sql = (
-                "SELECT status, COUNT(*) FROM [issues] "
-                "WHERE is_deleted = 0 AND project_id = ? "
-                "GROUP BY status"
+                "SELECT i.status, COUNT(*) FROM [issues] i "
+                "LEFT JOIN [test_tasks] tt ON i.task_id = tt.id "
+                "LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id) "
+                "WHERE i.is_deleted = 0 AND i.project_id = ? "
+                "AND (tp.status IS NULL OR tp.status != 'archived') "
+                "GROUP BY i.status"
             )
             return dict(self._conn.execute(sql, (project_id,)).fetchall())
         return dict(
@@ -414,12 +414,15 @@ class IssueRepository(BaseRepository):
         )
 
     def count_capa_all(self, project_id: int | None = None) -> int:
-        """统计 CAPA 记录总数（可按项目筛选）。"""
+        """统计 CAPA 记录总数（可按项目筛选，排除已归档计划的 CAPA）。"""
         if project_id is not None:
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "
-                "WHERE i.project_id = ? AND i.is_deleted = 0",
+                "LEFT JOIN [test_tasks] tt ON i.task_id = tt.id "
+                "LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id) "
+                "WHERE i.project_id = ? AND i.is_deleted = 0 "
+                "AND (tp.status IS NULL OR tp.status != 'archived')",
                 (project_id,),
             ).fetchone()
         else:
@@ -427,12 +430,15 @@ class IssueRepository(BaseRepository):
         return row[0] if row else 0
 
     def count_capa_done(self, project_id: int | None = None) -> int:
-        """统计已完成/已验证的 CAPA 记录数。"""
+        """统计已完成/已验证的 CAPA 记录数（排除已归档计划的 CAPA）。"""
         if project_id is not None:
             row = self._conn.execute(
                 "SELECT COUNT(*) FROM [capa_records] cr "
                 "JOIN [issues] i ON cr.issue_id = i.id "
-                "WHERE i.project_id = ? AND cr.status IN ('completed', 'verified') AND i.is_deleted = 0",
+                "LEFT JOIN [test_tasks] tt ON i.task_id = tt.id "
+                "LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id) "
+                "WHERE i.project_id = ? AND cr.status IN ('completed', 'verified') AND i.is_deleted = 0 "
+                "AND (tp.status IS NULL OR tp.status != 'archived')",
                 (project_id,),
             ).fetchone()
         else:

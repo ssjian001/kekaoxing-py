@@ -102,7 +102,7 @@ class TestTaskRepository(BaseRepository):
             params = [filters['plan_id']]
         elif filters.get('project_id'):
             plan_ids = [r[0] for r in self._conn.execute(
-                "SELECT id FROM test_plans WHERE project_id = ?", (filters['project_id'],)
+                "SELECT id FROM test_plans WHERE project_id = ? AND status != 'archived'", (filters['project_id'],)
             ).fetchall()]
             if plan_ids:
                 placeholders = ','.join(['?'] * len(plan_ids))
