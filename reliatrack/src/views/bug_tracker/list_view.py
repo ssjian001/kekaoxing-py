@@ -284,100 +284,98 @@ class FilterPanel(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setProperty("class", "filter-panel")
-        self.setFixedWidth(250)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(PADDING_MEDIUM, PADDING_MEDIUM, PADDING_MEDIUM, PADDING_MEDIUM)
-        layout.setSpacing(SPACING_MEDIUM)
+        layout.setContentsMargins(PADDING_SMALL, PADDING_SMALL, PADDING_SMALL, PADDING_SMALL)
+        layout.setSpacing(4)
 
-        # 标题
-        title = QLabel("筛选条件")
-        title.setProperty("class", "panel-header")
-        layout.addWidget(title)
+        # ── 第一行: 状态/严重度/优先级 (checkbox 组，横向) ──
+        row1 = QHBoxLayout()
+        row1.setSpacing(12)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-        container = QWidget()
-        form = QVBoxLayout(container)
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(10)
-
-        # ── 状态 ──
-        form.addWidget(QLabel("状态"))
+        # 状态
+        row1.addWidget(self._make_group_label("状态"))
         self._status_checks: dict[str, QCheckBox] = {}
-        status_group = QVBoxLayout()
-        status_group.setSpacing(2)
         for eng, chn in self.STATUS_OPTIONS:
             cb = QCheckBox(chn)
             cb.setChecked(True)
             cb.stateChanged.connect(self._emit_filter)
             self._status_checks[eng] = cb
-            status_group.addWidget(cb)
-        form.addLayout(status_group)
+            row1.addWidget(cb)
 
-        # ── 严重度 ──
-        form.addWidget(QLabel("严重度"))
+        row1.addSpacing(8)
+
+        # 严重度
+        row1.addWidget(self._make_group_label("严重度"))
         self._severity_checks: dict[str, QCheckBox] = {}
-        sev_group = QVBoxLayout()
-        sev_group.setSpacing(2)
         for eng, chn in self.SEVERITY_OPTIONS:
             cb = QCheckBox(chn)
             cb.setChecked(True)
             cb.stateChanged.connect(self._emit_filter)
             self._severity_checks[eng] = cb
-            sev_group.addWidget(cb)
-        form.addLayout(sev_group)
+            row1.addWidget(cb)
 
-        # ── 优先级 ──
-        form.addWidget(QLabel("优先级"))
+        row1.addSpacing(8)
+
+        # 优先级
+        row1.addWidget(self._make_group_label("优先级"))
         self._priority_checks: dict[str, QCheckBox] = {}
-        pri_group = QVBoxLayout()
-        pri_group.setSpacing(2)
         for eng, chn in self.PRIORITY_OPTIONS:
             cb = QCheckBox(chn)
             cb.setChecked(True)
             cb.stateChanged.connect(self._emit_filter)
             self._priority_checks[eng] = cb
-            pri_group.addWidget(cb)
-        form.addLayout(pri_group)
+            row1.addWidget(cb)
 
-        # ── DRI ──
-        form.addWidget(QLabel("DRI"))
+        row1.addStretch()
+        layout.addLayout(row1)
+
+        # ── 第二行: DRI / 日期范围 / 清空 ──
+        row2 = QHBoxLayout()
+        row2.setSpacing(8)
+
+        row2.addWidget(self._make_group_label("DRI"))
         self._dri_combo = QComboBox()
+        self._dri_combo.setMinimumWidth(100)
         self._dri_combo.addItem("全部", None)
         self._dri_combo.currentIndexChanged.connect(self._emit_filter)
-        form.addWidget(self._dri_combo)
+        row2.addWidget(self._dri_combo)
 
-        # ── 创建日期范围 ──
-        form.addWidget(QLabel("创建日期"))
-        date_range = QHBoxLayout()
+        row2.addSpacing(8)
+
+        # 创建日期范围
+        row2.addWidget(self._make_group_label("创建日期"))
         self._date_start = QDateEdit()
         self._date_start.setCalendarPopup(True)
         self._date_start.setDate(QDate.currentDate().addMonths(-1))
         self._date_start.setSpecialValueText("不限")
         self._date_start.dateChanged.connect(self._emit_filter)
-        date_range.addWidget(self._date_start)
+        row2.addWidget(self._date_start)
 
+        row2.addWidget(QLabel("–"))
         self._date_end = QDateEdit()
         self._date_end.setCalendarPopup(True)
         self._date_end.setDate(QDate.currentDate())
         self._date_end.setSpecialValueText("不限")
         self._date_end.dateChanged.connect(self._emit_filter)
-        date_range.addWidget(self._date_end)
-        form.addLayout(date_range)
+        row2.addWidget(self._date_end)
 
-        # ── 清空按钮 ──
+        row2.addStretch()
+
+        # 清空按钮
         btn_clear = QPushButton("清空筛选")
         btn_clear.setProperty("class", "action")
+        btn_clear.setFixedHeight(26)
         btn_clear.clicked.connect(self._clear_filters)
-        form.addWidget(btn_clear)
+        row2.addWidget(btn_clear)
 
-        form.addStretch()
-        scroll.setWidget(container)
-        layout.addWidget(scroll, stretch=1)
+        layout.addLayout(row2)
+
+    def _make_group_label(self, text: str) -> QLabel:
+        """创建分组标签。"""
+        lbl = QLabel(text)
+        lbl.setProperty("class", "filter-group-label")
+        return lbl
 
     def set_dri_options(self, dri_names: list[str]) -> None:
         """设置 DRI 下拉选项（从现有 Issue 的 dri_name 去重填充）。"""
@@ -670,35 +668,27 @@ class BugListView(QWidget):
         # 1. 顶部工具栏
         layout.addLayout(self._build_toolbar())
 
-        # 2. 主区域 — 垂直分割：上=列表+筛选，下=FA/CAPA 面板
-        main_splitter = QSplitter(Qt.Orientation.Vertical)
-
-        # 上半部: 水平分割 (筛选 + 表格)
-        top_splitter = QSplitter(Qt.Orientation.Horizontal)
-        top_splitter.setProperty("class", "list-splitter")
-
+        # 2. 筛选面板（横向，可折叠）
         self._filter_panel = FilterPanel()
-        top_splitter.addWidget(self._filter_panel)
+        layout.addWidget(self._filter_panel)
 
+        # 3. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        main_splitter.setProperty("class", "list-splitter")
+
+        # 左: Issue 表格
         self._table = _BugTable()
         self._table.set_issue_service(self._service)
-        top_splitter.addWidget(self._table)
+        main_splitter.addWidget(self._table)
 
-        top_splitter.setSizes([250, 800])
-        top_splitter.setStretchFactor(0, 0)
-        top_splitter.setStretchFactor(1, 1)
-        self._splitter = top_splitter
-        main_splitter.addWidget(top_splitter)
+        # 右: FA 上 / CAPA 下（垂直分割）
+        right_splitter = QSplitter(Qt.Orientation.Vertical)
 
-        # 下半部: FA + CAPA 左右排列
-        bottom_widget = QWidget()
-        bottom_layout = QHBoxLayout(bottom_widget)
-        bottom_layout.setContentsMargins(0, 0, 0, 0)
-        bottom_layout.setSpacing(8)
-
-        # 左: FA 面板
-        fa_col = QVBoxLayout()
-        fa_col.setSpacing(4)
+        # FA 面板
+        fa_widget = QWidget()
+        fa_layout = QVBoxLayout(fa_widget)
+        fa_layout.setContentsMargins(0, 0, 0, 0)
+        fa_layout.setSpacing(4)
         fa_header = QHBoxLayout()
         fa_label = QLabel("FA 失效分析")
         fa_label.setProperty("class", "panel-header")
@@ -709,16 +699,18 @@ class BugListView(QWidget):
         self._btn_add_fa.setFixedHeight(24)
         self._btn_add_fa.clicked.connect(self._open_fa_dialog)
         fa_header.addWidget(self._btn_add_fa)
-        fa_col.addLayout(fa_header)
+        fa_layout.addLayout(fa_header)
         self._fa_panel = FAPanel()
         self._fa_panel.fa_edit_requested.connect(self._open_edit_fa_dialog)
         self._fa_panel.fa_delete_requested.connect(self._delete_fa_record)
-        fa_col.addWidget(self._fa_panel, stretch=1)
-        bottom_layout.addLayout(fa_col, stretch=1)
+        fa_layout.addWidget(self._fa_panel, stretch=1)
+        right_splitter.addWidget(fa_widget)
 
-        # 右: CAPA 面板
-        capa_col = QVBoxLayout()
-        capa_col.setSpacing(4)
+        # CAPA 面板
+        capa_widget = QWidget()
+        capa_layout = QVBoxLayout(capa_widget)
+        capa_layout.setContentsMargins(0, 0, 0, 0)
+        capa_layout.setSpacing(4)
         capa_header = QHBoxLayout()
         capa_label = QLabel("CAPA 纠正预防措施")
         capa_label.setProperty("class", "panel-header")
@@ -729,17 +721,23 @@ class BugListView(QWidget):
         self._btn_add_capa.setFixedHeight(24)
         self._btn_add_capa.clicked.connect(self._open_capa_dialog)
         capa_header.addWidget(self._btn_add_capa)
-        capa_col.addLayout(capa_header)
+        capa_layout.addLayout(capa_header)
         self._capa_panel = CAPAPanel()
         self._capa_panel.capa_edit_requested.connect(self._open_edit_capa_dialog)
         self._capa_panel.capa_delete_requested.connect(self._confirm_delete_capa)
-        capa_col.addWidget(self._capa_panel, stretch=1)
-        bottom_layout.addLayout(capa_col, stretch=1)
+        capa_layout.addWidget(self._capa_panel, stretch=1)
+        right_splitter.addWidget(capa_widget)
 
-        main_splitter.addWidget(bottom_widget)
-        main_splitter.setSizes([400, 200])
+        right_splitter.setSizes([250, 250])
+        right_splitter.setStretchFactor(0, 1)
+        right_splitter.setStretchFactor(1, 1)
+        main_splitter.addWidget(right_splitter)
+
+        # 初始比例: 表格 60% : 右侧 40%
+        main_splitter.setSizes([600, 400])
         main_splitter.setStretchFactor(0, 3)
         main_splitter.setStretchFactor(1, 2)
+        self._splitter = main_splitter
         self._main_splitter = main_splitter
 
         layout.addWidget(main_splitter, stretch=1)
@@ -832,20 +830,9 @@ class BugListView(QWidget):
         self._btn_batch_assign.setEnabled(has_checked)
 
     def _toggle_filter_panel(self) -> None:
-        """展开/收起左侧筛选面板。"""
+        """展开/收起横向筛选面板。"""
         self._filter_visible = self._btn_filter.isChecked()
         self._filter_panel.setVisible(self._filter_visible)
-        # 调整 splitter 大小
-        if self._filter_visible:
-            sizes = self._splitter.sizes()
-            sizes[0] = 220
-            sizes[1] = max(sizes[1] - 220, 400)
-            self._splitter.setSizes(sizes)
-        else:
-            sizes = self._splitter.sizes()
-            sizes[1] = sizes[0] + sizes[1]
-            sizes[0] = 0
-            self._splitter.setSizes(sizes)
 
     # ── 数据 ──────────────────────────────────────────────────
 
