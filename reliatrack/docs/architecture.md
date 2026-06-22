@@ -24,7 +24,7 @@ Project ──< TestPlan ──< TestTask >── Sample
 
 ### Schema 版本：v23
 
-- **v23**：Bug 管理系统（新增 issue_comments/issue_activity_log/issue_links 表 + 看板/列表/详情弹窗 + 状态机含 reopen + 活动日志自动记录 + aging + resolution 强制 + Dashboard KPI）
+- **v23**：Issue 管理系统（新增 issue_comments/issue_activity_log/issue_links 表 + 看板/列表/详情弹窗 + 状态机含 reopen + 活动日志自动记录 + aging + resolution 强制 + Dashboard KPI + 与 Issue 追踪合并重构）
 - **v22**：归档视图完善（toggle 按钮 + SQL 层过滤 + 联动刷新）；test_plan_edit_dialog 配置修复
 - **v21**：Issue 责任类别（ME/EE/AE/SW/NPI/QE/Other）+ 状态多选筛选 + CheckBox QProxyStyle
 - **v20**：任务编号前缀
@@ -66,7 +66,7 @@ SQLite (apsw)
 | 4 | 🐛 Issue 追踪 | Issue CRUD(9列含DRI) + FA 分析 + CAPA 措施（负责人+验证人自由输入）+ FA/CAPA↔Issue 双向联动 + 自动创建 Issue(fail→Issue) + 8D PDF/Word 导出 + 状态/严重度筛选 |
 | 5 | 🔧 设备管理 | 设备 CRUD + 校准管理 + 技术员管理（内部子 Tab） |
 | 6 | 📚 知识库 | 失效模式 CRUD + 关键词搜索 |
-| 7 | 🐛 Bug 管理 | 看板(4列拖拽+aging色块+closed折叠) / 列表(筛选面板+批量操作) Tab切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建 C键 + 关闭 resolution强制
+| 6 | Issue 管理 | 看板(4列拖拽+aging色块+closed折叠) / 列表(横筛选面板+FA/CAPA面板+批量操作) Tab切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建 C键 + 关闭 resolution强制 |
 
 ## 排程引擎
 

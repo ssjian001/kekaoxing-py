@@ -65,10 +65,10 @@ src/
     column_persistence.py  # 列宽持久化
   views/
     dashboard_view.py   # 仪表盘
-    equipment_view.py, issue_view.py, knowledge_view.py,
+    equipment_view.py, issue_view.py（已合并至 bug_tracker, 保留向后兼容）, knowledge_view.py,
     project_view.py, sample_view.py, technician_view.py,
     test_plan_view.py
-    bug_tracker/        # Bug 管理系统（看板+列表+详情弹窗，schema v23 新增）
+    bug_tracker/        # Issue 管理系统（看板+列表+FA+CAPA 面板，schema v23 合并重构）
       __init__.py       # BugTrackerView 主容器（看板/列表 Tab 切换）
       kanban_view.py    # 4列拖拽看板（aging色块/closed折叠/状态机约束）
       list_view.py      # 增强列表（筛选面板/批量操作/列宽持久化）

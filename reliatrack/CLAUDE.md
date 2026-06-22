@@ -65,10 +65,10 @@ src/
     column_persistence.py  # 列宽持久化
   views/
     dashboard_view.py   # 仪表盘
-    equipment_view.py, issue_view.py, knowledge_view.py,
+    equipment_view.py, issue_view.py（已合并至 bug_tracker, 保留向后兼容）, knowledge_view.py,
     project_view.py, sample_view.py, technician_view.py,
     test_plan_view.py
-    bug_tracker/        # Bug 管理系统（看板+列表+详情弹窗，schema v23 新增）
+    bug_tracker/        # Issue 管理系统（看板+列表+FA+CAPA 面板，schema v23 合并重构）
       __init__.py       # BugTrackerView 主容器（看板/列表 Tab 切换）
       kanban_view.py    # 4列拖拽看板（aging色块/closed折叠/状态机约束）
       list_view.py      # 增强列表（筛选面板/批量操作/列宽持久化）
@@ -132,7 +132,7 @@ bd dolt push          # 同步
 
 1. `cat progress/current.md` — 读取上次进度
 2. `cat feature_list.json` — 确认当前功能状态
-3. `bash init.sh` — 验证环境（语法检查+测试）
+3. `.venv/bin/python -m pytest tests/ -x -q` — 验证测试通过
 4. 如果 progress 中有未完成任务，从断点继续
 
 ## 完成定义（Definition of Done）
@@ -154,10 +154,9 @@ bd dolt push          # 同步
 
 ## 验证入口
 
-运行 `bash init.sh` 执行环境验证：
-- Python 语法检查（py_compile）
-- 数据库 schema 一致性检查
-- 测试套件（区分 GUI/非 GUI）
+运行以下命令执行环境验证：
+- 语法检查：`.venv/bin/python -m py_compile src/views/bug_tracker/*.py main.py`
+- 测试：`.venv/bin/python -m pytest tests/ -x -q`
 
 ## 会话交接
 

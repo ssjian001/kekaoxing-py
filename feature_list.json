@@ -2,8 +2,8 @@
   {
     "_meta": true,
     "version": "2.0.0",
-    "schema_version": 21,
-    "updated": "2026-05-27",
+    "schema_version": 23,
+    "updated": "2026-06-22",
     "description": "ReliaTrack 功能清单 — 用于跟踪功能完成状态和依赖关系",
     "note": "_meta 条目不表示功能，仅包含元数据"
   },
@@ -195,5 +195,15 @@
       "add_shadow暗色下阴影不可见需修正",
       "4处rgba alpha暗色下需增大"
     ]
+  },
+  {
+    "id": "F019",
+    "name": "Issue 管理（合并重构）",
+    "description": "Issue 追踪 + Bug 管理合并为统一 Tab 6「Issue 管理」：看板/列表 Tab 切换 + 列表下方 FA/CAPA 面板 + 横筛选项部 + 导航 Tab 与项目/计划筛选合并同一行 + 按钮风格统一 + 指派人→DRI 统一",
+    "status": "done",
+    "dependencies": [
+      "F007"
+    ],
+    "priority": "high"
   }
 ]
