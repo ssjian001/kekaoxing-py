@@ -849,9 +849,10 @@ class DashboardView(QWidget):
 
         # Header
         self._update_filter(data.project_name, data.plan_name)
-        ctx = f"{data.project_name or '全部项目'}{' / ' + data.plan_name if data.plan_name else ''}"
-        self._ctx_label_left.setText(ctx)
-        self._ctx_label_right.setText(ctx)
+        ctx_plan = f"{data.project_name or '全部项目'}{' / ' + data.plan_name if data.plan_name else ''}"
+        self._ctx_label_left.setText(ctx_plan)
+        ctx_project = data.project_name or '全部项目'
+        self._ctx_label_right.setText(ctx_project)
         self._time_label.setText(
             f"最后更新：{data.last_update}" if data.last_update else ""
         )
