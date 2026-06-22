@@ -43,8 +43,7 @@ class PlanHandlers:
         # 计划管理菜单
         v.act_add_plan.triggered.connect(self._on_plan_add)
         v.act_edit_plan.triggered.connect(self._on_plan_edit)
-        v.act_delete_plan.triggered.connect(self._on_plan_delete)
-        v.act_archive_plan.triggered.connect(self._on_plan_archive)
+        v.act_archive_plan.triggered.connect(self._on_plan_delete)
         v.act_unarchive_plan.triggered.connect(self._on_plan_unarchive)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
         v._plan_combo.currentIndexChanged.connect(self._update_plan_menu)
@@ -432,7 +431,7 @@ class PlanHandlers:
         dlg.deleteLater()
 
     def _on_plan_delete(self) -> None:
-        """删除当前选中的测试计划（不可撤销）。"""
+        """归档计划（替代删除，任何状态均可归档）。"""
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
@@ -443,29 +442,32 @@ class PlanHandlers:
         plan = ctrl.test_plan_service.get_plan(plan_id)
         if plan is None:
             return
-        # 统计关联数据
-        tasks = ctrl.test_plan_service.get_tasks(plan_id)
-        task_count = len(tasks) if tasks else 0
+        if plan.status == "archived":
+            self._win.toast("该计划已归档", "info")
+            return
         reply = QMessageBox.question(
             self._win,
-            "确认删除",
-            f"确定要删除计划「{plan.name}」吗？\n"
-            f"关联任务: {task_count} 项（含结果、Issue 等将一并删除）\n"
-            f"此操作不可撤销。",
+            "确认归档",
+            f"确定要将计划「{plan.name}」归档吗？\n"
+            f"归档后计划将从默认视图中隐藏，数据完整保留不受影响。",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        exec_crud(
+        ok = exec_crud(
             win=self._win,
-            action=ctrl.test_plan_service.delete_plan,
+            action=ctrl.test_plan_service.update_plan,
             action_args=(plan_id,),
-            toast_msg=f"计划「{plan.name}」已删除",
+            action_kwargs={"status": "archived"},
+            toast_msg=f"计划「{plan.name}」已归档",
             entity="plan",
-            error_title="删除失败",
-            catch_value_error=True,
+            error_title="归档失败",
         )
+        if ok:
+            self._on_refresh_all()
+            if hasattr(self._win, 'refresh_plan_combo'):
+                self._win.refresh_plan_combo()
 
     def _on_plan_archive(self) -> None:
         """归档当前选中的已完成计划。"""
@@ -567,15 +569,12 @@ class PlanHandlers:
             return
         plan_id = v.get_selected_plan_id()
         if plan_id is None:
-            v.act_archive_plan.setVisible(False)
             v.act_unarchive_plan.setVisible(False)
             return
         plan = ctrl.test_plan_service.get_plan(plan_id)
         if plan is None:
-            v.act_archive_plan.setVisible(False)
             v.act_unarchive_plan.setVisible(False)
             return
-        v.act_archive_plan.setVisible(plan.status == "completed")
         v.act_unarchive_plan.setVisible(plan.status == "archived")
 
     def _on_refresh_all(self) -> None:

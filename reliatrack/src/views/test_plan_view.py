@@ -66,11 +66,9 @@ class TestPlanView(QWidget):
         self._act_add_plan = self._plan_menu.addAction("新建计划")
         self._act_edit_plan = self._plan_menu.addAction("编辑计划")
         self._plan_menu.addSeparator()
-        self._act_archive_plan = self._plan_menu.addAction("归档计划")
         self._act_unarchive_plan = self._plan_menu.addAction("取消归档")
         self._act_unarchive_plan.setVisible(False)
-        self._plan_menu.addSeparator()
-        self._act_delete_plan = self._plan_menu.addAction("删除计划")
+        self._act_archive_plan = self._plan_menu.addAction("归档")
 
         self._btn_plan_manage = QToolButton()
         self._btn_plan_manage.setText("计划管理")
@@ -427,10 +425,6 @@ class TestPlanView(QWidget):
     @property
     def act_edit_plan(self) -> QAction:
         return self._act_edit_plan
-
-    @property
-    def act_delete_plan(self) -> QAction:
-        return self._act_delete_plan
 
     @property
     def act_archive_plan(self) -> QAction:
