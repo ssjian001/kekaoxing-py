@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -248,6 +248,7 @@ _DDL_TABLES: list[str] = [
     """CREATE TABLE IF NOT EXISTS issue_activity_log (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_id    INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         field       TEXT    NOT NULL,
         old_value   TEXT    NOT NULL DEFAULT '',
         new_value   TEXT    NOT NULL DEFAULT '',
@@ -341,6 +342,8 @@ _DDL_INDEXES: list[str] = [
     # issue_activity_log (v23)
     "CREATE INDEX IF NOT EXISTS idx_activity_issue ON issue_activity_log(issue_id)",
     "CREATE INDEX IF NOT EXISTS idx_activity_created ON issue_activity_log(created_at)",
+    # issue_activity_log (v24): project_id 筛选
+    "CREATE INDEX IF NOT EXISTS idx_activity_project ON issue_activity_log(project_id)",
     # issue_links (v23)
     "CREATE INDEX IF NOT EXISTS idx_links_source ON issue_links(source_id)",
     "CREATE INDEX IF NOT EXISTS idx_links_target ON issue_links(target_id)",
@@ -1058,6 +1061,27 @@ def _migrate_v23(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (23)")
 
 
+def _migrate_v24(conn: apsw.Connection) -> None:
+    """v23→v24: issue_activity_log 加 project_id + 索引。
+
+    该列用于仪表盘 weekly_closed 按项目筛选，避免跨项目数据泄漏。
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(issue_activity_log)").fetchall()}
+    if "project_id" not in cols:
+        conn.execute(
+            "ALTER TABLE issue_activity_log ADD COLUMN "
+            "project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE"
+        )
+    # 回填历史数据的 project_id
+    conn.execute("""
+        UPDATE issue_activity_log SET project_id = (
+            SELECT project_id FROM issues WHERE issues.id = issue_activity_log.issue_id
+        ) WHERE project_id IS NULL
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_activity_project ON issue_activity_log(project_id)")
+    conn.execute("INSERT INTO schema_version (version) VALUES (24)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -1082,6 +1106,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (21, _migrate_v21),
     (22, _migrate_v22),
     (23, _migrate_v23),
+    (24, _migrate_v24),
 ]
 
 
@@ -1290,6 +1315,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v23 failed")
+            raise
+
+    # v24: issue_activity_log 加 project_id 列 + 索引
+    if current < 24:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v24(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v24 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）

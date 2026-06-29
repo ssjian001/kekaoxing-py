@@ -587,14 +587,14 @@ class BatchOperationDialog(QDialog):
                 self._service.update(issue_id, operator="batch", **{field: target_value})
                 updated += 1
 
-                # 推送 undo 命令
+                # 推送 undo 命令（用 record 而非直接 push，确保 redo_stack 清空）
                 if self._undo_manager is not None and old_issue is not None:
                     from src.services.undo_manager import UpdateFieldCommand
                     cmd = UpdateFieldCommand(
                         self._service._repo, issue_id, field,
                         old_value, target_value, "Issue",
                     )
-                    self._undo_manager._undo_stack.append(cmd)
+                    self._undo_manager.record(cmd)
             except Exception:
                 logger.exception("Error in list_view")
                 failed += 1

@@ -806,14 +806,30 @@ class BugKanbanView(QWidget):
     # ── 拖拽处理 ──────────────────────────────────────────────
 
     def _on_card_dropped(self, issue_id: int, new_status: str) -> None:
-        """卡片拖拽放下后执行状态转换。"""
+        """卡片拖拽放下后执行状态转换（带 Undo 追踪）。"""
         if self._service is None:
+            return
+
+        # 获取旧状态
+        issue = self._service.get(issue_id)
+        if issue is None:
+            return
+        old_status = issue.status
+        if old_status == new_status:
             return
 
         ok, reason = self._service.transition_status(
             issue_id, new_status, operator=self._operator,
         )
         if ok:
+            # 通过 UndoManager 记录（命令已执行，只入栈管理）
+            if self._undo_manager is not None:
+                from src.services.undo_manager import TransitionIssueStatusCommand
+                cmd = TransitionIssueStatusCommand(
+                    self._service, issue_id, old_status, new_status,
+                    operator=self._operator,
+                )
+                self._undo_manager.record(cmd)
             ToastWidget.show_toast(
                 self, f"Issue #{issue_id} → {ISSUE_STATUS_LABELS.get(new_status, new_status)}",
                 ToastWidget.SUCCESS,

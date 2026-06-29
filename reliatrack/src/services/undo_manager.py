@@ -290,6 +290,36 @@ class SoftDeleteCommand(Command):
         self.do()
 
 
+class TransitionIssueStatusCommand(Command):
+    """Issue 状态转换命令（看板拖拽/UI 触发，可撤销）。
+
+    do() 通过 service.transition_status() 执行完整校验（状态机+FA记录+resolution）。
+    undo() 直接回写旧状态（跳过校验——回到合法历史状态）并记录撤销日志。
+    """
+
+    def __init__(self, service: Any, issue_id: int,
+                 old_status: str, new_status: str, operator: str = "") -> None:
+        self._service = service
+        self._issue_id = issue_id
+        self._old_status = old_status
+        self._new_status = new_status
+        self._operator = operator
+        self.description = f"Issue #{issue_id}: {old_status} → {new_status}"
+
+    def do(self) -> None:
+        self._service.transition_status(self._issue_id, self._new_status,
+                                         operator=self._operator)
+
+    def undo(self) -> None:
+        # 直接回写旧状态 + 标记撤销来源
+        self._service.update(self._issue_id,
+                             operator=f"{self._operator}(undo)",
+                             status=self._old_status)
+
+    def redo(self) -> None:
+        self.do()
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  UndoManager
 # ═══════════════════════════════════════════════════════════════════
@@ -311,6 +341,17 @@ class UndoManager:
     def execute(self, command: Command) -> None:
         """执行命令并压入撤销栈。"""
         command.do()
+        self._undo_stack.append(command)
+        self._redo_stack.clear()
+        if len(self._undo_stack) > self._max_history:
+            self._undo_stack.pop(0)
+
+    def record(self, command: Command) -> None:
+        """记录已执行的命令（不重复执行 do()），清空 redo_stack。
+
+        用于命令的 do() 已在外部执行（如 list_view 批量操作更新 DB），
+        只需入栈 + 清空 redo_stack 的场景。
+        """
         self._undo_stack.append(command)
         self._redo_stack.clear()
         if len(self._undo_stack) > self._max_history:

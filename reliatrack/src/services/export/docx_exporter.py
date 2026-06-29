@@ -178,7 +178,7 @@ def export_to_word(
 
     # ── 任务列表表格 ──
     doc.add_heading("测试任务", level=2)
-    task_headers = ["序号", "名称", "类别", "天数", "开始", "状态", "进度", "优先级", "设备", "技术员"]
+    task_headers = ["序号", "名称", "类别", "天数", "开始", "进度", "状态", "优先级", "设备", "技术员"]
     task_table = doc.add_table(rows=1 + len(tasks), cols=len(task_headers), style="Table Grid")
     task_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     _fill_row_cells(task_table.rows[0]._tr, task_headers, bold=True,
@@ -193,8 +193,9 @@ def export_to_word(
             _task_id_display, task.name,
             CATEGORY_MAP.get(task.category, task.category),
             task.duration, f"D{task.start_day}",
+            f"{task.progress:.0f}%",
             STATUS_MAP.get(task.status, task.status),
-            f"{task.progress:.0f}%", task.priority,
+            task.priority,
             equipment_name, technician_name,
         ], center_cols={0})
 

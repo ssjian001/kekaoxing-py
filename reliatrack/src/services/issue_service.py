@@ -204,6 +204,10 @@ class IssueService:
     def get_fa_records(self, issue_id: int) -> list[FARecord]:
         return self._repo.get_fa_records(issue_id)
 
+    def get_fa_records_batch(self, issue_ids: list[int]) -> dict[int, list[FARecord]]:
+        """批量获取多个 Issue 的 FA 记录。"""
+        return self._repo.get_fa_records_by_issue_ids(issue_ids)
+
     def update_fa_record(self, fa_id: int, **kwargs: object) -> None:
         return self._repo.update_fa_record(fa_id, **kwargs)
 
@@ -229,6 +233,10 @@ class IssueService:
 
     def get_capa_records(self, issue_id: int) -> list[CAPARecord]:
         return self._repo.get_capa_records(issue_id)
+
+    def get_capa_records_batch(self, issue_ids: list[int]) -> dict[int, list[CAPARecord]]:
+        """批量获取多个 Issue 的 CAPA 记录。"""
+        return self._repo.get_capa_records_by_issue_ids(issue_ids)
 
     def update_capa_record(self, capa_id: int, **kwargs: object) -> bool:
         """更新 CAPA 记录。返回 True 表示成功。"""

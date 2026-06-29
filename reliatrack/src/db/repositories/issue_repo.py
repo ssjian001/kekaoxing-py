@@ -177,10 +177,32 @@ class IssueRepository(BaseRepository):
         return self.list_all(status=status)
 
     def get_by_task(self, task_id: int) -> list[Issue]:
-        return self.list_all(task_id=task_id)
+        """获取任务下未删除且未关联已归档计划的 Issue。"""
+        cols_list = self._columns()
+        cols_sql = ", ".join(f"i.[{c}]" for c in cols_list)
+        rows = self._conn.execute(f"""
+            SELECT {cols_sql} FROM [issues] i
+            LEFT JOIN [test_tasks] tt ON i.task_id = tt.id
+            LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id)
+            WHERE i.task_id = ? AND i.is_deleted = 0
+              AND (tp.status IS NULL OR tp.status != 'archived')
+            ORDER BY i.id
+        """, (task_id,)).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
 
     def get_by_sample(self, sample_id: int) -> list[Issue]:
-        return self.list_all(sample_id=sample_id)
+        """获取样品下未删除且未关联已归档计划的 Issue。"""
+        cols_list = self._columns()
+        cols_sql = ", ".join(f"i.[{c}]" for c in cols_list)
+        rows = self._conn.execute(f"""
+            SELECT {cols_sql} FROM [issues] i
+            LEFT JOIN [test_tasks] tt ON i.task_id = tt.id
+            LEFT JOIN [test_plans] tp ON tp.id = COALESCE(i.plan_id, tt.plan_id)
+            WHERE i.sample_id = ? AND i.is_deleted = 0
+              AND (tp.status IS NULL OR tp.status != 'archived')
+            ORDER BY i.id
+        """, (sample_id,)).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
 
     def update_status(self, id: int, status: str) -> None:
         """更新 Issue 状态。"""
@@ -207,6 +229,24 @@ class IssueRepository(BaseRepository):
         return [FARecord(**cast(dict[str, Any], dict(
             zip(self._FA_COLS, r)
         ))) for r in rows]
+
+    def get_fa_records_by_issue_ids(self, issue_ids: list[int]) -> dict[int, list[FARecord]]:
+        """批量获取多个 Issue 的 FA 记录。返回 {issue_id: [records]}。"""
+        if not issue_ids:
+            return {}
+        placeholders = ", ".join("?" * len(issue_ids))
+        col_str = ", ".join(self._FA_COLS)
+        rows = self._conn.execute(
+            f"SELECT {col_str} FROM [fa_records] WHERE issue_id IN ({placeholders}) ORDER BY step_no",
+            issue_ids,
+        ).fetchall()
+        result: dict[int, list[FARecord]] = {}
+        for r in rows:
+            record = FARecord(**cast(dict[str, Any], dict(zip(self._FA_COLS, r))))
+            # r[1] = issue_id (FA_COLS: id=0, issue_id=1, ...)
+            issue_key = int(r[1]) if r[1] is not None else 0
+            result.setdefault(issue_key, []).append(record)
+        return result
 
     def add_fa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 FA 分析步骤。"""
@@ -376,6 +416,23 @@ class IssueRepository(BaseRepository):
             zip(self._CAPA_SELECT_COLS, r)
         ))) for r in rows]
 
+    def get_capa_records_by_issue_ids(self, issue_ids: list[int]) -> dict[int, list[CAPARecord]]:
+        """批量获取多个 Issue 的 CAPA 记录。返回 {issue_id: [records]}。"""
+        if not issue_ids:
+            return {}
+        placeholders = ", ".join("?" * len(issue_ids))
+        col_str = ", ".join(self._CAPA_SELECT_COLS)
+        rows = self._conn.execute(
+            f"SELECT {col_str} FROM [capa_records] WHERE issue_id IN ({placeholders}) ORDER BY created_at",
+            issue_ids,
+        ).fetchall()
+        result: dict[int, list[CAPARecord]] = {}
+        for r in rows:
+            record = CAPARecord(**cast(dict[str, Any], dict(zip(self._CAPA_SELECT_COLS, r))))
+            issue_key = int(r[1]) if r[1] is not None else 0
+            result.setdefault(issue_key, []).append(record)
+        return result
+
     def add_capa_record(self, issue_id: int, **kwargs: object) -> int:
         """添加 CAPA 记录。"""
         kwargs["issue_id"] = issue_id
@@ -518,11 +575,16 @@ class IssueActivityLogRepository(BaseRepository):
         super().__init__(conn, "issue_activity_log", IssueActivityLog)
 
     def add(self, issue_id: int, field: str, old_value: str, new_value: str, operator: str = "") -> int:
-        """写入一条活动日志。"""
+        """写入一条活动日志（含 project_id 冗余存储用于按项目筛选）。"""
+        # 查 issue 的 project_id（冗余写入避免后续 JOIN 开销）
+        row = self._conn.execute(
+            "SELECT project_id FROM [issues] WHERE id = ?", (issue_id,)
+        ).fetchone()
+        project_id = row[0] if row else None
         self._conn.execute(
-            "INSERT INTO [issue_activity_log] (issue_id, field, old_value, new_value, operator)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (issue_id, field, str(old_value), str(new_value), operator),
+            "INSERT INTO [issue_activity_log] (issue_id, project_id, field, old_value, new_value, operator)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (issue_id, project_id, field, str(old_value), str(new_value), operator),
         )
         row = self._conn.execute("SELECT last_insert_rowid()").fetchone()
         return row[0] if row else 0

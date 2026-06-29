@@ -7,8 +7,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
-from PySide6.QtWidgets import QMessageBox
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMessageBox, QProgressDialog
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import QApplication
 
 from src.views.dialogs.export_dialog import ExportDialog
@@ -20,6 +20,32 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+class ExportWorker(QThread):
+    """后台导出线程，避免阻&#32534;UI 主线程。"""
+
+    finished = Signal(str)   # 导出文件路径
+    error = Signal(str)      # 错误消息
+
+    def __init__(self, handler: Callable, ctrl, svc, fmt: str,
+                 project_id: int | None, parent=None) -> None:
+        super().__init__(parent)
+        self._handler = handler
+        self._ctrl = ctrl
+        self._svc = svc
+        self._fmt = fmt
+        self._project_id = project_id
+
+    def run(self) -> None:
+        try:
+            path = self._handler(self._ctrl, self._svc, self._fmt, self._project_id)
+            self.finished.emit(str(path) if path else "")
+        except ValueError as e:
+            self.error.emit(str(e))
+        except Exception as e:
+            logger.exception("Export worker failed")
+            self.error.emit(f"导出失败: {e}")
 
 
 class ExportHandlers:
@@ -104,18 +130,18 @@ class ExportHandlers:
                                          self._get_samples(ctrl, plan_pid), results=results)
 
     def _export_issues(self, ctrl, svc, fmt: str, project_id: int | None) -> str:
-        """导出 Issue 列表。"""
+        """导出 Issue 列表（含 FA/CAPA，使用批量查询避免 N+1）。"""
         if "Excel" not in fmt:
             raise ValueError("Issue 导出暂只支持 Excel 格式")
         issues = self._get_issues(ctrl, project_id)
         if not issues:
             raise ValueError("没有 Issue 数据")
-        fa_map = {}
-        capa_map = {}
-        for issue in issues:
-            if issue.id is not None:
-                fa_map[issue.id] = ctrl.issue_service.get_fa_records(issue.id)
-                capa_map[issue.id] = ctrl.issue_service.get_capa_records(issue.id)
+        issue_ids = [i.id for i in issues if i.id is not None]
+        if issue_ids:
+            fa_map = ctrl.issue_service.get_fa_records_batch(issue_ids)
+            capa_map = ctrl.issue_service.get_capa_records_batch(issue_ids)
+        else:
+            fa_map, capa_map = {}, {}
         return svc.export_issues_excel(issues, fa_map=fa_map, capa_map=capa_map)
 
     def _export_samples(self, ctrl, svc, fmt: str, project_id: int | None) -> str:
@@ -254,22 +280,35 @@ class ExportHandlers:
             return
 
         export_dir = self._get_export_dir()
+        svc = self._get_svc(ctrl, export_dir)
+
+        # 进度对话框（不确定进度模式）
+        progress = QProgressDialog("正在导出...", "取消", 0, 0, self._win)
+        progress.setWindowTitle("导出中")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.show()
+
+        worker = ExportWorker(handler, ctrl, svc, fmt, project_id, parent=self._win)
         _generated_path: Path | None = None
-        try:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-            svc = self._get_svc(ctrl, export_dir)
-            path = handler(ctrl, svc, fmt, project_id)
+
+        def _on_finished(path: str) -> None:
+            nonlocal _generated_path
             _generated_path = Path(path) if path else None
+            progress.close()
             self._win.toast(f"已导出: {path}", "success")
-        except ValueError as e:
-            self._win.toast(str(e), "info")
-        except Exception as e:
-            logger.exception("Export failed")
+
+        def _on_error(msg: str) -> None:
+            progress.close()
             if _generated_path and _generated_path.exists():
                 try:
                     _generated_path.unlink()
                 except OSError:
                     logger.warning("Failed to clean partial export: %s", _generated_path)
-            QMessageBox.critical(self._win, "导出失败", f"导出时发生错误:\n{e}")
-        finally:
-            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self._win, "导出失败", msg)
+
+        worker.finished.connect(_on_finished)
+        worker.error.connect(_on_error)
+        worker.finished.connect(worker.deleteLater)
+        worker.error.connect(worker.deleteLater)
+        progress.canceled.connect(worker.terminate)
+        worker.start()

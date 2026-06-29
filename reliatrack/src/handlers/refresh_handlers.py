@@ -202,9 +202,19 @@ class RefreshHandlers:
         pending_issues = [i for i in issues_list if i.status in ("open", "analyzing")]
         pending_issue_count = len(pending_issues)
 
-        # 本周关闭数（从活动日志查）
+        # 本周关闭数（从活动日志查，按项目筛选）
         weekly_closed = 0
-        if hasattr(ctrl, '_conn') and ctrl._conn:
+        if hasattr(ctrl, '_conn') and ctrl._conn and filter_project_id:
+            row = ctrl._conn.execute(
+                """SELECT COUNT(*) FROM issue_activity_log
+                   WHERE field='status' AND new_value='closed'
+                     AND project_id = ?
+                     AND created_at >= date('now', '-7 days', 'localtime')""",
+                (filter_project_id,),
+            ).fetchone()
+            if row:
+                weekly_closed = row[0]
+        elif hasattr(ctrl, '_conn') and ctrl._conn:
             row = ctrl._conn.execute(
                 "SELECT COUNT(*) FROM issue_activity_log WHERE field='status' AND new_value='closed' AND created_at >= date('now', '-7 days', 'localtime')"
             ).fetchone()

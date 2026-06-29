@@ -240,6 +240,7 @@ class IssueActivityLog:
     """Issue 活动日志 — 自动记录字段变更。"""
     id: Optional[int] = None
     issue_id: int = 0
+    project_id: Optional[int] = None  # v24 新增：冗余存储用于按项目筛选
     field: str = ""           # status / severity / assignee_id / priority / resolution / category
     old_value: str = ""
     new_value: str = ""

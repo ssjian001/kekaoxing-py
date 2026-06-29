@@ -38,7 +38,7 @@ def _create_issue(svc: IssueService, title: str = "Test Issue", **kw) -> int:
 
 class TestSchemaV17:
     def test_schema_version_is_17(self):
-        assert SCHEMA_VERSION == 23
+        assert SCHEMA_VERSION == 24
 
     def test_migration_adds_soft_delete_columns(self, db_conn):
         """v17 迁移后 issues 表应有 is_deleted 和 deleted_at 列。"""
@@ -53,7 +53,7 @@ class TestSchemaV17:
         row = db_conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 23
+        assert row[0] == 24
 
     def test_upgrade_from_v16(self):
         """从 v16 数据库升级到 v17，列应正确添加。"""
