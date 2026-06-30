@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QEvent, QMimeData, QDate, Qt, Signal
+from PySide6.QtCore import QEvent, QMimeData, QDate, Qt, Signal, QObject
 from PySide6.QtGui import QColor, QDrag, QFont, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -156,7 +156,7 @@ class TodoCard(QFrame):
 
 
 # 全局信号，避免循环 import
-class _GlobalSignals(QWidget):
+class _GlobalSignals(QObject):
     edit_requested = Signal(int)
 _global_signals = _GlobalSignals()
 _global_edit_request = _global_signals.edit_requested
