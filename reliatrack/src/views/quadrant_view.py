@@ -22,7 +22,9 @@ from PySide6.QtWidgets import (
 
 import src.styles.theme as _t
 from src.models.todo import TodoItem
-from src.views.todo_view import _MIME_TODO_ID
+
+# ── MIME 类型（与 todo_view 保持同一值，不引用避免循环 import）──
+_MIME_TODO_ID = "application/x-todo-id"
 
 # ── 四象限定义 ──────────────────────────────────────────────────
 
