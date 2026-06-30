@@ -733,6 +733,24 @@ QFrame[class="kanban-col-done"] {{
     background-color: {SURFACE0}; border-radius: 10px;
 }}
 
+/* ── 看板列标题 ── */
+QLabel[class="kanban-col-header"] {{
+    color: {TEXT}; border: none;
+}}
+/* ── 看板计数标签 ── */
+QLabel[class="kanban-count"] {{
+    color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
+    background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+}}
+/* ── 看板卡片标题 ── */
+QLabel[class="card-title"] {{
+    color: {TEXT}; border: none;
+}}
+/* ── 垂直线分隔符 ── */
+QFrame[class="sep-vline"] {{
+    color: {SURFACE1}; max-width: 1px; min-width: 1px; min-height: 16px; border: none;
+}}
+
 /* ── Issue 面板滚动区 ── */
 QScrollArea[class="issue-scroll"] {{
     background-color: {BASE}; border: 1px solid {SURFACE1};

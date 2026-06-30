@@ -110,7 +110,7 @@ class TodoCard(QFrame):
 
         title = QLabel(self._todo.title)
         title.setFont(_FONT_CARD_TITLE)
-        title.setStyleSheet(f"color:{_t.TEXT};border:none;")
+        title.setProperty("class", "card-title")
         title.setWordWrap(True)
         title.setMaximumHeight(36)
         top.addWidget(title, stretch=1)
@@ -125,16 +125,12 @@ class TodoCard(QFrame):
             today = QDate.currentDate()
             if self._todo.is_done:
                 date_text = "✓ 已完成"
-                dc = _t.GREEN
             elif d.isValid() and d < today:
                 date_text = f"⚠ 逾期 {today.daysTo(d)} 天" if today.daysTo(d) < 0 else "⚠ 逾期"
-                dc = _t.RED
             elif d.isValid() and d == today:
                 date_text = "📌 今天"
-                dc = _t.WARNING
             else:
                 date_text = f"📅 {self._todo.due_date}"
-                dc = _t.SUBTEXT0
             date_lbl = QLabel(date_text)
             date_lbl.setFont(_FONT_CARD_META)
             date_lbl.setProperty("class", "hint-label")
@@ -225,18 +221,14 @@ class KanbanColumn(QFrame):
         head = QHBoxLayout()
         head.setSpacing(6)
         lbl = QLabel(self._label)
-        lbl.setFont(QFont())
-        lbl.setStyleSheet(
-            f"font-size:14px;font-weight:700;color:{_t.TEXT};"
-            f"border:none;"
-        )
+        lbl.setProperty("class", "kanban-col-header")
+        hdr_font = QFont()
+        hdr_font.setPixelSize(14)
+        hdr_font.setBold(True)
+        lbl.setFont(hdr_font)
         head.addWidget(lbl)
         self._count = QLabel("0")
-        self._count.setProperty("class", "count-label")
-        self._count.setStyleSheet(
-            "font-size:11px;font-weight:600;border:none;"
-            "background:%s;border-radius:8px;padding:1px 8px;" % _t.SURFACE1
-        )
+        self._count.setProperty("class", "kanban-count")
         head.addWidget(self._count)
         head.addStretch()
         layout.addLayout(head)
@@ -353,7 +345,7 @@ class TodoView(QWidget):
         self._project_combo.addItem("全部项目", None)
         self._project_combo.currentIndexChanged.connect(self._on_project_filter)
         proj_lbl = QLabel("项目")
-        proj_lbl.setStyleSheet(f"color:{_t.SUBTEXT0};font-size:12px;")
+        proj_lbl.setProperty("class", "hint-label")
         tb.addWidget(proj_lbl)
         tb.addWidget(self._project_combo)
         tb.addStretch()
@@ -368,7 +360,7 @@ class TodoView(QWidget):
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
         sep.setFixedHeight(20)
-        sep.setStyleSheet(f"color:{_t.SURFACE1};")
+        sep.setProperty("class", "sep-vline")
 
         self.btn_add = QPushButton("＋ 新增")
         self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:white;font-weight:600;border:none;")
@@ -539,7 +531,8 @@ class TodoView(QWidget):
             f"border:none;border-radius:14px;padding:2px 14px;font-size:12px;}}"
             f"QPushButton:hover{{opacity:0.8;}}"
         )
-        # 列 + 卡片（只刷新选中态，列背景由 QSS 自动处理）
+        # 列背景/标题/计数 badge / 卡片标题由 QSS class 选择器自动刷新，无需额外代码
+        # 只刷新卡片选中态（动态 inline）
         for col in self._columns.values():
             for card in col._cards:
                 card.refresh_theme()
