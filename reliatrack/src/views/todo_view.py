@@ -493,6 +493,9 @@ class TodoView(QWidget):
             if collapsed:
                 container.hide()
             header.set_collapsible_target(container)
+            self._scroll_layout.insertWidget(
+                self._scroll_layout.count() - 1, container
+            )
             # 保存折叠状态
             hdr_state = collapse_state
             hdr_name = group_name
