@@ -8,16 +8,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QEvent, QMimeData, QDate, Qt, Signal, QObject
-from PySide6.QtGui import QColor, QDrag, QFont, QPainter, QPixmap
+from PySide6.QtCore import QMimeData, QDate, QPoint, Qt, Signal, QObject
+from PySide6.QtGui import QDrag, QFont, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
-    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
     QComboBox,
@@ -38,7 +36,11 @@ _COLUMNS: list[tuple[str, str]] = [
     ("in_progress", "进行中"),
     ("done", "已完成"),
 ]
-_COLORS = {"pending": _t.BG_INPUT, "in_progress": "#e8f4fd", "done": "#e5f5e5"}
+_COLORS = {
+    "pending": _t.BG_INPUT,
+    "in_progress": _t.SELECTION_BG,
+    "done": _t.SURFACE0,
+}
 _COLUMN_HEADS = {"pending": _t.TEXT, "in_progress": _t.BLUE, "done": _t.GREEN}
 _MIME_TODO_ID = "application/x-todo-id"
 
@@ -65,25 +67,29 @@ class TodoCard(QFrame):
         super().__init__(parent)
         self._todo = todo
         self._selected = False
+        self._drag_start: QPoint | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         self.setFixedHeight(68)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._apply_style()
+        self._build_content()
 
     def _apply_style(self) -> None:
         if self._selected:
             self.setStyleSheet(
                 f"TodoCard{{background:{_t.SELECTION_BG};border:2px solid {_t.ACCENT};"
-                f"border-radius:8px;padding:8px 10px;}}"
+                f"border-radius:8px;}}"
             )
         else:
             self.setStyleSheet(
                 f"TodoCard{{background:{_t.BG_CARD};border:1px solid {_t.BORDER};"
-                f"border-radius:8px;padding:8px 10px;}}"
+                f"border-radius:8px;}}"
                 f"TodoCard:hover{{border-color:{_t.ACCENT};}}"
             )
+
+    def _build_content(self) -> None:
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
@@ -152,24 +158,32 @@ class TodoCard(QFrame):
     def todo_id(self) -> int | None:
         return self._todo.id
 
-    def mousePressEvent(self, event) -> None:
-        """单击选中卡片，按住拖拽。"""
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """单击选中卡片，记录拖拽起点。"""
         if event.button() == Qt.MouseButton.LeftButton:
-            # 先发射选中信号
+            self._drag_start = event.position().toPoint()
             if self._todo.id is not None:
                 self.selected.emit(self._todo.id)
-            # 开始拖拽
-            drag = QDrag(self)
-            mime = QMimeData()
-            mime.setData(_MIME_TODO_ID, str(self._todo.id or "").encode())
-            drag.setMimeData(mime)
-
-            pixmap = QPixmap(self.size())
-            pixmap.fill(Qt.GlobalColor.transparent)
-            self.render(pixmap)
-            drag.setPixmap(pixmap)
-            drag.exec(Qt.DropAction.MoveAction)
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """移动超过阈值才启动拖拽，避免单击即触发 drag。"""
+        if self._drag_start is None or self._todo.id is None:
+            return super().mouseMoveEvent(event)
+        if (event.position().toPoint() - self._drag_start).manhattanLength() < 5:
+            return super().mouseMoveEvent(event)
+        self._start_drag()
+
+    def _start_drag(self) -> None:
+        drag = QDrag(self)
+        mime = QMimeData()
+        mime.setData(_MIME_TODO_ID, str(self._todo.id or "").encode())
+        drag.setMimeData(mime)
+        pixmap = QPixmap(self.size())
+        pixmap.fill(Qt.GlobalColor.transparent)
+        self.render(pixmap)
+        drag.setPixmap(pixmap)
+        drag.exec(Qt.DropAction.MoveAction)
 
     def mouseDoubleClickEvent(self, event) -> None:
         """双击编辑。"""
@@ -498,12 +512,8 @@ class TodoView(QWidget):
 
     def _on_todo_dropped(self, todo_id: int, new_status: str) -> None:
         """卡片拖拽到新列 → 触发状态变更。"""
-        if new_status == "done":
-            # 需要 toggle 状态到 done（走 toggle 循环）
-            self.toggle_requested.emit(todo_id)
-        else:
-            # 直接设置状态
-            self._direct_status_change.emit(todo_id, new_status)
+        # 所有列都走直接设置状态，不走 toggle 循环
+        self._direct_status_change.emit(todo_id, new_status)
 
     _direct_status_change = Signal(int, str)  # todo_id, new_status
 
