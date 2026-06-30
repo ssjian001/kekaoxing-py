@@ -29,7 +29,14 @@ from src.styles.constants import VIEW_MARGINS
 
 # ── 常量 ───────────────────────────────────────────────────────
 
-_PRIORITY_COLORS = {"high": "#e64553", "medium": "#df8e1d", "low": "#40a02b"}
+def _priority_color(priority: str) -> str:
+    """优先级色点颜色（运行时读取，跟随主题切换）。"""
+    return {
+        "high": _t.RED,
+        "medium": _t.WARNING,
+        "low": _t.GREEN,
+    }.get(priority, _t.FG_MUTED)
+
 # 看板 3 列
 _COLUMNS: list[tuple[str, str]] = [
     ("pending", "待处理"),
@@ -98,7 +105,7 @@ class TodoCard(QFrame):
         # 第一行：优先级色点 + 标题
         top = QHBoxLayout()
         top.setSpacing(6)
-        color = _PRIORITY_COLORS.get(self._todo.priority, _t.FG_MUTED)
+        color = _priority_color(self._todo.priority)
         dot = QLabel()
         dot.setFixedSize(8, 8)
         dot.setStyleSheet(f"background:{color};border-radius:4px;")
@@ -124,10 +131,10 @@ class TodoCard(QFrame):
                 dc = _t.GREEN
             elif d.isValid() and d < today:
                 date_text = f"⚠ 逾期 {today.daysTo(d)} 天" if today.daysTo(d) < 0 else "⚠ 逾期"
-                dc = "#e64553"
+                dc = _t.RED
             elif d.isValid() and d == today:
                 date_text = "📌 今天"
-                dc = "#df8e1d"
+                dc = _t.WARNING
             else:
                 date_text = f"📅 {self._todo.due_date}"
                 dc = _t.SUBTEXT0
@@ -378,7 +385,7 @@ class TodoView(QWidget):
         sep.setStyleSheet(f"color:{_t.SURFACE1};")
 
         self.btn_add = QPushButton("＋ 新增")
-        self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:white;font-weight:600;border:none;")
+        self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:{_t.MANTLE};font-weight:600;border:none;")
 
         tb.addWidget(self.btn_edit)
         tb.addWidget(self.btn_delete)
@@ -420,7 +427,7 @@ class TodoView(QWidget):
         self._btn_quick_add = QPushButton("添加")
         self._btn_quick_add.setFixedSize(48, 22)
         self._btn_quick_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
+            f"QPushButton{{background:{_t.ACCENT};color:{_t.MANTLE};border:none;border-radius:11px;font-size:11px;}}"
             f"QPushButton:hover{{background:{_t.BLUE};}}"
         )
         self._btn_quick_add.clicked.connect(self._on_quick_add)
