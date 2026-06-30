@@ -14,6 +14,13 @@ from src.views.dialogs.base_dialog import _BaseDialog
 class TodoEditDialog(_BaseDialog):
     """待办事项新建 / 编辑弹窗。"""
 
+    _QUADRANT_MAP = {
+        "未分类": 0,
+        "① 重要且紧急": 1,
+        "② 重要不紧急": 2,
+        "③ 不重要但紧急": 3,
+        "④ 不重要不紧急": 4,
+    }
     _PRIORITIES = ["high", "medium", "low"]
     _PRIORITY_LABELS = {"high": "高", "medium": "中", "low": "低"}
     _STATUSES = ["pending", "in_progress", "done"]
@@ -90,11 +97,29 @@ class TodoEditDialog(_BaseDialog):
             default=self._STATUS_LABELS.get(default_status, "待处理"),
         )
 
+        # ── 四象限 ──
+        quadrant_items = ["未分类", "① 重要且紧急", "② 重要不紧急", "③ 不重要但紧急", "④ 不重要不紧急"]
+        default_quadrant = {0: "未分类", 1: "① 重要且紧急", 2: "② 重要不紧急",
+                            3: "③ 不重要但紧急", 4: "④ 不重要不紧急"} \
+            .get(todo.quadrant if todo else 0, "未分类")
+        self._quadrant_combo = self._add_combo_field(
+            "优先级象限",
+            items=quadrant_items,
+            default=default_quadrant,
+        )
+
         # ── 截止日期 ──
         self._due_date_edit = self._add_text_field(
             "截止日期",
             default=todo.due_date if todo else "",
             placeholder="可选，如：2026-07-15",
+        )
+
+        # ── 提醒时间 ──
+        self._remind_at_edit = self._add_text_field(
+            "提醒时间",
+            default=todo.remind_at if todo else "",
+            placeholder="可选，如：2026-07-15 14:00",
         )
 
         # ── 分类 ──
@@ -125,4 +150,6 @@ class TodoEditDialog(_BaseDialog):
             "status": status_labels.get(self._status_combo.currentText(), "pending"),
             "category": self._category_combo.currentText().strip(),
             "due_date": self._due_date_edit.text().strip(),
+            "remind_at": self._remind_at_edit.text().strip(),
+            "quadrant": self._QUADRANT_MAP.get(self._quadrant_combo.currentText(), 0),
         }

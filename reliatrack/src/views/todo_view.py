@@ -1,7 +1,7 @@
-"""待办事项 Tab — 看板（Kanban）视图。
+"""待办事项 Tab — 看板（Kanban）视图 + 四象限子 Tab。
 
-3 列（待处理 / 进行中 / 已完成），卡片拖拽切换状态。
-轻量实现，复用 Bug Tracker 看板的拖拽模式。
+包含看板 3 列（待处理 / 进行中 / 已完成）和 Eisenhower 四象限视图，
+通过子 TabBar 切换。顶部工具栏含项目筛选 + 搜索框。
 """
 
 from __future__ import annotations
@@ -14,18 +14,21 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
+    QStackedWidget,
+    QTabBar,
     QVBoxLayout,
     QWidget,
     QComboBox,
-    QLineEdit,
 )
 
 import src.styles.theme as _t
 from src.models.todo import TodoItem
 from src.models.project import Project
 from src.styles.constants import VIEW_MARGINS
+from src.views.quadrant_view import QuadrantView
 
 # ── 常量 ───────────────────────────────────────────────────────
 
@@ -97,7 +100,7 @@ class TodoCard(QFrame):
     def refresh_theme(self) -> None:
         """主题切换后刷新内联颜色（选中态）。"""
         self._apply_style()
-    
+
     def _build_content(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
@@ -286,15 +289,16 @@ class KanbanColumn(QFrame):
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  TodoKanbanView
+#  TodoView
 # ═══════════════════════════════════════════════════════════════════
 
 
 class TodoView(QWidget):
-    """待办看板视图 — 3 列 + 顶部工具栏 + 快速添加。"""
+    """待办视图 — 看板 + 四象限子 Tab + 工具栏搜索。"""
 
     todo_changed = Signal()
     toggle_requested = Signal(int)
+    quadrant_changed = Signal(int, int)  # todo_id, new_quadrant
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -317,8 +321,33 @@ class TodoView(QWidget):
         # 快速添加
         self._build_quick_add(layout)
 
-        # 看板 3 列
-        board = QHBoxLayout()
+        # 子 Tab 切换
+        self._sub_tabs = QTabBar()
+        self._stack = QStackedWidget()
+
+        # 看板视图
+        self._kanban_widget = self._build_kanban_view()
+        self._stack.addWidget(self._kanban_widget)
+
+        # 四象限视图
+        self._quadrant_view = QuadrantView()
+        self._quadrant_view.quadrant_changed.connect(self._on_quadrant_changed)
+        self._stack.addWidget(self._quadrant_view)
+
+        self._sub_tabs.addTab("看板")
+        self._sub_tabs.addTab("四象限")
+        self._sub_tabs.currentChanged.connect(self._stack.setCurrentIndex)
+
+        layout.addWidget(self._sub_tabs)
+        layout.addWidget(self._stack, stretch=1)
+
+        # 双击编辑信号路由
+        _global_signals.edit_requested.connect(self._on_card_edit)
+
+    def _build_kanban_view(self) -> QWidget:
+        """构建看板 3 列内容，返回 QWidget。"""
+        widget = QWidget()
+        board = QHBoxLayout(widget)
         board.setContentsMargins(8, 4, 8, 8)
         board.setSpacing(8)
 
@@ -330,10 +359,7 @@ class TodoView(QWidget):
             self._columns[status] = col
             board.addWidget(col, stretch=1)
 
-        layout.addLayout(board, stretch=1)
-
-        # 双击编辑信号路由
-        _global_signals.edit_requested.connect(self._on_card_edit)
+        return widget
 
     def _build_toolbar(self, parent_layout: QVBoxLayout) -> None:
         tb = QHBoxLayout()
@@ -348,6 +374,14 @@ class TodoView(QWidget):
         proj_lbl.setProperty("class", "hint-label")
         tb.addWidget(proj_lbl)
         tb.addWidget(self._project_combo)
+
+        # 搜索框
+        self._search_edit = QLineEdit()
+        self._search_edit.setPlaceholderText("搜索待办…")
+        self._search_edit.setProperty("class", "search-input")
+        self._search_edit.textChanged.connect(self._on_search)
+        tb.addWidget(self._search_edit)
+
         tb.addStretch()
 
         self.btn_edit = QPushButton("编辑")
@@ -420,7 +454,9 @@ class TodoView(QWidget):
         if projects is not None:
             self.set_projects(projects)
         self._todo_list = todo_list
-        self._populate()
+        filtered = self._filter_todos(todo_list)
+        self._populate_kanban(filtered)
+        self._quadrant_view.refresh(filtered)
 
     def set_projects(self, projects: list[Project]) -> None:
         self._all_projects = projects
@@ -450,16 +486,43 @@ class TodoView(QWidget):
                 return t
         return None
 
-    # ── 内部 ────────────────────────────────────────────────────
+    # ── 过滤 ────────────────────────────────────────────────────
 
-    def _populate(self) -> None:
+    def _filter_todos(self, todo_list: list[TodoItem]) -> list[TodoItem]:
+        """按项目 + 搜索双重过滤。"""
+        pid = self._project_combo.currentData()
+        search = self._search_edit.text().strip().lower() if hasattr(self, '_search_edit') else ""
+
+        filtered = todo_list
+        if pid is not None:
+            filtered = [t for t in filtered if t.project_id == pid]
+        if search:
+            filtered = [
+                t for t in filtered
+                if search in t.title.lower()
+                or (t.description and search in t.description.lower())
+            ]
+        return filtered
+
+    def _on_project_filter(self, _idx: int) -> None:
+        self._refresh_current_view()
+
+    def _on_search(self, _text: str) -> None:
+        self._refresh_current_view()
+
+    def _refresh_current_view(self) -> None:
+        """刷新当前子 Tab 显示内容。"""
+        filtered = self._filter_todos(self._todo_list)
+        self._populate_kanban(filtered)
+        if hasattr(self, '_quadrant_view'):
+            self._quadrant_view.refresh(filtered)
+
+    # ── 看板填充 ────────────────────────────────────────────────
+
+    def _populate_kanban(self, filtered: list[TodoItem]) -> None:
         """按项目 filter 分配卡片到各列。"""
         self._selected_todo_id = None  # 清除选中（刷新后重建）
         self._selected_card = None
-        pid = self._project_combo.currentData()
-        filtered = self._todo_list
-        if pid is not None:
-            filtered = [t for t in filtered if t.project_id == pid]
 
         groups: dict[str, list[TodoItem]] = {"pending": [], "in_progress": [], "done": []}
         for t in filtered:
@@ -483,9 +546,6 @@ class TodoView(QWidget):
                     self._selected_card = card
                     return
 
-    def _on_project_filter(self, _idx: int) -> None:
-        self._populate()
-
     def _on_quick_add(self) -> None:
         text = self._quick_add.text().strip()
         if not text:
@@ -497,7 +557,6 @@ class TodoView(QWidget):
 
     def _on_todo_dropped(self, todo_id: int, new_status: str) -> None:
         """卡片拖拽到新列 → 触发状态变更。"""
-        # 所有列都走直接设置状态，不走 toggle 循环
         self._direct_status_change.emit(todo_id, new_status)
 
     _direct_status_change = Signal(int, str)  # todo_id, new_status
@@ -505,6 +564,10 @@ class TodoView(QWidget):
     def _on_card_edit(self, todo_id: int) -> None:
         """卡片双击编辑。"""
         self.btn_edit.click()
+
+    def _on_quadrant_changed(self, todo_id: int, new_quadrant: int) -> None:
+        """四象限拖拽变更 → 转发信号给 handler。"""
+        self.quadrant_changed.emit(todo_id, new_quadrant)
 
     # ── 兼容旧 handler ─────────────────────────────────────────
 
@@ -515,7 +578,7 @@ class TodoView(QWidget):
 
     def refresh_theme(self) -> None:
         """主题切换后重绘所有内联颜色。"""
-        # 工具栏按钮（颜色在 style_tool_btn 构建时冻结）
+        # 工具栏按钮
         self.btn_edit.setStyleSheet(
             f"QPushButton{{color:{_t.ACCENT};border:1px solid {_t.BORDER};"
             f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
@@ -531,16 +594,16 @@ class TodoView(QWidget):
             f"border:none;border-radius:14px;padding:2px 14px;font-size:12px;}}"
             f"QPushButton:hover{{opacity:0.8;}}"
         )
-        # 列背景/标题/计数 badge / 卡片标题由 QSS class 选择器自动刷新，无需额外代码
-        # 只刷新卡片选中态（动态 inline）
+        # 列背景/标题由 QSS 自动刷新
         for col in self._columns.values():
             for card in col._cards:
                 card.refresh_theme()
         # 快速添加栏
         self._refresh_quick_add_theme()
+        # 四象限视图
+        self._quadrant_view.refresh_theme()
 
     def _refresh_quick_add_theme(self) -> None:
-        """主题切换后刷新快速添加栏的颜色。"""
         self._quick_add_container.setStyleSheet(
             f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
         )

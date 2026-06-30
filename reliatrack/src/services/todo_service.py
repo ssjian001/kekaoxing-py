@@ -40,6 +40,14 @@ class TodoService:
         """按项目查询待办。"""
         return self._repo.list_by_project(project_id)
 
+    def list_due_reminders(self, now: str) -> list[TodoItem]:
+        """查询到期待办提醒。"""
+        return self._repo.list_due_reminders(now)
+
+    def mark_reminded(self, todo_id: int) -> None:
+        """标记提醒已触发。"""
+        self._repo.mark_reminded(todo_id)
+
     def toggle_status(self, todo_id: int) -> str | None:
         """切换状态：pending→in_progress→done→pending。返回新状态，失败返回 None。"""
         item = self._repo.get(todo_id)

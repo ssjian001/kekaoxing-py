@@ -48,3 +48,14 @@ class TodoRepository(BaseRepository):
     def list_by_project(self, project_id: int) -> list[TodoItem]:
         """按项目查询待办事项。"""
         return self.list_all(project_id=project_id)
+
+    def list_due_reminders(self, now: str) -> list[TodoItem]:
+        """查询 remind_at <= now AND reminded=0 的待办。"""
+        cols_sql = self._columns_sql()
+        sql = f"SELECT {cols_sql} FROM [todos] WHERE [remind_at] != '' AND [remind_at] <= ? AND [reminded] = 0"
+        rows = self._conn.execute(sql, (now,)).fetchall()
+        return self._rows_to_models(rows, cols=self._columns())
+
+    def mark_reminded(self, todo_id: int) -> None:
+        """标记提醒已触发。"""
+        self._conn.execute("UPDATE [todos] SET reminded = 1 WHERE id = ?", (todo_id,))

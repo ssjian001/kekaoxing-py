@@ -182,6 +182,12 @@ class MainWindow(QMainWindow):
         # 全局项目筛选器 — 作为 Tab 右侧 corner widget
         self._create_filter_bar()
 
+        # ── 待办提醒定时器 ──
+        self._reminder_timer = QTimer(self)
+        self._reminder_timer.setInterval(30_000)
+        self._reminder_timer.timeout.connect(self._check_todo_reminders)
+        self._reminder_timer.start()
+
     def _create_filter_bar(self) -> None:
         """创建项目/计划筛选栏 — 作为 TabWidget 右上角 corner widget。"""
         filter_bar = QHBoxLayout()
@@ -214,6 +220,21 @@ class MainWindow(QMainWindow):
         self._tab_widget.setCornerWidget(self._filter_layout, Qt.Corner.TopRightCorner)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
+
+    def _check_todo_reminders(self) -> None:
+        """检查到期待办提醒（30 秒定时器回调）。"""
+        from datetime import datetime
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.todo_service:
+            return
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        due = ctrl.todo_service.list_due_reminders(now)
+        for todo in due:
+            if todo.id is not None:
+                self.toast(f"⏰ 待办提醒：{todo.title}", "info")
+                ctrl.todo_service.mark_reminded(todo.id)
+        if due:
+            self.schedule_throttled_refresh("todo")
 
     def _setup_menubar(self) -> None:
         """创建菜单栏。"""

@@ -72,15 +72,15 @@ def sample_todo(repo, project) -> int:
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  1. Schema — v25 新增 todos 表
+#  1. Schema — v26 新增提醒+四象限字段
 # ═══════════════════════════════════════════════════════════════════
 
 
-class TestSchemaV25:
-    """验证 v25 迁移正确创建 todos 表。"""
+class TestSchemaV26:
+    """验证 v26 迁移正确更新 todos 表。"""
 
     def test_todos_table_exists(self, db_conn):
-        """todos 表存在且列结构正确。"""
+        """todos 表存在且列结构正确（含 v26 新列）。"""
         cols = {r[1] for r in db_conn.execute("PRAGMA table_info(todos)").fetchall()}
         assert "id" in cols
         assert "project_id" in cols
@@ -89,6 +89,9 @@ class TestSchemaV25:
         assert "status" in cols
         assert "due_date" in cols
         assert "category" in cols
+        assert "remind_at" in cols
+        assert "reminded" in cols
+        assert "quadrant" in cols
         assert "created_at" in cols
         assert "updated_at" in cols
 
@@ -106,18 +109,82 @@ class TestSchemaV25:
         assert remaining == 0
 
     def test_todos_indexes_exist(self, db_conn):
-        """todos 的索引存在。"""
+        """todos 的索引存在（含 v26 新索引）。"""
         idxs = {r[1] for r in db_conn.execute("PRAGMA index_list(todos)").fetchall()}
         assert "idx_todos_project" in idxs
         assert "idx_todos_status" in idxs
+        assert "idx_todos_remind" in idxs
+        assert "idx_todos_quadrant" in idxs
 
     def test_migrate_from_v24_creates_todos(self, db_conn):
-        """从 v24 迁移到 v25 后 todos 表存在。"""
-        # 用 init_schema 已经初始化到 v25，验证表存在
+        """从 v24 迁移到 v26 后 todos 表存在且含新列。"""
+        # 用 init_schema 已经初始化到 v26，验证表存在
         row = db_conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] >= 25
+        assert row[0] >= 26
+
+    def test_migrate_from_v25_creates_reminder_quadrant(self, db_conn):
+        """从 v25 迁移到 v26 后新列存在且默认值正确。"""
+        from src.db.schema import _migrate_v26
+        from src.models.todo import TodoItem
+
+        # 插入一条旧格式数据（不含 remind_at / reminded / quadrant）
+        db_conn.execute(
+            "INSERT INTO todos (project_id, title) VALUES (NULL, '旧数据')"
+        )
+        todo_id = db_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        # 手动降级 schema_version 以模拟 v25→v26 迁移
+        db_conn.execute("DELETE FROM schema_version WHERE version >= 26")
+
+        # 执行迁移
+        _migrate_v26(db_conn)
+
+        # 验证列存在
+        cols = {r[1] for r in db_conn.execute("PRAGMA table_info(todos)").fetchall()}
+        assert "remind_at" in cols
+        assert "reminded" in cols
+        assert "quadrant" in cols
+
+        # 验证旧数据默认值
+        row = db_conn.execute("SELECT remind_at, reminded, quadrant FROM todos WHERE id = ?", (todo_id,)).fetchone()
+        assert row[0] == ""       # remind_at 默认空字符串
+        assert row[1] == 0        # reminded 默认 0 (False)
+        assert row[2] == 0        # quadrant 默认 0 (未分类)
+
+    def test_list_due_reminders(self, db_conn):
+        """list_due_reminders 只返回到期未提醒的记录。"""
+        from src.db.repositories.todo_repo import TodoRepository
+
+        repo = TodoRepository(db_conn)
+
+        # 插入 3 条 todo
+        # 1) 过去时间 + 未提醒 → 应返回
+        repo.create({"title": "过期未提醒", "remind_at": "2026-06-01 10:00", "reminded": 0})
+        # 2) 将来时间 + 未提醒 → 不应返回
+        repo.create({"title": "将来提醒", "remind_at": "2099-12-31 23:59", "reminded": 0})
+        # 3) 空 remind_at + 未提醒 → 不应返回
+        repo.create({"title": "无提醒时间", "remind_at": "", "reminded": 0})
+
+        now = "2026-06-30 12:00"
+        due = repo.list_due_reminders(now)
+
+        assert len(due) == 1
+        assert due[0].title == "过期未提醒"
+        assert due[0].remind_at == "2026-06-01 10:00"
+
+    def test_mark_reminded(self, db_conn):
+        """mark_reminded 将 reminded 标记为 1。"""
+        from src.db.repositories.todo_repo import TodoRepository
+
+        repo = TodoRepository(db_conn)
+        tid = repo.create({"title": "提醒测试", "remind_at": "2026-06-01 10:00", "reminded": 0})
+
+        repo.mark_reminded(tid)
+        todo = repo.get(tid)
+        assert todo is not None
+        assert todo.reminded == True
 
 
 # ═══════════════════════════════════════════════════════════════════

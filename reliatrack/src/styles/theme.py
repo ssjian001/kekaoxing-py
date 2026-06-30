@@ -751,6 +751,18 @@ QFrame[class="sep-vline"] {{
     color: {SURFACE1}; max-width: 1px; min-width: 1px; min-height: 16px; border: none;
 }}
 
+/* ── 四象限单元格 ── */
+QFrame[class="quadrant-cell-q1"]  {{ background: rgba(210,15,57,0.12); border-radius: 8px; }}
+QFrame[class="quadrant-cell-q2"]  {{ background: rgba(30,102,245,0.12); border-radius: 8px; }}
+QFrame[class="quadrant-cell-q3"]  {{ background: rgba(254,100,11,0.12); border-radius: 8px; }}
+QFrame[class="quadrant-cell-q4"]  {{ background: {SURFACE0}; border-radius: 8px; }}
+QFrame[class="quadrant-cell-unset"] {{ background: {BG_INPUT}; border-radius: 8px; border: 1px dashed {BORDER}; }}
+
+/* ── 四象限标题 ── */
+QLabel[class="quadrant-title"] {{
+    color: {TEXT}; font-size: 13px; font-weight: 700; border: none;
+}}
+
 /* ── Issue 面板滚动区 ── */
 QScrollArea[class="issue-scroll"] {{
     background-color: {BASE}; border: 1px solid {SURFACE1};

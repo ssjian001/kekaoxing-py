@@ -31,6 +31,7 @@ class TodoHandlers:
         v.toggle_requested.connect(self._on_todo_toggle)
         v.quick_add_created.connect(self._on_todo_quick_add)
         v._direct_status_change.connect(self._on_todo_status_change)
+        v.quadrant_changed.connect(self._on_todo_quadrant_changed)
 
     def _on_todo_quick_add(self, title: str, project_id: object) -> None:
         """快速添加待办（从顶部输入框）。"""
@@ -163,4 +164,14 @@ class TodoHandlers:
         ctrl.todo_service.update(todo_id, status=new_status)
         status_label = {"pending": "待处理", "in_progress": "进行中", "done": "已完成"}.get(new_status, new_status)
         self._win.toast(f"状态已更新为 {status_label}", "success")
+        self._win.schedule_throttled_refresh("todo")
+
+    def _on_todo_quadrant_changed(self, todo_id: int, new_quadrant: int) -> None:
+        """四象限拖拽变更处理。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.todo_service:
+            return
+        ctrl.todo_service.update(todo_id, quadrant=new_quadrant)
+        labels = {0: "未分类", 1: "重要紧急", 2: "重要不紧急", 3: "不重要紧急", 4: "不重要不紧急"}
+        self._win.toast(f"象限已更新为 {labels.get(new_quadrant, '')}", "success")
         self._win.schedule_throttled_refresh("todo")
