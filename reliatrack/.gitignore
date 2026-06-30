@@ -24,3 +24,19 @@ __pycache__/
 .prism-history.md
 data/logs/
 exports/
+
+# Virtual environment
+.venv/
+venv/
+
+# PyInstaller build artifacts
+dist/
+build/
+*.spec
+
+# Coverage
+.coverage
+htmlcov/
+
+# IDE workspace (VS Code already covered above)
+*.code-workspace
