@@ -59,11 +59,7 @@ def _column_color(status: str) -> str:
 
 def _column_head_color(status: str) -> str:
     """列标题色（运行时读取，跟随主题）。"""
-    return {
-        "pending": _t.TEXT,
-        "in_progress": _t.BLUE,
-        "done": _t.GREEN,
-    }.get(status, _t.TEXT)
+    return _t.TEXT  # 所有列标题统一主文字色，状态由背景区分
 
 _MIME_TODO_ID = "application/x-todo-id"
 
@@ -163,7 +159,7 @@ class TodoCard(QFrame):
             tag = QLabel(self._todo.category)
             tag.setFont(_FONT_CARD_META)
             tag.setStyleSheet(
-                f"color:{_t.SUBTEXT0};background:{_t.SURFACE1};"
+                f"color:{_t.SUBTEXT1};background:{_t.SURFACE1};"
                 f"border-radius:4px;padding:1px 6px;border:none;"
             )
             meta.addWidget(tag)
@@ -265,7 +261,7 @@ class KanbanColumn(QFrame):
         head.addWidget(lbl)
         self._count = QLabel("0")
         self._count.setStyleSheet(
-            f"font-size:11px;font-weight:600;color:{_t.FG_MUTED};"
+            f"font-size:11px;font-weight:600;color:{_t.SUBTEXT1};"
             f"background:{_t.SURFACE1};border-radius:8px;padding:1px 8px;border:none;"
         )
         head.addWidget(self._count)
