@@ -207,8 +207,14 @@ class TodoRow(QWidget):
 
     def set_selected(self, selected: bool) -> None:
         self._selected = selected
-        bg = "#E2E8F0" if selected else "transparent"
-        self.setStyleSheet(f"background:{bg};")
+        if selected:
+            self.setStyleSheet(
+                f"background:{_theme.SELECTION_BG};"
+                f"border-left:3px solid {_theme.ACCENT};"
+                f"padding-left:9px;"  # 12-3=9，补偿左边框占位
+            )
+        else:
+            self.setStyleSheet("background:transparent;border-left:none;padding-left:12px;")
 
 
 # ── GroupHeader: 分组标题 ─────────────────────────────────────
