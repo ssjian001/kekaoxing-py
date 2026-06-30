@@ -228,21 +228,24 @@ class GroupHeader(QWidget):
         self._name = name
         self._count = count
         self._collapsed = collapsed
-        self.setFixedHeight(32)
+        self.setFixedHeight(30)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 0, 12, 0)
 
-        # 折叠箭头
-        arrow = QPushButton("▶" if collapsed else "▼")
-        arrow.setFixedSize(16, 16)
-        arrow.setStyleSheet(
-            "QPushButton{background:transparent;border:none;font-size:9px;color:%s;}" % _theme.SUBTEXT0
+        # 折叠箭头（Unicode 三角，轻量）
+        self._arrow = QPushButton("▾" if not collapsed else "▸")
+        self._arrow.setFixedSize(14, 14)
+        self._arrow.setStyleSheet(
+            "QPushButton{background:transparent;border:none;font-size:9px;color:%s;}"
+            % _theme.OVERLAY0
         )
-        arrow.clicked.connect(self._on_toggle)
-        layout.addWidget(arrow)
+        self._arrow.clicked.connect(self._on_toggle)
+        layout.addWidget(self._arrow)
 
         label = QLabel(name)
-        label.setStyleSheet(f"font-weight:700;font-size:11px;color:{_theme.SUBTEXT0};letter-spacing:.5px;")
+        label.setStyleSheet(
+            f"font-weight:600;font-size:11px;color:{_theme.SUBTEXT0};"
+        )
         layout.addWidget(label)
 
         count_lbl = QLabel(str(count))
@@ -250,8 +253,8 @@ class GroupHeader(QWidget):
         count_lbl.setMinimumWidth(18)
         count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         count_lbl.setStyleSheet(
-            f"font-size:10px;color:{_theme.SUBTEXT0};background:{_theme.SURFACE1};"
-            f"border-radius:8px;padding:0 5px;"
+            f"font-size:10px;font-weight:500;color:{_theme.FG_MUTED};"
+            f"background:{_theme.SURFACE1};border-radius:8px;padding:0 6px;"
         )
         layout.addWidget(count_lbl)
 
@@ -262,10 +265,7 @@ class GroupHeader(QWidget):
         self._collapsed = not self._collapsed
         if self._collapsed_widget:
             self._collapsed_widget.setVisible(not self._collapsed)
-        # 更新箭头
-        btn = self.layout().itemAt(0).widget()
-        if isinstance(btn, QPushButton):
-            btn.setText("▶" if self._collapsed else "▼")
+        self._arrow.setText("▾" if not self._collapsed else "▸")
 
     def set_collapsible_target(self, widget: QWidget) -> None:
         self._collapsed_widget = widget
@@ -299,30 +299,52 @@ class TodoView(QWidget):
         # ── 顶部工具栏 ──
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(*VIEW_MARGINS)
-        toolbar.setSpacing(8)
+        toolbar.setSpacing(6)
 
         self._project_combo = QComboBox()
         self._project_combo.setMinimumWidth(160)
         self._project_combo.addItem("全部项目", None)
         self._project_combo.currentIndexChanged.connect(self._on_project_filter_changed)
-        toolbar.addWidget(QLabel("项目:"))
+        proj_label = QLabel("项目")
+        proj_label.setStyleSheet(f"color:{_theme.SUBTEXT0};font-size:12px;margin-right:-2px;")
+        toolbar.addWidget(proj_label)
         toolbar.addWidget(self._project_combo)
 
         toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
-        self.btn_edit.setProperty("class", "action")
-        self.btn_edit.setMinimumWidth(60)
+        self.btn_edit.setFixedHeight(28)
+        self.btn_edit.setStyleSheet(
+            f"QPushButton{{background:{_theme.BG_INPUT};color:{_theme.ACCENT};"
+            f"border:1px solid {_theme.BORDER};border-radius:14px;padding:2px 14px;font-size:12px;}}"
+            f"QPushButton:hover{{background:{_theme.BG_HOVER};border-color:{_theme.ACCENT};}}"
+        )
         toolbar.addWidget(self.btn_edit)
 
         self.btn_delete = QPushButton("删除")
-        self.btn_delete.setProperty("class", "danger")
-        self.btn_delete.setMinimumWidth(60)
+        self.btn_delete.setFixedHeight(28)
+        self.btn_delete.setStyleSheet(
+            f"QPushButton{{background:transparent;color:{_theme.RED};"
+            f"border:1px solid transparent;border-radius:14px;padding:2px 14px;font-size:12px;}}"
+            f"QPushButton:hover{{background:{_theme.DANGER_BG};border-color:{_theme.RED};}}"
+        )
         toolbar.addWidget(self.btn_delete)
 
-        self.btn_add = QPushButton("新增")
-        self.btn_add.setProperty("class", "primary")
-        self.btn_add.setMinimumWidth(60)
+        # 分隔线
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setStyleSheet(f"color:{_theme.SURFACE1};")
+        sep.setFixedWidth(1)
+        sep.setFixedHeight(20)
+        toolbar.addWidget(sep)
+
+        self.btn_add = QPushButton("＋ 新增")
+        self.btn_add.setFixedHeight(28)
+        self.btn_add.setStyleSheet(
+            f"QPushButton{{background:{_theme.ACCENT};color:white;"
+            f"border:none;border-radius:14px;padding:2px 18px;font-size:12px;font-weight:600;}}"
+            f"QPushButton:hover{{background:{_theme.BLUE};}}"
+        )
         self.btn_add.setToolTip("新增待办事项 (Ctrl+N)")
         toolbar.addWidget(self.btn_add)
         layout.addLayout(toolbar)
@@ -346,19 +368,41 @@ class TodoView(QWidget):
 
         # ── 快速添加栏 ──
         quick_bar = QHBoxLayout()
-        quick_bar.setContentsMargins(12, 6, 12, 6)
-        quick_bar.setSpacing(6)
+        quick_bar.setContentsMargins(12, 6, 12, 10)
+        quick_bar.setSpacing(0)
+
+        input_container = QWidget()
+        input_container.setStyleSheet(
+            f"background:{_theme.BG_INPUT};border:1px solid {_theme.BORDER};"
+            f"border-radius:15px;"
+        )
+        input_container.setFixedHeight(30)
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(12, 0, 4, 0)
+        input_layout.setSpacing(0)
+
         self._quick_add = QLineEdit()
-        self._quick_add.setPlaceholderText("快速添加待办… (输入后回车)")
+        self._quick_add.setPlaceholderText("快速添加待办…")
         self._quick_add.setClearButtonEnabled(True)
-        self._quick_add.setFixedHeight(30)
+        self._quick_add.setFixedHeight(28)
+        self._quick_add.setStyleSheet(
+            "QLineEdit{background:transparent;border:none;font-size:13px;color:%s;}"
+            % _theme.TEXT
+        )
         self._quick_add.returnPressed.connect(self._on_quick_add)
-        quick_bar.addWidget(self._quick_add)
+        input_layout.addWidget(self._quick_add, stretch=1)
+
         self._btn_quick_add = QPushButton("添加")
-        self._btn_quick_add.setProperty("class", "primary")
-        self._btn_quick_add.setFixedHeight(30)
+        self._btn_quick_add.setFixedSize(48, 22)
+        self._btn_quick_add.setStyleSheet(
+            f"QPushButton{{background:{_theme.ACCENT};color:white;"
+            f"border:none;border-radius:11px;font-size:11px;}}"
+            f"QPushButton:hover{{background:{_theme.BLUE};}}"
+        )
         self._btn_quick_add.clicked.connect(self._on_quick_add)
-        quick_bar.addWidget(self._btn_quick_add)
+        input_layout.addWidget(self._btn_quick_add)
+
+        quick_bar.addWidget(input_container)
         layout.addLayout(quick_bar)
 
         # ── 滚动列表区域 ──
@@ -510,9 +554,7 @@ class TodoView(QWidget):
                 h._collapsed = not h._collapsed
                 if h._collapsed_widget:
                     h._collapsed_widget.setVisible(not h._collapsed)
-                arrow_btn = h.layout().itemAt(0).widget()
-                if isinstance(arrow_btn, QPushButton):
-                    arrow_btn.setText("▶" if h._collapsed else "▼")
+                h._arrow.setText("▾" if not h._collapsed else "▸")
                 state[name] = h._collapsed
             header._on_toggle = _new_toggle
 
