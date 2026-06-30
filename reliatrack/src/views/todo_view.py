@@ -497,7 +497,7 @@ class TodoView(QWidget):
             hdr_state = collapse_state
             hdr_name = group_name
             original_toggle = header._on_toggle
-            def _new_toggle(h=hdr, name=hdr_name, state=hdr_state):
+            def _new_toggle(h=header, name=hdr_name, state=hdr_state):
                 h._collapsed = not h._collapsed
                 if h._collapsed_widget:
                     h._collapsed_widget.setVisible(not h._collapsed)
