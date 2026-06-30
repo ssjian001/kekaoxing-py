@@ -10,6 +10,7 @@ from src.models.project import Project
 from src.models.sample import Sample, SampleTransaction
 from src.models.test_plan import TestPlan, TestTask, TestResult
 from src.models.issue import Issue, FARecord, IssueAttachment
+from src.models.todo import TodoItem
 
 __all__ = [
     # Common

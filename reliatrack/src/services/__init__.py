@@ -9,6 +9,7 @@ from src.services.settings_service import SettingsService
 from src.services.scheduler_service import SchedulerService
 from src.services.export import ExportService
 from src.services.knowledge_service import KnowledgeService
+from src.services.todo_service import TodoService
 from src.services.technician_service import TechnicianService
 from src.services.holiday_service import HolidayService
 
@@ -22,6 +23,7 @@ __all__ = [
     "SchedulerService",
     "ExportService",
     "KnowledgeService",
+    "TodoService",
     "TechnicianService",
     "HolidayService",
 ]

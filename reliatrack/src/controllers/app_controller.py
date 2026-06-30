@@ -33,6 +33,7 @@ from src.db.repositories import (
     IssueRepository,
     SettingsRepository,
     KnowledgeRepository,
+    TodoRepository,
 )
 from src.services import (
     ProjectService,
@@ -43,6 +44,7 @@ from src.services import (
     SettingsService,
     SchedulerService,
     KnowledgeService,
+    TodoService,
     TechnicianService,
     ExportService,
 )
@@ -70,6 +72,7 @@ class AppController:
         self.issues: IssueRepository | None = None
         self.settings: SettingsRepository | None = None
         self.knowledge: KnowledgeRepository | None = None
+        self.todos: TodoRepository | None = None
 
         # Services
         self.project_service: ProjectService | None = None
@@ -80,6 +83,7 @@ class AppController:
         self.settings_service: SettingsService | None = None
         self.scheduler_service: SchedulerService | None = None
         self.knowledge_service: KnowledgeService | None = None
+        self.todo_service: TodoService | None = None
         self.technician_service: TechnicianService | None = None
         self.export_service: ExportService | None = None
 
@@ -110,6 +114,7 @@ class AppController:
         self.issues = IssueRepository(self._conn)
         self.settings = SettingsRepository(self._conn)
         self.knowledge = KnowledgeRepository(self._conn)
+        self.todos = TodoRepository(self._conn)
 
         # Services
         self.project_service = ProjectService(
@@ -126,6 +131,7 @@ class AppController:
             holiday_service=self.holiday_service,
         )
         self.knowledge_service = KnowledgeService(self.knowledge)
+        self.todo_service = TodoService(self.todos)
         self.technician_service = TechnicianService(self.technicians, self.test_tasks, self.issues)
         self.export_service = ExportService()
 

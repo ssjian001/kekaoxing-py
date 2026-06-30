@@ -65,6 +65,7 @@ class RefreshHandlers:
             self._refresh_equipment()
             self._refresh_technicians()
             self._refresh_knowledge()
+            self._refresh_todos()
         else:
             _need_dashboard = False
             if "project" in pending:
@@ -87,6 +88,8 @@ class RefreshHandlers:
                 self._refresh_technicians()
             if "knowledge" in pending:
                 self._refresh_knowledge()
+            if "todo" in pending:
+                self._refresh_todos()
             if _need_dashboard:
                 self._refresh_dashboard()
 
@@ -500,6 +503,15 @@ class RefreshHandlers:
             return
         all_knowledge = ctrl.knowledge_service.list_all()
         self._win.knowledge_view.refresh(all_knowledge)
+
+    def _refresh_todos(self) -> None:
+        """刷新待办事项视图。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.todo_service:
+            return
+        all_todos = ctrl.todo_service.list_all()
+        projects = ctrl.project_service.list_all() if ctrl.project_service else []
+        self._win.todo_view.refresh(all_todos, projects)
 
     def _refresh_undo_state(self) -> None:
         """更新撤销/重做按钮状态。"""

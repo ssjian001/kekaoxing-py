@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -283,6 +283,20 @@ _DDL_TABLES: list[str] = [
         created_at        TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
     )""",
 
+    # ── 待办事项 (v25) ──
+    """CREATE TABLE IF NOT EXISTS todos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        title       TEXT    NOT NULL,
+        description TEXT    NOT NULL DEFAULT '',
+        priority    TEXT    NOT NULL DEFAULT 'medium',
+        status      TEXT    NOT NULL DEFAULT 'pending',
+        category    TEXT    NOT NULL DEFAULT '',
+        due_date    TEXT    NOT NULL DEFAULT '',
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+        updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+    )""",
+
     # ── 系统设置 ──
     """CREATE TABLE IF NOT EXISTS settings (
         key         TEXT    PRIMARY KEY,
@@ -353,6 +367,9 @@ _DDL_INDEXES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status)",
     # technicians
     "CREATE INDEX IF NOT EXISTS idx_technicians_name ON technicians(name)",
+    # todos (v25)
+    "CREATE INDEX IF NOT EXISTS idx_todos_project ON todos(project_id)",
+    "CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)",
 ]
 
 
@@ -1082,6 +1099,35 @@ def _migrate_v24(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (24)")
 
 
+def _migrate_v25(conn: apsw.Connection) -> None:
+    """v24→v25: 新增 todos 表（轻量待办事项）。
+
+    纯新表，不修改现有表结构，不影响现有数据。
+    新表在 _DDL_TABLES 中定义（CREATE TABLE IF NOT EXISTS），此处执行 DDL 重建即可。
+    """
+    new_tables = [
+        """CREATE TABLE IF NOT EXISTS todos (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+            title       TEXT    NOT NULL,
+            description TEXT    NOT NULL DEFAULT '',
+            priority    TEXT    NOT NULL DEFAULT 'medium',
+            status      TEXT    NOT NULL DEFAULT 'pending',
+            category    TEXT    NOT NULL DEFAULT '',
+            due_date    TEXT    NOT NULL DEFAULT '',
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""",
+    ]
+    new_indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_todos_project ON todos(project_id)",
+        "CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)",
+    ]
+    for ddl in new_tables + new_indexes:
+        conn.execute(ddl)
+    conn.execute("INSERT INTO schema_version (version) VALUES (25)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -1107,6 +1153,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (22, _migrate_v22),
     (23, _migrate_v23),
     (24, _migrate_v24),
+    (25, _migrate_v25),
 ]
 
 
@@ -1328,6 +1375,17 @@ def init_schema(conn: apsw.Connection) -> int:
             logger.exception("Schema migration v24 failed")
             raise
 
+    # v25: 新增 todos 表
+    if current < 25:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v25(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v25 failed")
+            raise
+
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）
     _validate_schema_integrity(conn)
 
@@ -1341,7 +1399,7 @@ def _validate_schema_integrity(conn: apsw.Connection) -> None:
         "sample_transactions", "test_plans", "test_tasks", "test_results",
         "issues", "issue_attachments", "fa_records", "capa_records",
         "issue_comments", "issue_activity_log", "issue_links",
-        "knowledge_entries", "settings", "holidays",
+        "knowledge_entries", "settings", "holidays", "todos",
     ]
     missing = []
     for t in core_tables:

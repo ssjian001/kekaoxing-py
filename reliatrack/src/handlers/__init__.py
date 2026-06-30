@@ -14,6 +14,7 @@ from src.handlers.issue_handlers import IssueHandlers
 from src.handlers.equipment_handlers import EquipmentHandlers
 from src.handlers.technician_handlers import TechnicianHandlers
 from src.handlers.knowledge_handlers import KnowledgeHandlers
+from src.handlers.todo_handlers import TodoHandlers
 from src.handlers.export_handlers import ExportHandlers
 from src.handlers.refresh_handlers import RefreshHandlers
 from src.handlers.backup_handlers import BackupHandlers
@@ -26,6 +27,7 @@ __all__ = [
     "EquipmentHandlers",
     "TechnicianHandlers",
     "KnowledgeHandlers",
+    "TodoHandlers",
     "ExportHandlers",
     "RefreshHandlers",
     "BackupHandlers",

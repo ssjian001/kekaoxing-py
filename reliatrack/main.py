@@ -43,6 +43,7 @@ from src.views.equipment_view import EquipmentView
 from src.views.technician_view import TechnicianView
 from src.views.project_view import ProjectView
 from src.views.knowledge_view import KnowledgeView
+from src.views.todo_view import TodoView
 
 # Handler modules
 from src.handlers import (
@@ -53,6 +54,7 @@ from src.handlers import (
     EquipmentHandlers,
     TechnicianHandlers,
     KnowledgeHandlers,
+    TodoHandlers,
     ExportHandlers,
     RefreshHandlers,
     BackupHandlers,
@@ -77,6 +79,7 @@ class MainWindow(QMainWindow):
         self._equipment_handlers = EquipmentHandlers(self)
         self._technician_handlers = TechnicianHandlers(self)
         self._knowledge_handlers = KnowledgeHandlers(self)
+        self._todo_handlers = TodoHandlers(self)
         self._export_handlers = ExportHandlers(self)
         self._refresh_handlers = RefreshHandlers(self)
         self._backup_handlers = BackupHandlers(self)
@@ -97,6 +100,7 @@ class MainWindow(QMainWindow):
         self._equipment_handlers.connect_signals()
         self._technician_handlers.connect_signals()
         self._knowledge_handlers.connect_signals()
+        self._todo_handlers.connect_signals()
 
         # Debounce 刷新定时器
         self._refresh_timer = QTimer(self)
@@ -154,6 +158,10 @@ class MainWindow(QMainWindow):
         assert self._ctrl.issue_service is not None, "IssueService must be initialized"
         self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
         self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
+
+        # Tab 7: 待办事项
+        self._todo_view = TodoView()
+        self._tab_widget.addTab(self._todo_view, "待办事项")
 
         # 恢复上次选中的 Tab
         settings = QSettings()
@@ -330,6 +338,8 @@ class MainWindow(QMainWindow):
             self._knowledge_handlers._on_knowledge_add()
         elif idx == 6:
             self._bug_tracker_view._act_new_issue.trigger()
+        elif idx == 7:
+            self._todo_handlers._on_todo_add()
 
     def _on_shortcut_delete(self) -> None:
         """Delete: 删除当前 Tab 的选中项。"""
@@ -342,6 +352,8 @@ class MainWindow(QMainWindow):
             self._equipment_handlers._on_equipment_delete()
         elif idx == 6:
             self._knowledge_handlers._on_knowledge_delete()
+        elif idx == 7:
+            self._todo_handlers._on_todo_delete()
 
     def _on_shortcut_edit(self) -> None:
         """F2: 编辑当前 Tab 的选中项。"""
@@ -354,6 +366,8 @@ class MainWindow(QMainWindow):
             self._equipment_handlers._on_equipment_edit()
         elif idx == 6:
             self._knowledge_handlers._on_knowledge_edit()
+        elif idx == 7:
+            self._todo_handlers._on_todo_edit()
 
     def _on_shortcut_find(self) -> None:
         """Ctrl+F: 聚焦当前 Tab 的搜索框。"""
@@ -364,6 +378,7 @@ class MainWindow(QMainWindow):
             4: lambda: self._equipment_view._search_edit,
             5: lambda: self._knowledge_view._search_edit,
             6: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
+            7: lambda: self._todo_view._search_edit,
         }
         idx = self._tab_widget.currentIndex()
         getter = search_map.get(idx)
@@ -486,6 +501,10 @@ class MainWindow(QMainWindow):
     @property
     def knowledge_view(self) -> KnowledgeView:
         return self._knowledge_view
+
+    @property
+    def todo_view(self) -> TodoView:
+        return self._todo_view
 
     @property
     def dashboard(self) -> DashboardView:

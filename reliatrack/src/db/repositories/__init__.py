@@ -14,6 +14,7 @@ from src.db.repositories.issue_repo import (
 )
 from src.db.repositories.settings_repo import SettingsRepository
 from src.db.repositories.knowledge_repo import KnowledgeRepository
+from src.db.repositories.todo_repo import TodoRepository
 from src.db.repositories.test_result_repo import TestResultRepository
 
 __all__ = [
@@ -32,5 +33,6 @@ __all__ = [
     "IssueLinkRepository",
     "SettingsRepository",
     "KnowledgeRepository",
+    "TodoRepository",
     "TestResultRepository",
 ]

@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "last_updated": "2026-06-22",
-    "schema_version": 23,
-    "tests": "380 passed (round 2 audit + fix 1eb2061)"
+    "last_updated": "2026-06-30",
+    "schema_version": 25,
+    "tests": "409 passed (F025 todo 功能新增，schema v24→v25)"
   },
   "features": [
     {
@@ -172,6 +172,13 @@
       "description": "从其他测试计划导入任务",
       "status": "done",
       "modules": ["import_tasks_from_plan_dialog.py"]
+    },
+    {
+      "id": "F025",
+      "name": "待办事项 (Todo)",
+      "description": "轻量待办管理，按项目筛选，状态切换（待处理/进行中/已完成），优先级标记",
+      "status": "done",
+      "modules": ["todo_view.py", "todo_handlers.py", "todo_service.py", "todo_repo.py", "todo_edit_dialog.py"]
     }
   ]
 }
