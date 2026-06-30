@@ -442,25 +442,6 @@ QCheckBox {{
     spacing: 8px;
 }}
 
-/* todo-list checkbox — 圆形风格，重写 indicator */
-QCheckBox[class="todo-checkbox"] {{
-    spacing: 0px;
-}}
-QCheckBox[class="todo-checkbox"]::indicator {{
-    width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    border: 2px solid {FG_MUTED};
-    background: transparent;
-}}
-QCheckBox[class="todo-checkbox"]::indicator:checked {{
-    background-color: {GREEN};
-    border-color: {GREEN};
-}}
-QCheckBox[class="todo-checkbox"]::indicator:hover {{
-    border-color: {ACCENT};
-}}
-
 /* ── 单选按钮 ── */
 QRadioButton {{
     color: {FG_PRIMARY};
@@ -550,25 +531,6 @@ QComboBox QAbstractItemView {{
     border: 1px solid {BORDER};
     selection-background-color: {BG_HOVER};
     selection-color: {FG_PRIMARY};
-}}
-
-/* ── Filter tab bar (Todo 视图) ── */
-QPushButton[class="filter-tab"] {{
-    background: transparent;
-    border: none;
-    border-radius: 12px;
-    padding: 2px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: {FG_MUTED};
-}}
-QPushButton[class="filter-tab"]:hover {{
-    color: {FG_PRIMARY};
-    background: {BG_HOVER};
-}}
-QPushButton[class="filter-tab"]:checked {{
-    background-color: {ACCENT};
-    color: #FFFFFF;
 }}
 
 /* ── 诊断对话框 ── */
