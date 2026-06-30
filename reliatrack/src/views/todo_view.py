@@ -59,19 +59,31 @@ _FONT_CARD_META.setPixelSize(11)
 class TodoCard(QFrame):
     """看板卡片 — 标题 + 优先级色点 + 日期 + tag。"""
 
+    selected = Signal(int)  # card clicked (todo_id)
+
     def __init__(self, todo: TodoItem, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._todo = todo
+        self._selected = False
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         self.setFixedHeight(68)
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
-        self.setStyleSheet(
-            f"TodoCard{{background:{_t.BG_CARD};border:1px solid {_t.BORDER};"
-            f"border-radius:8px;padding:8px 10px;}}"
-            f"TodoCard:hover{{border-color:{_t.ACCENT};}}"
-        )
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._apply_style()
+
+    def _apply_style(self) -> None:
+        if self._selected:
+            self.setStyleSheet(
+                f"TodoCard{{background:{_t.SELECTION_BG};border:2px solid {_t.ACCENT};"
+                f"border-radius:8px;padding:8px 10px;}}"
+            )
+        else:
+            self.setStyleSheet(
+                f"TodoCard{{background:{_t.BG_CARD};border:1px solid {_t.BORDER};"
+                f"border-radius:8px;padding:8px 10px;}}"
+                f"TodoCard:hover{{border-color:{_t.ACCENT};}}"
+            )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
@@ -130,11 +142,23 @@ class TodoCard(QFrame):
         meta.addStretch()
         layout.addLayout(meta)
 
+    def set_selected(self, selected: bool) -> None:
+        """设置选中状态并更新样式。"""
+        if self._selected == selected:
+            return
+        self._selected = selected
+        self._apply_style()
+
     def todo_id(self) -> int | None:
         return self._todo.id
 
     def mousePressEvent(self, event) -> None:
+        """单击选中卡片，按住拖拽。"""
         if event.button() == Qt.MouseButton.LeftButton:
+            # 先发射选中信号
+            if self._todo.id is not None:
+                self.selected.emit(self._todo.id)
+            # 开始拖拽
             drag = QDrag(self)
             mime = QMimeData()
             mime.setData(_MIME_TODO_ID, str(self._todo.id or "").encode())
@@ -171,6 +195,7 @@ class KanbanColumn(QFrame):
     """看板列 — 带标题头和大片拖放区域。"""
 
     todo_dropped = Signal(int, str)  # todo_id, new_status
+    card_selected = Signal(int)     # card clicked (todo_id)
 
     def __init__(self, status: str, label: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -236,6 +261,7 @@ class KanbanColumn(QFrame):
         self._count.setText(str(len(todos)))
         for todo in todos:
             card = TodoCard(todo)
+            card.selected.connect(self.card_selected.emit)
             self._cards.append(card)
             self._card_layout.insertWidget(self._card_layout.count() - 1, card)
 
@@ -275,6 +301,8 @@ class TodoView(QWidget):
         super().__init__(parent)
         self._todo_list: list[TodoItem] = []
         self._all_projects: list[Project] = []
+        self._selected_todo_id: int | None = None
+        self._selected_card: TodoCard | None = None
         self._setup_ui()
 
     # ── UI ──────────────────────────────────────────────────────
@@ -299,6 +327,7 @@ class TodoView(QWidget):
         for status, label in _COLUMNS:
             col = KanbanColumn(status, label)
             col.todo_dropped.connect(self._on_todo_dropped)
+            col.card_selected.connect(self._on_card_selected)
             self._columns[status] = col
             board.addWidget(col, stretch=1)
 
@@ -413,12 +442,21 @@ class TodoView(QWidget):
         return self._project_combo.currentData()
 
     def get_selected_todo(self) -> TodoItem | None:
-        return None  # 看板模式无单行选中，通过双击卡片编辑
+        """获取当前选中的待办。"""
+        tid = self._selected_todo_id
+        if tid is None:
+            return None
+        for t in self._todo_list:
+            if t.id == tid:
+                return t
+        return None
 
     # ── 内部 ────────────────────────────────────────────────────
 
     def _populate(self) -> None:
         """按项目 filter 分配卡片到各列。"""
+        self._selected_todo_id = None  # 清除选中（刷新后重建）
+        self._selected_card = None
         pid = self._project_combo.currentData()
         filtered = self._todo_list
         if pid is not None:
@@ -430,6 +468,21 @@ class TodoView(QWidget):
 
         for status, col in self._columns.items():
             col.set_cards(groups.get(status, []))
+
+    def _on_card_selected(self, todo_id: int) -> None:
+        """卡片单击选中 — 取消旧选中，标记新选中。"""
+        # 取消旧的选中高亮
+        if self._selected_card is not None:
+            self._selected_card.set_selected(False)
+        self._selected_todo_id = todo_id
+        self._selected_card = None
+        # 找到新选中的卡片并高亮
+        for col in self._columns.values():
+            for card in col._cards:
+                if card.todo_id() == todo_id:
+                    card.set_selected(True)
+                    self._selected_card = card
+                    return
 
     def _on_project_filter(self, _idx: int) -> None:
         self._populate()
