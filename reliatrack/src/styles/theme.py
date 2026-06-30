@@ -723,6 +723,16 @@ QLabel[class="body-text"] {{
     color: {TEXT}; font-size: 12px;
 }}
 
+QFrame[class="kanban-col-pending"] {{
+    background-color: {BG_INPUT}; border-radius: 10px;
+}}
+QFrame[class="kanban-col-progress"] {{
+    background-color: {SELECTION_BG}; border-radius: 10px;
+}}
+QFrame[class="kanban-col-done"] {{
+    background-color: {SURFACE0}; border-radius: 10px;
+}}
+
 /* ── Issue 面板滚动区 ── */
 QScrollArea[class="issue-scroll"] {{
     background-color: {BASE}; border: 1px solid {SURFACE1};

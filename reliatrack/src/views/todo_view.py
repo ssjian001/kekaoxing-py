@@ -30,7 +30,7 @@ from src.styles.constants import VIEW_MARGINS
 # ── 常量 ───────────────────────────────────────────────────────
 
 def _priority_color(priority: str) -> str:
-    """优先级色点颜色（运行时读取，跟随主题切换）。"""
+    """优先级色点颜色（运行时读取，跟随主题）。"""
     return {
         "high": _t.RED,
         "medium": _t.WARNING,
@@ -38,29 +38,11 @@ def _priority_color(priority: str) -> str:
     }.get(priority, _t.FG_MUTED)
 
 # 看板 3 列
-_COLUMNS: list[tuple[str, str]] = [
-    ("pending", "待处理"),
-    ("in_progress", "进行中"),
-    ("done", "已完成"),
+_COLUMNS: list[tuple[str, str, str]] = [
+    ("pending",     "待处理",   "kanban-col-pending"),
+    ("in_progress", "进行中", "kanban-col-progress"),
+    ("done",        "已完成",  "kanban-col-done"),
 ]
-_COLORS = {
-    "pending": _t.BG_INPUT,
-    "in_progress": _t.SELECTION_BG,
-    "done": _t.SURFACE0,
-}
-
-def _column_color(status: str) -> str:
-    """列背景色（运行时读取，跟随主题）。"""
-    return {
-        "pending": _t.BG_INPUT,
-        "in_progress": _t.SELECTION_BG,
-        "done": _t.SURFACE0,
-    }.get(status, _t.BG_BASE)
-
-def _column_head_color(status: str) -> str:
-    """列标题色（运行时读取，跟随主题）。"""
-    return _t.TEXT  # 所有列标题统一主文字色，状态由背景区分
-
 _MIME_TODO_ID = "application/x-todo-id"
 
 # ── 字体 ────────────────────────────────────────────────────────
@@ -92,24 +74,31 @@ class TodoCard(QFrame):
     def _setup_ui(self) -> None:
         self.setFixedHeight(68)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._apply_style()
+        self.setProperty("class", "card-container")
         self._build_content()
 
     def _apply_style(self) -> None:
+        """选中态样式（用 inline 因为状态动态切换）。"""
         if self._selected:
             self.setStyleSheet(
-                f"TodoCard{{background:{_t.SELECTION_BG};border:2px solid {_t.ACCENT};"
+                f"QFrame{{background:{_t.SELECTION_BG};border:2px solid {_t.ACCENT};"
                 f"border-radius:8px;}}"
             )
         else:
-            self.setStyleSheet(
-                f"TodoCard{{background:{_t.BG_CARD};border:1px solid {_t.BORDER};"
-                f"border-radius:8px;}}"
-                f"TodoCard:hover{{border-color:{_t.ACCENT};}}"
-            )
+            self.setStyleSheet("")  # 恢复 QSS 默认
 
+    def set_selected(self, selected: bool) -> None:
+        """设置选中状态并更新样式。"""
+        if self._selected == selected:
+            return
+        self._selected = selected
+        self._apply_style()
+
+    def refresh_theme(self) -> None:
+        """主题切换后刷新内联颜色（选中态）。"""
+        self._apply_style()
+    
     def _build_content(self) -> None:
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(4)
@@ -118,10 +107,6 @@ class TodoCard(QFrame):
         top = QHBoxLayout()
         top.setSpacing(6)
         color = _priority_color(self._todo.priority)
-        dot = QLabel()
-        dot.setFixedSize(8, 8)
-        dot.setStyleSheet(f"background:{color};border-radius:4px;")
-        top.addWidget(dot)
 
         title = QLabel(self._todo.title)
         title.setFont(_FONT_CARD_TITLE)
@@ -152,31 +137,17 @@ class TodoCard(QFrame):
                 dc = _t.SUBTEXT0
             date_lbl = QLabel(date_text)
             date_lbl.setFont(_FONT_CARD_META)
-            date_lbl.setStyleSheet(f"color:{dc};border:none;")
+            date_lbl.setProperty("class", "hint-label")
             meta.addWidget(date_lbl)
 
         if self._todo.category:
             tag = QLabel(self._todo.category)
             tag.setFont(_FONT_CARD_META)
-            tag.setStyleSheet(
-                f"color:{_t.SUBTEXT1};background:{_t.SURFACE1};"
-                f"border-radius:4px;padding:1px 6px;border:none;"
-            )
+            tag.setProperty("class", "filter-chip")
             meta.addWidget(tag)
 
         meta.addStretch()
         layout.addLayout(meta)
-
-    def set_selected(self, selected: bool) -> None:
-        """设置选中状态并更新样式。"""
-        if self._selected == selected:
-            return
-        self._selected = selected
-        self._apply_style()
-
-    def refresh_theme(self) -> None:
-        """主题切换后刷新内联颜色。"""
-        self._apply_style()
 
     def todo_id(self) -> int | None:
         return self._todo.id
@@ -234,15 +205,16 @@ class KanbanColumn(QFrame):
     todo_dropped = Signal(int, str)  # todo_id, new_status
     card_selected = Signal(int)     # card clicked (todo_id)
 
-    def __init__(self, status: str, label: str, parent: QWidget | None = None) -> None:
+    def __init__(self, status: str, label: str, col_class: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._status = status
         self._label = label
+        self._col_class = col_class
         self._cards: list[TodoCard] = []
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        self._apply_column_style()
+        self.setProperty("class", self._col_class)
         self.setAcceptDrops(True)
 
         layout = QVBoxLayout(self)
@@ -255,14 +227,15 @@ class KanbanColumn(QFrame):
         lbl = QLabel(self._label)
         lbl.setFont(QFont())
         lbl.setStyleSheet(
-            f"font-size:14px;font-weight:700;color:{_column_head_color(self._status)};"
+            f"font-size:14px;font-weight:700;color:{_t.TEXT};"
             f"border:none;"
         )
         head.addWidget(lbl)
         self._count = QLabel("0")
+        self._count.setProperty("class", "count-label")
         self._count.setStyleSheet(
-            f"font-size:11px;font-weight:600;color:{_t.SUBTEXT1};"
-            f"background:{_t.SURFACE1};border-radius:8px;padding:1px 8px;border:none;"
+            "font-size:11px;font-weight:600;border:none;"
+            "background:%s;border-radius:8px;padding:1px 8px;" % _t.SURFACE1
         )
         head.addWidget(self._count)
         head.addStretch()
@@ -319,19 +292,6 @@ class KanbanColumn(QFrame):
     def count(self) -> int:
         return len(self._cards)
 
-    def _apply_column_style(self) -> None:
-        """用当前主题色重绘列背景。"""
-        bg = _column_color(self._status)
-        self.setStyleSheet(
-            f"KanbanColumn{{background:{bg};border-radius:10px;}}"
-        )
-
-    def refresh_theme(self) -> None:
-        """主题切换后刷新。"""
-        self._apply_column_style()
-        for card in self._cards:
-            card.refresh_theme()
-
 
 # ═══════════════════════════════════════════════════════════════════
 #  TodoKanbanView
@@ -371,8 +331,8 @@ class TodoView(QWidget):
         board.setSpacing(8)
 
         self._columns: dict[str, KanbanColumn] = {}
-        for status, label in _COLUMNS:
-            col = KanbanColumn(status, label)
+        for status, label, cls in _COLUMNS:
+            col = KanbanColumn(status, label, cls)
             col.todo_dropped.connect(self._on_todo_dropped)
             col.card_selected.connect(self._on_card_selected)
             self._columns[status] = col
@@ -579,9 +539,10 @@ class TodoView(QWidget):
             f"border:none;border-radius:14px;padding:2px 14px;font-size:12px;}}"
             f"QPushButton:hover{{opacity:0.8;}}"
         )
-        # 列 + 卡片
+        # 列 + 卡片（只刷新选中态，列背景由 QSS 自动处理）
         for col in self._columns.values():
-            col.refresh_theme()
+            for card in col._cards:
+                card.refresh_theme()
         # 快速添加栏
         self._refresh_quick_add_theme()
 
