@@ -282,7 +282,7 @@ class MainWindow(QMainWindow):
         - 已打开 dialog 中的 _ResultRow/_btn_pass_all（已有 refresh_theme）
         """
         # 1. 长驻视图的剩余 refresh_theme
-        for view in (self._dashboard, self._bug_tracker_view):
+        for view in (self._dashboard, self._bug_tracker_view, self._todo_view):
             if hasattr(view, "refresh_theme"):
                 view.refresh_theme()
 

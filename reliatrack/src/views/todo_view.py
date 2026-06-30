@@ -178,6 +178,10 @@ class TodoCard(QFrame):
         self._selected = selected
         self._apply_style()
 
+    def refresh_theme(self) -> None:
+        """主题切换后刷新内联颜色。"""
+        self._apply_style()
+
     def todo_id(self) -> int | None:
         return self._todo.id
 
@@ -242,10 +246,7 @@ class KanbanColumn(QFrame):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        bg = _column_color(self._status)
-        self.setStyleSheet(
-            f"KanbanColumn{{background:{bg};border-radius:10px;}}"
-        )
+        self._apply_column_style()
         self.setAcceptDrops(True)
 
         layout = QVBoxLayout(self)
@@ -321,6 +322,19 @@ class KanbanColumn(QFrame):
 
     def count(self) -> int:
         return len(self._cards)
+
+    def _apply_column_style(self) -> None:
+        """用当前主题色重绘列背景。"""
+        bg = _column_color(self._status)
+        self.setStyleSheet(
+            f"KanbanColumn{{background:{bg};border-radius:10px;}}"
+        )
+
+    def refresh_theme(self) -> None:
+        """主题切换后刷新。"""
+        self._apply_column_style()
+        for card in self._cards:
+            card.refresh_theme()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -421,12 +435,12 @@ class TodoView(QWidget):
         qb.setContentsMargins(12, 4, 12, 8)
         qb.setSpacing(0)
 
-        container = QWidget()
-        container.setStyleSheet(
+        self._quick_add_container = QWidget()
+        self._quick_add_container.setStyleSheet(
             f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
         )
-        container.setFixedHeight(30)
-        cl = QHBoxLayout(container)
+        self._quick_add_container.setFixedHeight(30)
+        cl = QHBoxLayout(self._quick_add_container)
         cl.setContentsMargins(12, 0, 4, 0)
         cl.setSpacing(0)
 
@@ -449,7 +463,7 @@ class TodoView(QWidget):
         self._btn_quick_add.clicked.connect(self._on_quick_add)
         cl.addWidget(self._btn_quick_add)
 
-        qb.addWidget(container)
+        qb.addWidget(self._quick_add_container)
         parent_layout.addLayout(qb)
 
     # ── Public API ─────────────────────────────────────────────
@@ -548,3 +562,42 @@ class TodoView(QWidget):
 
     def emit_todo_changed(self) -> None:
         self.todo_changed.emit()
+
+    # ── 主题刷新 ────────────────────────────────────────────────
+
+    def refresh_theme(self) -> None:
+        """主题切换后重绘所有内联颜色。"""
+        # 工具栏按钮（颜色在 style_tool_btn 构建时冻结）
+        self.btn_edit.setStyleSheet(
+            f"QPushButton{{color:{_t.ACCENT};border:1px solid {_t.BORDER};"
+            f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
+            f"QPushButton:hover{{opacity:0.8;}}"
+        )
+        self.btn_delete.setStyleSheet(
+            f"QPushButton{{color:{_t.RED};border:1px solid transparent;"
+            f"border-radius:14px;padding:2px 14px;font-size:12px;}}"
+            f"QPushButton:hover{{opacity:0.8;}}"
+        )
+        self.btn_add.setStyleSheet(
+            f"QPushButton{{background:{_t.ACCENT};color:white;font-weight:600;"
+            f"border:none;border-radius:14px;padding:2px 14px;font-size:12px;}}"
+            f"QPushButton:hover{{opacity:0.8;}}"
+        )
+        # 列 + 卡片
+        for col in self._columns.values():
+            col.refresh_theme()
+        # 快速添加栏
+        self._refresh_quick_add_theme()
+
+    def _refresh_quick_add_theme(self) -> None:
+        """主题切换后刷新快速添加栏的颜色。"""
+        self._quick_add_container.setStyleSheet(
+            f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
+        )
+        self._quick_add.setStyleSheet(
+            "QLineEdit{background:transparent;border:none;font-size:13px;color:%s;}" % _t.TEXT
+        )
+        self._btn_quick_add.setStyleSheet(
+            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
+            f"QPushButton:hover{{background:{_t.BLUE};}}"
+        )
