@@ -19,6 +19,7 @@ class TodoItem:
     due_date: str = ""
     remind_at: str = ""
     reminded: bool = False
+    archived: bool = False
     quadrant: int = 0
     created_at: str = ""
     updated_at: str = ""
@@ -26,6 +27,10 @@ class TodoItem:
     @property
     def is_done(self) -> bool:
         return self.status == "done"
+
+    @property
+    def is_archived(self) -> bool:
+        return self.archived
 
     @property
     def priority_label(self) -> str:

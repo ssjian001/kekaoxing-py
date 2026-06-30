@@ -11,6 +11,8 @@ from typing import Any
 from PySide6.QtCore import QMimeData, QDate, QPoint, Qt, Signal, QObject
 from PySide6.QtGui import QDrag, QFont, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -21,7 +23,6 @@ from PySide6.QtWidgets import (
     QTabBar,
     QVBoxLayout,
     QWidget,
-    QComboBox,
 )
 
 import src.styles.theme as _t
@@ -299,6 +300,7 @@ class TodoView(QWidget):
     todo_changed = Signal()
     toggle_requested = Signal(int)
     quadrant_changed = Signal(int, int)  # todo_id, new_quadrant
+    archive_requested = Signal(int)  # todo_id
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -382,6 +384,11 @@ class TodoView(QWidget):
         self._search_edit.textChanged.connect(self._on_search)
         tb.addWidget(self._search_edit)
 
+        self._show_archived_cb = QCheckBox("显示已归档")
+        self._show_archived_cb.setProperty("class", "filter-checkbox")
+        self._show_archived_cb.toggled.connect(self._refresh_current_view)
+        tb.addWidget(self._show_archived_cb)
+
         tb.addStretch()
 
         self.btn_edit = QPushButton("编辑")
@@ -389,6 +396,9 @@ class TodoView(QWidget):
 
         self.btn_delete = QPushButton("删除")
         self._style_tool_btn(self.btn_delete, f"color:{_t.RED};border:1px solid transparent;")
+
+        self.btn_archive = QPushButton("归档")
+        self._style_tool_btn(self.btn_archive, f"color:{_t.SUBTEXT1};border:1px solid {_t.BORDER};background:{_t.BG_INPUT};")
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
@@ -401,6 +411,7 @@ class TodoView(QWidget):
 
         tb.addWidget(self.btn_edit)
         tb.addWidget(self.btn_delete)
+        tb.addWidget(self.btn_archive)
         tb.addWidget(sep)
         tb.addWidget(self.btn_add)
         parent_layout.addLayout(tb)
@@ -502,6 +513,10 @@ class TodoView(QWidget):
                 if search in t.title.lower()
                 or (t.description and search in t.description.lower())
             ]
+        # 归档过滤（除非勾选显示已归档）
+        show_archived = hasattr(self, '_show_archived_cb') and self._show_archived_cb.isChecked()
+        if not show_archived:
+            filtered = [t for t in filtered if not t.archived]
         return filtered
 
     def _on_project_filter(self, _idx: int) -> None:
@@ -587,6 +602,11 @@ class TodoView(QWidget):
         self.btn_delete.setStyleSheet(
             f"QPushButton{{color:{_t.RED};border:1px solid transparent;"
             f"border-radius:14px;padding:2px 14px;font-size:12px;}}"
+            f"QPushButton:hover{{opacity:0.8;}}"
+        )
+        self.btn_archive.setStyleSheet(
+            f"QPushButton{{color:{_t.SUBTEXT1};border:1px solid {_t.BORDER};"
+            f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
             f"QPushButton:hover{{opacity:0.8;}}"
         )
         self.btn_add.setStyleSheet(

@@ -43,13 +43,13 @@ def _make_service(db_conn) -> IssueService:
 #  1. Schema v23
 # ═══════════════════════════════════════════════════════════════════
 
-class TestSchemaV25:
-    """验证 schema 版本和 v25 新增表结构。"""
+class TestSchemaV27:
+    """验证 schema 版本和 v27 新增字段。"""
 
-    def test_schema_version_is_25(self):
-        assert SCHEMA_VERSION == 25
+    def test_schema_version_is_27(self):
+        assert SCHEMA_VERSION == 27
 
-    def test_fresh_db_has_v25(self, db_conn):
+    def test_fresh_db_has_v27(self, db_conn):
         row = db_conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()

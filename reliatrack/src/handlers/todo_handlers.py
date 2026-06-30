@@ -28,6 +28,7 @@ class TodoHandlers:
         v.btn_add.clicked.connect(self._on_todo_add)
         v.btn_edit.clicked.connect(self._on_todo_edit)
         v.btn_delete.clicked.connect(self._on_todo_delete)
+        v.btn_archive.clicked.connect(self._on_todo_archive)
         v.toggle_requested.connect(self._on_todo_toggle)
         v.quick_add_created.connect(self._on_todo_quick_add)
         v._direct_status_change.connect(self._on_todo_status_change)
@@ -137,6 +138,28 @@ class TodoHandlers:
             catch_value_error=True,
             undo_command=cmd,
         )
+
+    def _on_todo_archive(self) -> None:
+        """归档或取消归档选中的待办。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.todo_service:
+            return
+        todo = self._win.todo_view.get_selected_todo()
+        if todo is None:
+            self._win.toast("请先选中一个待办事项", "info")
+            return
+        if todo.status != "done":
+            self._win.toast("仅已完成的待办可以归档", "info")
+            return
+        if todo.id is None:
+            return
+        if todo.archived:
+            ctrl.todo_service.unarchive(todo.id)
+            self._win.toast(f"待办「{todo.title}」已取消归档", "success")
+        else:
+            ctrl.todo_service.archive(todo.id)
+            self._win.toast(f"待办「{todo.title}」已归档", "success")
+        self._win.schedule_throttled_refresh("todo")
 
     def _on_todo_toggle(self, todo_id: int) -> None:
         """切换待办状态。"""

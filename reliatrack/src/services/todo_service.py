@@ -48,6 +48,14 @@ class TodoService:
         """标记提醒已触发。"""
         self._repo.mark_reminded(todo_id)
 
+    def archive(self, todo_id: int) -> None:
+        """归档待办。"""
+        self._repo.archive(todo_id)
+
+    def unarchive(self, todo_id: int) -> None:
+        """取消归档。"""
+        self._repo.unarchive(todo_id)
+
     def toggle_status(self, todo_id: int) -> str | None:
         """切换状态：pending→in_progress→done→pending。返回新状态，失败返回 None。"""
         item = self._repo.get(todo_id)

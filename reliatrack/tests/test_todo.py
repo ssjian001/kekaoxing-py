@@ -91,6 +91,7 @@ class TestSchemaV26:
         assert "category" in cols
         assert "remind_at" in cols
         assert "reminded" in cols
+        assert "archived" in cols
         assert "quadrant" in cols
         assert "created_at" in cols
         assert "updated_at" in cols
@@ -115,14 +116,15 @@ class TestSchemaV26:
         assert "idx_todos_status" in idxs
         assert "idx_todos_remind" in idxs
         assert "idx_todos_quadrant" in idxs
+        assert "idx_todos_archived" in idxs
 
     def test_migrate_from_v24_creates_todos(self, db_conn):
-        """从 v24 迁移到 v26 后 todos 表存在且含新列。"""
-        # 用 init_schema 已经初始化到 v26，验证表存在
+        """从 v24 迁移到 v27 后 todos 表存在且含新列。"""
+        # 用 init_schema 已经初始化到 v27，验证表存在
         row = db_conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] >= 26
+        assert row[0] >= 27
 
     def test_migrate_from_v25_creates_reminder_quadrant(self, db_conn):
         """从 v25 迁移到 v26 后新列存在且默认值正确。"""
@@ -152,6 +154,31 @@ class TestSchemaV26:
         assert row[0] == ""       # remind_at 默认空字符串
         assert row[1] == 0        # reminded 默认 0 (False)
         assert row[2] == 0        # quadrant 默认 0 (未分类)
+
+    def test_migrate_from_v26_creates_archived(self, db_conn):
+        """从 v26 迁移到 v27 后 archived 列存在且默认值正确。"""
+        from src.db.schema import _migrate_v27
+        from src.models.todo import TodoItem
+
+        # 插入一条旧格式数据（不含 archived）
+        db_conn.execute(
+            "INSERT INTO todos (project_id, title) VALUES (NULL, '旧数据')"
+        )
+        todo_id = db_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        # 手动降级 schema_version 以模拟 v26→v27 迁移
+        db_conn.execute("DELETE FROM schema_version WHERE version >= 27")
+
+        # 执行迁移
+        _migrate_v27(db_conn)
+
+        # 验证列存在
+        cols = {r[1] for r in db_conn.execute("PRAGMA table_info(todos)").fetchall()}
+        assert "archived" in cols
+
+        # 验证旧数据默认值
+        row = db_conn.execute("SELECT archived FROM todos WHERE id = ?", (todo_id,)).fetchone()
+        assert row[0] == 0        # archived 默认 0 (False)
 
     def test_list_due_reminders(self, db_conn):
         """list_due_reminders 只返回到期未提醒的记录。"""
@@ -270,6 +297,62 @@ class TestTodoRepositoryListByProject:
         """无待办的项目返回空列表。"""
         p = ProjectRepository(repo.conn).insert(name="空项目")
         assert repo.list_by_project(p) == []
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  3a. TodoRepository — 归档
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestTodoArchive:
+    """TodoRepository 归档/取消归档操作。"""
+
+    def test_archive_todo(self, repo, project):
+        """归档后 archived 标记为 1。"""
+        tid = repo.create({"project_id": project, "title": "归档测试"})
+        repo.archive(tid)
+        todo = repo.get(tid)
+        assert todo is not None
+        assert todo.archived == True
+
+    def test_unarchive_todo(self, repo, project):
+        """取消归档后 archived 恢复为 0。"""
+        tid = repo.create({"project_id": project, "title": "取消归档测试"})
+        repo.archive(tid)
+        repo.unarchive(tid)
+        todo = repo.get(tid)
+        assert todo is not None
+        assert todo.archived == False
+
+    def test_archived_todo_excluded_from_reminders(self, repo, project):
+        """已归档的待办不应出现在 list_due_reminders 中。"""
+        tid = repo.create({
+            "project_id": project,
+            "title": "已归档提醒",
+            "remind_at": "2026-06-01 10:00",
+        })
+        repo.archive(tid)
+        now = "2026-06-30 12:00"
+        due = repo.list_due_reminders(now)
+        assert all(not t.archived for t in due)
+        assert all(t.id != tid for t in due)
+
+    def test_service_archive(self, svc, project):
+        """TodoService.archive 委托给 repo。"""
+        tid = svc.create(project_id=project, title="Service归档测试")
+        svc.archive(tid)
+        todo = svc.get(tid)
+        assert todo is not None
+        assert todo.archived == True
+
+    def test_service_unarchive(self, svc, project):
+        """TodoService.unarchive 委托给 repo。"""
+        tid = svc.create(project_id=project, title="Service取消归档测试")
+        svc.archive(tid)
+        svc.unarchive(tid)
+        todo = svc.get(tid)
+        assert todo is not None
+        assert todo.archived == False
 
 
 # ═══════════════════════════════════════════════════════════════════

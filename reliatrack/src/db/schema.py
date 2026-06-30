@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 26
+SCHEMA_VERSION = 27
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -295,6 +295,7 @@ _DDL_TABLES: list[str] = [
         due_date    TEXT    NOT NULL DEFAULT '',
         remind_at   TEXT    NOT NULL DEFAULT '',
         reminded    INTEGER NOT NULL DEFAULT 0,
+        archived    INTEGER NOT NULL DEFAULT 0,
         quadrant    INTEGER NOT NULL DEFAULT 0,
         created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -376,6 +377,8 @@ _DDL_INDEXES: list[str] = [
     # todos (v26)
     "CREATE INDEX IF NOT EXISTS idx_todos_remind ON todos(remind_at)",
     "CREATE INDEX IF NOT EXISTS idx_todos_quadrant ON todos(quadrant)",
+    # todos (v27)
+    "CREATE INDEX IF NOT EXISTS idx_todos_archived ON todos(archived)",
 ]
 
 
@@ -1148,6 +1151,15 @@ def _migrate_v26(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (26)")
 
 
+def _migrate_v27(conn: apsw.Connection) -> None:
+    """v26→v27: todos 表加 archived 字段。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(todos)").fetchall()}
+    if "archived" not in cols:
+        conn.execute("ALTER TABLE todos ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_todos_archived ON todos(archived)")
+    conn.execute("INSERT INTO schema_version (version) VALUES (27)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -1175,6 +1187,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (24, _migrate_v24),
     (25, _migrate_v25),
     (26, _migrate_v26),
+    (27, _migrate_v27),
 ]
 
 
@@ -1416,6 +1429,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v26 failed")
+            raise
+
+    # v27: todos 表加 archived 字段
+    if current < 27:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v27(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v27 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）
