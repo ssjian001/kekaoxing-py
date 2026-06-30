@@ -48,7 +48,23 @@ _COLORS = {
     "in_progress": _t.SELECTION_BG,
     "done": _t.SURFACE0,
 }
-_COLUMN_HEADS = {"pending": _t.TEXT, "in_progress": _t.BLUE, "done": _t.GREEN}
+
+def _column_color(status: str) -> str:
+    """列背景色（运行时读取，跟随主题）。"""
+    return {
+        "pending": _t.BG_INPUT,
+        "in_progress": _t.SELECTION_BG,
+        "done": _t.SURFACE0,
+    }.get(status, _t.BG_BASE)
+
+def _column_head_color(status: str) -> str:
+    """列标题色（运行时读取，跟随主题）。"""
+    return {
+        "pending": _t.TEXT,
+        "in_progress": _t.BLUE,
+        "done": _t.GREEN,
+    }.get(status, _t.TEXT)
+
 _MIME_TODO_ID = "application/x-todo-id"
 
 # ── 字体 ────────────────────────────────────────────────────────
@@ -226,7 +242,7 @@ class KanbanColumn(QFrame):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        bg = _COLORS.get(self._status, _t.BG_BASE)
+        bg = _column_color(self._status)
         self.setStyleSheet(
             f"KanbanColumn{{background:{bg};border-radius:10px;}}"
         )
@@ -242,7 +258,7 @@ class KanbanColumn(QFrame):
         lbl = QLabel(self._label)
         lbl.setFont(QFont())
         lbl.setStyleSheet(
-            f"font-size:14px;font-weight:700;color:{_COLUMN_HEADS.get(self._status, _t.TEXT)};"
+            f"font-size:14px;font-weight:700;color:{_column_head_color(self._status)};"
             f"border:none;"
         )
         head.addWidget(lbl)
@@ -385,7 +401,7 @@ class TodoView(QWidget):
         sep.setStyleSheet(f"color:{_t.SURFACE1};")
 
         self.btn_add = QPushButton("＋ 新增")
-        self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:{_t.MANTLE};font-weight:600;border:none;")
+        self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:white;font-weight:600;border:none;")
 
         tb.addWidget(self.btn_edit)
         tb.addWidget(self.btn_delete)
@@ -427,7 +443,7 @@ class TodoView(QWidget):
         self._btn_quick_add = QPushButton("添加")
         self._btn_quick_add.setFixedSize(48, 22)
         self._btn_quick_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:{_t.MANTLE};border:none;border-radius:11px;font-size:11px;}}"
+            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
             f"QPushButton:hover{{background:{_t.BLUE};}}"
         )
         self._btn_quick_add.clicked.connect(self._on_quick_add)
