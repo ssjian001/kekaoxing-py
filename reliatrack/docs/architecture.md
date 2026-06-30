@@ -22,8 +22,9 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v24
+### Schema 版本：v25
 
+- **v25**：新增 todos 表（待办事项看板模块）
 - **v24**：活动日志加 project_id 列 + 索引 + 后台回填（仪表盘 weekly_closed 按项目筛选，避免跨项目数据泄漏）
 - **v23**：Issue 管理系统（新增 issue_comments/issue_activity_log/issue_links 表 + 看板/列表/详情弹窗 + 状态机含 reopen + 活动日志自动记录 + aging + resolution 强制 + Dashboard KPI + 与 Issue 追踪合并重构）
 - **v22**：归档视图完善（toggle 按钮 + SQL 层过滤 + 联动刷新）；test_plan_edit_dialog 配置修复

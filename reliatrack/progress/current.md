@@ -1,7 +1,7 @@
 # ReliaTrack 当前进度
 
 **最后更新**: 2026-06-29
-**Schema 版本**: v24
+**Schema 版本**: v25 (20 张表，含 todos)
 **测试**: 381 passed
 
 ## 当前状态

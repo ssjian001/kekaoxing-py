@@ -18,7 +18,7 @@ python3 -m venv .venv  # 首次
 
 - Python 3.11+（CI: 3.11/3.12, 本地开发: 3.13）+ PySide6 6.11.1 + apsw (SQLite) + openpyxl / reportlab
 - 架构：MVC 变体 — Controller → Handlers → Services → Repos → DB
-- DB 版本：schema v24（19 张表，新增 project_id 冗余列）
+- DB 版本：schema v25（20 张表，含 todos 表 + project_id 冗余列）
 - 主题：Catppuccin Latte 明亮 / Mocha 暗黑 (theme.py，明暗切换已完整支持)
 
 ## 项目结构
@@ -40,15 +40,16 @@ src/
       equipment_repo.py, issue_repo.py, knowledge_repo.py,
       project_repo.py, sample_repo.py, settings_repo.py,
       technician_repo.py, test_plan_repo.py, test_result_repo.py,
-      test_task_repo.py
+      test_task_repo.py, todo_repo.py
   handlers/             # UI 事件处理层
     crud_helpers.py     # 通用 CRUD 辅助
     equipment_handlers.py, export_handlers.py, issue_handlers.py,
     knowledge_handlers.py, plan_handlers.py, project_handlers.py,
-    refresh_handlers.py, sample_handlers.py, technician_handlers.py
+    refresh_handlers.py, sample_handlers.py, technician_handlers.py,
+    todo_handlers.py
   models/               # 数据模型（dataclass）
     common.py, issue.py, knowledge.py, project.py,
-    sample.py, test_plan.py
+    sample.py, test_plan.py, todo.py
   services/             # 业务逻辑层
     export/             # 导出子模块（PDF/Word/Excel）
     export_service.py   # 导出入口（零 Qt 依赖）
@@ -57,7 +58,7 @@ src/
     project_service.py, sample_service.py,
     scheduler.py, scheduler_service.py,
     settings_service.py, technician_service.py,
-    test_plan_service.py, undo_manager.py
+    test_plan_service.py, todo_service.py, undo_manager.py
   styles/
     constants.py        # 颜色/尺寸常量
     theme.py            # 主题定义
@@ -67,7 +68,7 @@ src/
     dashboard_view.py   # 仪表盘
     equipment_view.py, issue_view.py（已合并至 bug_tracker, 保留向后兼容）, knowledge_view.py,
     project_view.py, sample_view.py, technician_view.py,
-    test_plan_view.py
+    test_plan_view.py, todo_view.py
     bug_tracker/        # Issue 管理系统（看板+列表+FA+CAPA 面板，schema v23 合并重构）
       __init__.py       # BugTrackerView 主容器（看板/列表 Tab 切换）
       kanban_view.py    # 4列拖拽看板（aging色块/closed折叠/状态机约束）
@@ -76,7 +77,7 @@ src/
       quick_create.py   # 快速创建弹窗（C键触发）
       resolve_dialog.py # 关闭流程（resolution强制选择）
       shortcuts.py      # 快捷键管理（C/Ctrl+N/Ctrl+K/←→）
-    dialogs/            # 对话框（25 编辑/配置对话框）
+    dialogs/            # 对话框（26 编辑/配置/待办对话框）
     widgets/            # 自定义控件
       analysis_widget.py, gantt_widget.py,
       result_matrix.py, task_table.py

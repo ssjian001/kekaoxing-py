@@ -23,8 +23,9 @@ python3 -m venv .venv
 - **Issue 管理** — 看板视图（4列拖拽+aging色块+closed折叠）+ 增强列表（横筛选+批量操作+FA/CAPA 面板）+ 详情弹窗（评论+活动日志+FA/CAPA 标签页）+ 快速创建（C键）+ 关闭流程（resolution强制）+ Dashboard KPI（待处理/本周关闭/平均停留/aging警告）
 - **设备管理** — 测试设备台账（资产编号、制造商、精度、校准信息）+ 技术员管理
 - **知识库** — 失效模式经验沉淀
+- **待办事项** — 看板视图（3列拖拽切换状态+快速添加+双击编辑+优先级筛选+项目筛选）
 
-## 8 个 Tab
+## 9 个 Tab
 
 | 索引 | Tab | 核心功能 |
 |-----|-----|---------|
@@ -32,10 +33,10 @@ python3 -m venv .venv
 | 1 | 项目管理 | 项目 CRUD + 搜索 |
 | 2 | 样品管理 | 样品池 + 出入库 + 批量导入 |
 | 3 | 测试计划 | 任务 CRUD + 自动排程 + 甘特图（序号标签+预计/实际切换）+ 结果矩阵（3种模式+Tooltip）+ 失效分析Tab + 今日摘要 + 一键总结报告 + 依赖弹出选择 |
-| 4 | Issue 追踪 | Issue + FA/CAPA（已合并至 Tab 6 Issue 管理，保留兼容） |
-| 5 | 设备管理 | 设备 + 校准 + 技术员（子 Tab） |
-| 6 | 知识库 | 失效模式 CRUD |
-| **6** | **Issue 管理** | **看板(4列拖拽+aging+closed折叠) / 列表(横筛选+批量+FA/CAPA面板) Tab 切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建(C键)** |
+| 4 | 设备管理 | 设备 + 校准 + 技术员（子 Tab） |
+| 5 | 知识库 | 失效模式 CRUD |
+| 6 | Issue 管理 | 看板(4列拖拽+aging+closed折叠) / 列表(横筛选+批量+FA/CAPA面板) Tab 切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建(C键) |
+| 7 | 待办事项 | 看板(3列拖拽切换状态+快速添加+双击编辑+优先级/项目筛选) |
 
 ## 架构
 
@@ -46,7 +47,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   └── schema.py        # SQLite schema（v24）
+│   └── schema.py        # SQLite schema（v25，20张表含todos）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -58,8 +59,9 @@ src/
 │       ├── technician_repo.py
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
-│       └── settings_repo.py
-├── handlers/        # 信号处理（11个Handler类，含export_handlers）
+│       ├── settings_repo.py
+│       └── todo_repo.py
+├── handlers/        # 信号处理（12个Handler类，含export_handlers）
 │   ├── project_handlers.py
 │   ├── sample_handlers.py
 │   ├── plan_handlers.py
@@ -68,7 +70,8 @@ src/
 │   ├── knowledge_handlers.py
 │   ├── export_handlers.py
 │   ├── refresh_handlers.py
-│   └── technician_handlers.py
+│   ├── technician_handlers.py
+│   └── todo_handlers.py
 ├── models/          # 数据模型
 ├── services/        # 业务逻辑层
 │   ├── scheduler.py          # 3阶段排程引擎（611行）
@@ -77,6 +80,7 @@ src/
 │   ├── import_service.py     # Excel 批量导入
 │   ├── holiday_service.py    # 节假日管理
 │   ├── issue_service.py      # Issue + FA + CAPA
+│   ├── todo_service.py       # 待办事项
 │   ├── undo_manager.py       # 撤销操作管理
 │   └── ...
 ├── styles/          # QSS 样式（Catppuccin Latte 明亮主题）
@@ -88,6 +92,7 @@ src/
     ├── issue_view.py          # Issue + FA + CAPA（已合并至 bug_tracker, 保留兼容）
     ├── equipment_view.py      # 设备 + 技术员子Tab
     ├── knowledge_view.py
+    ├── todo_view.py             # 待办看板（3列拖拽+快速添加+双击编辑）
     ├── bug_tracker/           # Issue 管理系统（看板/列表/FA/CAPA 面板，v24合并重构）
     │   ├── kanban_view.py     # 4列拖拽看板（aging色块+closed折叠）
     │   ├── list_view.py       # 增强列表（筛选面板+批量操作）
@@ -112,7 +117,7 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。380 个 pytest 测试全通过（另有 test_boundary 7 项 CI-only 跳过）。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。381 个 pytest 测试全通过（另有 test_boundary 7 项 CI-only 跳过）。
 
 ## CI/CD
 
@@ -123,7 +128,7 @@ E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tes
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v24：活动日志加 project_id 列 + 索引，仪表盘 weekly_closed 按项目筛选；v23：Issue 管理系统（issue_comments/issue_activity_log/issue_links 3张表 + 看板/列表/FA/CAPA面板 + 状态机 + aging + 与 Issue 追踪合并重构）；v22 归档视图完善；v21 Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
+- Schema v25：新增 todos 表（待办事项模块）；v24：活动日志加 project_id 列 + 索引，仪表盘 weekly_closed 按项目筛选；v23：Issue 管理系统（issue_comments/issue_activity_log/issue_links 3张表 + 看板/列表/FA/CAPA面板 + 状态机 + aging + 与 Issue 追踪合并重构）；v22 归档视图完善；v21 Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可
