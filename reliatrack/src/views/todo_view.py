@@ -1,156 +1,404 @@
-"""待办事项 Tab — 轻量级待办列表，按项目筛选。"""
+"""待办事项 Tab — Todoist 风格列表视图。
+
+布局: 项目筛选 → filter tab → 快速添加栏 → 滚动列表(分组+行)。
+每行: 圆形 checkbox + 优先级色点 + 标题 + 日期 + 分类 chip。
+"""
 
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QLineEdit,
-    QMenu,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QFrame,
-    QComboBox,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QLineEdit, QMenu, QScrollArea, QFrame, QComboBox,
+    QSizePolicy, QCheckBox,
 )
-from PySide6.QtCore import Qt, Signal, QEvent
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, Signal, QEvent, QDate, QPropertyAnimation
+from PySide6.QtGui import QColor, QFont, QPalette, QBrush, QPalette
 
 from src.models.todo import TodoItem
 from src.models.project import Project
-from src.styles.constants import VIEW_MARGINS, apply_column_specs
+from src.styles.constants import VIEW_MARGINS
 import src.styles.theme as _theme
 
-_TODO_COLUMN_SPECS = [
-    ("状态", "fixed", 50),
-    ("标题", "interactive", 280),
-    ("优先级", "fixed", 70),
-    ("状态文本", "fixed", 80),
-    ("截止日期", "fixed", 110),
-    ("分类", "fixed", 80),
-]
+# ── 常量 ───────────────────────────────────────────────────────
 
 _PRIORITY_COLORS = {
     "high": "#e64553",
     "medium": "#df8e1d",
     "low": "#40a02b",
 }
+_PRIORITY_CLASS = {
+    "high": "pd-h",
+    "medium": "pd-m",
+    "low": "pd-l",
+}
+_STATUS_LABELS = {"pending": "待处理", "in_progress": "进行中", "done": "已完成"}
 
-_STATUS_CYCLE = {"pending": "in_progress", "in_progress": "done", "done": "pending"}
+# 分组枚举
+GROUP_OVERDUE = "已逾期"
+GROUP_TODAY = "今日"
+GROUP_WEEK = "本周"
+GROUP_LATER = "以后"
+GROUP_NODATE = "待排期"
+GROUP_DONE = "已完成"
 
+_ALL_FILTERS = ["全部", "今日", "本周", "已逾期", "已完成"]
+
+
+# ── 工具函数 ──────────────────────────────────────────────────
+
+def _item_date_str(item: TodoItem) -> str:
+    """返回待办的日期文本，用于分组判断。"""
+    return item.due_date or ""
+
+
+def _is_overdue(due: str) -> bool:
+    """判断是否已逾期（不含今天）。"""
+    if not due:
+        return False
+    today = QDate.currentDate()
+    d = QDate.fromString(due, "yyyy-MM-dd")
+    if not d.isValid():
+        return False
+    return d < today
+
+
+def _is_today(due: str) -> bool:
+    if not due:
+        return False
+    today = QDate.currentDate()
+    d = QDate.fromString(due, "yyyy-MM-dd")
+    return d.isValid() and d == today
+
+
+def _is_this_week(due: str) -> bool:
+    if not due:
+        return False
+    today = QDate.currentDate()
+    d = QDate.fromString(due, "yyyy-MM-dd")
+    if not d.isValid():
+        return False
+    return today < d <= today.addDays(7)
+
+
+def _get_group(item: TodoItem) -> str:
+    """根据待办项确定分组。"""
+    if item.is_done:
+        return GROUP_DONE
+    due = _item_date_str(item)
+    if _is_overdue(due):
+        return GROUP_OVERDUE
+    if _is_today(due):
+        return GROUP_TODAY
+    if _is_this_week(due):
+        return GROUP_WEEK
+    if due:
+        return GROUP_LATER
+    return GROUP_NODATE
+
+
+_GROUP_ORDER = [GROUP_OVERDUE, GROUP_TODAY, GROUP_WEEK, GROUP_LATER, GROUP_NODATE, GROUP_DONE]
+
+
+# ── TodoRow: 单行待办 ─────────────────────────────────────────
+
+class TodoRow(QWidget):
+    """待办事项单行 — checkbox + 优先级色点 + 标题 + 日期 + 分类标签。"""
+
+    toggle_clicked = Signal(int)      # 点击 checkbox
+    edit_requested = Signal(int)       # 双击行
+    selected = Signal(int, object)     # 行被选中 (id, self)
+
+    def __init__(self, todo: TodoItem, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._todo = todo
+        self._selected = False
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setFixedHeight(38)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setSpacing(8)
+
+        # Checkbox
+        self._cb = QCheckBox()
+        self._cb.setChecked(self._todo.is_done)
+        self._cb.setToolTip("点击切换状态")
+        self._cb.setProperty("class", "todo-checkbox")
+        cb_size = 18
+        self._cb.setFixedSize(cb_size, cb_size)
+        self._cb.stateChanged.connect(self._on_toggle)
+        layout.addWidget(self._cb)
+
+        # 优先级色点
+        color = _PRIORITY_COLORS.get(self._todo.priority, _theme.TEXT)
+        dot = QLabel()
+        dot.setFixedSize(7, 7)
+        dot.setStyleSheet(f"background:{color};border-radius:3px;")
+        layout.addWidget(dot)
+
+        # 标题
+        self._title = QLabel(self._todo.title)
+        self._title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        if self._todo.is_done:
+            self._title.setStyleSheet(f"color:{_theme.SUBTEXT0};text-decoration:line-through;")
+        layout.addWidget(self._title)
+
+        # 元信息
+        self._meta_layout = QHBoxLayout()
+        self._meta_layout.setSpacing(6)
+
+        # 日期
+        if self._todo.due_date:
+            date_text = self._todo.due_date
+            today = QDate.currentDate()
+            d = QDate.fromString(self._todo.due_date, "yyyy-MM-dd")
+            if self._todo.is_done:
+                date_text = "已完成"
+                date_color = _theme.SUBTEXT0
+            elif d.isValid() and d < today:
+                date_text = f"逾期 {today.daysTo(d)} 天" if today.daysTo(d) < 0 else "逾期"
+                date_color = "#e64553"
+            elif d.isValid() and d == today:
+                date_text = "今天"
+                date_color = "#df8e1d"
+            else:
+                date_color = _theme.SUBTEXT0
+            date_lbl = QLabel(f"📅 {date_text}")
+            date_lbl.setStyleSheet(f"color:{date_color};font-size:11px;")
+            self._meta_layout.addWidget(date_lbl)
+
+        # 分类 tag
+        if self._todo.category:
+            tag = QLabel(self._todo.category)
+            tag.setStyleSheet(
+                f"color:{_theme.SUBTEXT0};font-size:10px;"
+                f"background:{_theme.SURFACE1};border-radius:8px;padding:1px 6px;"
+            )
+            self._meta_layout.addWidget(tag)
+
+        layout.addLayout(self._meta_layout)
+
+        # 双击编辑
+        self._title.installEventFilter(self)
+        self._cb.installEventFilter(self)
+
+    def _on_toggle(self, checked: int) -> None:
+        """checkbox 状态变更时发射信号。"""
+        if self._todo.id is not None:
+            self.toggle_clicked.emit(self._todo.id)
+
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() == QEvent.Type.MouseButtonDblClick:
+            if self._todo.id is not None:
+                self.edit_requested.emit(self._todo.id)
+            return True
+        return super().eventFilter(obj, event)
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if self._todo.id is not None:
+            self.edit_requested.emit(self._todo.id)
+
+    def mousePressEvent(self, event) -> None:
+        """单击选中行。"""
+        if self._todo.id is not None:
+            self.selected.emit(self._todo.id, self)
+        super().mousePressEvent(event)
+
+    def set_selected(self, selected: bool) -> None:
+        self._selected = selected
+        bg = "#E2E8F0" if selected else "transparent"
+        self.setStyleSheet(f"background:{bg};")
+
+
+# ── GroupHeader: 分组标题 ─────────────────────────────────────
+
+class GroupHeader(QWidget):
+    """分组标题 — 文字 + 计数 + 可折叠。"""
+
+    def __init__(self, name: str, count: int, collapsed: bool = False,
+                 parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._name = name
+        self._count = count
+        self._collapsed = collapsed
+        self.setFixedHeight(32)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 0, 12, 0)
+
+        # 折叠箭头
+        arrow = QPushButton("▶" if collapsed else "▼")
+        arrow.setFixedSize(16, 16)
+        arrow.setStyleSheet(
+            "QPushButton{background:transparent;border:none;font-size:9px;color:%s;}" % _theme.SUBTEXT0
+        )
+        arrow.clicked.connect(self._on_toggle)
+        layout.addWidget(arrow)
+
+        label = QLabel(name)
+        label.setStyleSheet(f"font-weight:700;font-size:11px;color:{_theme.SUBTEXT0};letter-spacing:.5px;")
+        layout.addWidget(label)
+
+        count_lbl = QLabel(str(count))
+        count_lbl.setFixedHeight(16)
+        count_lbl.setMinimumWidth(18)
+        count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        count_lbl.setStyleSheet(
+            f"font-size:10px;color:{_theme.SUBTEXT0};background:{_theme.SURFACE1};"
+            f"border-radius:8px;padding:0 5px;"
+        )
+        layout.addWidget(count_lbl)
+
+        layout.addStretch()
+        self._collapsed_widget = None
+
+    def _on_toggle(self) -> None:
+        self._collapsed = not self._collapsed
+        if self._collapsed_widget:
+            self._collapsed_widget.setVisible(not self._collapsed)
+        # 更新箭头
+        btn = self.layout().itemAt(0).widget()
+        if isinstance(btn, QPushButton):
+            btn.setText("▶" if self._collapsed else "▼")
+
+    def set_collapsible_target(self, widget: QWidget) -> None:
+        self._collapsed_widget = widget
+
+
+# ── TodoView: 主视图 ──────────────────────────────────────────
 
 class TodoView(QWidget):
-    """待办事项视图 — 项目筛选 + 表格列表。"""
+    """待办事项视图 — Todoist 风格列表。"""
 
     todo_changed = Signal()
-
-    _COLUMNS = [
-        ("状态", "status"),       # 0 — checkbox 列
-        ("标题", "title"),         # 1
-        ("优先级", "priority"),    # 2 — 颜色标记
-        ("状态", "status_label"),  # 3
-        ("截止日期", "due_date"),  # 4
-        ("分类", "category"),      # 5
-    ]
+    toggle_requested = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._todo_list: list[TodoItem] = []
         self._all_projects: list[Project] = []
+        self._current_filter = "全部"
+        self._selected_todo_id: int | None = None
+        self._selected_row: TodoRow | None = None
+        self._collapse_state: dict[str, bool] = {}
         self._setup_ui()
 
     # ── UI 构建 ────────────────────────────────────────────────
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(*VIEW_MARGINS)
-        layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # 工具栏
+        # ── 顶部工具栏 ──
         toolbar = QHBoxLayout()
+        toolbar.setContentsMargins(*VIEW_MARGINS)
         toolbar.setSpacing(8)
 
         self._project_combo = QComboBox()
-        self._project_combo.setMinimumWidth(180)
+        self._project_combo.setMinimumWidth(160)
         self._project_combo.addItem("全部项目", None)
         self._project_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         toolbar.addWidget(QLabel("项目:"))
         toolbar.addWidget(self._project_combo)
 
-        self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("搜索待办标题…")
-        self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setMinimumWidth(160)
-        self._search_edit.textChanged.connect(self._on_search)
-        toolbar.addWidget(self._search_edit)
-
         toolbar.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
-        self.btn_edit.setMinimumWidth(70)
-        self.btn_edit.setToolTip("编辑选中待办 (F2)")
+        self.btn_edit.setMinimumWidth(60)
         toolbar.addWidget(self.btn_edit)
 
         self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "danger")
-        self.btn_delete.setMinimumWidth(70)
-        self.btn_delete.setToolTip("删除选中待办 (Delete)")
+        self.btn_delete.setMinimumWidth(60)
         toolbar.addWidget(self.btn_delete)
-
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setProperty("class", "separator")
-        toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新增")
         self.btn_add.setProperty("class", "primary")
-        self.btn_add.setMinimumWidth(70)
+        self.btn_add.setMinimumWidth(60)
         self.btn_add.setToolTip("新增待办事项 (Ctrl+N)")
         toolbar.addWidget(self.btn_add)
         layout.addLayout(toolbar)
 
-        # 表格
-        self._table = QTableWidget()
-        apply_column_specs(self._table, _TODO_COLUMN_SPECS, "todo_table")
-        self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._table.setAlternatingRowColors(True)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setSortingEnabled(True)
+        # ── Filter tab bar ──
+        self._filter_bar = QHBoxLayout()
+        self._filter_bar.setContentsMargins(12, 0, 12, 0)
+        self._filter_bar.setSpacing(4)
+        self._filter_btns: list[QPushButton] = []
+        for i, name in enumerate(_ALL_FILTERS):
+            btn = QPushButton(name)
+            btn.setCheckable(True)
+            btn.setChecked(i == 0)
+            btn.setProperty("class", "filter-tab")
+            btn.setFixedHeight(26)
+            btn.clicked.connect(lambda checked, f=name: self._set_filter(f))
+            self._filter_btns.append(btn)
+            self._filter_bar.addWidget(btn)
+        self._filter_bar.addStretch()
+        layout.addLayout(self._filter_bar)
 
-        self._table.cellClicked.connect(self._on_cell_clicked)
-        self._table.cellDoubleClicked.connect(self._on_double_click)
-        layout.addWidget(self._table)
+        # ── 快速添加栏 ──
+        quick_bar = QHBoxLayout()
+        quick_bar.setContentsMargins(12, 6, 12, 6)
+        quick_bar.setSpacing(6)
+        self._quick_add = QLineEdit()
+        self._quick_add.setPlaceholderText("快速添加待办… (输入后回车)")
+        self._quick_add.setClearButtonEnabled(True)
+        self._quick_add.setFixedHeight(30)
+        self._quick_add.returnPressed.connect(self._on_quick_add)
+        quick_bar.addWidget(self._quick_add)
+        self._btn_quick_add = QPushButton("添加")
+        self._btn_quick_add.setProperty("class", "primary")
+        self._btn_quick_add.setFixedHeight(30)
+        self._btn_quick_add.clicked.connect(self._on_quick_add)
+        quick_bar.addWidget(self._btn_quick_add)
+        layout.addLayout(quick_bar)
 
-        # 右键菜单
-        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self._table.customContextMenuRequested.connect(self._show_context_menu)
-        self._context_menu = QMenu(self._table)
-        self._ctx_act_toggle = self._context_menu.addAction("切换状态")
-        self._ctx_act_edit = self._context_menu.addAction("编辑")
-        self._ctx_act_delete = self._context_menu.addAction("删除")
-        self._ctx_act_toggle.triggered.connect(self._on_ctx_toggle)
-        self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
-        self._ctx_act_delete.triggered.connect(self._on_ctx_delete)
+        # ── 滚动列表区域 ──
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # 空状态提示
+        self._scroll_content = QWidget()
+        self._scroll_layout = QVBoxLayout(self._scroll_content)
+        self._scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self._scroll_layout.setSpacing(0)
+        self._scroll_layout.addStretch()  # 撑满空间
+        self._scroll.setWidget(self._scroll_content)
+
+        layout.addWidget(self._scroll, stretch=1)
+
+        # ── 空状态 ──
         self._empty_label = QLabel("暂无待办事项")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
-        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._empty_label.setParent(self._table)
+        self._empty_label.setStyleSheet(f"color:{_theme.SUBTEXT0};font-size:14px;padding:40px;")
         self._empty_label.hide()
-        self._table.installEventFilter(self)
+        self._scroll_content.layout().addWidget(self._empty_label)
+
+    # ── Filter ────────────────────────────────────────────────
+
+    def _set_filter(self, name: str) -> None:
+        self._current_filter = name
+        for btn in self._filter_btns:
+            btn.setChecked(btn.text() == name)
+        self._populate()
+
+    # ── Quick Add ─────────────────────────────────────────────
+
+    def _on_quick_add(self) -> None:
+        text = self._quick_add.text().strip()
+        if not text:
+            return
+        self._quick_add.clear()
+        self.quick_add_created.emit(text, self._project_combo.currentData())
+
+    quick_add_created = Signal(str, object)  # title, project_id
 
     # ── 项目筛选 ──────────────────────────────────────────────
 
     def set_projects(self, projects: list[Project]) -> None:
-        """设置项目下拉列表。"""
         self._all_projects = projects
         self._project_combo.blockSignals(True)
         current_id = self._project_combo.currentData()
@@ -158,7 +406,6 @@ class TodoView(QWidget):
         self._project_combo.addItem("全部项目", None)
         for p in projects:
             self._project_combo.addItem(p.name, p.id)
-        # 恢复选中
         if current_id is not None:
             for i in range(self._project_combo.count()):
                 if self._project_combo.itemData(i) == current_id:
@@ -167,160 +414,147 @@ class TodoView(QWidget):
         self._project_combo.blockSignals(False)
 
     def get_selected_project_id(self) -> int | None:
-        """获取当前选中的项目 ID（None = 全部）。"""
         return self._project_combo.currentData()
 
     def _on_project_filter_changed(self, _index: int) -> None:
-        """项目筛选变化时重新填充表格。"""
-        self._populate_table(self._todo_list)
+        self._populate()
 
     # ── 数据加载 ──────────────────────────────────────────────
 
     def refresh(self, todo_list: list[TodoItem], projects: list[Project] | None = None) -> None:
-        """刷新待办表格。"""
         if projects is not None:
             self.set_projects(projects)
         self._todo_list = todo_list
-        self._populate_table(todo_list)
+        self._populate()
 
-    def _populate_table(self, items: list[TodoItem]) -> None:
-        """填充表格（按项目筛选后）。"""
+    def _populate(self) -> None:
+        """按当前 filter + 项目筛选后渲染。"""
+        # 清空滚动区域（保留 stretch + empty_label）
+        self._clear_scroll()
+        self._selected_todo_id = None
+        self._selected_row = None
+
+        # 项目筛选
         project_id = self._project_combo.currentData()
+        filtered = self._todo_list
         if project_id is not None:
-            items = [t for t in items if t.project_id == project_id]
+            filtered = [t for t in filtered if t.project_id == project_id]
 
-        self._table.setSortingEnabled(False)
-        header = self._table.horizontalHeader()
-        header.blockSignals(True)
-        self._table.setRowCount(len(items))
-        for row, todo in enumerate(items):
-            for col, (_, attr) in enumerate(self._COLUMNS):
-                value = getattr(todo, attr, "")
-                text = str(value) if value else ""
-                item = QTableWidgetItem(text)
-                item.setData(Qt.ItemDataRole.UserRole, todo.id)
-                if col == 0:
-                    # 状态列 — checkbox 样式
-                    item.setText("✓" if todo.is_done else "○")
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    if todo.is_done:
-                        item.setForeground(QColor("#40a02b"))
-                    else:
-                        item.setForeground(QColor(_theme.SUBTEXT0))
-                elif col == 1:
-                    # 标题
-                    if todo.is_done:
-                        item.setForeground(QColor(_theme.SUBTEXT0))
-                    if len(text) > 80:
-                        item.setToolTip(text)
-                elif col == 2:
-                    # 优先级 — 颜色标记
-                    item.setText(todo.priority_label)
-                    color = _PRIORITY_COLORS.get(todo.priority, _theme.TEXT)
-                    item.setForeground(QColor(color))
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                elif col == 3:
-                    # 状态文本
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                elif col == 4:
-                    # 截止日期
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                elif col == 5:
-                    # 分类
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self._table.setItem(row, col, item)
-        header.blockSignals(False)
-        self._table.setSortingEnabled(True)
-        self._update_empty_state()
+        # Filter tab 筛选
+        today_str = QDate.currentDate().toString("yyyy-MM-dd")
+        if self._current_filter == "今日":
+            filtered = [t for t in filtered if _is_today(_item_date_str(t))]
+        elif self._current_filter == "本周":
+            filtered = [t for t in filtered if _is_this_week(_item_date_str(t)) or _is_today(_item_date_str(t))]
+        elif self._current_filter == "已逾期":
+            filtered = [t for t in filtered if _is_overdue(_item_date_str(t))]
+        elif self._current_filter == "已完成":
+            filtered = [t for t in filtered if t.is_done]
 
-    # ── 选中 & 搜索 ──────────────────────────────────────────
+        # 分组
+        groups: dict[str, list[TodoItem]] = {g: [] for g in _GROUP_ORDER}
+        for item in filtered:
+            g = _get_group(item)
+            groups[g].append(item)
+
+        # 渲染
+        has_items = False
+        collapse_state = self._collapse_state
+
+        for group_name in _GROUP_ORDER:
+            items = groups.get(group_name, [])
+            if not items:
+                continue
+            if self._current_filter != "全部":
+                # 在 filter 模式下，不显示分组标题，直接列出
+                for item in items:
+                    self._add_row(item)
+                    has_items = True
+                continue
+
+            has_items = True
+            # Group header
+            collapsed = collapse_state.get(group_name, False)
+            header = GroupHeader(group_name, len(items), collapsed)
+            self._scroll_layout.insertWidget(
+                self._scroll_layout.count() - 1, header
+            )
+            # Group items container
+            container = QWidget()
+            container_layout = QVBoxLayout(container)
+            container_layout.setContentsMargins(0, 0, 0, 0)
+            container_layout.setSpacing(0)
+            for item in items:
+                row_w = TodoRow(item)
+                row_w.toggle_clicked.connect(self._on_row_toggle)
+                row_w.edit_requested.connect(self._on_row_edit)
+                row_w.selected.connect(self._on_row_selected)
+                container_layout.addWidget(row_w)
+            if collapsed:
+                container.hide()
+            header.set_collapsible_target(container)
+            # 保存折叠状态
+            hdr_state = collapse_state
+            hdr_name = group_name
+            original_toggle = header._on_toggle
+            def _new_toggle(h=hdr, name=hdr_name, state=hdr_state):
+                h._collapsed = not h._collapsed
+                if h._collapsed_widget:
+                    h._collapsed_widget.setVisible(not h._collapsed)
+                arrow_btn = h.layout().itemAt(0).widget()
+                if isinstance(arrow_btn, QPushButton):
+                    arrow_btn.setText("▶" if h._collapsed else "▼")
+                state[name] = h._collapsed
+            header._on_toggle = _new_toggle
+
+        if not has_items:
+            self._empty_label.show()
+
+    def _clear_scroll(self) -> None:
+        """清空所有行（保留 stretch 和 empty_label）。"""
+        self._empty_label.hide()
+        layout = self._scroll_layout
+        # 移除除最后两个（stretch + empty_label）以外的所有项
+        for i in reversed(range(layout.count() - 2)):
+            item = layout.takeAt(i)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def _add_row(self, todo: TodoItem) -> None:
+        """在非分组模式（filter 已应用）下添加单行。"""
+        row = TodoRow(todo)
+        row.toggle_clicked.connect(self._on_row_toggle)
+        row.edit_requested.connect(self._on_row_edit)
+        row.selected.connect(self._on_row_selected)
+        self._scroll_layout.insertWidget(self._scroll_layout.count() - 1, row)
+
+    def _on_row_toggle(self, todo_id: int) -> None:
+        self.toggle_requested.emit(todo_id)
+
+    def _on_row_edit(self, todo_id: int) -> None:
+        self.btn_edit.click()
+
+    def _on_row_selected(self, todo_id: int, row: TodoRow) -> None:
+        """选中一行，取消之前的选中。"""
+        if self._selected_row and self._selected_row is not row:
+            self._selected_row.set_selected(False)
+        row.set_selected(True)
+        self._selected_row = row
+        self._selected_todo_id = todo_id
+
+    # ── 选中支持 ──────────────────────────────────────────────
 
     def get_selected_todo(self) -> TodoItem | None:
-        """获取当前选中的待办对象。"""
-        row = self._table.currentRow()
-        if row < 0:
+        """获取当前选中的待办。"""
+        tid = self._selected_todo_id
+        if tid is None:
             return None
-        id_item = self._table.item(row, 0)
-        if id_item is None:
-            return None
-        target_id = id_item.data(Qt.ItemDataRole.UserRole)
-        for todo in self._todo_list:
-            if todo.id == target_id:
-                return todo
+        for t in self._todo_list:
+            if t.id == tid:
+                return t
         return None
-
-    def _on_search(self, text: str) -> None:
-        """客户端搜索过滤。"""
-        keyword = text.strip().lower()
-        if not keyword:
-            self._populate_table(self._todo_list)
-            return
-        filtered = [
-            t for t in self._todo_list
-            if keyword in (t.title or "").lower()
-        ]
-        self._populate_table(filtered)
-
-    def _on_cell_clicked(self, row: int, col: int) -> None:
-        """点击状态列切换状态。"""
-        if col == 0:
-            todo = self._find_todo_by_row(row)
-            if todo is not None and todo.id is not None:
-                from src.services.todo_service import TodoService
-                # 通过 handler 切换
-                self.toggle_requested.emit(todo.id)
-
-    def _find_todo_by_row(self, row: int) -> TodoItem | None:
-        id_item = self._table.item(row, 0)
-        if id_item is None:
-            return None
-        target_id = id_item.data(Qt.ItemDataRole.UserRole)
-        for todo in self._todo_list:
-            if todo.id == target_id:
-                return todo
-        return None
-
-    def _on_double_click(self, row: int, _col: int) -> None:
-        """双击行触发编辑。"""
-        self.btn_edit.click()
-
-    # ── 右键菜单 ──────────────────────────────────────────────
-
-    def _show_context_menu(self, pos) -> None:
-        row = self._table.rowAt(pos.y())
-        if row < 0:
-            return
-        self._table.selectRow(row)
-        self._context_menu.exec(self._table.viewport().mapToGlobal(pos))
-
-    def _on_ctx_toggle(self) -> None:
-        if todo := self.get_selected_todo():
-            if todo.id is not None:
-                self.toggle_requested.emit(todo.id)
-
-    def _on_ctx_edit(self) -> None:
-        self.btn_edit.click()
-
-    def _on_ctx_delete(self) -> None:
-        self.btn_delete.click()
 
     # ── 信号 ──────────────────────────────────────────────────
 
-    toggle_requested = Signal(int)  # 切换状态信号，携带 todo_id
-
     def emit_todo_changed(self) -> None:
         self.todo_changed.emit()
-
-    # ── 空状态 ────────────────────────────────────────────────
-
-    def _update_empty_state(self) -> None:
-        if self._table.rowCount() == 0:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-            self._empty_label.show()
-        else:
-            self._empty_label.hide()
-
-    def eventFilter(self, obj, event) -> bool:
-        if obj is self._table and event.type() == QEvent.Type.Resize:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-        return super().eventFilter(obj, event)

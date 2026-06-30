@@ -29,6 +29,24 @@ class TodoHandlers:
         v.btn_edit.clicked.connect(self._on_todo_edit)
         v.btn_delete.clicked.connect(self._on_todo_delete)
         v.toggle_requested.connect(self._on_todo_toggle)
+        v.quick_add_created.connect(self._on_todo_quick_add)
+
+    def _on_todo_quick_add(self, title: str, project_id: object) -> None:
+        """快速添加待办（从顶部输入框）。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.todo_service:
+            return
+        data: dict[str, object] = {"title": title}
+        if project_id is not None:
+            data["project_id"] = project_id
+        exec_crud(
+            win=self._win,
+            action=ctrl.todo_service.create,
+            action_kwargs=data,
+            toast_msg=f"待办「{title}」已创建",
+            entity="todo",
+            error_title="创建失败",
+        )
 
     def _on_todo_add(self) -> None:
         """新建待办事项。"""
