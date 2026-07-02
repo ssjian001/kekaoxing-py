@@ -363,7 +363,7 @@ class _GanttWidget(QWidget):
                            Qt.AlignmentFlag.AlignCenter, "今天")
 
         # ── 任务条 ──
-        p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
+        p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL - 2))
         # 画任务时排除冻结表头区域，防止任务内容覆盖表头
         if vy > 0:
             # 任务区域：表头下方
@@ -376,9 +376,9 @@ class _GanttWidget(QWidget):
             if i % 2 == 1:
                 p.fillRect(0, y, w, self._row_height, QColor(_theme.MANTLE))
 
-            # 序号 + 任务名称标签 — 8pt 字体，根据可用宽度自动省略
+            # 序号 + 任务名称标签 — 10pt 字体，根据可用宽度自动省略
             p.setPen(QColor(_theme.TEXT))
-            p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL))
+            p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL - 2))
             fm = p.fontMetrics()
             seq_label = f"{self._task_prefix}-{i + 1:03d}" if self._task_prefix else str(i + 1)
             display = f"{seq_label}. {task.name}"
