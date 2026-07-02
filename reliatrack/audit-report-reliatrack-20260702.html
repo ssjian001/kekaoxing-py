@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReliaTrack 审计报告</title>
+<style>
+  :root {
+    --sidebar-bg: #1a1f2e; --sidebar-hover: #242a3d; --sidebar-active: #2d3555;
+    --bg: #f0f3f7; --card-bg: #ffffff; --border: #e6eaef;
+    --text: #1e2233; --text-secondary: #6b7394;
+    --accent: #3370ff; --accent-light: #e8f0ff;
+    --success: #34c759; --warning: #ff9500; --danger: #ff3b30; --info: #5ac8fa;
+    --badge-critical: #ff3b30; --badge-high: #ff9500; --badge-medium: #3370ff;
+    --badge-low: #8e8e93; --badge-info: #5ac8fa; --bar-bg: #e8eaed;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; display: flex; min-height: 100vh; font-size: 15px; }
+  .sidebar { width: 240px; background: var(--sidebar-bg); color: #fff; flex-shrink: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .sidebar-header h1 { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+  .sidebar-header .sub { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 4px; }
+  .sidebar-nav { padding: 8px 0; flex: 1; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 12px; padding: 14px 20px; color: rgba(255,255,255,.6); text-decoration: none; font-size: 14px; transition: all .15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: var(--sidebar-hover); color: #fff; }
+  .sidebar-nav a.active { background: var(--sidebar-active); color: #fff; border-left-color: var(--accent); }
+  .sidebar-nav a .icon { width: 18px; text-align: center; font-size: 14px; }
+  .sidebar-footer { padding: 12px 20px; border-top: 1px solid rgba(255,255,255,.06); font-size: 11px; color: rgba(255,255,255,.3); }
+  .main { flex: 1; min-width: 0; padding: 32px 40px 80px; }
+  .page-header { margin-bottom: 32px; }
+  .page-header h2 { font-size: 26px; font-weight: 700; }
+  .page-header .meta { font-size: 14px; color: var(--text-secondary); margin-top: 6px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .page-header .meta span { display: flex; align-items: center; gap: 4px; }
+  .card { background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px; overflow: hidden; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 15px; }
+  .card-body { padding: 24px; }
+  .score-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .score-item { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); }
+  .score-item .label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .4px; }
+  .score-item .bar-row { display: flex; align-items: center; gap: 12px; }
+  .score-item .bar-track { flex: 1; height: 10px; background: var(--bar-bg); border-radius: 5px; overflow: hidden; }
+  .score-item .bar-fill { height: 100%; border-radius: 5px; transition: width .6s ease; }
+  .score-item .value { font-size: 22px; font-weight: 700; min-width: 52px; text-align: right; }
+  .score-item .grade { font-size: 15px; font-weight: 700; min-width: 22px; text-align: center; }
+  .bar-fill.s { background: linear-gradient(90deg, #34c759, #30d158); }
+  .bar-fill.a { background: linear-gradient(90deg, #3370ff, #5e8cff); }
+  .bar-fill.b { background: linear-gradient(90deg, #ff9500, #ffb340); }
+  .bar-fill.c { background: linear-gradient(90deg, #ff3b30, #ff6b61); }
+  .bar-fill.d { background: linear-gradient(90deg, #ff6b61, #ff9f91); }
+  .bar-fill.f { background: linear-gradient(90deg, #9b1d1a, #d63031); }
+  .grade-s { color: #34c759; } .grade-a { color: #3370ff; }
+  .grade-b { color: #ff9500; } .grade-c { color: #ff3b30; }
+  .grade-d { color: #ff6b61; } .grade-f { color: #9b1d1a; }
+  .overall-row { grid-column: 1 / -1; background: linear-gradient(135deg, #1a1f2e, #2d3555); border-color: transparent; }
+  .overall-row .label { color: rgba(255,255,255,.6); }
+  .overall-row .value { color: #fff; }
+  .overall-row .grade { color: #34c759; }
+  .overall-row .bar-fill { background: linear-gradient(90deg, #34c759, #30d158); }
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat-card { flex: 1; min-width: 140px; padding: 20px 24px; background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border); text-align: center; }
+  .stat-card .num { font-size: 32px; font-weight: 700; line-height: 1.3; }
+  .stat-card .desc { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .finding { border-left: 4px solid var(--border); margin-bottom: 20px; padding: 20px 24px; border-radius: 0 10px 10px 0; background: #fafbfc; border: 1px solid var(--border); border-left-width: 4px; }
+  .finding.severity-critical { border-left-color: var(--badge-critical); }
+  .finding.severity-high { border-left-color: var(--badge-high); }
+  .finding.severity-medium { border-left-color: var(--badge-medium); }
+  .finding.severity-low { border-left-color: var(--badge-low); }
+  .finding.severity-info { border-left-color: var(--badge-info); }
+  .finding-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .finding-header h4 { font-size: 16px; font-weight: 600; flex: 1; }
+  .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; line-height: 1.6; }
+  .badge-critical { background: #ffeae9; color: var(--badge-critical); }
+  .badge-high { background: #fff3e0; color: var(--badge-high); }
+  .badge-medium { background: var(--accent-light); color: var(--badge-medium); }
+  .badge-low { background: #f2f2f5; color: var(--badge-low); }
+  .badge-info { background: #e4f5ff; color: #007aff; }
+  .badge-confirmed { background: #e8ffe8; color: #248a3d; }
+  .badge-suspected { background: #fff8e1; color: #b8860b; }
+  .badge-s { background: #e8ffe8; color: #248a3d; }
+  .badge-a { background: var(--accent-light); color: var(--accent); }
+  .badge-b { background: #fff3e0; color: var(--warning); }
+  .badge-c { background: #ffeae9; color: var(--danger); }
+  .finding-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+  .finding-meta span { display: flex; align-items: center; gap: 4px; }
+  .finding .evidence { margin: 12px 0; padding: 14px 18px; background: #f0f2f5; border-radius: 8px; font-family: "SF Mono","Fira Code","Consolas",monospace; font-size: 13px; line-height: 1.8; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .finding .problem { font-size: 14px; margin: 12px 0; color: var(--text); line-height: 1.8; }
+  .finding .fix-box { margin-top: 12px; padding: 14px 18px; background: #f0f7ff; border-radius: 8px; border: 1px solid #d6e4ff; font-size: 13px; }
+  .finding .fix-box code { display: block; margin-top: 6px; padding: 12px 16px; background: #1e2233; color: #cdd6f4; border-radius: 6px; font-family: "SF Mono","Fira Code","Consolas",monospace; font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+  .fix-label { font-weight: 600; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: .3px; }
+  .section-title { font-size: 20px; font-weight: 700; margin: 36px 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 12px 16px; font-weight: 600; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 2px solid var(--border); background: #f8fafc; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
+  .check-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-size: 14px; line-height: 1.6; }
+  .check-item .check { color: var(--success); font-weight: 700; }
+  .check-item .cross { color: var(--danger); font-weight: 700; }
+  .win-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .win-card { padding: 16px; background: linear-gradient(135deg, #f0f7ff, #e8f0ff); border-radius: 8px; border: 1px solid #d6e4ff; }
+  .win-card .win-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .win-card .win-meta { font-size: 11px; color: var(--text-secondary); }
+  .small { font-size: 13px; color: var(--text-secondary); }
+  .code-block { margin: 8px 0; padding: 14px 18px; background: #1e2233; color: #cdd6f4; border-radius: 6px; font-family: "SF Mono","Fira Code","Consolas",monospace; font-size: 13px; overflow-x: auto; white-space: pre; line-height: 1.7; }
+  .hl { color: #f7768e; font-weight: 600; } .cm { color: #565f89; }
+  .kw { color: #bb9af7; } .fn { color: #7aa2f7; }
+  .ty { color: #ff9e64; } .op { color: #89ddff; }
+  .str { color: #9ece6a; } .nu { color: #ff9e64; }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { padding: 16px; } .score-grid { grid-template-columns: 1fr; } .stats-row { flex-direction: column; } .check-list { grid-template-columns: 1fr; } .win-grid { grid-template-columns: 1fr; } }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a8adb8; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h1>ReliaTrack</h1>
+    <div class="sub">全量审计 · 2026-07-02</div>
+  </div>
+  <div class="sidebar-nav">
+    <a href="#summary"><span class="icon">📊</span> 总览</a>
+    <a href="#executive-summary"><span class="icon">📝</span> 总体评估</a>
+    <a href="#coverage"><span class="icon">🧭</span> 覆盖矩阵</a>
+    <a href="#findings"><span class="icon">🔍</span> 详细发现</a>
+    <a href="#architecture"><span class="icon">🏗</span> 架构</a>
+    <a href="#security"><span class="icon">🔒</span> 安全</a>
+    <a href="#stability"><span class="icon">⚡</span> 稳定性</a>
+    <a href="#testing"><span class="icon">🧪</span> 测试</a>
+    <a href="#maintainability"><span class="icon">📐</span> 可维护性</a>
+    <a href="#data-integrity"><span class="icon">🧱</span> 数据完整性</a>
+    <a href="#fallback"><span class="icon">🛡</span> 错误降级</a>
+    <a href="#configuration"><span class="icon">⚙️</span> 配置</a>
+    <a href="#principles"><span class="icon">📋</span> 工程原则</a>
+    <a href="#fix-order"><span class="icon">🎯</span> 修复顺序</a>
+  </div>
+  <div class="sidebar-footer">Fuck My Shit Mountain · Hermes Agent</div>
+</nav>
+
+<div class="main">
+
+  <div class="page-header" id="summary">
+    <h2>ReliaTrack — 全量代码审计</h2>
+    <div class="meta">
+      <span>📅 2026-07-02</span>
+      <span>🔍 Full Audit (25 维度)</span>
+      <span>🛠 Hermes Agent + DeepSeek 交叉验证</span>
+      <span>📊 32,000 行 Python · 150 文件 · 394 tests</span>
+    </div>
+  </div>
+
+  <!-- SCORE DASHBOARD -->
+  <div class="card">
+    <div class="card-header">📊 评分面板</div>
+    <div class="card-body">
+      <div class="score-grid">
+
+        <div class="score-item">
+          <div class="label">Security</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill a" style="width:75%"></div></div>
+            <span class="value grade-a">7.5</span>
+            <span class="grade grade-a">A</span>
+          </div>
+          <div class="small">参数化查询扎实，3 个 repo 跳过 _safe_kwargs</div>
+        </div>
+
+        <div class="score-item">
+          <div class="label">Stability</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill b" style="width:60%"></div></div>
+            <span class="value grade-b">6.0</span>
+            <span class="grade grade-b">B</span>
+          </div>
+          <div class="small">ExportWorker 跨线程 DB + schema 迁移不可回滚</div>
+        </div>
+
+        <div class="score-item">
+          <div class="label">Performance</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill a" style="width:90%"></div></div>
+            <span class="value grade-a">9.0</span>
+            <span class="grade grade-a">A</span>
+          </div>
+          <div class="small">WAL + 64MB cache，无热点瓶颈</div>
+        </div>
+
+        <div class="score-item">
+          <div class="label">Testing</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill c" style="width:50%"></div></div>
+            <span class="value grade-c">5.0</span>
+            <span class="grade grade-c">C</span>
+          </div>
+          <div class="small">19 模块零测试，E2E 被 CI 排除，重度 Mock</div>
+        </div>
+
+        <div class="score-item">
+          <div class="label">Maintainability</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill b" style="width:65%"></div></div>
+            <span class="value grade-b">6.5</span>
+            <span class="grade grade-b">B</span>
+          </div>
+          <div class="small">plan_handlers 1109 行神类，schema.py 1428 行</div>
+        </div>
+
+        <div class="score-item">
+          <div class="label">Design</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill a" style="width:70%"></div></div>
+            <span class="value grade-a">7.0</span>
+            <span class="grade grade-a">A</span>
+          </div>
+          <div class="small">MVC 变体清晰，View 直接 import Service 2 处</div>
+        </div>
+
+        <div class="score-item">
+          <div class="label">Release</div>
+          <div class="bar-row">
+            <div class="bar-track"><div class="bar-fill a" style="width:75%"></div></div>
+            <span class="value grade-a">7.5</span>
+            <span class="grade grade-a">A</span>
+          </div>
+          <div class="small">CI matrix 3.11/3.12 + PyInstaller 双平台</div>
+        </div>
+
+        <div class="score-item overall-row">
+          <div class="label">Overall</div>
+          <div class="bar-row">
+            <div class="bar-track" style="background:rgba(255,255,255,.12)"><div class="bar-fill" style="width:69%;background:linear-gradient(90deg,#ff9500,#ffb340)"></div></div>
+            <span class="value" style="color:#fff">6.9</span>
+            <span class="grade" style="color:#ff9500">B</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <h3 class="section-title" id="executive-summary">📝 总体评估</h3>
+  <div class="card">
+    <div class="card-header">📋 总体评估</div>
+    <div class="card-body">
+      <p><strong>项目概况：</strong>ReliaTrack 是可靠性测试全生命周期管理桌面应用（PySide6 6.11 + SQLite/apsw），MVC 变体架构，20 张表 schema v25，32,000 行 Python，394 tests passing。覆盖项目管理、样品追踪、测试计划/任务/结果、Issue 追踪（看板+FA/CAPA）、知识库、待办等模块。</p>
+      <p style="margin-top:12px"><strong>主要风险：</strong>最大风险是 ExportWorker 在 QThread 中跨线程访问主线程的 apsw.Connection——导出期间并发操作 DB 有段错误/数据损坏风险。其次是 19 个 src 模块（含 AppController、import_service、全部 views/dialogs）完全无测试覆盖，而最全面的 E2E 测试（539 行）被 pytest collect_ignore 排除在 CI 之外。</p>
+      <p style="margin-top:12px"><strong>亮点：</strong>SQL 参数化查询做得扎实（全部使用 ? 占位符）；_safe_kwargs 列名白名单是好的安全实践；外键约束完整（CASCADE/SET NULL 合理搭配）；WAL 模式 + busy_timeout=5000；附件安全（symlink 拒绝 + resolve 校验）；导出路径遍历保护；启动自动备份 + 30 天清理；394 tests 全通过；命名统一 snake_case；无循环依赖。</p>
+      <p style="margin-top:12px"><strong>优先修复：</strong>(1) ExportWorker 线程安全 — 子线程创建独立 DB 连接；(2) test_e2e_full.py 纳入 CI；(3) IssueRepo/KnowledgeRepo/TodoRepo list_all 补 _safe_kwargs；(4) AppController 冒烟测试。</p>
+      <p style="margin-top:12px"><strong>总评：</strong>B (6.9/10) — 扎实的个人项目，架构清晰、安全基础好、CI/CD 完善。主要扣分在测试覆盖（19 模块零覆盖 + E2E 被排除）和稳定性（跨线程 DB）。这些问题不会阻塞当前使用，但在功能继续扩展时会成为负债。</p>
+    </div>
+  </div>
+
+  <!-- COVERAGE MATRIX -->
+  <h3 class="section-title" id="coverage">🧭 覆盖矩阵</h3>
+  <div class="card">
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th style="width:120px">覆盖度</th><th>检查证据</th><th>排除/限制</th></tr></thead>
+          <tbody>
+            <tr><td>Architecture</td><td><span class="badge badge-confirmed">High</span></td><td>import 图分析、app_controller/main.py/schema.py 全文、11 个 handler 文件</td><td>未测试运行时内存布局</td></tr>
+            <tr><td>Security</td><td><span class="badge badge-confirmed">High</span></td><td>全部 repo SQL 搜索、硬编码密钥搜索、附件路径处理、导出路径校验</td><td>无网络攻击面（本地桌面应用）</td></tr>
+            <tr><td>Stability</td><td><span class="badge badge-confirmed">High</span></td><td>except Exception 全量扫描、QThread 分析、schema 迁移路径、资源管理</td><td>未做 fuzzing/压力测试</td></tr>
+            <tr><td>Testing</td><td><span class="badge badge-confirmed">High</span></td><td>tests/ 目录 21 文件 vs src/ 90+ 文件对比、Mock 计数、conftest.py collect_ignore</td><td>未运行覆盖率工具</td></tr>
+            <tr><td>Maintainability</td><td><span class="badge badge-confirmed">High</span></td><td>文件行数统计、函数行数分析、耦合度检查、docstring 比例</td><td>—</td></tr>
+            <tr><td>Data Integrity</td><td><span class="badge badge-confirmed">High</span></td><td>schema.py 全部 FK 定义、WAL 模式、事务包裹检查、级联删除链</td><td>—</td></tr>
+            <tr><td>Fallback</td><td><span class="badge badge-confirmed">High</span></td><td>except pass/except Exception 全量扫描、backup_service 恢复流程</td><td>—</td></tr>
+            <tr><td>Configuration</td><td><span class="badge badge-suspected">Medium</span></td><td>DB 路径回退逻辑、settings_repo</td><td>无外部配置文件</td></tr>
+            <tr><td>Performance</td><td><span class="badge badge-suspected">Medium</span></td><td>PRAGMA 配置、索引检查、导出批量查询</td><td>未做 benchmark</td></tr>
+            <tr><td>Release</td><td><span class="badge badge-confirmed">High</span></td><td>ci.yml + release.yml 全文、PyInstaller 配置</td><td>—</td></tr>
+            <tr><td>Documentation</td><td><span class="badge badge-suspected">Medium</span></td><td>CLAUDE.md/AGENTS.md/README.md、docstring 58%</td><td>无 CHANGELOG</td></tr>
+            <tr><td>Privacy</td><td><span class="badge badge-confirmed">High</span></td><td>PII 字段检查（phone/email/employee_id）、日志扫描</td><td>本地应用无数据外传</td></tr>
+            <tr><td>Observability</td><td><span class="badge badge-suspected">Medium</span></td><td>RotatingFileHandler 配置、logger.exception 覆盖</td><td>无 metrics/tracing（桌面应用合理）</td></tr>
+            <tr><td>Supply Chain</td><td><span class="badge badge-confirmed">High</span></td><td>requirements.txt 版本范围、.gitignore</td><td>无 lockfile（pip freeze）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="num">20</div><div class="desc">总发现</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--badge-critical)">1</div><div class="desc">Critical</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--badge-high)">4</div><div class="desc">High</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--badge-medium)">8</div><div class="desc">Medium</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--badge-low)">7</div><div class="desc">Low</div></div>
+  </div>
+
+  <!-- TOP RISKS -->
+  <h3 class="section-title" id="top-risks">⚠️ 高风险发现</h3>
+  <div class="card">
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:60px">#</th><th>发现</th><th style="width:100px">严重度</th><th style="width:100px">类别</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>ExportWorker QThread 跨线程共享 apsw.Connection</td><td><span class="badge badge-critical">Critical</span></td><td>Stability</td></tr>
+            <tr><td>2</td><td>19 个 src 模块零测试覆盖（含 AppController）</td><td><span class="badge badge-high">High</span></td><td>Testing</td></tr>
+            <tr><td>3</td><td>test_e2e_full.py 被 collect_ignore 排除出 CI</td><td><span class="badge badge-high">High</span></td><td>Testing</td></tr>
+            <tr><td>4</td><td>View 层直接 import Service（3 文件）</td><td><span class="badge badge-high">High</span></td><td>Architecture</td></tr>
+            <tr><td>5</td><td>3 个 Repo list_all 跳过 _safe_kwargs 列名校验</td><td><span class="badge badge-medium">Medium</span></td><td>Security</td></tr>
+            <tr><td>6</td><td>plan_handlers.py 1109 行神类</td><td><span class="badge badge-medium">Medium</span></td><td>Maintainability</td></tr>
+            <tr><td>7</td><td>test_handlers.py 重度 Mock 耦合</td><td><span class="badge badge-medium">Medium</span></td><td>Testing</td></tr>
+            <tr><td>8</td><td>schema.py 1428 行 DDL+迁移+验证混合</td><td><span class="badge badge-medium">Medium</span></td><td>Maintainability</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAILED FINDINGS -->
+  <h3 class="section-title" id="findings">🔍 详细发现</h3>
+
+  <div class="finding severity-critical">
+    <div class="finding-header">
+      <h4>1. ExportWorker(QThread) 跨线程访问主线程 apsw.Connection</h4>
+      <span class="badge badge-critical">Critical</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Stability / DataIntegrity</span>
+      <span>📍 src/handlers/export_handlers.py:25-48</span>
+      <span>🎯 ExportWorker.run() + connection.py:8-9</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>ExportWorker 是 QThread 子类，run() 方法调用 handler(ctrl, svc, ...)，其中 ctrl 是 AppController，持有唯一的 apsw.Connection。handler 通过 ctrl.issue_service / ctrl.test_plan_service 访问 DB，最终都走同一个主线程连接。connection.py 文档注释明确声明「apsw.Connection 本身不是线程安全的，禁止跨线程并发写入」。
+    </div>
+    <div class="evidence"># connection.py:7-12 — 项目自己的文档
+⚠️ 线程安全说明：
+  - 连接的 *创建* 由 threading.Lock 保护，线程安全。
+  - 返回的 apsw.Connection 本身 **不是线程安全的**，禁止跨线程并发写入。
+
+# export_handlers.py:25-48
+class ExportWorker(QThread):
+    def run(self) -> None:
+        path = self._handler(self._ctrl, self._svc, ...)
+        # ↑ self._ctrl 持有主线程的 apsw.Connection
+        # handler → ctrl.issue_service.list_all() → repos → self._conn
+
+# export_handlers.py:314
+worker.start()  # 在 QThread 中执行 run()</div>
+    <div class="fix-box">
+      <div class="fix-label">最小修复</div>
+      <code># ExportWorker.__init__ 中捕获 db_path，run() 中创建独立连接
+def __init__(self, ..., db_path: str):
+    self._db_path = db_path
+
+def run(self) -> None:
+    from src.db.connection import get_connection
+    # 子线程创建独立连接（apsw 支持同进程多连接）
+    conn = apsw.Connection(self._db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        # 用独立 conn 构建 repos/services
+        path = self._handler_with_conn(conn, ...)
+    finally:
+        conn.close()</code>
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 1 小时 &nbsp;·&nbsp; <strong>回归测试：</strong> 导出期间触发主线程 DB 写入（添加 Issue），验证无崩溃
+    </div>
+  </div>
+
+  <div class="finding severity-high">
+    <div class="finding-header">
+      <h4>2. 19 个 src 模块零测试覆盖</h4>
+      <span class="badge badge-high">High</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Testing</span>
+      <span>📍 src/controllers/, src/services/, src/views/, src/models/</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>对比 tests/ 目录引用的模块和 src/ 全部模块，以下完全无测试覆盖：<strong>app_controller.py</strong>（应用大脑）、<strong>import_service.py</strong>、<strong>backup_service.py</strong>、<strong>settings_service.py</strong>、全部 models/（7 个）、全部 views/（20+ 个）、全部 styles/（6 个）、部分 handlers（backup/export/refresh/todo）。近一半 src 模块无任何测试。
+    </div>
+    <div class="evidence"># 未被任何 test 文件 import 的 src 模块（部分列表）
+src.controllers.app_controller     ← 应用控制器，0 测试
+src.services.backup_service        ← 备份/恢复，0 测试
+src.services.import_service        ← 批量导入，0 测试
+src.services.settings_service      ← 系统设置，0 测试
+src.models.*                       ← 全部 model，0 测试
+src.views.*                        ← 全部 view，0 测试
+src.styles.*                       ← 全部样式，0 测试</div>
+    <div class="fix-box">
+      <div class="fix-label">最小修复</div>
+      <code># 优先级 1: AppController 冒烟测试
+def test_controller_initialize():
+    ctrl = AppController(":memory:")
+    ctrl.initialize()
+    assert ctrl.projects is not None
+    assert ctrl.issue_service is not None
+    assert ctrl.export_service is not None
+    ctrl.shutdown()
+
+# 优先级 2: import_service 基础测试
+# 优先级 3: backup_service create/validate/restore</code>
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 20h+（长期任务），核心冒烟 2h &nbsp;·&nbsp; <strong>回归测试：</strong> AppController 初始化 + shutdown
+    </div>
+  </div>
+
+  <div class="finding severity-high">
+    <div class="finding-header">
+      <h4>3. test_e2e_full.py (539 行) 被 collect_ignore 排除出 CI</h4>
+      <span class="badge badge-high">High</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Testing</span>
+      <span>📍 tests/conftest.py:126</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>最全面的 E2E 测试（539 行，覆盖创建项目→设备→样品→计划→任务→Issue→导出→MainWindow 启动全流程）被 collect_ignore 排除在 pytest 收集之外。CI 虽然单独运行了它，但常规 <code>pytest tests/ -x -q</code> 不包含。这意味着本地开发时最关键的集成路径无自动验证。
+    </div>
+    <div class="evidence"># conftest.py:126
+collect_ignore = ["test_e2e_full.py", "test_performance.py"]
+
+# CI 中单独跑（ci.yml）:
+# QT_QPA_PLATFORM=offscreen python tests/test_e2e_full.py  # script mode
+# 但 pytest tests/ 不包含它</div>
+    <div class="fix-box">
+      <div class="fix-label">最小修复</div>
+      <code># 方案 A: 为 test_e2e_full.py 添加 pytest fixture 包装
+# 方案 B: 创建 ci_e2e.sh 统一运行所有测试
+# 最简: 从 collect_ignore 移除，修复签名兼容性</code>
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 2 小时 &nbsp;·&nbsp; <strong>回归测试：</strong> pytest tests/ 包含 E2E
+    </div>
+  </div>
+
+  <div class="finding severity-high">
+    <div class="finding-header">
+      <h4>4. View 层直接 import Service — 架构边界突破</h4>
+      <span class="badge badge-high">High</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Architecture</span>
+      <span>📍 src/views/bug_tracker/{__init__,kanban_view,list_view}.py</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>MVC 变体中 View 应通过 Controller/Handler 访问业务逻辑。但 BugTracker 的 3 个 View 文件直接 import IssueService 和 UndoManager Command 类，且 kanban_view.py:827 和 list_view.py:592 在 if 块中 lazy import Command 类。
+    </div>
+    <div class="evidence"># __init__.py:33
+from src.services.issue_service import IssueService
+
+# kanban_view.py:41
+from src.services.issue_service import IssueService
+
+# kanban_view.py:827 (lazy import in if block)
+from src.services.undo_manager import TransitionIssueStatusCommand
+
+# list_view.py:592 (lazy import in if block)
+from src.services.undo_manager import UpdateFieldCommand</div>
+    <div class="fix-box">
+      <div class="fix-label">最小修复</div>
+      <code># BugTrackerView 已通过构造函数接收 IssueService (main.py:159)
+# 移除 View 中的直接 Service import
+# View 不应 import Command 类 — 通过 signal/callback 让 Handler 执行</code>
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 2 小时 &nbsp;·&nbsp; <strong>回归测试：</strong> 看板状态转换 + 撤销功能
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>5. IssueRepo/KnowledgeRepo/TodoRepo list_all 跳过 _safe_kwargs 列名校验</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Security</span>
+      <span>📍 issue_repo.py:42, knowledge_repo.py:34, todo_repo.py:40</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>三个 Repository 重写了 list_all()，直接遍历 filters.items() 拼 SQL <code>f"[{k}] = ?"</code>，跳过了 BaseRepository._safe_kwargs() 的列名白名单过滤。虽然 <code>[{k}]</code> 中括号引用提供部分保护，但 k 值若含 <code>]</code> 可闭合逃逸。BaseRepository.list_all() (base.py:214) 正确调用了 _safe_kwargs。
+    </div>
+    <div class="evidence"># issue_repo.py:42-44 — 正确的是 base.py:214
+for k, v in filters.items():
+    clauses.append(f"[{k}] = ?")  # ← k 未过 _safe_kwargs
+    params.append(v)
+
+# 对比 base.py:214 (正确做法)
+safe = self._safe_kwargs(filters)  # ← 白名单过滤
+for k, v in safe.items():
+    clauses.append(f"[{k}] = ?")</div>
+    <div class="fix-box">
+      <div class="fix-label">最小修复</div>
+      <code># 三个 repo 的 list_all 中，遍历前加:
+safe = self._safe_kwargs(filters)
+for k, v in safe.items():
+    clauses.append(f"[{k}] = ?")
+    params.append(v)</code>
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 15 分钟（3 文件各 5 分钟） &nbsp;·&nbsp; <strong>回归测试：</strong> 构造含 <code>]</code> 的 filter key，验证不绕过 WHERE
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>6. plan_handlers.py 1109 行 — 神类，功能过度集中</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Maintainability</span>
+      <span>📍 src/handlers/plan_handlers.py</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>最大 Handler 文件，1109 行，包含计划 CRUD、任务 CRUD、排程触发、甘特图拖拽、结果录入、批量导入、状态推进、自动状态计算。两个超长函数：_on_auto_schedule (123 行) 和 _on_record_result (124 行)。
+    </div>
+    <div class="evidence"># 函数行数分析 (>40 行的)
+68-191  (123行) _on_auto_schedule
+212-282  (70行) _on_import_from_plan
+283-363  (80行) _on_task_batch_import
+601-656  (55行) _on_plan_changed
+781-905 (124行) _on_record_result</div>
+    <div class="fix-box">
+      <div class="fix-label">最小修复</div>
+      <code># 拆分为 3 个类:
+# PlanHandlers (计划管理: add/edit/delete/archive)
+# TaskHandlers (任务管理: add/edit/import/status)
+# ScheduleHandlers (排程: auto_schedule/gantt_drag)</code>
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 4 小时 &nbsp;·&nbsp; <strong>回归测试：</strong> 全部计划/任务相关测试
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>7. test_handlers.py / test_arch_optimization.py 重度 Mock — 测试耦合 mock 行为</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Testing Authenticity</span>
+      <span>📍 tests/test_handlers.py (15 处 Mock), test_arch_optimization.py (10 处)</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>test_handlers.py 使用 MagicMock 完全模拟 MainWindow 和 Ctrl，测试验证的是 handler 与 mock 的交互而非真实 UI 集成。如果 MainWindow API 改变但 mock 未更新，测试仍通过（false positive）。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 4 小时 &nbsp;·&nbsp; <strong>回归测试：</strong> 用真实 AppController(":memory:") 替代 MagicMock
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>8. schema.py 1428 行 — DDL + 迁移 + 验证 + 初始化混合</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Maintainability</span>
+      <span>📍 src/db/schema.py</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>19 张表 DDL（~800 行）+ 25 个迁移函数 + init_schema 控制流 + 完整性验证全在一个文件。每次加版本需多处修改。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 6 小时 &nbsp;·&nbsp; <strong>建议：</strong>拆分到 src/db/migrations/vN.py
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>9. Handler-MainWindow 循环依赖模式 + backup_handlers 用 object 放弃类型</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Architecture</span>
+      <span>📍 全部 11 个 handler + main.py:49-61</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>所有 handler TYPE_CHECKING import main.MainWindow，main.py 同时 import 所有 handler。backup_handlers 放弃类型检查用 <code>object</code>。refresh_handlers 直接持有 sample_handlers 引用并调用私有方法。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 4 小时 &nbsp;·&nbsp; <strong>建议：</strong>提取 IMainWindow Protocol 到独立文件
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>10. sample_repo.list_transactions 返回 dict 而非 dataclass</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Code Consistency</span>
+      <span>📍 src/db/repositories/sample_repo.py:80-125</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>同一 Repository 中两种返回模式：get_transactions() 返回 SampleTransaction dataclass，list_transactions() 返回 list[dict]。调用方无法统一使用属性访问。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 2 小时 &nbsp;·&nbsp; <strong>建议：</strong>创建 SampleTransactionLog dataclass 含 JOIN 字段
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>11. issue_repo 子表 CRUD 绕过 BaseRepository 直接 execute</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Code Consistency</span>
+      <span>📍 src/db/repositories/issue_repo.py:251-464</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>issue_repo 为 fa_records / issue_attachments / capa_records 手写了 12 个 CRUD 方法，全部直接 self._conn.execute()，绕过 BaseRepository 的 _safe_kwargs、日志包装。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 3 小时 &nbsp;·&nbsp; <strong>建议：</strong>BaseRepository 添加 insert_into(table, **kwargs) 通用方法
+    </div>
+  </div>
+
+  <div class="finding severity-medium">
+    <div class="finding-header">
+      <h4>12. delete_attachments 非原子 — disk 删除成功但 DB 删除失败时不一致</h4>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Data Integrity</span>
+      <span>📍 src/db/repositories/issue_repo.py:362-371</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>先循环 _remove_disk_file()（无事务包裹），最后执行 DELETE SQL。disk 删除和 DB 删除不在同一事务，disk 文件已永久丢失但 DB 记录可能残留。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 30 分钟 &nbsp;·&nbsp; <strong>建议：</strong>先移入 trash 目录，commit 成功后清理
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>13. 備份保留策略 sorted()[:-30] 可能保留 pre_restore 而非正常備份</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Configuration</span>
+      <span>📍 src/controllers/app_controller.py:166</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>glob("reliatrack_*.db") 同时匹配 reliatrack_YYYYMMDD.db 和 reliatrack_pre_restore_YYYYMMDD_HHMMSS.db。排序后 pre_restore 在后面（'p' > '2'），<code>[:-30]</code> 从头删，优先保留 pre_restore。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 5 分钟 &nbsp;·&nbsp; <strong>修复：</strong>glob 改为 "reliatrack_[0-9]*.db" 只匹配日期格式
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>14. _remove_disk_file 用 startswith 前缀匹配而非 relative_to</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-suspected">Suspected</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Security</span>
+      <span>📍 src/db/repositories/issue_repo.py:347</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong><code>str(p).startswith(d)</code> 是前缀匹配，允许目录 <code>/home/u/.reliatrack/attachments</code> 也匹配 <code>/home/u/.reliatrack/attachments_evil</code>。虽然 resolve() + symlink 拒绝已大幅降低风险，但理论上硬链接绕过仍可能。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 15 分钟 &nbsp;·&nbsp; <strong>修复：</strong>用 Path.relative_to() 替代 startswith
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>15. connection.py 关闭过期连接时静默 pass</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Fallback</span>
+      <span>📍 src/db/connection.py:63-66</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>close() 损坏连接抛 apsw.SQLError 时直接 pass，无日志。连接频繁损坏时无法从日志发现。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 5 分钟 &nbsp;·&nbsp; <strong>修复：</strong>pass 改 logger.debug(...)
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>16. backup_service restore 安全备份失败后仍继续恢复</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Fallback</span>
+      <span>📍 src/services/backup_service.py:169-198</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>恢复前安全备份失败时 logger.warning 后继续恢复。若恢复也失败则无备份可回滚 → 数据完全丢失。WAL checkpoint 失败也继续。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 15 分钟 &nbsp;·&nbsp; <strong>修复：</strong>安全备份失败应中断恢复并提示用户手动备份
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>17. ExportHandlers / BackupHandlers 无 connect_signals() — 模式不一致</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Code Consistency</span>
+      <span>📍 src/handlers/export_handlers.py, backup_handlers.py</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>其他 9 个 Handler 都有 connect_signals() 方法并在 main.py:96-103 调用。这两个 Handler 不遵循该模式。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 30 分钟 &nbsp;·&nbsp; <strong>修复：</strong>添加空 connect_signals() 保持接口一致
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>18. dev/prod DB 路径基于文件存在性判断 — 可能误用环境</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-suspected">Suspected</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Configuration</span>
+      <span>📍 main.py:754-760</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>开发模式如果 data/reliatrack.db 不存在，自动 fallback 到 ~/.reliatrack/（可能含生产数据）。无显式环境标志。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 15 分钟 &nbsp;·&nbsp; <strong>建议：</strong>添加 RELIATRACK_DB_PATH 环境变量
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>19. sample_transactions.related_task_id SET NULL 后审计追踪中断</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Data Integrity</span>
+      <span>📍 src/db/schema.py:94</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>删除 test_task 时，sample_transactions.related_task_id 被设为 NULL，但记录保留。type 为 check_out_to_task 的记录变为"检出到(未知任务)"。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 30 分钟 &nbsp;·&nbsp; <strong>建议：</strong>删除前将任务名写入 notes 字段
+    </div>
+  </div>
+
+  <div class="finding severity-low">
+    <div class="finding-header">
+      <h4>20. 导出/导入/Schema 迁移测试覆盖不足</h4>
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-confirmed">Confirmed</span>
+    </div>
+    <div class="finding-meta">
+      <span>📁 Testing</span>
+      <span>📍 tests/test_export_smoke.py, 无 import_service 测试</span>
+    </div>
+    <div class="problem">
+      <strong>问题：</strong>导出测试用纯内存 model 而非真实 DB 数据；import_service 零测试；schema 迁移只测版本号不测增量路径（v1→v25）。
+    </div>
+    <div class="fix-box" style="margin-top:6px;background:#fff8e1;border-color:#ffe082">
+      <strong>⏱ 估时：</strong> 6 小时
+    </div>
+  </div>
+
+  <!-- ════ PER-DIMENSION SECTIONS ════ -->
+
+  <h3 class="section-title" id="architecture">🏗 架构</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 3 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>View 直接 import Service（3 文件）</td><td><span class="badge badge-high">High</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>Handler-MainWindow 循环依赖模式</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>main.py 774 行职责过多</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证良好</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> MVC 变体分层清晰：Controller → Handlers → Services → Repos → DB</div>
+        <div class="check-item"><span class="check">✓</span> 无循环依赖（import 图分析确认）</div>
+        <div class="check-item"><span class="check">✓</span> Views 不直接访问 Repos（0 处违规）</div>
+        <div class="check-item"><span class="check">✓</span> Handlers 不直接访问 Repos（0 处违规）</div>
+        <div class="check-item"><span class="check">✓</span> ExportService 零 Qt 依赖（可 headless 测试）</div>
+        <div class="check-item"><span class="check">✓</span> UndoManager 命令模式实现完整</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="security">🔒 安全</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 2 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>3 个 Repo list_all 跳过 _safe_kwargs</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>_remove_disk_file startswith 前缀匹配</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-suspected">Suspected</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证安全</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> 全部 SQL 查询使用 ? 参数化占位符（0 处直接拼接用户值）</div>
+        <div class="check-item"><span class="check">✓</span> 无硬编码密钥/密码/API token（全量搜索确认）</div>
+        <div class="check-item"><span class="check">✓</span> BaseRepository._safe_kwargs 列名白名单机制</div>
+        <div class="check-item"><span class="check">✓</span> 附件 symlink 拒绝 + resolve() 路径校验</div>
+        <div class="check-item"><span class="check">✓</span> 导出路径遍历保护 (_validate_output_path)</div>
+        <div class="check-item"><span class="check">✓</span> .gitignore 排除 *.db 和 .beads-credential-key</div>
+        <div class="check-item"><span class="check">✓</span> 无 eval()/exec()/pickle 安全风险</div>
+        <div class="check-item"><span class="check">✓</span> subprocess 仅用于 fc-match 字体检测（无用户输入）</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="stability">⚡ 稳定性</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 2 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>ExportWorker 跨线程 DB 连接</td><td><span class="badge badge-critical">Critical</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>schema 迁移 except Exception 双重日志 + v11 不可回滚</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证稳健</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> except Exception 全部 logging.exception + raise（非静默吞错）</div>
+        <div class="check-item"><span class="check">✓</span> BaseRepository insert/update/delete 全部有 try/except + raise</div>
+        <div class="check-item"><span class="check">✓</span> 全局 sys.excepthook + Qt messageHandler 兜底</div>
+        <div class="check-item"><span class="check">✓</span> QLockFile 单实例互斥</div>
+        <div class="check-item"><span class="check">✓</span> RotatingFileHandler 5×1MB 日志持久化</div>
+        <div class="check-item"><span class="check">✓</span> import_service 事务包裹（with service.transaction()）</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="testing">🧪 测试</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 4 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>19 个 src 模块零测试覆盖</td><td><span class="badge badge-high">High</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>test_e2e_full.py 被 collect_ignore 排除</td><td><span class="badge badge-high">High</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>test_handlers.py 重度 Mock 耦合</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>导出/导入/schema 迁移测试覆盖不足</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证测试基础</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> 394 tests 全部通过 (8.91s)</div>
+        <div class="check-item"><span class="check">✓</span> 21 个测试文件覆盖 repos/services/handlers 核心层</div>
+        <div class="check-item"><span class="check">✓</span> CI matrix 3.11/3.12 双版本验证</div>
+        <div class="check-item"><span class="check">✓</span> conftest.py 共享 fixture（db_conn, project 等）</div>
+        <div class="check-item"><span class="check">✓</span> test_security_regression.py 专项安全回归</div>
+        <div class="check-item"><span class="check">✓</span> test_soft_delete.py / test_capa_pdca.py 业务逻辑测试</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="maintainability">📐 可维护性</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 3 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>plan_handlers.py 1109 行神类</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>schema.py 1428 行混合</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>issue_repo 子表 CRUD 绕过 BaseRepository</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证良好</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> 命名统一 snake_case（1190 处，0 处 camelCase 违规）</div>
+        <div class="check-item"><span class="check">✓</span> docstring 覆盖率 58%（659/1121 函数）</div>
+        <div class="check-item"><span class="check">✓</span> 仅 5 处 TODO/FIXME（全在 _MIME_TODO_ID 变量名，非真正 TODO）</div>
+        <div class="check-item"><span class="check">✓</span> dispatch table 替代 if-elif 链（ExportHandlers）</div>
+        <div class="check-item"><span class="check">✓</span> CLAUDE.md + AGENTS.md + progress/current.md 会话交接完善</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="data-integrity">🧱 数据完整性</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 2 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>ExportWorker 跨线程 DB（同 Critical #1）</td><td><span class="badge badge-critical">Critical</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>delete_attachments 非原子</td><td><span class="badge badge-medium">Medium</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>sample_transactions SET NULL 审计中断</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证完整性</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> WAL 模式 + busy_timeout=5000 + synchronous=NORMAL</div>
+        <div class="check-item"><span class="check">✓</span> 外键约束 PRAGMA foreign_keys=ON（连接初始化）</div>
+        <div class="check-item"><span class="check">✓</span> 30+ 外键定义，CASCADE/SET NULL 合理搭配</div>
+        <div class="check-item"><span class="check">✓</span> BaseRepository.transaction() 上下文管理器</div>
+        <div class="check-item"><span class="check">✓</span> settings_repo UPSERT 幂等性 (ON CONFLICT DO UPDATE)</div>
+        <div class="check-item"><span class="check">✓</span> soft delete (is_deleted + deleted_at) 替代物理删除</div>
+        <div class="check-item"><span class="check">✓</span> Issue 软删除自动过滤 (list_all/count 默认 is_deleted=0)</div>
+        <div class="check-item"><span class="check">✓</span> schema_version 版本追踪 + 迁移失败 ROLLBACK</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="fallback">🛡 错误降级</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 2 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>connection.py 静默 pass</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>backup_service restore 安全备份失败仍继续</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证降级</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> 无 except: pass 静默吞错（0 处）</div>
+        <div class="check-item"><span class="check">✓</span> 50 处 except Exception 全部 logging.exception + raise</div>
+        <div class="check-item"><span class="check">✓</span> 导出综合报告降级提示（Excel→PDF 自动切换）</div>
+        <div class="check-item"><span class="check">✓</span> schema 完整性检查 → DDL rebuild 自动修复</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title" id="configuration">⚙️ 配置</h3>
+  <div class="card">
+    <div class="card-header">已确认 <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">· 2 个发现</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table>
+        <thead><tr><th>发现</th><th style="width:100px">严重程度</th><th style="width:100px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>备份保留策略 sorted()[:-30] 匹配 pre_restore</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-confirmed">Confirmed</span></td></tr>
+          <tr><td>dev/prod DB 路径基于文件存在性</td><td><span class="badge badge-low">Low</span></td><td><span class="badge badge-suspected">Suspected</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 已验证配置</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> PyInstaller sys.frozen 模式固定 ~/.reliatrack/</div>
+        <div class="check-item"><span class="check">✓</span> QSettings 持久化（Tab 索引、主题偏好、窗口几何）</div>
+        <div class="check-item"><span class="check">✓</span> 依赖版本范围锁定（>=min,<max）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINCIPLES -->
+  <h3 class="section-title" id="principles">📋 工程原则合规</h3>
+  <div class="card">
+    <div class="card-header">违反原则</div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>原则</th><th>违反数</th><th style="width:100px">严重度</th><th>区域</th></tr></thead>
+          <tbody>
+            <tr><td>单一职责 (SRP)</td><td>3</td><td><span class="badge badge-medium">Medium</span></td><td>plan_handlers / schema.py / main.py</td></tr>
+            <tr><td>依赖倒置 (DIP)</td><td>1</td><td><span class="badge badge-high">High</span></td><td>View 直接依赖 Service 具体类</td></tr>
+            <tr><td>DRY</td><td>1</td><td><span class="badge badge-medium">Medium</span></td><td>issue_repo 12 个手写 CRUD 重复模式</td></tr>
+            <tr><td>开闭原则 (OCP)</td><td>1</td><td><span class="badge badge-medium">Medium</span></td><td>Tab 索引魔法数字分散多处</td></tr>
+            <tr><td>最小知识 (Law of Demeter)</td><td>1</td><td><span class="badge badge-low">Low</span></td><td>refresh_handlers 调用 sample_handlers 私有方法</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">✅ 遵循原则</div>
+    <div class="card-body">
+      <div class="check-list">
+        <div class="check-item"><span class="check">✓</span> 分层架构 — Controller → Handlers → Services → Repos → DB 方向严格</div>
+        <div class="check-item"><span class="check">✓</span> Repository 模式 — BaseRepository 统一 CRUD 接口</div>
+        <div class="check-item"><span class="check">✓</span> Command 模式 — UndoManager 支持撤销/重做</div>
+        <div class="check-item"><span class="check">✓</span> Dispatch Table — 替代 if-elif 链</div>
+        <div class="check-item"><span class="check">✓</span> Soft Delete — 数据可恢复</div>
+        <div class="check-item"><span class="check">✓</span> Fail-Fast — except Exception 后 raise 而非吞错</div>
+        <div class="check-item"><span class="check">✓</span> Parameterized Queries — SQL 注入防御</div>
+        <div class="check-item"><span class="check">✓</span> Idempotent Operations — UPSERT for settings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX ORDER -->
+  <h3 class="section-title" id="fix-order">🎯 修复顺序</h3>
+
+  <div class="card">
+    <div class="card-header">
+      <span>⚡ 立即修复</span>
+      <span class="badge badge-critical">Critical</span>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>修复项</th><th>估时</th><th>风险</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>ExportWorker 子线程创建独立 DB 连接</td><td>1h</td><td>导出期间段错误/数据损坏</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>🔥 本周修复</span>
+      <span class="badge badge-high">High</span>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>修复项</th><th>估时</th><th>风险</th></tr></thead>
+          <tbody>
+            <tr><td>2</td><td>test_e2e_full.py 纳入 CI（移除 collect_ignore）</td><td>2h</td><td>关键路径无自动验证</td></tr>
+            <tr><td>3</td><td>3 个 Repo list_all 补 _safe_kwargs</td><td>15min</td><td>SQL 列名注入</td></tr>
+            <tr><td>4</td><td>View 移除直接 Service import</td><td>2h</td><td>架构耦合</td></tr>
+            <tr><td>5</td><td>AppController 冒烟测试</td><td>2h</td><td>初始化失败无测试</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>📅 排期修复</span>
+      <span class="badge badge-medium">Medium</span>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>修复项</th><th>估时</th></tr></thead>
+          <tbody>
+            <tr><td>6</td><td>plan_handlers.py 拆分为 3 个类</td><td>4h</td></tr>
+            <tr><td>7</td><td>delete_attachments 原子化（trash 目录）</td><td>30min</td></tr>
+            <tr><td>8</td><td>备份保留策略 glob 修复</td><td>5min</td></tr>
+            <tr><td>9</td><td>_remove_disk_file 用 relative_to</td><td>15min</td></tr>
+            <tr><td>10</td><td>backup_service 安全备份失败中断</td><td>15min</td></tr>
+            <tr><td>11</td><td>test_handlers.py 减少重度 Mock</td><td>4h</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK WINS -->
+  <h3 class="section-title">⚡ Quick Wins（<30 分钟）</h3>
+  <div class="win-grid">
+    <div class="win-card">
+      <div class="win-title">3 个 Repo 补 _safe_kwargs</div>
+      <div class="win-meta">15 分钟 · Security Medium → 修复</div>
+    </div>
+    <div class="win-card">
+      <div class="win-title">备份 glob 修复 reliatrack_[0-9]*.db</div>
+      <div class="win-meta">5 分钟 · Configuration Low → 修复</div>
+    </div>
+    <div class="win-card">
+      <div class="win-title">connection.py pass → logger.debug</div>
+      <div class="win-meta">5 分钟 · Fallback Low → 修复</div>
+    </div>
+    <div class="win-card">
+      <div class="win-title">Export/BackupHandlers 加 connect_signals()</div>
+      <div class="win-meta">30 分钟 · Consistency Low → 修复</div>
+    </div>
+    <div class="win-card">
+      <div class="win-title">_remove_disk_file 用 relative_to</div>
+      <div class="win-meta">15 分钟 · Security Low → 修复</div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:40px 0 20px;color:var(--text-secondary);font-size:12px">
+    审计工具：Fuck My Shit Mountain (Hermes skill) + DeepSeek 交叉验证 · 每条 finding 已逐条源码验证<br>
+    ReliaTrack schema v25 · 32,000 行 · 394 tests passing · 2026-07-02
+  </div>
+
+</div>
+
+<script>
+  const sections = document.querySelectorAll('[id]');
+  const navLinks = document.querySelectorAll('.sidebar-nav a');
+  const observer = new IntersectionObserver((entries) => {
+    let activeId = null;
+    entries.forEach(entry => { if (entry.isIntersecting) activeId = entry.target.id; });
+    if (activeId) { navLinks.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + activeId); }); }
+  }, { rootMargin: '-10% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+  navLinks.forEach(a => { a.addEventListener('click', function(e) { e.preventDefault(); const target = document.querySelector(this.getAttribute('href')); if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
+</script>
+
+</body>
+</html>

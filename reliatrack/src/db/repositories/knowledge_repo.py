@@ -32,7 +32,8 @@ class KnowledgeRepository(BaseRepository):
         params: list[Any] = []
         if filters:
             clauses = []
-            for k, v in filters.items():
+            safe = self._safe_kwargs(filters)
+            for k, v in safe.items():
                 clauses.append(f"[{k}] = ?")
                 params.append(v)
             sql += " WHERE " + " AND ".join(clauses)

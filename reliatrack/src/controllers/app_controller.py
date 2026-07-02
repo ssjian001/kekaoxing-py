@@ -160,8 +160,8 @@ class AppController:
                                 backup_path, backup_path.stat().st_size)
             except Exception:
                 logger.exception("Backup failed")
-        # 清理超过30天的旧备份
-        for old in sorted(DEFAULT_BACKUPS_DIR.glob("reliatrack_*.db"))[:-30]:
+        # 清理超过30天的旧备份（只匹配日期格式，排除 pre_restore 安全备份）
+        for old in sorted(DEFAULT_BACKUPS_DIR.glob("reliatrack_[0-9]*.db"))[:-30]:
             old.unlink(missing_ok=True)
 
     # ── 变更通知 ──

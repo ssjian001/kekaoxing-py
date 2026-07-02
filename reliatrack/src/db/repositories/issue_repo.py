@@ -39,7 +39,8 @@ class IssueRepository(BaseRepository):
         params: list[Any] = []
         # 始终过滤已软删除的记录
         clauses = ["[is_deleted] = 0"]
-        for k, v in filters.items():
+        safe = self._safe_kwargs(filters)
+        for k, v in safe.items():
             clauses.append(f"[{k}] = ?")
             params.append(v)
         sql += " WHERE " + " AND ".join(clauses)

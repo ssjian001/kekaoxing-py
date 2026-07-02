@@ -63,7 +63,7 @@ def get_connection(db_path: str = "") -> apsw.Connection:
                 try:
                     conn.close()
                 except apsw.SQLError:
-                    pass
+                    logger.debug("Failed to close stale connection: %s", db_path)
                 del _connections[db_path]
                 # fall through to recreate
 
