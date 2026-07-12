@@ -416,6 +416,7 @@ class IssueHandlers:
                 ctrl.issue_service.update(issue_id, **updates)
         except Exception:
             logger.exception("FA→Issue sync failed for issue_id=%s", issue_id)
+            self._win.toast("FA 联动更新 Issue 失败，请检查状态/根因字段", "warning")
 
     def _sync_issue_from_capa(self, issue_id: int) -> None:
         """CAPA 记录变更后自动回写 Issue。
@@ -480,3 +481,4 @@ class IssueHandlers:
                 ctrl.issue_service.update(issue_id, **updates)
         except Exception:
             logger.exception("CAPA→Issue sync failed for issue_id=%s", issue_id)
+            self._win.toast("CAPA 联动更新 Issue 失败，请检查状态/措施字段", "warning")

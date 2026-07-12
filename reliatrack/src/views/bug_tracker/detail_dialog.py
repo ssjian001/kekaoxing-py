@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QTextEdit,
@@ -514,11 +515,10 @@ class IssueDetailDialog(QDialog):
             self._load_comments()
         except Exception:
             logger.exception("_on_send_comment() failed")
-            pass
+            QMessageBox.warning(self, "发送失败", "评论发送失败，请重试。")
 
     def _on_delete_comment(self, comment_id: int) -> None:
         """删除评论 — 确认后软删除。"""
-        from PySide6.QtWidgets import QMessageBox
 
         reply = QMessageBox.question(
             self, "确认删除", "确定要删除这条评论吗？",
@@ -532,7 +532,7 @@ class IssueDetailDialog(QDialog):
             self._load_comments()
         except Exception:
             logger.exception("_on_delete_comment() failed")
-            pass
+            QMessageBox.warning(self, "删除失败", "评论删除失败，请重试。")
 
     # ── 辅助 ────────────────────────────────────────────────────────
 
