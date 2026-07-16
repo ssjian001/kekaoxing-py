@@ -34,7 +34,7 @@ from src.styles.constants import (
 )
 from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
 from src.models.issue import Issue, IssueComment
-from src.views.issue_view import _FAPanel, _CAPAPanel
+from src.views.bug_tracker.fa_capa_panels import FAPanel as _FAPanel, CAPAPanel as _CAPAPanel
 
 
 class IssueDetailDialog(QDialog):

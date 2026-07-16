@@ -489,7 +489,7 @@ def test_9_main_window(tr: TestResult):
             ("_dashboard", DashboardView),
             ("_sample_view", None),
             ("_test_plan_view", None),
-            ("_issue_view", None),
+            ("_bug_tracker_view", None),
             ("_equipment_view", None),
             ("_knowledge_view", None),
         ]
