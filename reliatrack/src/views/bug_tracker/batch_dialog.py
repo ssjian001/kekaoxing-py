@@ -20,6 +20,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.constants import (
+    ISSUE_STATUS_OPTIONS,
+    SEVERITY_UI_OPTIONS,
+    PRIORITY_LABELS,
+)
 from src.services.issue_service import IssueService
 from src.styles.constants import PADDING_LARGE, SPACING_MEDIUM
 from src.styles.toast import ToastWidget
@@ -98,16 +103,14 @@ class BatchOperationDialog(QDialog):
         self._value_combo.setEditable(False)
         self._value_combo.clear()
         if operation == "改状态":
-            for eng, chn in [("open", "待处理"), ("analyzing", "分析中"),
-                             ("verified", "已验证"), ("closed", "已关闭")]:
+            for eng, chn in ISSUE_STATUS_OPTIONS:
                 self._value_combo.addItem(chn, eng)
         elif operation == "改严重度":
-            for eng, chn in [("critical", "严重"), ("major", "主要"),
-                             ("minor", "次要"), ("cosmetic", "外观")]:
+            for eng, chn in SEVERITY_UI_OPTIONS:
                 self._value_combo.addItem(chn, eng)
         elif operation == "改优先级":
-            for i in range(1, 6):
-                self._value_combo.addItem(f"P{i}", i)
+            for pri, label in PRIORITY_LABELS.items():
+                self._value_combo.addItem(label, pri)
         elif operation == "设置DRI":
             self._value_combo.setEditable(True)
             self._value_combo.addItem("（清除DRI）", "")

@@ -25,6 +25,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QBrush, Q
 
 import src.styles.theme as _theme
 
+from src.constants import SEVERITY_LABELS
 from src.styles.constants import (
     FONT_FAMILY,
     VIEW_MARGINS,
@@ -507,10 +508,7 @@ class _ProgressRing(QWidget):
 class _SeverityBar(QWidget):
     """水平分段严重度条（Critical / Major / Minor / Cosmetic）。"""
 
-    _SEVERITY_ORDER: list[str] = ["critical", "major", "minor", "cosmetic"]
-    _SEVERITY_LABELS: dict[str, str] = {
-        "critical": "严重", "major": "主要", "minor": "次要", "cosmetic": "外观",
-    }
+    _SEVERITY_ORDER: list[str] = list(SEVERITY_LABELS.keys())
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -564,7 +562,7 @@ class _SeverityBar(QWidget):
         lx = 0.0
         for sev in self._SEVERITY_ORDER:
             val = self._data.get(sev, 0)
-            label = self._SEVERITY_LABELS.get(sev, sev)
+            label = SEVERITY_LABELS.get(sev, sev)
             color_str = ISSUE_SEVERITY_COLORS.get(sev, _theme.SUBTEXT0)
 
             # 色点

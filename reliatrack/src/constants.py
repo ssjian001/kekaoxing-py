@@ -48,6 +48,8 @@ RESULT_OPTIONS: list[tuple[str, str]] = [
 PRIORITY_LABELS: dict[int, str] = {
     1: "P1", 2: "P2", 3: "P3", 4: "P4", 5: "P5",
 }
+# UI 选项列表 (priority_int, label)
+PRIORITY_UI_OPTIONS: list[tuple[int, str]] = list(PRIORITY_LABELS.items())
 
 # ═══════════════════════════════════════════════════════════════════
 #  Issue 严重度
@@ -62,6 +64,8 @@ SEVERITY_OPTIONS: list[tuple[str, str]] = [
 
 # dict 形式: {english_value: chinese_label}
 SEVERITY_LABELS: dict[str, str] = {v: k for k, v in SEVERITY_OPTIONS}
+# UI 选项列表 (eng, 中文) — 从 dict 生成，顺序由插入顺序保证
+SEVERITY_UI_OPTIONS: list[tuple[str, str]] = list(SEVERITY_LABELS.items())
 
 # ═══════════════════════════════════════════════════════════════════
 #  Issue 状态
@@ -73,6 +77,8 @@ ISSUE_STATUS_LABELS: dict[str, str] = {
     "verified": "已验证",
     "closed": "已关闭",
 }
+# UI 选项列表 (eng, 中文)
+ISSUE_STATUS_OPTIONS: list[tuple[str, str]] = list(ISSUE_STATUS_LABELS.items())
 
 # ═══════════════════════════════════════════════════════════════════
 #  Issue 责任类别 (Jira-style component/team)

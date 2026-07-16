@@ -19,6 +19,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.constants import (
+    ISSUE_STATUS_OPTIONS,
+    SEVERITY_UI_OPTIONS,
+    PRIORITY_UI_OPTIONS,
+)
 from src.styles.constants import PADDING_SMALL
 
 
@@ -26,21 +31,6 @@ class FilterPanel(QFrame):
     """可折叠的筛选面板 — 状态/严重度/优先级/DRI/日期范围。"""
 
     filter_changed = Signal(dict)  # filters: dict
-
-    # 筛选选项
-    STATUS_OPTIONS = [
-        ("open", "待处理"),
-        ("analyzing", "分析中"),
-        ("verified", "已验证"),
-        ("closed", "已关闭"),
-    ]
-    SEVERITY_OPTIONS = [
-        ("critical", "严重"),
-        ("major", "主要"),
-        ("minor", "次要"),
-        ("cosmetic", "外观"),
-    ]
-    PRIORITY_OPTIONS = [(f"P{i}", f"P{i}") for i in range(1, 6)]
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -57,7 +47,7 @@ class FilterPanel(QFrame):
         # 状态
         row1.addWidget(self._make_group_label("状态"))
         self._status_checks: dict[str, QCheckBox] = {}
-        for eng, chn in self.STATUS_OPTIONS:
+        for eng, chn in ISSUE_STATUS_OPTIONS:
             cb = QCheckBox(chn)
             cb.setChecked(True)
             cb.stateChanged.connect(self._emit_filter)
@@ -69,7 +59,7 @@ class FilterPanel(QFrame):
         # 严重度
         row1.addWidget(self._make_group_label("严重度"))
         self._severity_checks: dict[str, QCheckBox] = {}
-        for eng, chn in self.SEVERITY_OPTIONS:
+        for eng, chn in SEVERITY_UI_OPTIONS:
             cb = QCheckBox(chn)
             cb.setChecked(True)
             cb.stateChanged.connect(self._emit_filter)
@@ -80,12 +70,12 @@ class FilterPanel(QFrame):
 
         # 优先级
         row1.addWidget(self._make_group_label("优先级"))
-        self._priority_checks: dict[str, QCheckBox] = {}
-        for eng, chn in self.PRIORITY_OPTIONS:
+        self._priority_checks: dict[int, QCheckBox] = {}
+        for pri, chn in PRIORITY_UI_OPTIONS:
             cb = QCheckBox(chn)
             cb.setChecked(True)
             cb.stateChanged.connect(self._emit_filter)
-            self._priority_checks[eng] = cb
+            self._priority_checks[pri] = cb
             row1.addWidget(cb)
 
         row1.addStretch()
@@ -162,7 +152,7 @@ class FilterPanel(QFrame):
                 if cb.isChecked()
             ],
             "priority": [
-                int(eng[1:]) for eng, cb in self._priority_checks.items()
+                pri for pri, cb in self._priority_checks.items()
                 if cb.isChecked()
             ],
             "dri_name": self._dri_combo.currentData(),
@@ -183,9 +173,8 @@ class FilterPanel(QFrame):
             cb.setChecked(eng in sev_list)
 
         pri_list = filters.get("priority", [])
-        for eng, cb in self._priority_checks.items():
-            pri_label = int(eng[1:])
-            cb.setChecked(pri_label in pri_list)
+        for pri, cb in self._priority_checks.items():
+            cb.setChecked(pri in pri_list)
 
         dri_name = filters.get("dri_name")
         if dri_name is None:
