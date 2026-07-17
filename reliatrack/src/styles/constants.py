@@ -166,7 +166,8 @@ TABLE_QSS: str = (
     "border-radius: 8px; font-size: {font_size}px;"
     "}}"
     "QTableWidget::item {{ padding: 6px; }}"
-    "QTableWidget::item:selected {{"
+    "QTableWidget::item:selected,"
+    "QTableWidget::item:selected:!focus {{"
     "background-color: {selection_bg}; color: {text};"
     "}}"
     "QTableWidget::item:alternate:!selected {{ background-color: {alt_row}; }}"
@@ -357,6 +358,18 @@ def apply_column_specs(table, specs: list[tuple[str, str, int]],
     # 文字截断时显示省略号
     from PySide6.QtWidgets import QAbstractItemView
     table.setTextElideMode(Qt.TextElideMode.ElideRight)
+
+    # 表头排序箭头显示
+    header.setSortIndicatorShown(True)
+
+    # 双击列头自适应宽度（仅 interactive 列有效）
+    def _auto_resize(col: int) -> None:
+        if col >= 0 and col < len(specs) and specs[col][1] == "interactive":
+            table.resizeColumnToContents(col)
+            # 留点 padding，防止文字贴边
+            cur = table.columnWidth(col)
+            table.setColumnWidth(col, cur + 16)
+    header.sectionDoubleClicked.connect(_auto_resize)
 
     # 列宽持久化（仅 interactive 列有意义）
     if table_key:
