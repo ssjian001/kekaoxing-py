@@ -98,6 +98,8 @@ class AppController:
     def initialize(self) -> None:
         """初始化数据库连接、schema 和所有 Repository/Service。"""
         self._conn = get_connection(self._db_path)
+        # 保存解析后的真实 DB 路径（get_connection 可能 fallback）
+        self._db_path = self._conn.filename
         init_schema(self._conn)
         # 启动时自动备份
         self._startup_backup()
