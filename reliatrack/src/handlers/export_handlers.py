@@ -171,7 +171,11 @@ class ExportHandlers:
             raise ValueError("没有选中测试计划")
         plan = ctrl.test_plan_service.get_plan(plan_id)
         tasks = ctrl.test_plan_service.get_tasks(plan_id)
-        if not plan or not tasks:
+        if not plan:
+            logger.warning("导出失败: plan_id=%s 查不到计划", plan_id)
+            raise ValueError("当前计划没有任务")
+        if not tasks:
+            logger.warning("导出失败: plan_id=%s (%s) 下无任务", plan_id, plan.name)
             raise ValueError("当前计划没有任务")
 
         task_ids = [t.id for t in tasks if t.id is not None]
@@ -252,7 +256,11 @@ class ExportHandlers:
             raise ValueError("没有选中测试计划")
         plan = ctrl.test_plan_service.get_plan(plan_id)
         tasks = ctrl.test_plan_service.get_tasks(plan_id)
-        if not plan or not tasks:
+        if not plan:
+            logger.warning("导出失败: plan_id=%s 查不到计划", plan_id)
+            raise ValueError("当前计划没有任务")
+        if not tasks:
+            logger.warning("导出失败: plan_id=%s (%s) 下无任务", plan_id, plan.name)
             raise ValueError("当前计划没有任务")
 
         task_ids = [t.id for t in tasks if t.id is not None]
