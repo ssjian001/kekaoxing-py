@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "last_updated": "2026-06-30",
-    "schema_version": 25,
-    "tests": "409 passed (F025 todo 功能新增，schema v24→v25)"
+    "last_updated": "2026-07-17",
+    "schema_version": 27,
+    "tests": "527 passed (12 项易用性优化，合并至 main)"
   },
   "features": [
     {
