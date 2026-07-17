@@ -764,6 +764,44 @@ QLabel[class="fold-info"]:hover {{
 QScrollArea[class="column-scroll"] {{
     background: transparent; border: none;
 }}
+/* ── 看板外层滚动（旧名兼容） ── */
+QScrollArea[class="kanban-scroll"] {{
+    background: transparent; border: none;
+}}
+/* ── 看板列容器（4 列水平布局） ── */
+QWidget[class="columns-container"] {{
+    background: transparent; border: none;
+}}
+/* ── 看板列标题（旧名兼容：todo_view） ── */
+QLabel[class="kanban-col-header"] {{
+    color: {TEXT}; border: none;
+}}
+/* ── 看板计数标签（旧名兼容：todo_view, quadrant_view） ── */
+QLabel[class="kanban-count"] {{
+    color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
+    background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+}}
+/* ── 搜索输入框 ── */
+QLineEdit[class="search-input"] {{
+    background: {BG_INPUT}; border: 1px solid {SURFACE1}; border-radius: 6px;
+    padding: 2px 8px; color: {TEXT};
+}}
+/* ── 筛选面板 ── */
+QFrame[class="filter-panel"] {{
+    background: {SURFACE0}; border-radius: 8px; border: none;
+}}
+/* ── 筛选复选框组 ── */
+QWidget[class="filter-checkbox"] {{
+    background: transparent; border: none;
+}}
+/* ── Issue 详情 Tab ── */
+QTabWidget[class="detail-tabs"] {{
+    background: transparent; border: none;
+}}
+/* ── 卡片元信息 ── */
+QLabel[class="card-meta"] {{
+    color: {FG_SECONDARY}; font-size: 11px; border: none;
+}}
 /* ── 看板卡片标题 ── */
 QLabel[class="card-title"] {{
     color: {TEXT}; border: none;
