@@ -127,6 +127,47 @@ class TestPlanView(QWidget):
         self._search_edit.textChanged.connect(self._on_task_search)
         toolbar.addWidget(self._search_edit)
 
+        # ── 技术员筛选 ──
+        self._tech_filter_combo = QComboBox()
+        self._tech_filter_combo.setProperty("class", "filter-combo")
+        self._tech_filter_combo.setFixedWidth(100)
+        self._tech_filter_combo.setFixedHeight(28)
+        self._tech_filter_combo.addItem("全部技术员", None)
+        # 运行时由 refresh 填充具体技术员
+        self._tech_filter_combo.currentIndexChanged.connect(self._on_task_search)
+        toolbar.addWidget(self._tech_filter_combo)
+
+        # ── 日期范围筛选 ──
+        from PySide6.QtWidgets import QDateEdit as _QDE
+        toolbar.addWidget(QLabel("从:"))
+        self._date_from = _QDE()
+        self._date_from.setCalendarPopup(True)
+        self._date_from.setDisplayFormat("yyyy-MM-dd")
+        self._date_from.setSpecialValueText("不限")
+        self._date_from.setDate(self._date_from.minimumDate())
+        self._date_from.setFixedWidth(110)
+        self._date_from.setFixedHeight(28)
+        self._date_from.dateChanged.connect(self._on_task_search)
+        toolbar.addWidget(self._date_from)
+
+        toolbar.addWidget(QLabel("至:"))
+        self._date_to = _QDE()
+        self._date_to.setCalendarPopup(True)
+        self._date_to.setDisplayFormat("yyyy-MM-dd")
+        self._date_to.setSpecialValueText("不限")
+        self._date_to.setDate(self._date_to.maximumDate())
+        self._date_to.setFixedWidth(110)
+        self._date_to.setFixedHeight(28)
+        self._date_to.dateChanged.connect(self._on_task_search)
+        toolbar.addWidget(self._date_to)
+
+        # ── 重置筛选 ──
+        self._btn_reset_filter = QPushButton("重置")
+        self._btn_reset_filter.setFixedHeight(28)
+        self._btn_reset_filter.setProperty("class", "action")
+        self._btn_reset_filter.clicked.connect(self._reset_filters)
+        toolbar.addWidget(self._btn_reset_filter)
+
         # ── 录入结果 ──
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
@@ -248,18 +289,49 @@ class TestPlanView(QWidget):
         if checked:
             self._gantt.set_mode(actual=(btn_id == 1))
 
-    def _on_task_search(self, text: str) -> None:
-        """根据搜索关键词过滤任务列表，并将关键词持久化到 QSettings。"""
+    def _on_task_search(self, text: str = "") -> None:
+        """根据搜索关键词、技术员、日期范围过滤任务列表。"""
+        text = self._search_edit.text().strip().lower()
         from PySide6.QtCore import QSettings as _QSettings
         _QSettings().setValue("ReliaTrack/task_search", text)
-        text = text.strip().lower()
-        if not text:
-            filtered = self._all_tasks_for_filter
-        else:
+        filtered = self._all_tasks_for_filter
+
+        # 关键词过滤
+        if text:
             filtered = [
-                t for t in self._all_tasks_for_filter
+                t for t in filtered
                 if text in (t.name or "").lower()
             ]
+
+        # 技术员过滤
+        tech_id = self._tech_filter_combo.currentData()
+        if tech_id is not None:
+            filtered = [
+                t for t in filtered
+                if t.technician_id == tech_id
+            ]
+
+        # 日期范围过滤（预计结束日期）
+        today = date.today()
+        d_from = self._date_from.date().toPython() if self._date_from.date() > self._date_from.minimumDate() else None
+        d_to = self._date_to.date().toPython() if self._date_to.date() < self._date_to.maximumDate() else None
+        if d_from or d_to:
+            plan_start = None
+            try:
+                plan_start = date.fromisoformat(self._last_start_date) if self._last_start_date else None
+            except ValueError:
+                pass
+            if plan_start:
+                date_filtered = []
+                for t in filtered:
+                    end_day = (t.start_day or 0) + t.duration
+                    end_date = plan_start + timedelta(days=end_day - 1)
+                    if d_from and end_date < d_from:
+                        continue
+                    if d_to and end_date > d_to:
+                        continue
+                    date_filtered.append(t)
+                filtered = date_filtered
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
             start_date=self._last_start_date,
@@ -272,6 +344,14 @@ class TestPlanView(QWidget):
                               holidays=self._last_holidays)
         self._update_summary_bar()
         self._update_stats(filtered)
+
+    def _reset_filters(self) -> None:
+        """重置所有筛选条件到默认值。"""
+        self._search_edit.clear()
+        self._tech_filter_combo.setCurrentIndex(0)
+        self._date_from.setDate(self._date_from.minimumDate())
+        self._date_to.setDate(self._date_to.maximumDate())
+        # _on_task_search 由控件信号自动触发
 
     def refresh(
         self,
@@ -295,6 +375,23 @@ class TestPlanView(QWidget):
         self._last_technician_map = technician_map or {}
         self._last_task_prefix = task_prefix
         self._last_holidays = holidays or set()
+        # 更新技术员筛选下拉
+        self._tech_filter_combo.blockSignals(True)
+        selected = self._tech_filter_combo.currentData()
+        self._tech_filter_combo.clear()
+        self._tech_filter_combo.addItem("全部技术员", None)
+        seen: set[int] = set()
+        for t in tasks:
+            if t.technician_id and t.technician_id not in seen:
+                seen.add(t.technician_id)
+                name = technician_map.get(t.technician_id, f"ID:{t.technician_id}")
+                self._tech_filter_combo.addItem(name, t.technician_id)
+        # 恢复选中
+        if selected is not None:
+            idx = self._tech_filter_combo.findData(selected)
+            if idx >= 0:
+                self._tech_filter_combo.setCurrentIndex(idx)
+        self._tech_filter_combo.blockSignals(False)
         self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days, start_date,
                               equipment_map=equipment_map,
