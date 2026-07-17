@@ -129,6 +129,13 @@ class TestPlanView(QWidget):
         self._btn_record_result.setToolTip("录入测试结果")
         toolbar.addWidget(self._btn_record_result)
 
+        # ── 快速加 ──
+        self._btn_quick_add = QPushButton("快速加")
+        self._btn_quick_add.setFixedHeight(28)
+        self._btn_quick_add.setToolTip("快速添加任务：填名称+天数，回车即创建")
+        self._btn_quick_add.setProperty("class", "action")
+        toolbar.addWidget(self._btn_quick_add)
+
         # ── 更多操作（收起低频按钮） ──
         self._more_menu = QMenu(self)
         self._act_summary_report = self._more_menu.addAction("总结报告")
@@ -461,6 +468,10 @@ class TestPlanView(QWidget):
     @property
     def btn_record_result(self) -> QPushButton:
         return self._btn_record_result
+
+    @property
+    def btn_quick_add(self) -> QPushButton:
+        return self._btn_quick_add
 
     @property
     def btn_summary_report(self) -> QAction:

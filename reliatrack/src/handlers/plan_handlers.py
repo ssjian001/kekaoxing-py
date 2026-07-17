@@ -56,6 +56,8 @@ class PlanHandlers:
         v.act_import_from_plan.triggered.connect(self._on_import_from_plan)
         # 独立按钮
         v.btn_record_result.clicked.connect(self._on_record_result)
+        v.btn_quick_add.clicked.connect(self._on_task_quick_add)
+        # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
         v.setup_task_callbacks(
@@ -712,6 +714,44 @@ class PlanHandlers:
                 error_title="创建失败",
             )
         dlg.deleteLater()
+
+    def _on_task_quick_add(self) -> None:
+        """快速新建测试任务 — 只填名称+天数，回车即创建。"""
+        if self._is_archived_plan():
+            return
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        plan_id = self._win.test_plan_view.get_selected_plan_id()
+        if plan_id is None:
+            self._win.toast("没有测试计划，请先创建计划", "info")
+            return
+
+        # 名称
+        from PySide6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(
+            self._win, "快速加任务", "任务名称:", text=""
+        )
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+
+        # 天数
+        duration, ok = QInputDialog.getInt(
+            self._win, "快速加任务", "工期（天）:", 1, 1, 999
+        )
+        if not ok:
+            return
+
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.create_task,
+            action_args=(plan_id,),
+            action_kwargs=dict(name=name, duration=duration, category="其他"),
+            toast_msg=f"任务「{name}」已快速创建",
+            entity="task",
+            error_title="创建失败",
+        )
 
     def _on_task_edit_menu(self) -> None:
         """菜单触发：选中行后编辑任务。"""
