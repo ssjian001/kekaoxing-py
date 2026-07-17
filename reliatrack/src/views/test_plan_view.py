@@ -474,6 +474,7 @@ class TestPlanView(QWidget):
         on_status_advance: Callable[[TestTask, str], None] | None = None,
         on_actual_date_edit: Callable[[int, str, str], None] | None = None,
         on_record_result: Callable[[], None] | None = None,
+        on_batch_value: Callable[[list[int], int, str], None] | None = None,
     ) -> None:
         """设置任务增删改以及实际日期编辑回调。
 
@@ -490,6 +491,7 @@ class TestPlanView(QWidget):
             on_status_advance=on_status_advance,
             on_actual_date_edit=on_actual_date_edit,
             on_record_result=on_record_result,
+            on_batch_value=on_batch_value,
         )
 
     def _handle_table_edit(self, task: TestTask) -> None:

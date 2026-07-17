@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
 )
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QAction, QColor, QKeySequence
 
 import src.styles.theme as _t
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
@@ -64,6 +64,7 @@ class _TaskTable(QTableWidget):
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
         self._on_actual_date_edit_callback: Callable[[int, str, str], None] | None = None  # (task_id, field, new_date)
         self._on_record_result_callback: Callable[[], None] | None = None
+        self._batch_value_callback: Callable[[list[int], int, str], None] | None = None  # (task_ids, col, value)
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -94,6 +95,7 @@ class _TaskTable(QTableWidget):
         on_status_advance: Callable[[TestTask, str], None] | None = None,
         on_actual_date_edit: Callable[[int, str, str], None] | None = None,
         on_record_result: Callable[[], None] | None = None,
+        on_batch_value: Callable[[list[int], int, str], None] | None = None,
     ) -> None:
         """设置编辑/删除/状态推进/实际日期编辑/录入结果回调。"""
         self._on_edit_callback = on_edit
@@ -101,6 +103,7 @@ class _TaskTable(QTableWidget):
         self._on_status_advance_callback = on_status_advance
         self._on_actual_date_edit_callback = on_actual_date_edit
         self._on_record_result_callback = on_record_result
+        self._batch_value_callback = on_batch_value
 
     def _on_double_click(self, row: int, col: int) -> None:
         task = self.get_task_at_row(row)
@@ -347,6 +350,70 @@ class _TaskTable(QTableWidget):
         if 0 <= row < len(self._tasks):
             return self._tasks[row]
         return None
+
+    # ── 批量编辑 ────────────────────────────────────────────
+
+    def keyPressEvent(self, event: object) -> None:
+        """拦截 Ctrl+V 进行批量粘贴，其余走默认。"""
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtWidgets import QApplication
+
+        ev = event
+        if isinstance(ev, QKeyEvent):
+            mods = ev.modifiers()
+            if ev.key() == Qt.Key.Key_V and mods == Qt.KeyboardModifier.ControlModifier:
+                self._on_batch_paste()
+                return
+        super().keyPressEvent(ev)
+
+    def _on_batch_paste(self) -> None:
+        """从粘贴板获取内容，解析后批量应用到所有选中行。"""
+        from PySide6.QtWidgets import QApplication
+
+        rows = self.selectionModel().selectedRows()
+        if not rows or not self._batch_value_callback:
+            return
+
+        # 获取焦点列（当前选中行的当前列）
+        current = self.currentIndex()
+        col = current.column()
+        if col < 0:
+            return
+
+        # 获取旧值作 undo 参考
+        clipboard = QApplication.clipboard()
+        text = clipboard.text().strip()
+        if not text:
+            return
+
+        # 收集选中行所有 task_id
+        task_ids: list[int] = []
+        for idx in rows:
+            item = self.item(idx.row(), 0)
+            if item:
+                tid = item.data(Qt.ItemDataRole.UserRole)
+                if isinstance(tid, int):
+                    task_ids.append(tid)
+
+        if not task_ids:
+            return
+
+        # 按行数或全部应用同一个值
+        lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+        if len(lines) >= 2:
+            # 多行：逐行对应
+            for i, idx in enumerate(rows):
+                if i >= len(lines):
+                    break
+                item = self.item(idx.row(), 0)
+                if item:
+                    tid = item.data(Qt.ItemDataRole.UserRole)
+                    if isinstance(tid, int):
+                        self._batch_value_callback([tid], col, lines[i])
+        else:
+            # 单值：应用到所有选中行
+            self._batch_value_callback(task_ids, col, text)
 
     def flash_row(self, task_id: int, duration_ms: int = 800) -> None:
         """闪烁指定任务所在行 — 用于撤销后视觉反馈。"""

@@ -65,6 +65,7 @@ class PlanHandlers:
             on_status_advance=self._on_task_status_advance,
             on_actual_date_edit=self._on_actual_date_edit,
             on_record_result=self._on_record_result,
+            on_batch_value=self._on_batch_value,
         )
 
     def _on_auto_schedule(self) -> None:
@@ -1127,3 +1128,51 @@ class PlanHandlers:
             entity="task",
             error_title="日期更新失败",
         )
+
+    # ── 批量值粘贴 ──
+
+    def _on_batch_value(self, task_ids: list[int], col: int, value: str) -> None:
+        """从表格 Ctrl+V 粘贴的值批量更新选中行。
+
+        列映射:
+        6=进度, 7=优先级, 11=实际开始, 12=实际完成
+        """
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+
+        # 列 → 字段名 + 类型转换
+        field: str | None = None
+        parsed_value: object = value
+
+        if col == 6:   # 进度
+            field = "progress"
+            try:
+                parsed_value = float(value.replace("%", ""))
+            except ValueError:
+                return
+        elif col == 7:  # 优先级
+            field = "priority"
+            try:
+                parsed_value = int(value)
+            except (ValueError, TypeError):
+                return
+        elif col == 11:  # 实际开始
+            field = "actual_start_date"
+        elif col == 12:  # 实际完成
+            field = "actual_end_date"
+        else:
+            return
+
+        count = 0
+        for tid in task_ids:
+            exec_crud(
+                win=self._win,
+                action=ctrl.test_plan_service.update_task,
+                action_args=(tid,),
+                action_kwargs={field: parsed_value},
+                toast_msg=f"已批量更新 {count + 1}/{len(task_ids)} 个任务",
+                entity="task",
+                error_title="批量更新失败",
+            )
+            count += 1
