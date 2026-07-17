@@ -415,11 +415,15 @@ class _TaskTable(QTableWidget):
                 # 名称列 tooltip (col 1)
                 if col == 1 and task.name:
                     item.setToolTip(task.name)
-                # 超期标记：预计开始(col4) 和 预计结束(col5) 文字标红
-                if is_overdue and col in (4, 5):
-                    item.setForeground(QColor(_t.RED))
-                    if col == 5:
-                        item.setToolTip(f"已超期（预计结束: {planned_end_str}）")
+                # 超期标记：预计开始(col4) 和 预计结束(col5) 文字标红 + 天数
+                if is_overdue and planned_end_date is not None:
+                    overdue_days = (today - planned_end_date).days
+                    if col in (4, 5):
+                        item.setForeground(QColor(_t.RED))
+                        if col == 5:
+                            item.setToolTip(f"已超期 {overdue_days} 天（预计结束: {planned_end_str}）")
+                            if planned_end_str != "—":
+                                item.setText(f"{planned_end_str}  超期{overdue_days}d")
                 # 状态颜色 (col 8)
                 if col == 8:
                     item.setForeground(QColor(self._STATUS_COLORS.get(task.status, _t.TEXT)))
@@ -433,6 +437,22 @@ class _TaskTable(QTableWidget):
                     elif pass_count == 0:
                         item.setForeground(QColor(_t.RED))
                 self.setItem(row, col, item)
+            # 行背景：超期红 / 未指派技术员橘黄
+            if task.status not in ("completed", "done"):
+                row_bg = None
+                if is_overdue and planned_end_date is not None:
+                    bg_c = QColor(_t.RED)
+                    bg_c.setAlpha(25)
+                    row_bg = bg_c
+                elif not task.technician_id:
+                    bg_c = QColor(_t.YELLOW)
+                    bg_c.setAlpha(35)
+                    row_bg = bg_c
+                if row_bg:
+                    for c in range(self.columnCount()):
+                        cell = self.item(row, c)
+                        if cell:
+                            cell.setBackground(row_bg)
         self.setSortingEnabled(True)
         self._update_empty_state()
         # 恢复列宽 & 排序状态（仅在首次数据加载后）
