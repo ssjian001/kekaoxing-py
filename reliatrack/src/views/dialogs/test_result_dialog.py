@@ -349,6 +349,12 @@ class TestResultDialog(QWidget):
         self._btn_pass_all.setProperty("class", "btn-pass-all")
         self._btn_pass_all.clicked.connect(self._pass_all)
         stats_row.addWidget(self._btn_pass_all)
+
+        self._btn_fail_all = QPushButton("全部不通过")
+        self._btn_fail_all.setFixedHeight(24)
+        self._btn_fail_all.clicked.connect(self._fail_all)
+        stats_row.addWidget(self._btn_fail_all)
+
         layout.addLayout(stats_row)
 
         # 分隔线
@@ -445,13 +451,24 @@ class TestResultDialog(QWidget):
         count = 0
         for row in self._rows:
             if not row._deleted and row._combo.currentData() != "pass":
-                # 找到 "pass" 的 index
                 idx = row._combo.findData("pass")
                 if idx >= 0:
                     row._combo.setCurrentIndex(idx)
                     count += 1
         if count:
             self._btn_pass_all.setText(f"全部通过 ({count})")
+
+    def _fail_all(self) -> None:
+        """将所有未删除行的结果设为「不通过」。"""
+        count = 0
+        for row in self._rows:
+            if not row._deleted and row._combo.currentData() != "fail":
+                idx = row._combo.findData("fail")
+                if idx >= 0:
+                    row._combo.setCurrentIndex(idx)
+                    count += 1
+        if count:
+            self._btn_fail_all.setText(f"全部不通过 ({count})")
 
     def _update_stats(self) -> None:
         # 只统计未删除的行
