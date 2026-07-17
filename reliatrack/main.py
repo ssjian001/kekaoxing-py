@@ -169,10 +169,8 @@ class MainWindow(QMainWindow):
             last_tab = 0
         if 0 <= last_tab < self._tab_widget.count():
             self._tab_widget.setCurrentIndex(last_tab)
-        # Tab 切换时保存
-        self._tab_widget.currentChanged.connect(
-            lambda idx: QSettings().setValue("ReliaTrack/last_tab_index", idx)
-        )
+        # Tab 切换时保存 + 自动刷新
+        self._tab_widget.currentChanged.connect(self._on_tab_changed)
 
         layout.addWidget(self._tab_widget)
 
@@ -186,6 +184,19 @@ class MainWindow(QMainWindow):
         self._reminder_timer.setInterval(30_000)
         self._reminder_timer.timeout.connect(self._check_todo_reminders)
         self._reminder_timer.start()
+
+    # ── Tab 切换自动刷新 ──
+
+    def _on_tab_changed(self, index: int) -> None:
+        """切换 Tab 时保存索引 + 自动刷新数据。"""
+        QSettings().setValue("ReliaTrack/last_tab_index", index)
+        # Tab 0 仪表盘 / Tab 3 测试计划 / Tab 4 Issue 管理
+        if index == 0:
+            self._schedule_refresh("dashboard")
+        elif index == 3:
+            self._schedule_refresh("test_plan")
+        elif index == 4:
+            self._schedule_refresh("issue")
 
     # ── 仪表盘卡片点击 ──
 
