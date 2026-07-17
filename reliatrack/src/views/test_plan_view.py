@@ -254,6 +254,7 @@ class TestPlanView(QWidget):
         )
         self._gantt.set_tasks(filtered, start_date=self._last_start_date,
                               equipment_map=self._last_equipment_map,
+                              technician_map=self._last_technician_map,
                               task_prefix=self._last_task_prefix,
                               holidays=self._last_holidays)
 
@@ -276,11 +277,13 @@ class TestPlanView(QWidget):
         self._last_result_map = result_map or {}
         self._last_start_date = start_date
         self._last_equipment_map = equipment_map or {}
+        self._last_technician_map = technician_map or {}
         self._last_task_prefix = task_prefix
         self._last_holidays = holidays or set()
         self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days, start_date,
                               equipment_map=equipment_map,
+                              technician_map=technician_map,
                               task_prefix=task_prefix,
                               holidays=holidays)
         # 结果矩阵

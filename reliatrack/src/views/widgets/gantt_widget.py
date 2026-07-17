@@ -118,6 +118,7 @@ class _GanttWidget(QWidget):
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
                   start_date: str = "",
                   equipment_map: dict[int, str] | None = None,
+                  technician_map: dict[int, str] | None = None,
                   task_prefix: str = "",
                   holidays: set[str] | None = None) -> None:
         # 重置拖拽状态，防止 tasks 更新后索引越界
@@ -131,6 +132,8 @@ class _GanttWidget(QWidget):
         self._start_date = start_date
         self._task_prefix = task_prefix
         self._holidays = holidays or set()
+        self._equip_map = equipment_map or {}
+        self._tech_map = technician_map or {}
         if equipment_map is not None:
             self._equipment_map = equipment_map
             # 按 equipment_id 分配颜色
@@ -232,6 +235,17 @@ class _GanttWidget(QWidget):
                     f"进度: {task.progress:.0f}%\n"
                     f"状态: {task.status}"
                 )
+                # 追加设备和人员（如果有）
+                tech_name = ""
+                equip_name = ""
+                if task.technician_id is not None and hasattr(self, "_tech_map"):
+                    tech_name = self._tech_map.get(task.technician_id, "")
+                if task.equipment_id is not None and hasattr(self, "_equip_map"):
+                    equip_name = self._equip_map.get(task.equipment_id, "")
+                if tech_name:
+                    tooltip += f"\n技术员: {tech_name}"
+                if equip_name:
+                    tooltip += f"\n设备: {equip_name}"
                 self.setToolTip(tooltip)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
