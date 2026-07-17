@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 import src.styles.theme as _t
 
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
@@ -227,14 +228,18 @@ class TaskEditDialog(_BaseDialog):
             "设备",
             items=["（无）"] + equip_names,
             default=self._find_equip_label(task.equipment_id) if task else "（无）",
+            editable=True,
         )
+        self._equipment_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
 
         tech_names = [f"{t.id} — {t.name}" for t in self._technician_list]
         self._technician_combo = self._add_combo_field(
             "技术员",
             items=["（无）"] + tech_names,
             default=self._find_tech_label(task.technician_id) if task else "（无）",
+            editable=True,
         )
+        self._technician_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self._add_separator()
 
         # ── 依赖 & 环境 ──
@@ -504,15 +509,17 @@ class TaskEditDialog(_BaseDialog):
         return ", ".join(parts)
 
     def _open_dep_selector(self) -> None:
-        """弹出依赖任务多选对话框。"""
+        """弹出依赖任务多选对话框（带搜索过滤）。"""
         from PySide6.QtWidgets import (
             QDialog, QVBoxLayout, QListWidget, QListWidgetItem,
-            QHBoxLayout, QPushButton, QLabel,
+            QHBoxLayout, QPushButton, QLabel, QLineEdit,
         )
+        from PySide6.QtGui import QColor as _QColor
+
         dlg = QDialog(self)
         dlg.setWindowTitle("选择依赖任务")
         dlg.setMinimumWidth(360)
-        dlg.setMinimumHeight(300)
+        dlg.setMinimumHeight(350)
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(12, 10, 12, 10)
@@ -522,18 +529,24 @@ class TaskEditDialog(_BaseDialog):
         hint.setProperty("class", "subtext")
         layout.addWidget(hint)
 
+        # 搜索过滤框
+        search_edit = QLineEdit()
+        search_edit.setPlaceholderText("输入关键字过滤任务…")
+        search_edit.setClearButtonEnabled(True)
+        layout.addWidget(search_edit)
+
         lst = QListWidget()
+        layout.addWidget(lst, stretch=1)
+
         # 按 start_day 排序
         sorted_tasks = sorted(self._all_tasks, key=lambda t: (t.start_day or 0, t.id or 0))
         # 如果是编辑模式，插入当前任务作为分隔参照
         if self._task and self._task.id is not None:
-            from PySide6.QtGui import QColor as _QColor
             cur = self._task
             cur_label = f"▶ #{cur.id} {cur.name}  (D{cur.start_day}~D{cur.start_day + cur.duration}) — 当前任务"
             cur_item = QListWidgetItem(cur_label)
-            cur_item.setFlags(Qt.ItemFlag.NoItemFlags)  # 不可选、不可勾选
+            cur_item.setFlags(Qt.ItemFlag.NoItemFlags)
             cur_item.setForeground(_QColor(_t.BLUE))
-            # 找到插入位置（按 start_day 排序）
             insert_pos = 0
             for i, t in enumerate(sorted_tasks):
                 if (t.start_day or 0) < (cur.start_day or 0) or (
@@ -541,25 +554,34 @@ class TaskEditDialog(_BaseDialog):
                 ):
                     insert_pos = i + 1
             sorted_tasks.insert(insert_pos, ("__current__", cur_item))
-        for t in sorted_tasks:
-            if isinstance(t, tuple) and t[0] == "__current__":
-                lst.addItem(t[1])
-                continue
-            if t.id is None:
-                continue
-            label = f"#{t.id} {t.name}  (D{t.start_day}~D{t.start_day + t.duration})"
-            item = QListWidgetItem(label)
-            item.setData(Qt.ItemDataRole.UserRole, t.id)
-            item.setCheckState(
-                Qt.CheckState.Checked if t.id in self._selected_dep_ids
-                else Qt.CheckState.Unchecked
-            )
-            lst.addItem(item)
-        if lst.count() == 0:
-            empty_item = QListWidgetItem("（当前计划无其他任务）")
-            empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-            lst.addItem(empty_item)
-        layout.addWidget(lst, stretch=1)
+
+        def _populate(filter_text: str = "") -> None:
+            """根据搜索文本填充列表。"""
+            lst.clear()
+            ft = filter_text.strip().lower()
+            for t in sorted_tasks:
+                if isinstance(t, tuple) and t[0] == "__current__":
+                    lst.addItem(t[1])
+                    continue
+                if t.id is None:
+                    continue
+                label = f"#{t.id} {t.name}  (D{t.start_day}~D{t.start_day + t.duration})"
+                if ft and ft not in label.lower():
+                    continue
+                item = QListWidgetItem(label)
+                item.setData(Qt.ItemDataRole.UserRole, t.id)
+                item.setCheckState(
+                    Qt.CheckState.Checked if t.id in self._selected_dep_ids
+                    else Qt.CheckState.Unchecked
+                )
+                lst.addItem(item)
+            if lst.count() == 0:
+                empty_item = QListWidgetItem("（无匹配任务）")
+                empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                lst.addItem(empty_item)
+
+        search_edit.textChanged.connect(_populate)
+        _populate()
 
         # 按钮
         btn_row = QHBoxLayout()
