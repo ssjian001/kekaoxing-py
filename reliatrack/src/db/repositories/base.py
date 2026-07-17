@@ -75,8 +75,14 @@ class BaseRepository:
         return bool(self._columns())
 
     def _columns_sql(self) -> str:
-        """返回显式列名列表字符串，如 '[id], [name], [status]'。"""
-        return ", ".join(f"[{c}]" for c in self._columns())
+        """返回显式列名列表字符串，如 '[id], [name], [status]'。
+
+        当 PRAGMA 返回空（表不存在）时回退到 '*'，避免生成无效 SQL。
+        """
+        cols = self._columns()
+        if not cols:
+            return "*"
+        return ", ".join(f"[{c}]" for c in cols)
 
     def invalidate_columns_cache(self) -> None:
         """清除列名缓存（Schema 迁移后调用）。"""
