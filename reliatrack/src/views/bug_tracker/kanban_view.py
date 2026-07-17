@@ -299,8 +299,9 @@ class _KanbanCard(QFrame):
     # ── 主题刷新 ──────────────────────────────────────────────
 
     def refresh_theme(self) -> None:
-        """主题切换后重绘卡片样式。"""
-        self._apply_card_style()
+        """主题切换后重绘卡片样式 — 依赖 QSS 类选择器。"""
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -369,6 +370,7 @@ class _KanbanColumn(QFrame):
 
         self._title_label = QLabel(self._label)
         self._title_label.setFont(_FONT_COLUMN_HEADER)
+        self._title_label.setProperty("class", "column-header-label")
         header_layout.addWidget(self._title_label)
 
         self._count_label = QLabel("0")
@@ -553,24 +555,14 @@ class _KanbanColumn(QFrame):
     # ── 主题刷新 ──────────────────────────────────────────────
 
     def refresh_theme(self) -> None:
-        """主题切换后重绘列样式。"""
-        border = _t.SURFACE1
-        self.setStyleSheet(
-            f"background-color: {_t.MANTLE};"
-            f"border: 1px solid {border};"
-            f"border-radius: 10px;"
-        )
-        header_style = (
-            f"background-color: {_t.MANTLE};"
-            f"border-top-left-radius: 10px;"
-            f"border-top-right-radius: 10px;"
-            f"border-bottom: 1px solid {border};"
-        )
-        # 由于 header 是 QFrame child，通过 class 间接设置
-        self.findChild(QFrame, "", Qt.FindChildOption.FindChildrenRecursively)
+        """主题切换后重绘列样式 — 依赖 QSS 类选择器，不覆写内联样式。"""
+        # QSS class selectors (kanban-column / column-header) 在主题切换时
+        # 已由全局 _build_qss() 更新，此处只需 unpolish+polish 确保生效
+        self.style().unpolish(self)
+        self.style().polish(self)
         for child in self.findChildren(QFrame):
-            if child.property("class") == "column-header":
-                child.setStyleSheet(header_style)
+            child.style().unpolish(child)
+            child.style().polish(child)
 
         for card in self._cards:
             card.refresh_theme()

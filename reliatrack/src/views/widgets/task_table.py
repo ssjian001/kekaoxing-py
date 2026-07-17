@@ -21,6 +21,10 @@ from PySide6.QtGui import QAction, QColor, QKeySequence
 import src.styles.theme as _t
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
+from src.styles.column_persistence import (
+    save_column_widths_debounced, restore_column_widths,
+    save_sort_state, restore_sort_state,
+)
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
@@ -89,6 +93,15 @@ class _TaskTable(QTableWidget):
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
         self._register_shortcuts()
+
+        # 列宽 & 排序持久化
+        self._persistence_key = "task_table"
+        self.horizontalHeader().sectionResized.connect(
+            lambda: save_column_widths_debounced(self, self._persistence_key)
+        )
+        self.horizontalHeader().sortIndicatorChanged.connect(
+            lambda col, order: save_sort_state(self, self._persistence_key)
+        )
 
     def set_reference_data(
         self,
@@ -162,6 +175,14 @@ class _TaskTable(QTableWidget):
     def _on_double_click(self, row: int, col: int) -> None:
         task = self.get_task_at_row(row)
         if not task or task.id is None:
+            return
+
+        # 进度(6) / 优先级(7) — 就地编辑（无弹窗）
+        if col == 6:
+            self._edit_inline_progress(row, task)
+            return
+        if col == 7:
+            self._edit_inline_priority(row, task)
             return
 
         # 实际开始(11) / 实际完成(12) — 弹出日历快捷编辑
@@ -414,6 +435,9 @@ class _TaskTable(QTableWidget):
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
         self._update_empty_state()
+        # 恢复列宽 & 排序状态（仅在首次数据加载后）
+        restore_column_widths(self, self._persistence_key)
+        restore_sort_state(self, self._persistence_key)
 
     def _update_empty_state(self) -> None:
         """控制空状态提示的显示/隐藏。"""
@@ -447,6 +471,59 @@ class _TaskTable(QTableWidget):
         return None
 
     # ── 批量编辑 ────────────────────────────────────────────
+
+    def _edit_inline_progress(self, row: int, task: TestTask) -> None:
+        """双击进度列 — 显示 QDoubleSpinBox 就地编辑。"""
+        from PySide6.QtWidgets import QDoubleSpinBox, QWidget
+        from PySide6.QtCore import QTimer
+
+        spin = QDoubleSpinBox()
+        spin.setRange(0, 100)
+        spin.setDecimals(0)
+        spin.setSuffix("%")
+        spin.setValue(task.progress)
+        spin.selectAll()
+        self.setCellWidget(row, 6, spin)
+        spin.setFocus()
+
+        def _commit(val: float) -> None:
+            if self._on_edit_callback:
+                # 更新 task 在内存中的数据，再触发回调
+                old_prog = task.progress
+                task.progress = val
+                self._on_edit_callback(task)
+                task.progress = old_prog  # 恢复（实际由 handler 重新加载）
+            self.removeCellWidget(row, 6)
+            self.flash_row(task.id, 500)
+
+        spin.editingFinished.connect(lambda sv=spin: _commit(sv.value()))
+        QTimer.singleShot(50, spin.selectAll)
+
+    def _edit_inline_priority(self, row: int, task: TestTask) -> None:
+        """双击优先级列 — 显示下拉框就地编辑。"""
+        from PySide6.QtWidgets import QComboBox, QWidget
+        from PySide6.QtCore import QTimer
+        from src.constants import PRIORITY_LABELS
+
+        combo = QComboBox()
+        items = [(PRIORITY_LABELS.get(i, str(i)), i) for i in range(1, 6)]
+        combo.addItems([label for label, _ in items])
+        combo.setCurrentIndex(task.priority - 1)
+        self.setCellWidget(row, 7, combo)
+        combo.setFocus()
+        combo.showPopup()
+
+        def _commit(idx: int) -> None:
+            new_pri = items[idx][1]
+            if new_pri != task.priority and self._on_edit_callback:
+                old_pri = task.priority
+                task.priority = new_pri
+                self._on_edit_callback(task)
+                task.priority = old_pri
+            self.removeCellWidget(row, 7)
+            self.flash_row(task.id, 500)
+
+        combo.currentIndexChanged.connect(_commit)
 
     def keyPressEvent(self, event: object) -> None:
         """拦截 Ctrl+V 进行批量粘贴，其余走默认。"""

@@ -723,24 +723,88 @@ QLabel[class="body-text"] {{
     color: {TEXT}; font-size: 12px;
 }}
 
-QFrame[class="kanban-col-pending"] {{
-    background-color: {BG_INPUT}; border-radius: 10px;
+/* ── 看板列 ── */
+QFrame[class="kanban-column"] {{
+    background-color: {SURFACE0}; border-radius: 10px; border: none;
 }}
-QFrame[class="kanban-col-progress"] {{
-    background-color: {SELECTION_BG}; border-radius: 10px;
-}}
-QFrame[class="kanban-col-done"] {{
-    background-color: {SURFACE0}; border-radius: 10px;
+QFrame[class="kanban-column"]:hover {{
+    background-color: {SURFACE1};
 }}
 
 /* ── 看板列标题 ── */
-QLabel[class="kanban-col-header"] {{
+QFrame[class="column-header"] {{
+    background: transparent; border: none; border-top-left-radius: 10px; border-top-right-radius: 10px;
+}}
+/* ── 看板列标题文字 ── */
+QLabel[class="column-header-label"] {{
     color: {TEXT}; border: none;
 }}
 /* ── 看板计数标签 ── */
+QLabel[class="column-count"] {{
+    color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
+    background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+}}
+/* ── 折叠按钮 ── */
+QPushButton[class="fold-btn"] {{
+    background: transparent; border: none; border-radius: 4px;
+    color: {FG_SECONDARY}; font-size: 13px;
+}}
+QPushButton[class="fold-btn"]:hover {{
+    background: {BG_HOVER}; color: {TEXT};
+}}
+/* ── 折叠信息栏 ── */
+QLabel[class="fold-info"] {{
+    color: {FG_SECONDARY}; background: transparent; border: none;
+    font-size: 12px;
+}}
+QLabel[class="fold-info"]:hover {{
+    color: {TEXT};
+}}
+/* ── 滚动区域 ── */
+QScrollArea[class="column-scroll"] {{
+    background: transparent; border: none;
+}}
+/* ── 看板外层滚动（旧名兼容） ── */
+QScrollArea[class="kanban-scroll"] {{
+    background: transparent; border: none;
+}}
+/* ── 看板列容器（4 列水平布局） ── */
+QWidget[class="columns-container"] {{
+    background: transparent; border: none;
+}}
+/* ── 看板列标题（旧名兼容：todo_view） ── */
+QLabel[class="kanban-col-header"] {{
+    color: {TEXT}; border: none;
+}}
+/* ── 看板计数标签（旧名兼容：todo_view, quadrant_view） ── */
 QLabel[class="kanban-count"] {{
     color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
     background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+}}
+/* ── 搜索输入框 ── */
+QLineEdit[class="search-input"] {{
+    background: {BG_INPUT}; border: 1px solid {SURFACE1}; border-radius: 6px;
+    padding: 2px 8px; color: {TEXT};
+}}
+/* ── 筛选面板 ── */
+QFrame[class="filter-panel"] {{
+    background: {SURFACE0}; border-radius: 8px; border: none;
+}}
+/* ── 筛选复选框组 ── */
+QWidget[class="filter-checkbox"] {{
+    background: transparent; border: none;
+}}
+/* ── Issue 详情 Tab ── */
+QTabWidget[class="detail-tabs"] {{
+    background: transparent; border: none;
+}}
+/* ── 卡片元信息 ── */
+QLabel[class="card-meta"] {{
+    color: {FG_SECONDARY}; font-size: 11px; border: none;
+}}
+/* ── 看板卡片背景 ── */
+QFrame[class="kanban-card"] {{
+    background-color: {BG_CARD}; border: 1px solid {SURFACE1}; border-radius: 8px;
 }}
 /* ── 看板卡片标题 ── */
 QLabel[class="card-title"] {{

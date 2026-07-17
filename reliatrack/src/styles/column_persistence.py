@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSettings, QTimer
+from PySide6.QtCore import QSettings, QTimer, Qt
 from PySide6.QtWidgets import QHeaderView, QTableWidget
 
 
@@ -72,3 +72,29 @@ def restore_column_widths(table: QTableWidget, key: str) -> None:
             break
         if w > 0 and header.sectionResizeMode(col) == QHeaderView.ResizeMode.Interactive:
             table.setColumnWidth(col, w)
+
+
+_SORT_KEY_PREFIX = "ReliaTrack/column_sort/"
+
+
+def save_sort_state(table: QTableWidget, key: str) -> None:
+    """保存表格排序状态（排序列索引 + 升/降序）到 QSettings。"""
+    header = table.horizontalHeader()
+    col = header.sortIndicatorSection()
+    order = header.sortIndicatorOrder()
+    settings = QSettings()
+    settings.setValue(f"{_SORT_KEY_PREFIX}{key}", [col, int(order)])
+
+
+def restore_sort_state(table: QTableWidget, key: str) -> None:
+    """从 QSettings 恢复表格排序状态。需表格有数据时调用。"""
+    settings = QSettings()
+    raw = settings.value(f"{_SORT_KEY_PREFIX}{key}")
+    if not raw or not isinstance(raw, list) or len(raw) < 2:
+        return
+    try:
+        col, order = int(raw[0]), int(raw[1])
+    except (ValueError, TypeError):
+        return
+    if 0 <= col < table.columnCount():
+        table.sortItems(col, Qt.SortOrder(order))
