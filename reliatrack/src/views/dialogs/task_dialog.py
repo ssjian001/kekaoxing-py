@@ -728,7 +728,7 @@ class TaskEditDialog(_BaseDialog):
             from datetime import date as _date
             try:
                 base = _date.fromisoformat(self._plan_start_date)
-                planned_start = self._planned_start_edit.date().toPython().date()
+                planned_start = self._planned_start_edit.date().toPython()
                 start_day = (planned_start - base).days
                 manual_scheduled = 1
             except (ValueError, TypeError, RuntimeError, AttributeError):
