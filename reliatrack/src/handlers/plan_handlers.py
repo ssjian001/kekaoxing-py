@@ -55,8 +55,9 @@ class PlanHandlers:
         v.act_import_tasks.triggered.connect(self._on_task_batch_import)
         v.act_import_from_plan.triggered.connect(self._on_import_from_plan)
         # 独立按钮
-        v.btn_record_result.clicked.connect(self._on_record_result)
-        v.btn_quick_add.clicked.connect(self._on_task_quick_add)
+        from src.handlers.crud_helpers import debounce_connect
+        debounce_connect(v.btn_record_result, self._on_record_result)
+        debounce_connect(v.btn_quick_add, self._on_task_quick_add)
         # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
