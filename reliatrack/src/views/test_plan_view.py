@@ -163,6 +163,12 @@ class TestPlanView(QWidget):
         self._summary_label.setWordWrap(True)
         layout.addWidget(self._summary_label)
 
+        # 任务统计（常驻显示）
+        self._stats_label = QLabel()
+        self._stats_label.setProperty("class", "subtext")
+        self._stats_label.setContentsMargins(0, 0, 0, 4)
+        layout.addWidget(self._stats_label)
+
         # 子 Tab: 测试项 / 甘特图
         from PySide6.QtWidgets import QTabWidget
         self._sub_tabs = QTabWidget()
@@ -264,6 +270,8 @@ class TestPlanView(QWidget):
                               technician_map=self._last_technician_map,
                               task_prefix=self._last_task_prefix,
                               holidays=self._last_holidays)
+        self._update_summary_bar()
+        self._update_stats(filtered)
 
     def refresh(
         self,
@@ -351,6 +359,43 @@ class TestPlanView(QWidget):
                         pending_result_count += 1
 
         return due_count, pending_result_count, overdue_count
+
+    def _update_stats(self, tasks: list[TestTask]) -> None:
+        """更新任务统计：总数/完成/未完成/超期。"""
+        total = len(tasks)
+        completed = sum(1 for t in tasks if t.status == "completed")
+        pending = total - completed
+        # 超期
+        from datetime import date
+        today = date.today()
+        overdue = 0
+        for t in tasks:
+            if t.status in ("completed", "done", "skipped", "failed"):
+                continue
+            # 超期判断基于预计结束日期
+            if t.start_day is not None:
+                from datetime import timedelta
+                from src.models.test_plan import TestTask as _TT
+                # 用计划开始日期推算
+                plan_start = None
+                if self._last_start_date:
+                    try:
+                        plan_start = date.fromisoformat(self._last_start_date)
+                    except ValueError:
+                        pass
+                if plan_start:
+                    end = plan_start + timedelta(days=t.start_day + t.duration - 1)
+                    if end < today:
+                        overdue += 1
+
+        parts = [f"共 {total} 个任务"]
+        if pending > 0:
+            parts.append(f"待完成 {pending}")
+        if completed > 0:
+            parts.append(f"已完成 {completed}")
+        if overdue > 0:
+            parts.append(f'<span style="color:{_t.RED}">{overdue} 个超期</span>')
+        self._stats_label.setText("  |  ".join(parts))
 
     def _update_summary_bar(self) -> None:
         """更新今日工作摘要。"""
