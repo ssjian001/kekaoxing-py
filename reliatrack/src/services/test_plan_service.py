@@ -107,9 +107,10 @@ class TestPlanService:
 
     def delete_task(self, task_id: int) -> None:
         with self._task_repo.transaction():
-            # 先删子表: test_results → issues(含 fa_records/attachments) → task
+            # 先删子表: test_results
             self._task_repo.delete_test_results(task_id)
-            self._task_repo.delete_issues_by_task(task_id)
+            # Issue 解除关联而非删除（保护已验证/关闭的 Issue 历史记录）
+            self._task_repo.detach_issues_by_task(task_id)
             self._task_repo.delete(task_id)
 
     def bulk_update_start_day(self, updates: list[tuple[int, int]]) -> None:

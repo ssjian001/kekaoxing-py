@@ -140,9 +140,16 @@ class MainWindow(QMainWindow):
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "测试计划")
 
-        # Tab 4: Issue 追踪（已合并到 Bug 管理，不再独立显示）
+        # Tab 4: Issue 管理（看板/列表）
+        assert self._ctrl.issue_service is not None, "IssueService must be initialized"
+        self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
+        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
 
-        # Tab 5: 设备 & 技术员管理（内部双 tab）
+        # Tab 5: 待办事项
+        self._todo_view = TodoView()
+        self._tab_widget.addTab(self._todo_view, "待办事项")
+
+        # Tab 6: 设备 & 技术员管理（内部双 tab）
         self._equip_tech_tabs = QTabWidget()
         self._equipment_view = EquipmentView()
         self._equip_tech_tabs.addTab(self._equipment_view, "设备")
@@ -150,18 +157,9 @@ class MainWindow(QMainWindow):
         self._equip_tech_tabs.addTab(self._technician_view, "技术员")
         self._tab_widget.addTab(self._equip_tech_tabs, "设备管理")
 
-        # Tab 6: 知识库
+        # Tab 7: 知识库
         self._knowledge_view = KnowledgeView()
         self._tab_widget.addTab(self._knowledge_view, "知识库")
-
-        # Tab 7: Bug 管理（看板/列表）
-        assert self._ctrl.issue_service is not None, "IssueService must be initialized"
-        self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
-        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
-
-        # Tab 7: 待办事项
-        self._todo_view = TodoView()
-        self._tab_widget.addTab(self._todo_view, "待办事项")
 
         # 恢复上次选中的 Tab
         settings = QSettings()
@@ -354,13 +352,13 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_add()
         elif idx == 4:
-            self._equipment_handlers._on_equipment_add()
-        elif idx == 5:
-            self._knowledge_handlers._on_knowledge_add()
-        elif idx == 6:
             self._bug_tracker_view._act_new_issue.trigger()
-        elif idx == 7:
+        elif idx == 5:
             self._todo_handlers._on_todo_add()
+        elif idx == 6:
+            self._equipment_handlers._on_equipment_add()
+        elif idx == 7:
+            self._knowledge_handlers._on_knowledge_add()
 
     def _on_shortcut_delete(self) -> None:
         """Delete: 删除当前 Tab 的选中项。"""
@@ -369,12 +367,14 @@ class MainWindow(QMainWindow):
             self._project_handlers._on_project_delete()
         elif idx == 3:
             self._plan_handlers._on_task_delete_menu()
+        elif idx == 4:
+            pass  # Issue 管理通过内部看板/列表操作删除
         elif idx == 5:
-            self._equipment_handlers._on_equipment_delete()
-        elif idx == 6:
-            self._knowledge_handlers._on_knowledge_delete()
-        elif idx == 7:
             self._todo_handlers._on_todo_delete()
+        elif idx == 6:
+            self._equipment_handlers._on_equipment_delete()
+        elif idx == 7:
+            self._knowledge_handlers._on_knowledge_delete()
 
     def _on_shortcut_edit(self) -> None:
         """F2: 编辑当前 Tab 的选中项。"""
@@ -384,11 +384,11 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_edit_menu()
         elif idx == 5:
-            self._equipment_handlers._on_equipment_edit()
-        elif idx == 6:
-            self._knowledge_handlers._on_knowledge_edit()
-        elif idx == 7:
             self._todo_handlers._on_todo_edit()
+        elif idx == 6:
+            self._equipment_handlers._on_equipment_edit()
+        elif idx == 7:
+            self._knowledge_handlers._on_knowledge_edit()
 
     def _on_shortcut_find(self) -> None:
         """Ctrl+F: 聚焦当前 Tab 的搜索框。"""
@@ -396,10 +396,10 @@ class MainWindow(QMainWindow):
             1: lambda: self._project_view.search_input,
             2: lambda: self._sample_view.pool_tab.search_input,
             3: lambda: self._test_plan_view._search_edit,
-            4: lambda: self._equipment_view._search_edit,
-            5: lambda: self._knowledge_view._search_edit,
-            6: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
-            7: lambda: self._todo_view._search_edit,
+            4: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
+            5: lambda: self._todo_view._search_edit,
+            6: lambda: self._equipment_view._search_edit,
+            7: lambda: self._knowledge_view._search_edit,
         }
         idx = self._tab_widget.currentIndex()
         getter = search_map.get(idx)

@@ -469,12 +469,14 @@ class IssueHandlers:
                     joined = "; ".join(capa_causes)
                     updates["root_cause"] = joined
 
-            # 4. dri_name 联动: 仅当 Issue.dri_name 为空时回写
-            if not getattr(issue, "dri_name", "") and capa_records:
+            # 4. assignee_id 联动: 仅当 Issue.assignee_id 为空时，取第一条有 assignee 的 CAPA
+            if issue.assignee_id is None and capa_records:
                 for rec in capa_records:
-                    name = getattr(rec, "assignee_name", "")
-                    if name:
-                        updates["dri_name"] = name
+                    if rec.assignee_id is not None:
+                        updates["assignee_id"] = rec.assignee_id
+                        if not getattr(issue, "dri_name", ""):
+                            name = getattr(rec, "assignee_name", "") or str(rec.assignee_id)
+                            updates["dri_name"] = name
                         break
 
             if updates:

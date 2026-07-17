@@ -88,8 +88,23 @@ class SampleService:
         return self._repo.get_transactions(sample_id)
 
     def add_transaction(self, sample_id: int, txn_type: str, **kwargs: object) -> int:
-        """添加出入库记录。"""
-        return self._repo.add_transaction(sample_id, txn_type, **kwargs)
+        """添加出入库记录，并自动联动样品状态。
+
+        映射: check_out → checked_out, return/check_in → in_stock
+        """
+        txn_id = self._repo.add_transaction(sample_id, txn_type, **kwargs)
+
+        # 自动联动样品状态
+        _STATUS_MAP = {
+            "check_out": "checked_out",
+            "return": "in_stock",
+            "check_in": "in_stock",
+        }
+        new_status = _STATUS_MAP.get(txn_type)
+        if new_status:
+            self._repo.update_status(sample_id, new_status)
+
+        return txn_id
 
     def delete_transactions(self, sample_id: int) -> None:
         """删除样品的所有出入库记录（级联删除子表）。"""
