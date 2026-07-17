@@ -64,6 +64,7 @@ class PlanHandlers:
             on_delete=self._on_task_delete,
             on_status_advance=self._on_task_status_advance,
             on_actual_date_edit=self._on_actual_date_edit,
+            on_record_result=self._on_record_result,
         )
 
     def _on_auto_schedule(self) -> None:

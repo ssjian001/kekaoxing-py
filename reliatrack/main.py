@@ -489,7 +489,14 @@ class MainWindow(QMainWindow):
         undo_desc: str = "",
         redo_desc: str = "",
     ) -> None:
-        """更新撤销/重做状态（保留接口兼容，无可见 UI）。"""
+        """更新撤销/重做状态 — 状态栏显示可撤销/重做操作描述。"""
+        parts = []
+        if can_undo and undo_desc:
+            parts.append(f"撤销: {undo_desc}")
+        if can_redo and redo_desc:
+            parts.append(f"重做: {redo_desc}")
+        if parts:
+            self.statusBar().showMessage(" | ".join(parts), 5000)
 
     # ── 公共属性（Handler 通过 .ctrl 访问，替代直接操作 _ctrl） ──────
 
@@ -605,8 +612,8 @@ class MainWindow(QMainWindow):
         if desc:
             self.statusBar().showMessage(f"已撤销: {desc}", 3000)
             self._ctrl.notify_data_changed("issue")
-            # FA/CAPA 删除撤销后需要 re-sync Issue
             self._replay_sync_after_undo_redo(cmd)
+            self._flash_undo_affected_row(cmd)
 
     def _on_redo(self) -> None:
         um = self._ctrl.undo_manager
@@ -618,6 +625,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
             self._ctrl.notify_data_changed("issue")
             self._replay_sync_after_undo_redo(cmd)
+            self._flash_undo_affected_row(cmd)
 
     def _replay_sync_after_undo_redo(self, cmd: object) -> None:
         """Undo/Redo FA/CAPA 删除后重新同步 Issue 关联字段。
@@ -637,6 +645,26 @@ class MainWindow(QMainWindow):
             ih._sync_issue_from_capa(issue_id)
         elif table == "fa_records":
             ih._sync_issue_from_fa(issue_id)
+
+    def _flash_undo_affected_row(self, cmd: object) -> None:
+        """撤销/重做后尝试从命令提取 entity_id，闪烁对应表格行。"""
+        from src.services.undo_manager import (
+            UpdateFieldCommand, DeleteEntityCommand,
+            MoveTaskCommand, UpdateProgressCommand, UpdateTaskStatusCommand,
+        )
+        # 提取 task_id
+        task_id: int | None = None
+        if isinstance(cmd, (UpdateFieldCommand, MoveTaskCommand,
+                           UpdateProgressCommand, UpdateTaskStatusCommand)):
+            task_id = cmd._entity_id
+        elif isinstance(cmd, DeleteEntityCommand):
+            task_id = cmd._saved_data.get("id")
+        if task_id is not None:
+            table = self._test_plan_view.task_table
+            if hasattr(table, "flash_row"):
+                # 延迟一下让刷新完成，再闪烁
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(300, lambda tid=task_id: table.flash_row(tid))
 
     def toast(self, message: str, level: str = "success") -> None:
         """显示 Toast 提示（替代 statusBar 的成功/警告消息）。"""

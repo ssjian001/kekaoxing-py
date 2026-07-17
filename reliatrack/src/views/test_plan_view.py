@@ -473,6 +473,7 @@ class TestPlanView(QWidget):
         on_delete: Callable[[TestTask], None] | None = None,
         on_status_advance: Callable[[TestTask, str], None] | None = None,
         on_actual_date_edit: Callable[[int, str, str], None] | None = None,
+        on_record_result: Callable[[], None] | None = None,
     ) -> None:
         """设置任务增删改以及实际日期编辑回调。
 
@@ -488,6 +489,7 @@ class TestPlanView(QWidget):
             on_delete=self._handle_table_delete,
             on_status_advance=on_status_advance,
             on_actual_date_edit=on_actual_date_edit,
+            on_record_result=on_record_result,
         )
 
     def _handle_table_edit(self, task: TestTask) -> None:

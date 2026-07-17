@@ -63,6 +63,7 @@ class _TaskTable(QTableWidget):
         self._on_delete_callback: Callable[[TestTask], None] | None = None
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
         self._on_actual_date_edit_callback: Callable[[int, str, str], None] | None = None  # (task_id, field, new_date)
+        self._on_record_result_callback: Callable[[], None] | None = None
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -92,12 +93,14 @@ class _TaskTable(QTableWidget):
         on_delete: Callable[[TestTask], None] | None = None,
         on_status_advance: Callable[[TestTask, str], None] | None = None,
         on_actual_date_edit: Callable[[int, str, str], None] | None = None,
+        on_record_result: Callable[[], None] | None = None,
     ) -> None:
-        """设置编辑/删除/状态推进/实际日期编辑回调。"""
+        """设置编辑/删除/状态推进/实际日期编辑/录入结果回调。"""
         self._on_edit_callback = on_edit
         self._on_delete_callback = on_delete
         self._on_status_advance_callback = on_status_advance
         self._on_actual_date_edit_callback = on_actual_date_edit
+        self._on_record_result_callback = on_record_result
 
     def _on_double_click(self, row: int, col: int) -> None:
         task = self.get_task_at_row(row)
@@ -161,6 +164,7 @@ class _TaskTable(QTableWidget):
 
             act_start: QAction | None = None
             act_complete: QAction | None = None
+            act_record: QAction | None = None
             if task.status == "pending":
                 act_start = QAction("开始执行", self)
                 act_start.triggered.connect(
@@ -173,15 +177,23 @@ class _TaskTable(QTableWidget):
                     lambda: self._on_status_advance_callback(task, "completed")
                     if self._on_status_advance_callback else None
                 )
+            # 进行中/已完成/失败的任务都可直接录入结果
+            if task.status in ("in_progress", "completed", "failed") and self._on_record_result_callback:
+                act_record = QAction("录入测试结果", self)
+                act_record.triggered.connect(
+                    lambda: self._on_record_result_callback()
+                )
 
             menu.addAction(act_edit)
             menu.addAction(act_delete)
-            if act_start or act_complete:
+            if act_start or act_complete or act_record:
                 menu.addSeparator()
             if act_start:
                 menu.addAction(act_start)
             if act_complete:
                 menu.addAction(act_complete)
+            if act_record:
+                menu.addAction(act_record)
         else:
             # 多选 — 批量操作
             selected_tasks = []
@@ -335,3 +347,27 @@ class _TaskTable(QTableWidget):
         if 0 <= row < len(self._tasks):
             return self._tasks[row]
         return None
+
+    def flash_row(self, task_id: int, duration_ms: int = 800) -> None:
+        """闪烁指定任务所在行 — 用于撤销后视觉反馈。"""
+        for row in range(self.rowCount()):
+            item = self.item(row, 0)
+            if item and item.data(Qt.ItemDataRole.UserRole) == task_id:
+                from PySide6.QtCore import QTimer, QPropertyAnimation
+                from PySide6.QtGui import QColor
+                orig_bg = QColor(_t.SURFACE2)
+                flash = QColor(_t.YELLOW)
+                flash.setAlpha(120)
+                for col in range(self.columnCount()):
+                    cell = self.item(row, col)
+                    if cell:
+                        cell.setBackground(flash)
+                QTimer.singleShot(duration_ms, lambda r=row: self._unflash_row(r))
+                break
+
+    def _unflash_row(self, row: int) -> None:
+        """移除指定行的闪烁背景。"""
+        for col in range(self.columnCount()):
+            cell = self.item(row, col)
+            if cell:
+                cell.setBackground(QColor())  # 清除自定义背景
