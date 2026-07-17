@@ -260,7 +260,8 @@ class TestPlanView(QWidget):
         tab_matrix = QWidget()
         tab_matrix_layout = QVBoxLayout(tab_matrix)
         tab_matrix_layout.setContentsMargins(0, 0, 0, 0)
-        self._result_matrix = _ResultMatrixWidget()
+        self._result_matrix = _ResultMatrixWidget(parent=self)
+        self._result_matrix.set_on_result_changed(self._on_matrix_result_changed)
         tab_matrix_layout.addWidget(self._result_matrix)
         self._sub_tabs.addTab(tab_matrix, "结果矩阵")
 
@@ -285,9 +286,18 @@ class TestPlanView(QWidget):
         self._last_holidays: set[str] = set()
 
     def _on_gantt_mode_toggled(self, btn_id: int, checked: bool) -> None:
-        """甘特图预计/实际模式切换。"""
+        """甘特图模式切换。"""
         if checked:
             self._gantt.set_mode(actual=(btn_id == 1))
+
+    def _on_matrix_result_changed(self, task_id: int, sample_id: int, new_result: str) -> None:
+        """结果矩阵双击编辑 — 委托给 plan_handlers 保存。"""
+        if self._on_matrix_edit_callback:
+            self._on_matrix_edit_callback(task_id, sample_id, new_result)
+
+    def set_on_matrix_edit_callback(self, callback: Callable[[int, int, str], None] | None) -> None:
+        """设置矩阵双击编辑回调（由 plan_handlers 在初始化时调用）。"""
+        self._on_matrix_edit_callback = callback
 
     def _on_task_search(self, text: str = "") -> None:
         """根据搜索关键词、技术员、日期范围过滤任务列表。"""

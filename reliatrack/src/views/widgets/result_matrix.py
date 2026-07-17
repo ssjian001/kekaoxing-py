@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Callable
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
@@ -21,7 +23,11 @@ class _ResultMatrixWidget(QWidget):
     行 = 测试任务（task），列 = 样品（sample）。
     单元格显示 pass/fail/conditional/pending/skip，着色区分。
     末列 = 行统计（通过率），末行 = 列统计（各样品通过率）。
+
+    双击结果单元格直接切换 pass→fail→conditional→pending 循环。
     """
+
+    _RESULT_CYCLE = ["pass", "fail", "conditional", "pending", "skip"]
 
     @classmethod
     def _result_colors(cls) -> dict[str, str]:
@@ -47,8 +53,10 @@ class _ResultMatrixWidget(QWidget):
     _MODE_MEASURED = 1
     _MODE_DATE = 2
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, parent: QWidget | None = None,
+                 on_result_changed: Callable[[int, int, str], None] | None = None):
         super().__init__(parent)
+        self._on_result_changed = on_result_changed
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
 
@@ -79,6 +87,7 @@ class _ResultMatrixWidget(QWidget):
         install_copy_handler(self._table)
         self._table.verticalHeader().setVisible(True)
         self._table.horizontalHeader().setStretchLastSection(False)
+        self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self._table.setStyleSheet(self._table.styleSheet() + f"""
             QTableWidget::item {{
                 padding: 0px;
@@ -130,6 +139,41 @@ class _ResultMatrixWidget(QWidget):
         for i, btn in enumerate(self._mode_group.buttons()):
             btn.setStyleSheet(self._mode_qss(i == btn_id))
         self.refresh(self._last_tasks, self._last_results, self._last_sample_map)
+
+    def _on_cell_double_clicked(self, row: int, col: int) -> None:
+        """双击结果单元格：循环切换结果值。"""
+        # 只处理结果单元格（col >= 1 且不是末列统计列）
+        if col < 1 or col >= self._table.columnCount() - 1:
+            return
+        # 末行是统计行，不可编辑
+        if row >= len(self._last_tasks):
+            return
+
+        item = self._table.item(row, col)
+        if not item:
+            return
+        data = item.data(Qt.ItemDataRole.UserRole)
+        if not data or not isinstance(data, tuple) or len(data) != 2:
+            return
+        task_id, sample_id = data
+
+        # 从单元格当前文本推断当前结果
+        current_label = item.text()
+        current_result = None
+        for k, v in self._RESULT_LABELS.items():
+            if v == current_label:
+                current_result = k
+                break
+
+        idx = self._RESULT_CYCLE.index(current_result) if current_result in self._RESULT_CYCLE else -1
+        next_result = self._RESULT_CYCLE[(idx + 1) % len(self._RESULT_CYCLE)]
+
+        if self._on_result_changed:
+            self._on_result_changed(task_id, sample_id, next_result)
+
+    def set_on_result_changed(self, callback: Callable[[int, int, str], None] | None) -> None:
+        """设置双击单元格后的回调（延迟绑定，避免构造时循环依赖）。"""
+        self._on_result_changed = callback
 
     def refresh(
         self,

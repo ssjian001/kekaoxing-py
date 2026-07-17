@@ -62,14 +62,15 @@ class PlanHandlers:
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
         v.setup_task_callbacks(
-            on_add=self._on_task_add,
             on_edit=self._on_task_edit,
-            on_delete=self._on_task_delete,
+            on_delete=self._on_task_delete_menu,
             on_status_advance=self._on_task_status_advance,
             on_actual_date_edit=self._on_actual_date_edit,
             on_record_result=self._on_record_result,
             on_batch_value=self._on_batch_value,
         )
+        # 结果矩阵双击编辑
+        v.set_on_matrix_edit_callback(self._on_matrix_result_edit)
 
     def _on_auto_schedule(self) -> None:
         """弹出排程参数配置弹窗 → 预览 → 用户确认后写 DB。
@@ -971,6 +972,31 @@ class PlanHandlers:
             self._win.ctrl.notify_data_changed("task")
             self._win.ctrl.notify_data_changed("issue")
         return True
+
+    def _on_matrix_result_edit(self, task_id: int, sample_id: int, new_result: str) -> None:
+        """结果矩阵双击编辑 — 直接保存单个结果并刷新。"""
+        from datetime import date
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        existing = ctrl.test_plan_service.get_task_results(task_id)
+        existing_id = None
+        for r in existing:
+            if r.sample_id == sample_id:
+                existing_id = r.id
+                break
+        if existing_id:
+            ctrl.test_plan_service.delete_result(existing_id)
+        ctrl.test_plan_service.save_result(
+            task_id=task_id,
+            sample_id=sample_id,
+            result=new_result,
+            test_date=date.today().isoformat(),
+        )
+        self._win.ctrl.notify_data_changed("result")
+        # 触发计划数据重载（刷新表格+甘特图+矩阵）
+        v = self._win.test_plan_view
+        self._on_plan_changed(v._plan_combo.currentIndex())
 
     def _on_summary_report(self) -> None:
         """一键导出当前计划 Word 总结报告。"""
