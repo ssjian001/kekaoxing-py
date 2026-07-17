@@ -21,6 +21,10 @@ from PySide6.QtGui import QAction, QColor, QKeySequence
 import src.styles.theme as _t
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
+from src.styles.column_persistence import (
+    save_column_widths_debounced, restore_column_widths,
+    save_sort_state, restore_sort_state,
+)
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
@@ -89,6 +93,15 @@ class _TaskTable(QTableWidget):
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
         self._register_shortcuts()
+
+        # 列宽 & 排序持久化
+        self._persistence_key = "task_table"
+        self.horizontalHeader().sectionResized.connect(
+            lambda: save_column_widths_debounced(self, self._persistence_key)
+        )
+        self.horizontalHeader().sortIndicatorChanged.connect(
+            lambda col, order: save_sort_state(self, self._persistence_key)
+        )
 
     def set_reference_data(
         self,
@@ -414,6 +427,9 @@ class _TaskTable(QTableWidget):
                 self.setItem(row, col, item)
         self.setSortingEnabled(True)
         self._update_empty_state()
+        # 恢复列宽 & 排序状态（仅在首次数据加载后）
+        restore_column_widths(self, self._persistence_key)
+        restore_sort_state(self, self._persistence_key)
 
     def _update_empty_state(self) -> None:
         """控制空状态提示的显示/隐藏。"""
