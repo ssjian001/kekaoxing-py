@@ -50,6 +50,10 @@ class WorkerDataProvider:
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA busy_timeout=5000")
 
+        # 确保 schema 已初始化（Worker 使用独立连接）
+        from src.db.schema import init_schema
+        init_schema(conn)
+
         tp = TestPlanRepository(conn)
         tt = TestTaskRepository(conn)
         tr = TestResultRepository(conn)
