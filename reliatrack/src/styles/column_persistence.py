@@ -83,7 +83,7 @@ def save_sort_state(table: QTableWidget, key: str) -> None:
     col = header.sortIndicatorSection()
     order = header.sortIndicatorOrder()
     settings = QSettings()
-    settings.setValue(f"{_SORT_KEY_PREFIX}{key}", [col, int(order)])
+    settings.setValue(f"{_SORT_KEY_PREFIX}{key}", [col, order.value])
 
 
 def restore_sort_state(table: QTableWidget, key: str) -> None:
@@ -97,4 +97,4 @@ def restore_sort_state(table: QTableWidget, key: str) -> None:
     except (ValueError, TypeError):
         return
     if 0 <= col < table.columnCount():
-        table.sortItems(col, Qt.SortOrder(order))
+        table.sortItems(col, Qt.SortOrder(int(order)))
