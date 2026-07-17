@@ -119,6 +119,11 @@ class TestPlanView(QWidget):
         self._search_edit.setPlaceholderText("搜索任务名...")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setFixedSize(160, 28)
+        # 恢复上次搜索关键词
+        from PySide6.QtCore import QSettings as _QSettings
+        saved = _QSettings().value("ReliaTrack/task_search", "")
+        if saved and isinstance(saved, str):
+            self._search_edit.setText(saved)
         self._search_edit.textChanged.connect(self._on_task_search)
         toolbar.addWidget(self._search_edit)
 
@@ -128,6 +133,13 @@ class TestPlanView(QWidget):
         self._btn_record_result.setFixedHeight(28)
         self._btn_record_result.setToolTip("录入测试结果")
         toolbar.addWidget(self._btn_record_result)
+
+        # ── 快速加 ──
+        self._btn_quick_add = QPushButton("快速加")
+        self._btn_quick_add.setFixedHeight(28)
+        self._btn_quick_add.setToolTip("快速添加任务：填名称+天数，回车即创建")
+        self._btn_quick_add.setProperty("class", "action")
+        toolbar.addWidget(self._btn_quick_add)
 
         # ── 更多操作（收起低频按钮） ──
         self._more_menu = QMenu(self)
@@ -231,7 +243,9 @@ class TestPlanView(QWidget):
             self._gantt.set_mode(actual=(btn_id == 1))
 
     def _on_task_search(self, text: str) -> None:
-        """根据搜索关键词过滤任务列表。"""
+        """根据搜索关键词过滤任务列表，并将关键词持久化到 QSettings。"""
+        from PySide6.QtCore import QSettings as _QSettings
+        _QSettings().setValue("ReliaTrack/task_search", text)
         text = text.strip().lower()
         if not text:
             filtered = self._all_tasks_for_filter
@@ -247,6 +261,7 @@ class TestPlanView(QWidget):
         )
         self._gantt.set_tasks(filtered, start_date=self._last_start_date,
                               equipment_map=self._last_equipment_map,
+                              technician_map=self._last_technician_map,
                               task_prefix=self._last_task_prefix,
                               holidays=self._last_holidays)
 
@@ -269,11 +284,13 @@ class TestPlanView(QWidget):
         self._last_result_map = result_map or {}
         self._last_start_date = start_date
         self._last_equipment_map = equipment_map or {}
+        self._last_technician_map = technician_map or {}
         self._last_task_prefix = task_prefix
         self._last_holidays = holidays or set()
         self._on_task_search(self._search_edit.text())
         self._gantt.set_tasks(tasks, total_days, start_date,
                               equipment_map=equipment_map,
+                              technician_map=technician_map,
                               task_prefix=task_prefix,
                               holidays=holidays)
         # 结果矩阵
@@ -463,6 +480,10 @@ class TestPlanView(QWidget):
         return self._btn_record_result
 
     @property
+    def btn_quick_add(self) -> QPushButton:
+        return self._btn_quick_add
+
+    @property
     def btn_summary_report(self) -> QAction:
         return self._act_summary_report
 
@@ -472,8 +493,11 @@ class TestPlanView(QWidget):
         on_edit: Callable[[TestTask], None] | None = None,
         on_delete: Callable[[TestTask], None] | None = None,
         on_status_advance: Callable[[TestTask, str], None] | None = None,
+        on_actual_date_edit: Callable[[int, str, str], None] | None = None,
+        on_record_result: Callable[[], None] | None = None,
+        on_batch_value: Callable[[list[int], int, str], None] | None = None,
     ) -> None:
-        """设置任务增删改回调。
+        """设置任务增删改以及实际日期编辑回调。
 
         外部调用此方法，将实际业务逻辑（打开弹窗、调用 Service 等）注入。
         """
@@ -486,6 +510,9 @@ class TestPlanView(QWidget):
             on_edit=self._handle_table_edit,
             on_delete=self._handle_table_delete,
             on_status_advance=on_status_advance,
+            on_actual_date_edit=on_actual_date_edit,
+            on_record_result=on_record_result,
+            on_batch_value=on_batch_value,
         )
 
     def _handle_table_edit(self, task: TestTask) -> None:

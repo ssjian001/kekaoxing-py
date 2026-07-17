@@ -25,6 +25,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QBrush, Q
 
 import src.styles.theme as _theme
 
+from src.constants import SEVERITY_LABELS
 from src.styles.constants import (
     FONT_FAMILY,
     VIEW_MARGINS,
@@ -72,10 +73,12 @@ class _StatCard(QFrame):
     """现代 KPI 卡片: label / 大数字 / 百分比, 16px 圆角 + 柔阴影。"""
 
     def __init__(self, title: str, value: str = "0", color: str = DASH_PRIMARY,
-                 tab_index: int = -1, parent: QWidget | None = None):
+                 tab_index: int = -1, parent: QWidget | None = None,
+                 jump_data: dict | None = None):
         super().__init__(parent)
         self._tab_index = tab_index
         self._color = color
+        self._jump_data = jump_data or {}
         self.setObjectName("stat-card")
         self.setProperty("class", "card-bg")
         self.setMinimumHeight(64)
@@ -93,15 +96,41 @@ class _StatCard(QFrame):
         self._title_label.setProperty("class", "subtext")  # 主题迁移: class=subtext
         lay.addWidget(self._title_label)
 
-        # 大数字 — DYNAMIC: color 是运行时参数，无法走 class 选择器
+        # 大数字 + 趋势箭头行
+        row = QHBoxLayout()
+        row.setSpacing(6)
         self._val = QLabel(value)
         self._val.setStyleSheet(
             f"color: {color}; font-size: 22px; font-weight: bold;"
             f"border: none; background: transparent;"
         )
-        lay.addWidget(self._val)
+        row.addWidget(self._val)
+        self._trend_label = QLabel("")
+        self._trend_label.setStyleSheet(
+            "font-size: 13px; border: none; background: transparent;"
+        )
+        self._trend_label.hide()
+        row.addWidget(self._trend_label)
+        row.addStretch()
+        lay.addLayout(row)
     def set_value(self, text: str) -> None:
         self._val.setText(text)
+
+    def set_trend(self, direction: str, text: str = "") -> None:
+        """设置趋势箭头。direction: 'up'/'down'/'flat'/'none'"""
+        if direction == "none":
+            self._trend_label.hide()
+            return
+        symbols = {"up": "↑", "down": "↓", "flat": "→"}
+        colors = {"up": DASH_SUCCESS, "down": DASH_DANGER, "flat": _theme.SUBTEXT0}
+        sym = symbols.get(direction, "→")
+        c = colors.get(direction, _theme.SUBTEXT0)
+        display = f"{sym} {text}" if text else sym
+        self._trend_label.setText(display)
+        self._trend_label.setStyleSheet(
+            f"color: {c}; font-size: 13px; border: none; background: transparent;"
+        )
+        self._trend_label.show()
 
 
     def enterEvent(self, event):  # noqa: N802
@@ -122,7 +151,7 @@ class _StatCard(QFrame):
         w = self.parent()
         while w is not None:
             if hasattr(w, "card_clicked"):
-                w.card_clicked.emit(self._tab_index)
+                w.card_clicked.emit(self._tab_index, self._jump_data or None)
                 break
             w = w.parent()
         super().mousePressEvent(event)
@@ -507,10 +536,7 @@ class _ProgressRing(QWidget):
 class _SeverityBar(QWidget):
     """水平分段严重度条（Critical / Major / Minor / Cosmetic）。"""
 
-    _SEVERITY_ORDER: list[str] = ["critical", "major", "minor", "cosmetic"]
-    _SEVERITY_LABELS: dict[str, str] = {
-        "critical": "严重", "major": "主要", "minor": "次要", "cosmetic": "外观",
-    }
+    _SEVERITY_ORDER: list[str] = list(SEVERITY_LABELS.keys())
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -564,7 +590,7 @@ class _SeverityBar(QWidget):
         lx = 0.0
         for sev in self._SEVERITY_ORDER:
             val = self._data.get(sev, 0)
-            label = self._SEVERITY_LABELS.get(sev, sev)
+            label = SEVERITY_LABELS.get(sev, sev)
             color_str = ISSUE_SEVERITY_COLORS.get(sev, _theme.SUBTEXT0)
 
             # 色点
@@ -629,7 +655,7 @@ class DashboardView(QWidget):
     Header + 健康度卡片 + 左右两栏
     """
 
-    card_clicked = Signal(int)
+    card_clicked = Signal(int, object)  # (tab_index, jump_data_or_None)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -785,9 +811,9 @@ class DashboardView(QWidget):
         # KPI 3 卡
         gb = QHBoxLayout()
         gb.setSpacing(10)
-        self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 6)
-        self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 6)
-        self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 6)
+        self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4)
+        self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4)
+        self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4)
         gb.addWidget(self._card_issues)
         gb.addWidget(self._card_issue_close)
         gb.addWidget(self._card_capa)
@@ -796,10 +822,10 @@ class DashboardView(QWidget):
         # Bug Tracker 4 指标
         gb2 = QHBoxLayout()
         gb2.setSpacing(10)
-        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 6)
-        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 6)
-        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 6)
-        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 6)
+        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4)
+        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4)
+        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4)
+        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4)
         gb2.addWidget(self._card_pending)
         gb2.addWidget(self._card_week_close)
         gb2.addWidget(self._card_avg_age)

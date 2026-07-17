@@ -127,8 +127,8 @@
     {
       "id": "F018",
       "name": "国际化 (i18n)",
-      "description": "中英文双语支持",
-      "status": "done",
+      "description": "中英文双语支持 — 已取消：项目为纯中文单语言应用，UI 文字硬编码中文，无 i18n 需求",
+      "status": "cancelled",
       "modules": []
     },
     {

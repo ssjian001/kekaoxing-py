@@ -40,6 +40,8 @@ import src.styles.theme as _t
 from src.models.issue import Issue
 from src.services.issue_service import IssueService
 from src.styles.constants import (
+    AGING_THRESHOLD_LOW,
+    AGING_THRESHOLD_MID,
     STATUS_GREEN,
     STATUS_BLUE,
     STATUS_RED,
@@ -58,16 +60,16 @@ from src.styles.toast import ToastWidget
 from src.constants import ISSUE_STATUS_LABELS, PRIORITY_LABELS, SEVERITY_LABELS
 
 # ── Aging 色块阈值 ──────────────────────────────────────────────
-_AGING_THRESHOLD_LOW = 3      # <3 天 → 绿色
-_AGING_THRESHOLD_MID = 7      # 3-7 天 → 黄色, >7 天 → 红色
+# 使用 styles.constants 中的 AGING_THRESHOLD_LOW / AGING_THRESHOLD_MID
+
 _CLOSED_FOLD_DAYS = 30        # closed 列折叠阈值（天）
 
 
 def _aging_color(days: int) -> str:
     """根据停留天数返回色块颜色。"""
-    if days < _AGING_THRESHOLD_LOW:
+    if days < AGING_THRESHOLD_LOW:
         return STATUS_GREEN
-    if days <= _AGING_THRESHOLD_MID:
+    if days <= AGING_THRESHOLD_MID:
         return STATUS_YELLOW
     return STATUS_RED
 

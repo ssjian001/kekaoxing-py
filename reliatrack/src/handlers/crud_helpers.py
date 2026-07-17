@@ -17,13 +17,14 @@
 from __future__ import annotations
 
 import logging
+from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable
 
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QMessageBox, QPushButton
 
 if TYPE_CHECKING:
     from main import MainWindow
-    from src.services.undo_manager import Command
 
 logger = logging.getLogger(__name__)
 
@@ -87,3 +88,37 @@ def exec_crud(
     if ctrl:
         ctrl.notify_data_changed(entity)
     return True
+
+
+# ── 按钮防重入装饰器 ──
+
+def debounce_btn(delay_ms: int = 500) -> Callable:
+    """装饰器：按钮点击后立即禁用，delay_ms 后恢复。
+
+    用于 QPushButton / QToolButton 等带 setEnabled 的控件。
+    """
+    def decorator(fn: Callable) -> Callable:
+        @wraps(fn)
+        def wrapper(sender: QPushButton, *args: Any, **kwargs: Any) -> Any:
+            if not sender.isEnabled():
+                return
+            sender.setEnabled(False)
+            try:
+                return fn(sender, *args, **kwargs)
+            finally:
+                QTimer.singleShot(delay_ms, lambda: sender.setEnabled(True))
+        return wrapper
+    return decorator
+
+
+def debounce_connect(btn: QPushButton, slot: Callable, delay_ms: int = 500) -> None:
+    """连接按钮点击事件并自动添加防重入保护。"""
+    def _guarded() -> None:
+        if not btn.isEnabled():
+            return
+        btn.setEnabled(False)
+        try:
+            slot()
+        finally:
+            QTimer.singleShot(delay_ms, lambda: btn.setEnabled(True))
+    btn.clicked.connect(_guarded)

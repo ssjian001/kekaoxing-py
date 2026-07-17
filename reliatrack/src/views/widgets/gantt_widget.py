@@ -118,6 +118,7 @@ class _GanttWidget(QWidget):
     def set_tasks(self, tasks: list[TestTask], total_days: int = 30,
                   start_date: str = "",
                   equipment_map: dict[int, str] | None = None,
+                  technician_map: dict[int, str] | None = None,
                   task_prefix: str = "",
                   holidays: set[str] | None = None) -> None:
         # 重置拖拽状态，防止 tasks 更新后索引越界
@@ -131,6 +132,8 @@ class _GanttWidget(QWidget):
         self._start_date = start_date
         self._task_prefix = task_prefix
         self._holidays = holidays or set()
+        self._equip_map = equipment_map or {}
+        self._tech_map = technician_map or {}
         if equipment_map is not None:
             self._equipment_map = equipment_map
             # 按 equipment_id 分配颜色
@@ -159,10 +162,21 @@ class _GanttWidget(QWidget):
         return QRect(int(x), int(y), int(duration * self._day_w), self._bar_height)
 
     def _hit_test(self, pos: QPoint) -> int | None:
-        """返回鼠标位置下的任务索引，没有则 None。"""
-        for i in range(len(self._tasks)):
-            if self._bar_rect(i).contains(pos):
-                return i
+        """返回鼠标位置下的任务索引，没有则 None。
+
+        先用行号反算缩小范围，再检查甘特条 X 范围 — O(1)。
+        """
+        # 快速排除：不在图表区域
+        if pos.x() < self._label_w:
+            return None
+        # 由 Y 坐标反算行号
+        row_idx = int((pos.y() - self._header_height) // self._row_height)
+        if row_idx < 0 or row_idx >= len(self._tasks):
+            return None
+        # 只检查这一行的甘特条
+        bar = self._bar_rect(row_idx)
+        if bar.contains(pos):
+            return row_idx
         return None
 
     # ── 事件处理 ──
@@ -221,6 +235,17 @@ class _GanttWidget(QWidget):
                     f"进度: {task.progress:.0f}%\n"
                     f"状态: {task.status}"
                 )
+                # 追加设备和人员（如果有）
+                tech_name = ""
+                equip_name = ""
+                if task.technician_id is not None and hasattr(self, "_tech_map"):
+                    tech_name = self._tech_map.get(task.technician_id, "")
+                if task.equipment_id is not None and hasattr(self, "_equip_map"):
+                    equip_name = self._equip_map.get(task.equipment_id, "")
+                if tech_name:
+                    tooltip += f"\n技术员: {tech_name}"
+                if equip_name:
+                    tooltip += f"\n设备: {equip_name}"
                 self.setToolTip(tooltip)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -362,14 +387,24 @@ class _GanttWidget(QWidget):
                 p.drawText(int(tx) - 20, vy, 40, self._header_height,
                            Qt.AlignmentFlag.AlignCenter, "今天")
 
-        # ── 任务条 ──
-        p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL - 2))
+        # ── 任务条 ──（视口裁剪：只绘制可见行）
+        task_font = QFont(FONT_FAMILY, FONT_SIZE_SMALL - 2)
+        p.setFont(task_font)
+        fm = p.fontMetrics()
         # 画任务时排除冻结表头区域，防止任务内容覆盖表头
         if vy > 0:
             # 任务区域：表头下方
             task_region = QRegion(0, 0, w, vy) + QRegion(0, vy + self._header_height, w, self.height())
             p.setClipRegion(task_region)
-        for i, task in enumerate(self._tasks):
+
+        # 计算可见行范围（考虑滚动偏移）
+        viewport_top = max(0, vy + self._header_height)
+        viewport_bottom = self.height()
+        first_visible = max(0, int((viewport_top - self._header_height) // self._row_height) - 1)
+        last_visible = min(len(self._tasks), int((viewport_bottom - self._header_height) // self._row_height) + 2)
+
+        for i in range(first_visible, last_visible):
+            task = self._tasks[i]
             y = self._header_height + i * self._row_height
 
             # 交替行背景
@@ -378,8 +413,6 @@ class _GanttWidget(QWidget):
 
             # 序号 + 任务名称标签 — 10pt 字体，根据可用宽度自动省略
             p.setPen(QColor(_theme.TEXT))
-            p.setFont(QFont(FONT_FAMILY, FONT_SIZE_SMALL - 2))
-            fm = p.fontMetrics()
             seq_label = f"{self._task_prefix}-{i + 1:03d}" if self._task_prefix else str(i + 1)
             display = f"{seq_label}. {task.name}"
             name = fm.elidedText(display, Qt.TextElideMode.ElideRight, label_w - 16)

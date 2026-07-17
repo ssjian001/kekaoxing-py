@@ -48,6 +48,22 @@ class TestTaskRepository(BaseRepository):
             "DELETE FROM [issues] WHERE task_id = ?", (task_id,)
         )
 
+    def detach_issues_by_task(self, task_id: int) -> int:
+        """将任务关联的 Issue 解除关联（task_id → NULL），保留 Issue 及其子表。
+
+        用于删除测试任务时保护已验证/已关闭的 Issue 历史记录。
+        返回解除关联的行数。
+        """
+        self._conn.execute(
+            "UPDATE [issues] SET task_id = NULL, updated_at = datetime('now','localtime') "
+            "WHERE task_id = ?",
+            (task_id,),
+        )
+        row = self._conn.execute(
+            "SELECT changes()"
+        ).fetchone()
+        return row[0] if row else 0
+
     def get_by_plan(self, plan_id: int) -> list[TestTask]:
         return self.list_all(plan_id=plan_id)
 

@@ -13,9 +13,10 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QMenu,
     QAbstractItemView,
+    QDateEdit,
 )
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QAction, QColor, QKeySequence
 
 import src.styles.theme as _t
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
@@ -47,6 +48,16 @@ class _TaskTable(QTableWidget):
     _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
     _PRIORITY_COLORS: dict[int, str] = PRIORITY_COLORS
 
+    _SHORTCUT_KEYS = {
+        "edit": Qt.Key.Key_E,
+        "delete": Qt.Key.Key_Delete,
+        "start": Qt.Key.Key_S,
+        "complete": Qt.Key.Key_F,
+        "record": Qt.Key.Key_R,
+    }
+
+    _COL_BATCHABLE = {6: "progress", 7: "priority", 11: "actual_start_date", 12: "actual_end_date"}
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         apply_column_specs(self, _TASK_SPECS, "task_table")
@@ -61,6 +72,9 @@ class _TaskTable(QTableWidget):
         self._on_edit_callback: Callable[[TestTask], None] | None = None
         self._on_delete_callback: Callable[[TestTask], None] | None = None
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
+        self._on_actual_date_edit_callback: Callable[[int, str, str], None] | None = None  # (task_id, field, new_date)
+        self._on_record_result_callback: Callable[[], None] | None = None
+        self._batch_value_callback: Callable[[list[int], int, str], None] | None = None  # (task_ids, col, value)
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -74,6 +88,7 @@ class _TaskTable(QTableWidget):
         self._empty_label.setParent(self)
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
+        self._register_shortcuts()
 
     def set_reference_data(
         self,
@@ -89,14 +104,101 @@ class _TaskTable(QTableWidget):
         on_edit: Callable[[TestTask], None] | None = None,
         on_delete: Callable[[TestTask], None] | None = None,
         on_status_advance: Callable[[TestTask, str], None] | None = None,
+        on_actual_date_edit: Callable[[int, str, str], None] | None = None,
+        on_record_result: Callable[[], None] | None = None,
+        on_batch_value: Callable[[list[int], int, str], None] | None = None,
     ) -> None:
-        """设置编辑/删除/状态推进回调。"""
+        """设置编辑/删除/状态推进/实际日期编辑/录入结果回调。"""
         self._on_edit_callback = on_edit
         self._on_delete_callback = on_delete
         self._on_status_advance_callback = on_status_advance
+        self._on_actual_date_edit_callback = on_actual_date_edit
+        self._on_record_result_callback = on_record_result
+        self._batch_value_callback = on_batch_value
 
-    def _on_double_click(self, row: int, _col: int) -> None:
+    # ── 键盘快捷键（Widget 内生效） ──
+
+    def _register_shortcuts(self) -> None:
+        """注册表格内键盘快捷键（仅在表格有焦点时响应）。"""
+        from PySide6.QtGui import QShortcut, QKeySequence
+        from PySide6.QtCore import QCoreApplication as _QA
+
+        # E = 编辑选中行
+        self._sc_edit = QShortcut(QKeySequence(Qt.Key.Key_E), self)
+        self._sc_edit.activated.connect(lambda: self._shortcut_trigger("edit"))
+        # Delete = 删除选中行
+        self._sc_del = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
+        self._sc_del.activated.connect(lambda: self._shortcut_trigger("delete"))
+        # S = 开始执行 / F = 标记完成
+        self._sc_start = QShortcut(QKeySequence(Qt.Key.Key_S), self)
+        self._sc_start.activated.connect(lambda: self._shortcut_trigger("start"))
+        self._sc_comp = QShortcut(QKeySequence(Qt.Key.Key_F), self)
+        self._sc_comp.activated.connect(lambda: self._shortcut_trigger("complete"))
+        # R = 录入结果
+        self._sc_rec = QShortcut(QKeySequence(Qt.Key.Key_R), self)
+        self._sc_rec.activated.connect(lambda: self._shortcut_trigger("record"))
+
+    def _shortcut_trigger(self, action: str) -> None:
+        """键盘快捷键触发 → 对当前选中行执行对应操作。"""
+        rows = self.selectionModel().selectedRows()
+        if not rows:
+            return
+        # 取当前行首个任务
+        row = rows[0].row()
         task = self.get_task_at_row(row)
+        if not task:
+            return
+        if action == "edit" and self._on_edit_callback:
+            self._on_edit_callback(task)
+        elif action == "delete" and self._on_delete_callback:
+            self._on_delete_callback(task)
+        elif action == "start" and task.status == "pending" and self._on_status_advance_callback:
+            self._on_status_advance_callback(task, "in_progress")
+        elif action == "complete" and task.status == "in_progress" and self._on_status_advance_callback:
+            self._on_status_advance_callback(task, "completed")
+        elif action == "record" and task.status in ("in_progress", "completed", "failed") and self._on_record_result_callback:
+            self._on_record_result_callback()
+
+    def _on_double_click(self, row: int, col: int) -> None:
+        task = self.get_task_at_row(row)
+        if not task or task.id is None:
+            return
+
+        # 实际开始(11) / 实际完成(12) — 弹出日历快捷编辑
+        if col in (11, 12) and self._on_actual_date_edit_callback:
+            field = "actual_start_date" if col == 11 else "actual_end_date"
+            from PySide6.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox
+            from PySide6.QtCore import QDate
+            dlg = QDialog(self)
+            dlg.setWindowTitle("选择日期")
+            dlg.setMinimumWidth(280)
+            layout = QVBoxLayout(dlg)
+            date_edit_type = QDateEdit()
+            date_edit_type.setCalendarPopup(True)
+            date_edit_type.setDisplayFormat("yyyy-MM-dd")
+            date_edit_type.setSpecialValueText("清除日期")
+            # 初始化为当前值或空
+            current = getattr(task, field, "") or ""
+            if current:
+                qd = QDate.fromString(current, "yyyy-MM-dd")
+                if qd.isValid():
+                    date_edit_type.setDate(qd)
+                else:
+                    date_edit_type.setDate(QDate.currentDate())
+                    date_edit_type.setSpecialValueText(" ")
+            else:
+                date_edit_type.clear()
+            layout.addWidget(date_edit_type)
+            buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+            buttons.accepted.connect(dlg.accept)
+            buttons.rejected.connect(dlg.reject)
+            layout.addWidget(buttons)
+            if dlg.exec():
+                new_date = date_edit_type.date().toString("yyyy-MM-dd") if date_edit_type.date().isValid() else ""
+                self._on_actual_date_edit_callback(task.id, field, new_date)
+            return
+
+        # Original: open full edit dialog
         if task and self._on_edit_callback:
             self._on_edit_callback(task)
 
@@ -112,34 +214,43 @@ class _TaskTable(QTableWidget):
             task = self.get_task_at_row(rows[0].row())
             if not task:
                 return
-            act_edit = QAction("编辑", self)
+            act_edit = QAction("编辑\tE", self)
             act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
-            act_delete = QAction("删除", self)
+            act_delete = QAction("删除\tDel", self)
             act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
 
             act_start: QAction | None = None
             act_complete: QAction | None = None
+            act_record: QAction | None = None
             if task.status == "pending":
-                act_start = QAction("开始执行", self)
+                act_start = QAction("开始执行\tS", self)
                 act_start.triggered.connect(
                     lambda: self._on_status_advance_callback(task, "in_progress")
                     if self._on_status_advance_callback else None
                 )
             elif task.status == "in_progress":
-                act_complete = QAction("标记完成", self)
+                act_complete = QAction("标记完成\tF", self)
                 act_complete.triggered.connect(
                     lambda: self._on_status_advance_callback(task, "completed")
                     if self._on_status_advance_callback else None
                 )
+            # 进行中/已完成/失败的任务都可直接录入结果
+            if task.status in ("in_progress", "completed", "failed") and self._on_record_result_callback:
+                act_record = QAction("录入测试结果\tR", self)
+                act_record.triggered.connect(
+                    lambda: self._on_record_result_callback()
+                )
 
             menu.addAction(act_edit)
             menu.addAction(act_delete)
-            if act_start or act_complete:
+            if act_start or act_complete or act_record:
                 menu.addSeparator()
             if act_start:
                 menu.addAction(act_start)
             if act_complete:
                 menu.addAction(act_complete)
+            if act_record:
+                menu.addAction(act_record)
         else:
             # 多选 — 批量操作
             selected_tasks = []
@@ -158,9 +269,50 @@ class _TaskTable(QTableWidget):
             )
             menu.addAction(act_batch_start)
             menu.addAction(act_batch_complete)
+            menu.addSeparator()
+
+            # 批量设置优先级
+            act_batch_pri = QAction("批量设优先级…", self)
+            act_batch_pri.triggered.connect(
+                lambda: self._batch_set_field(selected_tasks, "priority")
+            )
+            menu.addAction(act_batch_pri)
+
+            # 批量指派技术员
+            act_batch_tech = QAction("批量指派技术员…", self)
+            act_batch_tech.triggered.connect(
+                lambda: self._batch_assign_technician(selected_tasks)
+            )
+            menu.addAction(act_batch_tech)
         
         menu.exec(self.viewport().mapToGlobal(pos))
         menu.deleteLater()
+
+    def _batch_set_field(self, tasks: list[TestTask], field: str) -> None:
+        """批量设置选中任务的数字字段（如优先级）。"""
+        if not self._batch_value_callback:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        val, ok = QInputDialog.getInt(self, f"批量设{field}", f"请输入{field}值:", 3, 1, 5)
+        if not ok:
+            return
+        for t in tasks:
+            if t.id is not None:
+                self._batch_value_callback([t.id], 7 if field == "priority" else -1, str(val))
+
+    def _batch_assign_technician(self, tasks: list[TestTask]) -> None:
+        """批量指派技术员。"""
+        if not self._technician_list or not self._batch_value_callback:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        # 直接用技术员名称作为值，handler 通过 name 查找 id
+        tech_names = [t.name for t in self._technician_list]
+        val, ok = QInputDialog.getItem(self, "批量指派技术员", "选择技术员:", tech_names, 0, False)
+        if not ok or not val:
+            return
+        for t in tasks:
+            if t.id is not None:
+                self._batch_value_callback([t.id], 9, val)
 
     def _batch_status_advance(self, tasks: list[TestTask], new_status: str) -> None:
         """批量推进多个任务的状态。"""
@@ -293,3 +445,91 @@ class _TaskTable(QTableWidget):
         if 0 <= row < len(self._tasks):
             return self._tasks[row]
         return None
+
+    # ── 批量编辑 ────────────────────────────────────────────
+
+    def keyPressEvent(self, event: object) -> None:
+        """拦截 Ctrl+V 进行批量粘贴，其余走默认。"""
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtWidgets import QApplication
+
+        ev = event
+        if isinstance(ev, QKeyEvent):
+            mods = ev.modifiers()
+            if ev.key() == Qt.Key.Key_V and mods == Qt.KeyboardModifier.ControlModifier:
+                self._on_batch_paste()
+                return
+        super().keyPressEvent(ev)
+
+    def _on_batch_paste(self) -> None:
+        """从粘贴板获取内容，解析后批量应用到所有选中行。"""
+        from PySide6.QtWidgets import QApplication
+
+        rows = self.selectionModel().selectedRows()
+        if not rows or not self._batch_value_callback:
+            return
+
+        # 获取焦点列（当前选中行的当前列）
+        current = self.currentIndex()
+        col = current.column()
+        if col < 0:
+            return
+
+        # 获取旧值作 undo 参考
+        clipboard = QApplication.clipboard()
+        text = clipboard.text().strip()
+        if not text:
+            return
+
+        # 收集选中行所有 task_id
+        task_ids: list[int] = []
+        for idx in rows:
+            item = self.item(idx.row(), 0)
+            if item:
+                tid = item.data(Qt.ItemDataRole.UserRole)
+                if isinstance(tid, int):
+                    task_ids.append(tid)
+
+        if not task_ids:
+            return
+
+        # 按行数或全部应用同一个值
+        lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+        if len(lines) >= 2:
+            # 多行：逐行对应
+            for i, idx in enumerate(rows):
+                if i >= len(lines):
+                    break
+                item = self.item(idx.row(), 0)
+                if item:
+                    tid = item.data(Qt.ItemDataRole.UserRole)
+                    if isinstance(tid, int):
+                        self._batch_value_callback([tid], col, lines[i])
+        else:
+            # 单值：应用到所有选中行
+            self._batch_value_callback(task_ids, col, text)
+
+    def flash_row(self, task_id: int, duration_ms: int = 800) -> None:
+        """闪烁指定任务所在行 — 用于撤销后视觉反馈。"""
+        for row in range(self.rowCount()):
+            item = self.item(row, 0)
+            if item and item.data(Qt.ItemDataRole.UserRole) == task_id:
+                from PySide6.QtCore import QTimer, QPropertyAnimation
+                from PySide6.QtGui import QColor
+                orig_bg = QColor(_t.SURFACE2)
+                flash = QColor(_t.YELLOW)
+                flash.setAlpha(120)
+                for col in range(self.columnCount()):
+                    cell = self.item(row, col)
+                    if cell:
+                        cell.setBackground(flash)
+                QTimer.singleShot(duration_ms, lambda r=row: self._unflash_row(r))
+                break
+
+    def _unflash_row(self, row: int) -> None:
+        """移除指定行的闪烁背景。"""
+        for col in range(self.columnCount()):
+            cell = self.item(row, col)
+            if cell:
+                cell.setBackground(QColor())  # 清除自定义背景

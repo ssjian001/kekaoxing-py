@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
         self._tab_widget.addTab(self._dashboard, "仪表盘")
-        self._dashboard.card_clicked.connect(self._tab_widget.setCurrentIndex)
+        self._dashboard.card_clicked.connect(self._on_dashboard_card_clicked)
 
         # Tab 1: 项目管理
         self._project_view = ProjectView()
@@ -140,9 +140,16 @@ class MainWindow(QMainWindow):
         self._test_plan_view = TestPlanView()
         self._tab_widget.addTab(self._test_plan_view, "测试计划")
 
-        # Tab 4: Issue 追踪（已合并到 Bug 管理，不再独立显示）
+        # Tab 4: Issue 管理（看板/列表）
+        assert self._ctrl.issue_service is not None, "IssueService must be initialized"
+        self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
+        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
 
-        # Tab 5: 设备 & 技术员管理（内部双 tab）
+        # Tab 5: 待办事项
+        self._todo_view = TodoView()
+        self._tab_widget.addTab(self._todo_view, "待办事项")
+
+        # Tab 6: 设备 & 技术员管理（内部双 tab）
         self._equip_tech_tabs = QTabWidget()
         self._equipment_view = EquipmentView()
         self._equip_tech_tabs.addTab(self._equipment_view, "设备")
@@ -150,18 +157,9 @@ class MainWindow(QMainWindow):
         self._equip_tech_tabs.addTab(self._technician_view, "技术员")
         self._tab_widget.addTab(self._equip_tech_tabs, "设备管理")
 
-        # Tab 6: 知识库
+        # Tab 7: 知识库
         self._knowledge_view = KnowledgeView()
         self._tab_widget.addTab(self._knowledge_view, "知识库")
-
-        # Tab 7: Bug 管理（看板/列表）
-        assert self._ctrl.issue_service is not None, "IssueService must be initialized"
-        self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
-        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
-
-        # Tab 7: 待办事项
-        self._todo_view = TodoView()
-        self._tab_widget.addTab(self._todo_view, "待办事项")
 
         # 恢复上次选中的 Tab
         settings = QSettings()
@@ -171,12 +169,11 @@ class MainWindow(QMainWindow):
             last_tab = 0
         if 0 <= last_tab < self._tab_widget.count():
             self._tab_widget.setCurrentIndex(last_tab)
-        # Tab 切换时保存
-        self._tab_widget.currentChanged.connect(
-            lambda idx: QSettings().setValue("ReliaTrack/last_tab_index", idx)
-        )
+        # Tab 切换时保存 + 自动刷新
+        self._tab_widget.currentChanged.connect(self._on_tab_changed)
 
         layout.addWidget(self._tab_widget)
+
         self.setCentralWidget(central)
 
         # 全局项目筛选器 — 作为 Tab 右侧 corner widget
@@ -187,6 +184,27 @@ class MainWindow(QMainWindow):
         self._reminder_timer.setInterval(30_000)
         self._reminder_timer.timeout.connect(self._check_todo_reminders)
         self._reminder_timer.start()
+
+    # ── Tab 切换自动刷新 ──
+
+    def _on_tab_changed(self, index: int) -> None:
+        """切换 Tab 时保存索引 + 自动刷新数据。"""
+        QSettings().setValue("ReliaTrack/last_tab_index", index)
+        # Tab 0 仪表盘 / Tab 3 测试计划 / Tab 4 Issue 管理
+        if index == 0:
+            self._schedule_refresh("dashboard")
+        elif index == 3:
+            self._schedule_refresh("test_plan")
+        elif index == 4:
+            self._schedule_refresh("issue")
+
+    # ── 仪表盘卡片点击 ──
+
+    def _on_dashboard_card_clicked(self, tab_index: int, jump_data: object = None) -> None:
+        """点击仪表盘 KPI 卡片 → 跳转 Tab + 可选携带筛选上下文。"""
+        self._tab_widget.setCurrentIndex(tab_index)
+        if jump_data and isinstance(jump_data, dict):
+            pass
 
     def _create_filter_bar(self) -> None:
         """创建项目/计划筛选栏 — 作为 TabWidget 右上角 corner widget。"""
@@ -354,13 +372,13 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_add()
         elif idx == 4:
-            self._equipment_handlers._on_equipment_add()
-        elif idx == 5:
-            self._knowledge_handlers._on_knowledge_add()
-        elif idx == 6:
             self._bug_tracker_view._act_new_issue.trigger()
-        elif idx == 7:
+        elif idx == 5:
             self._todo_handlers._on_todo_add()
+        elif idx == 6:
+            self._equipment_handlers._on_equipment_add()
+        elif idx == 7:
+            self._knowledge_handlers._on_knowledge_add()
 
     def _on_shortcut_delete(self) -> None:
         """Delete: 删除当前 Tab 的选中项。"""
@@ -369,12 +387,14 @@ class MainWindow(QMainWindow):
             self._project_handlers._on_project_delete()
         elif idx == 3:
             self._plan_handlers._on_task_delete_menu()
+        elif idx == 4:
+            pass  # Issue 管理通过内部看板/列表操作删除
         elif idx == 5:
-            self._equipment_handlers._on_equipment_delete()
-        elif idx == 6:
-            self._knowledge_handlers._on_knowledge_delete()
-        elif idx == 7:
             self._todo_handlers._on_todo_delete()
+        elif idx == 6:
+            self._equipment_handlers._on_equipment_delete()
+        elif idx == 7:
+            self._knowledge_handlers._on_knowledge_delete()
 
     def _on_shortcut_edit(self) -> None:
         """F2: 编辑当前 Tab 的选中项。"""
@@ -384,11 +404,11 @@ class MainWindow(QMainWindow):
         elif idx == 3:
             self._plan_handlers._on_task_edit_menu()
         elif idx == 5:
-            self._equipment_handlers._on_equipment_edit()
-        elif idx == 6:
-            self._knowledge_handlers._on_knowledge_edit()
-        elif idx == 7:
             self._todo_handlers._on_todo_edit()
+        elif idx == 6:
+            self._equipment_handlers._on_equipment_edit()
+        elif idx == 7:
+            self._knowledge_handlers._on_knowledge_edit()
 
     def _on_shortcut_find(self) -> None:
         """Ctrl+F: 聚焦当前 Tab 的搜索框。"""
@@ -396,10 +416,10 @@ class MainWindow(QMainWindow):
             1: lambda: self._project_view.search_input,
             2: lambda: self._sample_view.pool_tab.search_input,
             3: lambda: self._test_plan_view._search_edit,
-            4: lambda: self._equipment_view._search_edit,
-            5: lambda: self._knowledge_view._search_edit,
-            6: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
-            7: lambda: self._todo_view._search_edit,
+            4: lambda: self._bug_tracker_view.list_view._search_input if self._bug_tracker_view.list_view else None,
+            5: lambda: self._todo_view._search_edit,
+            6: lambda: self._equipment_view._search_edit,
+            7: lambda: self._knowledge_view._search_edit,
         }
         idx = self._tab_widget.currentIndex()
         getter = search_map.get(idx)
@@ -480,7 +500,14 @@ class MainWindow(QMainWindow):
         undo_desc: str = "",
         redo_desc: str = "",
     ) -> None:
-        """更新撤销/重做状态（保留接口兼容，无可见 UI）。"""
+        """更新撤销/重做状态 — 状态栏显示可撤销/重做操作描述。"""
+        parts = []
+        if can_undo and undo_desc:
+            parts.append(f"撤销: {undo_desc}")
+        if can_redo and redo_desc:
+            parts.append(f"重做: {redo_desc}")
+        if parts:
+            self.statusBar().showMessage(" | ".join(parts), 5000)
 
     # ── 公共属性（Handler 通过 .ctrl 访问，替代直接操作 _ctrl） ──────
 
@@ -596,8 +623,8 @@ class MainWindow(QMainWindow):
         if desc:
             self.statusBar().showMessage(f"已撤销: {desc}", 3000)
             self._ctrl.notify_data_changed("issue")
-            # FA/CAPA 删除撤销后需要 re-sync Issue
             self._replay_sync_after_undo_redo(cmd)
+            self._flash_undo_affected_row(cmd)
 
     def _on_redo(self) -> None:
         um = self._ctrl.undo_manager
@@ -609,6 +636,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
             self._ctrl.notify_data_changed("issue")
             self._replay_sync_after_undo_redo(cmd)
+            self._flash_undo_affected_row(cmd)
 
     def _replay_sync_after_undo_redo(self, cmd: object) -> None:
         """Undo/Redo FA/CAPA 删除后重新同步 Issue 关联字段。
@@ -628,6 +656,26 @@ class MainWindow(QMainWindow):
             ih._sync_issue_from_capa(issue_id)
         elif table == "fa_records":
             ih._sync_issue_from_fa(issue_id)
+
+    def _flash_undo_affected_row(self, cmd: object) -> None:
+        """撤销/重做后尝试从命令提取 entity_id，闪烁对应表格行。"""
+        from src.services.undo_manager import (
+            UpdateFieldCommand, DeleteEntityCommand,
+            MoveTaskCommand, UpdateProgressCommand, UpdateTaskStatusCommand,
+        )
+        # 提取 task_id
+        task_id: int | None = None
+        if isinstance(cmd, (UpdateFieldCommand, MoveTaskCommand,
+                           UpdateProgressCommand, UpdateTaskStatusCommand)):
+            task_id = cmd._entity_id
+        elif isinstance(cmd, DeleteEntityCommand):
+            task_id = cmd._saved_data.get("id")
+        if task_id is not None:
+            table = self._test_plan_view.task_table
+            if hasattr(table, "flash_row"):
+                # 延迟一下让刷新完成，再闪烁
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(300, lambda tid=task_id: table.flash_row(tid))
 
     def toast(self, message: str, level: str = "success") -> None:
         """显示 Toast 提示（替代 statusBar 的成功/警告消息）。"""

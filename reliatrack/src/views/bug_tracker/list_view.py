@@ -35,12 +35,16 @@ import src.styles.theme as _t
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.services.issue_service import IssueService
 from src.views.bug_tracker.fa_capa_panels import FAPanel, CAPAPanel, CAPADialog
+from src.views.bug_tracker.filter_panel import FilterPanel
+from src.views.bug_tracker.batch_dialog import BatchOperationDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.views.dialogs.issue_dialog import IssueEditDialog
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QToolButton, QMessageBox
 from src.styles.column_persistence import save_column_widths_debounced, restore_column_widths
 from src.styles.constants import (
+    AGING_THRESHOLD_LOW,
+    AGING_THRESHOLD_MID,
     ISSUE_SEVERITY_COLORS,
     ISSUE_STATUS_COLORS,
     PRIORITY_COLORS,
@@ -57,15 +61,16 @@ from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 from src.views.bug_tracker.detail_dialog import IssueDetailDialog
 
 # ── Aging 色块阈值 ──────────────────────────────────────────────
-_AGING_THRESHOLD_LOW = 3      # <3 天 → 绿色
-_AGING_THRESHOLD_MID = 7      # 3-7 天 → 黄色, >7 天 → 红色
+# ── Aging 色块阈值 ──────────────────────────────────────────────
+# 使用 styles.constants 中的 AGING_THRESHOLD_LOW / AGING_THRESHOLD_MID
+
 
 
 def _aging_color(days: int) -> str:
     """返回 Aging 天数对应的颜色。"""
-    if days < _AGING_THRESHOLD_LOW:
+    if days < AGING_THRESHOLD_LOW:
         return _t.GREEN
-    elif days <= _AGING_THRESHOLD_MID:
+    elif days <= AGING_THRESHOLD_MID:
         return _t.YELLOW
     return _t.RED
 
@@ -260,353 +265,6 @@ class _BugTable(QTableWidget):
 # ═══════════════════════════════════════════════════════════════
 #  FilterPanel
 # ═══════════════════════════════════════════════════════════════
-
-class FilterPanel(QFrame):
-    """可折叠的筛选面板 — 状态/严重度/优先级/DRI/日期范围。"""
-
-    filter_changed = Signal(dict)  # filters: dict
-
-    # 筛选选项
-    STATUS_OPTIONS = [
-        ("open", "待处理"),
-        ("analyzing", "分析中"),
-        ("verified", "已验证"),
-        ("closed", "已关闭"),
-    ]
-    SEVERITY_OPTIONS = [
-        ("critical", "严重"),
-        ("major", "主要"),
-        ("minor", "次要"),
-        ("cosmetic", "外观"),
-    ]
-    PRIORITY_OPTIONS = [(f"P{i}", f"P{i}") for i in range(1, 6)]
-
-    def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.setProperty("class", "filter-panel")
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(PADDING_SMALL, PADDING_SMALL, PADDING_SMALL, PADDING_SMALL)
-        layout.setSpacing(4)
-
-        # ── 第一行: 状态/严重度/优先级 (checkbox 组，横向) ──
-        row1 = QHBoxLayout()
-        row1.setSpacing(12)
-
-        # 状态
-        row1.addWidget(self._make_group_label("状态"))
-        self._status_checks: dict[str, QCheckBox] = {}
-        for eng, chn in self.STATUS_OPTIONS:
-            cb = QCheckBox(chn)
-            cb.setChecked(True)
-            cb.stateChanged.connect(self._emit_filter)
-            self._status_checks[eng] = cb
-            row1.addWidget(cb)
-
-        row1.addSpacing(8)
-
-        # 严重度
-        row1.addWidget(self._make_group_label("严重度"))
-        self._severity_checks: dict[str, QCheckBox] = {}
-        for eng, chn in self.SEVERITY_OPTIONS:
-            cb = QCheckBox(chn)
-            cb.setChecked(True)
-            cb.stateChanged.connect(self._emit_filter)
-            self._severity_checks[eng] = cb
-            row1.addWidget(cb)
-
-        row1.addSpacing(8)
-
-        # 优先级
-        row1.addWidget(self._make_group_label("优先级"))
-        self._priority_checks: dict[str, QCheckBox] = {}
-        for eng, chn in self.PRIORITY_OPTIONS:
-            cb = QCheckBox(chn)
-            cb.setChecked(True)
-            cb.stateChanged.connect(self._emit_filter)
-            self._priority_checks[eng] = cb
-            row1.addWidget(cb)
-
-        row1.addStretch()
-        layout.addLayout(row1)
-
-        # ── 第二行: DRI / 日期范围 / 清空 ──
-        row2 = QHBoxLayout()
-        row2.setSpacing(8)
-
-        row2.addWidget(self._make_group_label("DRI"))
-        self._dri_combo = QComboBox()
-        self._dri_combo.setMinimumWidth(100)
-        self._dri_combo.addItem("全部", None)
-        self._dri_combo.currentIndexChanged.connect(self._emit_filter)
-        row2.addWidget(self._dri_combo)
-
-        row2.addSpacing(8)
-
-        # 创建日期范围
-        row2.addWidget(self._make_group_label("创建日期"))
-        self._date_start = QDateEdit()
-        self._date_start.setCalendarPopup(True)
-        self._date_start.setDate(QDate.currentDate().addMonths(-1))
-        self._date_start.setSpecialValueText("不限")
-        self._date_start.dateChanged.connect(self._emit_filter)
-        row2.addWidget(self._date_start)
-
-        row2.addWidget(QLabel("–"))
-        self._date_end = QDateEdit()
-        self._date_end.setCalendarPopup(True)
-        self._date_end.setDate(QDate.currentDate())
-        self._date_end.setSpecialValueText("不限")
-        self._date_end.dateChanged.connect(self._emit_filter)
-        row2.addWidget(self._date_end)
-
-        row2.addStretch()
-
-        # 清空按钮
-        btn_clear = QPushButton("清空筛选")
-        btn_clear.setProperty("class", "action")
-        btn_clear.setFixedHeight(26)
-        btn_clear.clicked.connect(self._clear_filters)
-        row2.addWidget(btn_clear)
-
-        layout.addLayout(row2)
-
-    def _make_group_label(self, text: str) -> QLabel:
-        """创建分组标签。"""
-        lbl = QLabel(text)
-        lbl.setProperty("class", "filter-group-label")
-        return lbl
-
-    def set_dri_options(self, dri_names: list[str]) -> None:
-        """设置 DRI 下拉选项（从现有 Issue 的 dri_name 去重填充）。"""
-        current = self._dri_combo.currentData()
-        self._dri_combo.clear()
-        self._dri_combo.addItem("全部", None)
-        for name in sorted(set(n for n in dri_names if n)):
-            self._dri_combo.addItem(name, name)
-        if current is not None:
-            idx = self._dri_combo.findData(current)
-            if idx >= 0:
-                self._dri_combo.setCurrentIndex(idx)
-
-    def get_filters(self) -> dict:
-        """获取当前筛选条件。"""
-        return {
-            "status": [
-                eng for eng, cb in self._status_checks.items()
-                if cb.isChecked()
-            ],
-            "severity": [
-                eng for eng, cb in self._severity_checks.items()
-                if cb.isChecked()
-            ],
-            "priority": [
-                int(eng[1:]) for eng, cb in self._priority_checks.items()
-                if cb.isChecked()
-            ],
-            "dri_name": self._dri_combo.currentData(),
-            "date_start": self._date_start.date().toString("yyyy-MM-dd")
-                if self._date_start.date() != self._date_start.minimumDate() else "",
-            "date_end": self._date_end.date().toString("yyyy-MM-dd")
-                if self._date_end.date() != self._date_end.minimumDate() else "",
-        }
-
-    def set_filters(self, filters: dict) -> None:
-        """从外部设置筛选条件（跨视图同步）。"""
-        status_list = filters.get("status", [])
-        for eng, cb in self._status_checks.items():
-            cb.setChecked(eng in status_list)
-
-        sev_list = filters.get("severity", [])
-        for eng, cb in self._severity_checks.items():
-            cb.setChecked(eng in sev_list)
-
-        pri_list = filters.get("priority", [])
-        for eng, cb in self._priority_checks.items():
-            pri_label = int(eng[1:])
-            cb.setChecked(pri_label in pri_list)
-
-        dri_name = filters.get("dri_name")
-        if dri_name is None:
-            self._dri_combo.setCurrentIndex(0)
-        else:
-            idx = self._dri_combo.findData(dri_name)
-            if idx >= 0:
-                self._dri_combo.setCurrentIndex(idx)
-
-        date_start = filters.get("date_start", "")
-        if date_start:
-            parsed = QDate.fromString(date_start, "yyyy-MM-dd")
-            if parsed.isValid():
-                self._date_start.setDate(parsed)
-
-        date_end = filters.get("date_end", "")
-        if date_end:
-            parsed = QDate.fromString(date_end, "yyyy-MM-dd")
-            if parsed.isValid():
-                self._date_end.setDate(parsed)
-
-    def _emit_filter(self) -> None:
-        """发射筛选变更信号。"""
-        self.filter_changed.emit(self.get_filters())
-
-    def _clear_filters(self) -> None:
-        """重置所有筛选条件为全选/不限。"""
-        for cb in self._status_checks.values():
-            cb.setChecked(True)
-        for cb in self._severity_checks.values():
-            cb.setChecked(True)
-        for cb in self._priority_checks.values():
-            cb.setChecked(True)
-        self._dri_combo.setCurrentIndex(0)
-        self._date_start.setDate(QDate.currentDate().addMonths(-1))
-        self._date_end.setDate(QDate.currentDate())
-        self._emit_filter()
-
-
-# ═══════════════════════════════════════════════════════════════
-#  BatchOperationDialog
-# ═══════════════════════════════════════════════════════════════
-
-class BatchOperationDialog(QDialog):
-    """批量操作对话框 — 改状态/改严重度/改优先级/设置DRI。"""
-
-    def __init__(
-        self,
-        issue_ids: list[int],
-        issue_service: IssueService,
-        parent: QWidget | None = None,
-        undo_manager=None,
-        dri_names: list[str] | None = None,
-    ):
-        super().__init__(parent)
-        self._issue_ids = issue_ids
-        self._service = issue_service
-        self._undo_manager = undo_manager
-        self._dri_names = dri_names or []
-
-        self.setWindowTitle(f"批量操作 — 已选 {len(issue_ids)} 个 Issue")
-        self.setMinimumSize(400, 300)
-        self.setModal(True)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-
-        self._result_summary: str = ""
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(PADDING_LARGE, PADDING_LARGE, PADDING_LARGE, PADDING_LARGE)
-        layout.setSpacing(SPACING_MEDIUM)
-
-        # 已选列表
-        layout.addWidget(QLabel(f"已选 {len(self._issue_ids)} 个 Issue:"))
-        id_list = QListWidget()
-        id_list.setMaximumHeight(120)
-        for iid in self._issue_ids[:20]:
-            item = QListWidgetItem(f"#{iid}")
-            id_list.addItem(item)
-        if len(self._issue_ids) > 20:
-            id_list.addItem(f"... 还有 {len(self._issue_ids) - 20} 个")
-        layout.addWidget(id_list)
-
-        # 操作类型
-        op_row = QHBoxLayout()
-        op_row.addWidget(QLabel("操作:"))
-        self._op_combo = QComboBox()
-        self._op_combo.addItems(["改状态", "改严重度", "改优先级", "设置DRI"])
-        self._op_combo.currentTextChanged.connect(self._update_value_widget)
-        op_row.addWidget(self._op_combo, stretch=1)
-        layout.addLayout(op_row)
-
-        # 目标值
-        val_row = QHBoxLayout()
-        val_row.addWidget(QLabel("目标值:"))
-        self._value_combo = QComboBox()
-        self._value_combo.setMinimumWidth(140)
-        val_row.addWidget(self._value_combo, stretch=1)
-        layout.addLayout(val_row)
-        self._update_value_widget(self._op_combo.currentText())
-
-        # 按钮
-        btn_box = QDialogButtonBox()
-        btn_cancel = btn_box.addButton("取消", QDialogButtonBox.ButtonRole.RejectRole)
-        btn_cancel.clicked.connect(self.reject)
-        self._btn_confirm = btn_box.addButton("确认执行", QDialogButtonBox.ButtonRole.AcceptRole)
-        self._btn_confirm.clicked.connect(self._execute_batch)
-        btn_box.rejected.connect(self.reject)
-        layout.addWidget(btn_box)
-
-    def _update_value_widget(self, operation: str) -> None:
-        """根据操作类型更新目标值下拉选项。"""
-        self._value_combo.setEditable(False)
-        self._value_combo.clear()
-        if operation == "改状态":
-            for eng, chn in [("open", "待处理"), ("analyzing", "分析中"),
-                             ("verified", "已验证"), ("closed", "已关闭")]:
-                self._value_combo.addItem(chn, eng)
-        elif operation == "改严重度":
-            for eng, chn in [("critical", "严重"), ("major", "主要"),
-                             ("minor", "次要"), ("cosmetic", "外观")]:
-                self._value_combo.addItem(chn, eng)
-        elif operation == "改优先级":
-            for i in range(1, 6):
-                self._value_combo.addItem(f"P{i}", i)
-        elif operation == "设置DRI":
-            self._value_combo.setEditable(True)
-            self._value_combo.addItem("（清除DRI）", "")
-            for name in sorted(set(self._dri_names)):
-                self._value_combo.addItem(name, name)
-
-    def _execute_batch(self) -> None:
-        """执行批量操作，逐个 issue 调用 update()。"""
-        operation = self._op_combo.currentText()
-        target_value = self._value_combo.currentData()
-        # 设置DRI 可编辑模式：手动输入时 currentData() 返回 None，取文本
-        if operation == "设置DRI" and target_value is None:
-            target_value = self._value_combo.currentText().strip()
-
-        # 映射操作 → kwargs field
-        field_map = {
-            "改状态": "status",
-            "改严重度": "severity",
-            "改优先级": "priority",
-            "设置DRI": "dri_name",
-        }
-        field = field_map.get(operation, "")
-        if not field:
-            return
-
-        updated = 0
-        failed = 0
-        for issue_id in self._issue_ids:
-            try:
-                # 获取旧值用于 undo
-                old_issue = self._service.get(issue_id)
-                old_value = getattr(old_issue, field, None) if old_issue else None
-
-                self._service.update(issue_id, operator="batch", **{field: target_value})
-                updated += 1
-
-                # 推送 undo 命令（用 record 而非直接 push，确保 redo_stack 清空）
-                if self._undo_manager is not None and old_issue is not None:
-                    from src.services.undo_manager import UpdateFieldCommand
-                    cmd = UpdateFieldCommand(
-                        self._service._repo, issue_id, field,
-                        old_value, target_value, "Issue",
-                    )
-                    self._undo_manager.record(cmd)
-            except Exception:
-                logger.exception("Error in list_view")
-                failed += 1
-
-        self._result_summary = f"已更新 {updated} 条，失败 {failed} 条"
-        ToastWidget.show_toast(self.parent(), self._result_summary,
-                               ToastWidget.SUCCESS if failed == 0 else ToastWidget.WARNING)
-        self.accept()
-
-    def result_summary(self) -> str:
-        return self._result_summary
-
 
 # ═══════════════════════════════════════════════════════════════
 #  BugListView
