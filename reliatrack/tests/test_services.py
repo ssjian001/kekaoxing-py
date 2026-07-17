@@ -315,6 +315,28 @@ class TestPlanSvc:
         assert plan_svc.get_task(t1).start_day == 10
         assert plan_svc.get_task(t2).start_day == 15
 
+    def test_update_task_actual_dates(self, plan_svc, sample_project):
+        """设置实际开始/完成日期后能正确读回。"""
+        plid = plan_svc.create_plan(sample_project["id"], "计划1", start_date="2026-01-01")
+        tid = plan_svc.create_task(plid, "任务1", duration=5)
+
+        plan_svc.update_task(tid, actual_start_date="2026-01-05", actual_end_date="2026-01-10")
+        task = plan_svc.get_task(tid)
+        assert task is not None
+        assert task.actual_start_date == "2026-01-05"
+        assert task.actual_end_date == "2026-01-10"
+
+    def test_update_task_clear_actual_date(self, plan_svc, sample_project):
+        """清空实际日期（设为空字符串）后正确读回。"""
+        plid = plan_svc.create_plan(sample_project["id"], "计划1", start_date="2026-01-01")
+        tid = plan_svc.create_task(plid, "任务1", duration=5,
+                                   actual_start_date="2026-01-05")
+
+        plan_svc.update_task(tid, actual_start_date="")
+        task = plan_svc.get_task(tid)
+        assert task is not None
+        assert task.actual_start_date == ""
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  UndoManager

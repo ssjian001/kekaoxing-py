@@ -608,3 +608,88 @@ class TestEdgeCases:
         handlers._sync_issue_from_capa(1)
         handlers._handle_fa_record_added({"issue_id": 1})
         handlers._handle_capa_record_added({"issue_id": 1})
+
+
+# ══════════════════════════════════════════════════════════════
+#  PlanHandlers — 实际日期快捷编辑测试
+# ══════════════════════════════════════════════════════════════
+
+
+class TestActualDateEdit:
+    """_on_actual_date_edit 直接调用不崩溃，正确委托到 update_task。"""
+
+    @pytest.fixture()
+    def mock_plan_win(self, db_conn: apsw.Connection) -> MagicMock:
+        """Mock MainWindow，使 PlanHandlers 可构造 + 调用 _on_actual_date_edit。"""
+        from src.db.repositories.test_task_repo import TestTaskRepository
+        from src.db.repositories.test_plan_repo import TestPlanRepository
+        from src.db.repositories.test_result_repo import TestResultRepository
+        from src.services.test_plan_service import TestPlanService
+        plan_repo = TestPlanRepository(db_conn)
+        task_repo = TestTaskRepository(db_conn)
+        result_repo = TestResultRepository(db_conn)
+        svc = TestPlanService(plan_repo, task_repo, result_repo)
+
+        db_conn.execute(
+            "INSERT INTO test_plans (id, project_id, name, status) VALUES (1, 1, 'P', 'active')"
+        )
+        db_conn.execute(
+            "INSERT INTO test_tasks (id, plan_id, name, duration) VALUES (1, 1, 'T1', 5)"
+        )
+
+        win = MagicMock()
+        win.ctrl.test_plan_service = svc
+        win.ctrl.test_tasks = task_repo
+        win.toast = MagicMock()
+        return win
+
+    def test_update_actual_start_date(
+        self, mock_plan_win: MagicMock
+    ) -> None:
+        """设置 actual_start_date → DB 写入正确 + toast 触发。"""
+        from src.handlers.plan_handlers import PlanHandlers
+        handlers = PlanHandlers(mock_plan_win)
+
+        handlers._on_actual_date_edit(1, "actual_start_date", "2026-03-15")
+
+        task = mock_plan_win.ctrl.test_plan_service.get_task(1)
+        assert task is not None
+        assert task.actual_start_date == "2026-03-15"
+        mock_plan_win.toast.assert_called_once()
+
+    def test_update_actual_end_date(
+        self, mock_plan_win: MagicMock
+    ) -> None:
+        """设置 actual_end_date → DB 写入正确。"""
+        from src.handlers.plan_handlers import PlanHandlers
+        handlers = PlanHandlers(mock_plan_win)
+
+        handlers._on_actual_date_edit(1, "actual_end_date", "2026-03-20")
+
+        task = mock_plan_win.ctrl.test_plan_service.get_task(1)
+        assert task is not None
+        assert task.actual_end_date == "2026-03-20"
+
+    def test_clear_actual_date(
+        self, mock_plan_win: MagicMock
+    ) -> None:
+        """清空实际日期（空字符串）不崩溃，DB 正确置空。"""
+        from src.handlers.plan_handlers import PlanHandlers
+        mock_plan_win.ctrl.test_plan_service.update_task(1, actual_start_date="2026-03-15")
+
+        handlers = PlanHandlers(mock_plan_win)
+        handlers._on_actual_date_edit(1, "actual_start_date", "")
+
+        task = mock_plan_win.ctrl.test_plan_service.get_task(1)
+        assert task is not None
+        assert task.actual_start_date == ""
+
+    def test_service_none_no_crash(
+        self, mock_plan_win: MagicMock
+    ) -> None:
+        """ctrl.test_plan_service 为 None → 不崩溃。"""
+        mock_plan_win.ctrl.test_plan_service = None
+        from src.handlers.plan_handlers import PlanHandlers
+        handlers = PlanHandlers(mock_plan_win)
+
+        handlers._on_actual_date_edit(1, "actual_start_date", "2026-03-15")
