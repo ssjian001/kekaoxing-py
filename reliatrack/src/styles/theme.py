@@ -723,24 +723,46 @@ QLabel[class="body-text"] {{
     color: {TEXT}; font-size: 12px;
 }}
 
-QFrame[class="kanban-col-pending"] {{
-    background-color: {BG_INPUT}; border-radius: 10px;
+/* ── 看板列 ── */
+QFrame[class="kanban-column"] {{
+    background-color: {SURFACE0}; border-radius: 10px; border: none;
 }}
-QFrame[class="kanban-col-progress"] {{
-    background-color: {SELECTION_BG}; border-radius: 10px;
-}}
-QFrame[class="kanban-col-done"] {{
-    background-color: {SURFACE0}; border-radius: 10px;
+QFrame[class="kanban-column"]:hover {{
+    background-color: {SURFACE1};
 }}
 
 /* ── 看板列标题 ── */
-QLabel[class="kanban-col-header"] {{
+QFrame[class="column-header"] {{
+    background: transparent; border: none; border-top-left-radius: 10px; border-top-right-radius: 10px;
+}}
+/* ── 看板列标题文字 ── */
+QLabel[class="column-header-label"] {{
     color: {TEXT}; border: none;
 }}
 /* ── 看板计数标签 ── */
-QLabel[class="kanban-count"] {{
+QLabel[class="column-count"] {{
     color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
     background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+}}
+/* ── 折叠按钮 ── */
+QPushButton[class="fold-btn"] {{
+    background: transparent; border: none; border-radius: 4px;
+    color: {FG_SECONDARY}; font-size: 13px;
+}}
+QPushButton[class="fold-btn"]:hover {{
+    background: {BG_HOVER}; color: {TEXT};
+}}
+/* ── 折叠信息栏 ── */
+QLabel[class="fold-info"] {{
+    color: {FG_SECONDARY}; background: transparent; border: none;
+    font-size: 12px;
+}}
+QLabel[class="fold-info"]:hover {{
+    color: {TEXT};
+}}
+/* ── 滚动区域 ── */
+QScrollArea[class="column-scroll"] {{
+    background: transparent; border: none;
 }}
 /* ── 看板卡片标题 ── */
 QLabel[class="card-title"] {{

@@ -369,6 +369,7 @@ class _KanbanColumn(QFrame):
 
         self._title_label = QLabel(self._label)
         self._title_label.setFont(_FONT_COLUMN_HEADER)
+        self._title_label.setProperty("class", "column-header-label")
         header_layout.addWidget(self._title_label)
 
         self._count_label = QLabel("0")
