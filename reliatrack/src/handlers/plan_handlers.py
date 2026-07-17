@@ -1161,6 +1161,13 @@ class PlanHandlers:
             field = "actual_start_date"
         elif col == 12:  # 实际完成
             field = "actual_end_date"
+        elif col == 9:  # 技术员（按名称查找 ID）
+            field = "technician_id"
+            tech_list = ctrl.technicians.list_all() if ctrl.technicians else []
+            matched = [t.id for t in tech_list if t.name == value]
+            if not matched:
+                return
+            parsed_value = matched[0]
         else:
             return
 

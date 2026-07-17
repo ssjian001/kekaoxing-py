@@ -48,6 +48,16 @@ class _TaskTable(QTableWidget):
     _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
     _PRIORITY_COLORS: dict[int, str] = PRIORITY_COLORS
 
+    _SHORTCUT_KEYS = {
+        "edit": Qt.Key.Key_E,
+        "delete": Qt.Key.Key_Delete,
+        "start": Qt.Key.Key_S,
+        "complete": Qt.Key.Key_F,
+        "record": Qt.Key.Key_R,
+    }
+
+    _COL_BATCHABLE = {6: "progress", 7: "priority", 11: "actual_start_date", 12: "actual_end_date"}
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         apply_column_specs(self, _TASK_SPECS, "task_table")
@@ -78,6 +88,7 @@ class _TaskTable(QTableWidget):
         self._empty_label.setParent(self)
         self._empty_label.hide()
         self.viewport().installEventFilter(self)
+        self._register_shortcuts()
 
     def set_reference_data(
         self,
@@ -104,6 +115,49 @@ class _TaskTable(QTableWidget):
         self._on_actual_date_edit_callback = on_actual_date_edit
         self._on_record_result_callback = on_record_result
         self._batch_value_callback = on_batch_value
+
+    # ── 键盘快捷键（Widget 内生效） ──
+
+    def _register_shortcuts(self) -> None:
+        """注册表格内键盘快捷键（仅在表格有焦点时响应）。"""
+        from PySide6.QtGui import QShortcut, QKeySequence
+        from PySide6.QtCore import QCoreApplication as _QA
+
+        # E = 编辑选中行
+        self._sc_edit = QShortcut(QKeySequence(Qt.Key.Key_E), self)
+        self._sc_edit.activated.connect(lambda: self._shortcut_trigger("edit"))
+        # Delete = 删除选中行
+        self._sc_del = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
+        self._sc_del.activated.connect(lambda: self._shortcut_trigger("delete"))
+        # S = 开始执行 / F = 标记完成
+        self._sc_start = QShortcut(QKeySequence(Qt.Key.Key_S), self)
+        self._sc_start.activated.connect(lambda: self._shortcut_trigger("start"))
+        self._sc_comp = QShortcut(QKeySequence(Qt.Key.Key_F), self)
+        self._sc_comp.activated.connect(lambda: self._shortcut_trigger("complete"))
+        # R = 录入结果
+        self._sc_rec = QShortcut(QKeySequence(Qt.Key.Key_R), self)
+        self._sc_rec.activated.connect(lambda: self._shortcut_trigger("record"))
+
+    def _shortcut_trigger(self, action: str) -> None:
+        """键盘快捷键触发 → 对当前选中行执行对应操作。"""
+        rows = self.selectionModel().selectedRows()
+        if not rows:
+            return
+        # 取当前行首个任务
+        row = rows[0].row()
+        task = self.get_task_at_row(row)
+        if not task:
+            return
+        if action == "edit" and self._on_edit_callback:
+            self._on_edit_callback(task)
+        elif action == "delete" and self._on_delete_callback:
+            self._on_delete_callback(task)
+        elif action == "start" and task.status == "pending" and self._on_status_advance_callback:
+            self._on_status_advance_callback(task, "in_progress")
+        elif action == "complete" and task.status == "in_progress" and self._on_status_advance_callback:
+            self._on_status_advance_callback(task, "completed")
+        elif action == "record" and task.status in ("in_progress", "completed", "failed") and self._on_record_result_callback:
+            self._on_record_result_callback()
 
     def _on_double_click(self, row: int, col: int) -> None:
         task = self.get_task_at_row(row)
@@ -160,29 +214,29 @@ class _TaskTable(QTableWidget):
             task = self.get_task_at_row(rows[0].row())
             if not task:
                 return
-            act_edit = QAction("编辑", self)
+            act_edit = QAction("编辑\tE", self)
             act_edit.triggered.connect(lambda: self._on_edit_callback(task) if self._on_edit_callback else None)
-            act_delete = QAction("删除", self)
+            act_delete = QAction("删除\tDel", self)
             act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
 
             act_start: QAction | None = None
             act_complete: QAction | None = None
             act_record: QAction | None = None
             if task.status == "pending":
-                act_start = QAction("开始执行", self)
+                act_start = QAction("开始执行\tS", self)
                 act_start.triggered.connect(
                     lambda: self._on_status_advance_callback(task, "in_progress")
                     if self._on_status_advance_callback else None
                 )
             elif task.status == "in_progress":
-                act_complete = QAction("标记完成", self)
+                act_complete = QAction("标记完成\tF", self)
                 act_complete.triggered.connect(
                     lambda: self._on_status_advance_callback(task, "completed")
                     if self._on_status_advance_callback else None
                 )
             # 进行中/已完成/失败的任务都可直接录入结果
             if task.status in ("in_progress", "completed", "failed") and self._on_record_result_callback:
-                act_record = QAction("录入测试结果", self)
+                act_record = QAction("录入测试结果\tR", self)
                 act_record.triggered.connect(
                     lambda: self._on_record_result_callback()
                 )
@@ -215,9 +269,50 @@ class _TaskTable(QTableWidget):
             )
             menu.addAction(act_batch_start)
             menu.addAction(act_batch_complete)
+            menu.addSeparator()
+
+            # 批量设置优先级
+            act_batch_pri = QAction("批量设优先级…", self)
+            act_batch_pri.triggered.connect(
+                lambda: self._batch_set_field(selected_tasks, "priority")
+            )
+            menu.addAction(act_batch_pri)
+
+            # 批量指派技术员
+            act_batch_tech = QAction("批量指派技术员…", self)
+            act_batch_tech.triggered.connect(
+                lambda: self._batch_assign_technician(selected_tasks)
+            )
+            menu.addAction(act_batch_tech)
         
         menu.exec(self.viewport().mapToGlobal(pos))
         menu.deleteLater()
+
+    def _batch_set_field(self, tasks: list[TestTask], field: str) -> None:
+        """批量设置选中任务的数字字段（如优先级）。"""
+        if not self._batch_value_callback:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        val, ok = QInputDialog.getInt(self, f"批量设{field}", f"请输入{field}值:", 3, 1, 5)
+        if not ok:
+            return
+        for t in tasks:
+            if t.id is not None:
+                self._batch_value_callback([t.id], 7 if field == "priority" else -1, str(val))
+
+    def _batch_assign_technician(self, tasks: list[TestTask]) -> None:
+        """批量指派技术员。"""
+        if not self._technician_list or not self._batch_value_callback:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        # 直接用技术员名称作为值，handler 通过 name 查找 id
+        tech_names = [t.name for t in self._technician_list]
+        val, ok = QInputDialog.getItem(self, "批量指派技术员", "选择技术员:", tech_names, 0, False)
+        if not ok or not val:
+            return
+        for t in tasks:
+            if t.id is not None:
+                self._batch_value_callback([t.id], 9, val)
 
     def _batch_status_advance(self, tasks: list[TestTask], new_status: str) -> None:
         """批量推进多个任务的状态。"""
