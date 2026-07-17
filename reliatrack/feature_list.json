@@ -2,7 +2,7 @@
   "_meta": {
     "last_updated": "2026-07-17",
     "schema_version": 27,
-    "tests": "527 passed (12 项易用性优化，合并至 main)"
+    "tests": "535 passed (12 项易用性优化 + 导出修复 + 8 回归测试)"
   },
   "features": [
     {
