@@ -63,6 +63,7 @@ class PlanHandlers:
             on_edit=self._on_task_edit,
             on_delete=self._on_task_delete,
             on_status_advance=self._on_task_status_advance,
+            on_actual_date_edit=self._on_actual_date_edit,
         )
 
     def _on_auto_schedule(self) -> None:
@@ -1107,4 +1108,21 @@ class PlanHandlers:
             toast_msg=f"任务「{task.name}」已标记为{status_label}",
             entity="task",
             error_title="操作失败",
+        )
+
+    # ── 快捷编辑实际日期 ──
+
+    def _on_actual_date_edit(self, task_id: int, field: str, new_date: str) -> None:
+        """双击表格实际日期列后直接写 DB。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        exec_crud(
+            win=self._win,
+            action=ctrl.test_plan_service.update_task,
+            action_args=(task_id,),
+            action_kwargs={field: new_date},
+            toast_msg=f"实际日期已更新",
+            entity="task",
+            error_title="日期更新失败",
         )

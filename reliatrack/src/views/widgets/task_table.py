@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QMenu,
     QAbstractItemView,
+    QDateEdit,
 )
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QAction, QColor
@@ -61,6 +62,7 @@ class _TaskTable(QTableWidget):
         self._on_edit_callback: Callable[[TestTask], None] | None = None
         self._on_delete_callback: Callable[[TestTask], None] | None = None
         self._on_status_advance_callback: Callable[[TestTask, str], None] | None = None
+        self._on_actual_date_edit_callback: Callable[[int, str, str], None] | None = None  # (task_id, field, new_date)
         # 双击编辑
         self.cellDoubleClicked.connect(self._on_double_click)
         # 右键菜单
@@ -89,14 +91,54 @@ class _TaskTable(QTableWidget):
         on_edit: Callable[[TestTask], None] | None = None,
         on_delete: Callable[[TestTask], None] | None = None,
         on_status_advance: Callable[[TestTask, str], None] | None = None,
+        on_actual_date_edit: Callable[[int, str, str], None] | None = None,
     ) -> None:
-        """设置编辑/删除/状态推进回调。"""
+        """设置编辑/删除/状态推进/实际日期编辑回调。"""
         self._on_edit_callback = on_edit
         self._on_delete_callback = on_delete
         self._on_status_advance_callback = on_status_advance
+        self._on_actual_date_edit_callback = on_actual_date_edit
 
-    def _on_double_click(self, row: int, _col: int) -> None:
+    def _on_double_click(self, row: int, col: int) -> None:
         task = self.get_task_at_row(row)
+        if not task or task.id is None:
+            return
+
+        # 实际开始(11) / 实际完成(12) — 弹出日历快捷编辑
+        if col in (11, 12) and self._on_actual_date_edit_callback:
+            field = "actual_start_date" if col == 11 else "actual_end_date"
+            from PySide6.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox
+            from PySide6.QtCore import QDate
+            dlg = QDialog(self)
+            dlg.setWindowTitle("选择日期")
+            dlg.setMinimumWidth(280)
+            layout = QVBoxLayout(dlg)
+            date_edit_type = QDateEdit()
+            date_edit_type.setCalendarPopup(True)
+            date_edit_type.setDisplayFormat("yyyy-MM-dd")
+            date_edit_type.setSpecialValueText("清除日期")
+            # 初始化为当前值或空
+            current = getattr(task, field, "") or ""
+            if current:
+                qd = QDate.fromString(current, "yyyy-MM-dd")
+                if qd.isValid():
+                    date_edit_type.setDate(qd)
+                else:
+                    date_edit_type.setDate(QDate.currentDate())
+                    date_edit_type.setSpecialValueText(" ")
+            else:
+                date_edit_type.clear()
+            layout.addWidget(date_edit_type)
+            buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+            buttons.accepted.connect(dlg.accept)
+            buttons.rejected.connect(dlg.reject)
+            layout.addWidget(buttons)
+            if dlg.exec():
+                new_date = date_edit_type.date().toString("yyyy-MM-dd") if date_edit_type.date().isValid() else ""
+                self._on_actual_date_edit_callback(task.id, field, new_date)
+            return
+
+        # Original: open full edit dialog
         if task and self._on_edit_callback:
             self._on_edit_callback(task)
 

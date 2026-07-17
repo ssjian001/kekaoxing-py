@@ -472,8 +472,9 @@ class TestPlanView(QWidget):
         on_edit: Callable[[TestTask], None] | None = None,
         on_delete: Callable[[TestTask], None] | None = None,
         on_status_advance: Callable[[TestTask, str], None] | None = None,
+        on_actual_date_edit: Callable[[int, str, str], None] | None = None,
     ) -> None:
-        """设置任务增删改回调。
+        """设置任务增删改以及实际日期编辑回调。
 
         外部调用此方法，将实际业务逻辑（打开弹窗、调用 Service 等）注入。
         """
@@ -486,6 +487,7 @@ class TestPlanView(QWidget):
             on_edit=self._handle_table_edit,
             on_delete=self._handle_table_delete,
             on_status_advance=on_status_advance,
+            on_actual_date_edit=on_actual_date_edit,
         )
 
     def _handle_table_edit(self, task: TestTask) -> None:
