@@ -802,6 +802,10 @@ QTabWidget[class="detail-tabs"] {{
 QLabel[class="card-meta"] {{
     color: {FG_SECONDARY}; font-size: 11px; border: none;
 }}
+/* ── 看板卡片背景 ── */
+QFrame[class="kanban-card"] {{
+    background-color: {BG_CARD}; border: 1px solid {SURFACE1}; border-radius: 8px;
+}}
 /* ── 看板卡片标题 ── */
 QLabel[class="card-title"] {{
     color: {TEXT}; border: none;
