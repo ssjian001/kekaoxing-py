@@ -119,6 +119,11 @@ class TestPlanView(QWidget):
         self._search_edit.setPlaceholderText("搜索任务名...")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setFixedSize(160, 28)
+        # 恢复上次搜索关键词
+        from PySide6.QtCore import QSettings as _QSettings
+        saved = _QSettings().value("ReliaTrack/task_search", "")
+        if saved and isinstance(saved, str):
+            self._search_edit.setText(saved)
         self._search_edit.textChanged.connect(self._on_task_search)
         toolbar.addWidget(self._search_edit)
 
@@ -238,7 +243,9 @@ class TestPlanView(QWidget):
             self._gantt.set_mode(actual=(btn_id == 1))
 
     def _on_task_search(self, text: str) -> None:
-        """根据搜索关键词过滤任务列表。"""
+        """根据搜索关键词过滤任务列表，并将关键词持久化到 QSettings。"""
+        from PySide6.QtCore import QSettings as _QSettings
+        _QSettings().setValue("ReliaTrack/task_search", text)
         text = text.strip().lower()
         if not text:
             filtered = self._all_tasks_for_filter
