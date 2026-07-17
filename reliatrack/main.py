@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
         self._tab_widget.addTab(self._dashboard, "仪表盘")
-        self._dashboard.card_clicked.connect(self._tab_widget.setCurrentIndex)
+        self._dashboard.card_clicked.connect(self._on_dashboard_card_clicked)
 
         # Tab 1: 项目管理
         self._project_view = ProjectView()
@@ -175,6 +175,7 @@ class MainWindow(QMainWindow):
         )
 
         layout.addWidget(self._tab_widget)
+
         self.setCentralWidget(central)
 
         # 全局项目筛选器 — 作为 Tab 右侧 corner widget
@@ -185,6 +186,14 @@ class MainWindow(QMainWindow):
         self._reminder_timer.setInterval(30_000)
         self._reminder_timer.timeout.connect(self._check_todo_reminders)
         self._reminder_timer.start()
+
+    # ── 仪表盘卡片点击 ──
+
+    def _on_dashboard_card_clicked(self, tab_index: int, jump_data: object = None) -> None:
+        """点击仪表盘 KPI 卡片 → 跳转 Tab + 可选携带筛选上下文。"""
+        self._tab_widget.setCurrentIndex(tab_index)
+        if jump_data and isinstance(jump_data, dict):
+            pass
 
     def _create_filter_bar(self) -> None:
         """创建项目/计划筛选栏 — 作为 TabWidget 右上角 corner widget。"""

@@ -73,10 +73,12 @@ class _StatCard(QFrame):
     """现代 KPI 卡片: label / 大数字 / 百分比, 16px 圆角 + 柔阴影。"""
 
     def __init__(self, title: str, value: str = "0", color: str = DASH_PRIMARY,
-                 tab_index: int = -1, parent: QWidget | None = None):
+                 tab_index: int = -1, parent: QWidget | None = None,
+                 jump_data: dict | None = None):
         super().__init__(parent)
         self._tab_index = tab_index
         self._color = color
+        self._jump_data = jump_data or {}
         self.setObjectName("stat-card")
         self.setProperty("class", "card-bg")
         self.setMinimumHeight(64)
@@ -94,15 +96,41 @@ class _StatCard(QFrame):
         self._title_label.setProperty("class", "subtext")  # 主题迁移: class=subtext
         lay.addWidget(self._title_label)
 
-        # 大数字 — DYNAMIC: color 是运行时参数，无法走 class 选择器
+        # 大数字 + 趋势箭头行
+        row = QHBoxLayout()
+        row.setSpacing(6)
         self._val = QLabel(value)
         self._val.setStyleSheet(
             f"color: {color}; font-size: 22px; font-weight: bold;"
             f"border: none; background: transparent;"
         )
-        lay.addWidget(self._val)
+        row.addWidget(self._val)
+        self._trend_label = QLabel("")
+        self._trend_label.setStyleSheet(
+            "font-size: 13px; border: none; background: transparent;"
+        )
+        self._trend_label.hide()
+        row.addWidget(self._trend_label)
+        row.addStretch()
+        lay.addLayout(row)
     def set_value(self, text: str) -> None:
         self._val.setText(text)
+
+    def set_trend(self, direction: str, text: str = "") -> None:
+        """设置趋势箭头。direction: 'up'/'down'/'flat'/'none'"""
+        if direction == "none":
+            self._trend_label.hide()
+            return
+        symbols = {"up": "↑", "down": "↓", "flat": "→"}
+        colors = {"up": DASH_SUCCESS, "down": DASH_DANGER, "flat": _theme.SUBTEXT0}
+        sym = symbols.get(direction, "→")
+        c = colors.get(direction, _theme.SUBTEXT0)
+        display = f"{sym} {text}" if text else sym
+        self._trend_label.setText(display)
+        self._trend_label.setStyleSheet(
+            f"color: {c}; font-size: 13px; border: none; background: transparent;"
+        )
+        self._trend_label.show()
 
 
     def enterEvent(self, event):  # noqa: N802
@@ -123,7 +151,7 @@ class _StatCard(QFrame):
         w = self.parent()
         while w is not None:
             if hasattr(w, "card_clicked"):
-                w.card_clicked.emit(self._tab_index)
+                w.card_clicked.emit(self._tab_index, self._jump_data or None)
                 break
             w = w.parent()
         super().mousePressEvent(event)
@@ -627,7 +655,7 @@ class DashboardView(QWidget):
     Header + 健康度卡片 + 左右两栏
     """
 
-    card_clicked = Signal(int)
+    card_clicked = Signal(int, object)  # (tab_index, jump_data_or_None)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
