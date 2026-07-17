@@ -353,8 +353,11 @@ class ExportHandlers:
         issue_id: int | None = None
         if hasattr(self._win, 'test_plan_view'):
             plan_id = self._win.test_plan_view.get_selected_plan_id()
-        if hasattr(self._win, 'issue_view'):
-            issue_id = self._win.issue_view.get_selected_issue_id()
+        if hasattr(self._win, '_bug_tracker_view'):
+            btv = self._win._bug_tracker_view
+            # 从列表视图获取选中 Issue（看板和列表共享 selection）
+            if hasattr(btv, '_list_view') and btv._list_view:
+                issue_id = btv._list_view.get_selected_issue_id()
 
         export_dir = os.path.join(_PROJECT_ROOT, "exports")
         os.makedirs(export_dir, exist_ok=True)
