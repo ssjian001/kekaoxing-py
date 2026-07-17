@@ -30,3 +30,6 @@ echo "[4/4] Feature list..."
 python3 -c "import json; d=json.load(open('../feature_list.json')); print(f'  {len(d)} features tracked')" || echo "  WARNING — feature_list.json missing or invalid"
 
 echo "=== Init complete ==="
+
+# ── 过期 ──
+# 项目已迁移到 reliatrack/ 子目录，初始化流程见 CLAUDE.md
