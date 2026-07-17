@@ -78,7 +78,11 @@ _SORT_KEY_PREFIX = "ReliaTrack/column_sort/"
 
 
 def save_sort_state(table: QTableWidget, key: str) -> None:
-    """保存表格排序状态（排序列索引 + 升/降序）到 QSettings。"""
+    """保存表格排序状态（排序列索引 + 升/降序）到 QSettings。
+
+    注意：PySide6 6.5+ 默认启用 scoped enum，Qt.SortOrder 不再是 int 子类。
+    order.value 取整数值跨版本兼容。
+    """
     header = table.horizontalHeader()
     col = header.sortIndicatorSection()
     order = header.sortIndicatorOrder()

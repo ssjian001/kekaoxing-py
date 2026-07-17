@@ -116,6 +116,7 @@ bd dolt push          # 同步
 
 ## 已知 Qt 坑
 
+- **PySide6 6.5+ scoped enum**：`Qt.SortOrder.Ascending` 不再是 int 子类（纯 Enum 非 IntEnum），`int(SortOrder.Ascending)` 抛出 TypeError。存 QSettings 用 `.value`，恢复用 `Qt.SortOrder(int(val))`。顺带影响：任何需要 `int(enum)` 的地方都要改为 `.value`。
 - **SpinBox/ComboBox 按钮样式**：`app.setStyleSheet()` 完全覆盖 `QProxyStyle.drawComplexControl`（CC_SpinBox 拦截根本不执行，已实测验证）。SpinBox 按钮必须用 QSS `::up-button`/`::down-button`/`::up-arrow`/`::down-arrow` 子控件样式。当前方案：SpinBox 透明底 + FG_PRIMARY 双杠(上)/单杠(下)（border 模拟），hover 用 BG_HOVER；DateEdit/TimeEdit/ComboBox 不覆盖子控件样式，保持 Fusion 默认
 - QPushButton 设 `background: transparent; border: none` 在 Windows 上不可见 → 必须有可见背景和边框
 - QLockFile: Qt5 `setStaleLockTimeout(ms)` → PySide6 6.x `setStaleLockTime(ms)`
