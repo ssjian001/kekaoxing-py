@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import src.styles.theme as _t
+
 from PySide6.QtCore import (
     Property,
     QEasingCurve,
@@ -83,25 +85,50 @@ class _BgColorObject(QObject):
 class BackgroundAnimation(AnimationBase):
     """Widget hover/press 背景色过渡动画。
 
+    使用主题变量设置颜色，自动适配亮/暗主题。
+    set_theme_colors(normal_alpha, hover_alpha, press_alpha) 类方法一次性设置。
+
     用法：
+        BackgroundAnimation.set_theme_colors(0, 12, 20)
         anim = BackgroundAnimation(widget)
-        anim.normal_color = QColor(0, 0, 0, 0)
-        anim.hover_color = QColor(0, 0, 0, 20)
-        anim.press_color = QColor(0, 0, 0, 40)
     """
+
+    # 类级别默认值，可在启动时一次设置
+    _normal_alpha = 0
+    _hover_alpha = 12
+    _press_alpha = 20
 
     HOVER_DURATION = 150
     PRESS_DURATION = 100
 
+    @classmethod
+    def set_theme_colors(cls, normal: int = 0, hover: int = 12,
+                         press: int = 20) -> None:
+        """一次性设置所有背景动画的颜色。"""
+        cls._normal_alpha = normal
+        cls._hover_alpha = hover
+        cls._press_alpha = press
+
     def __init__(self, parent: QWidget):
         super().__init__(parent)
-        self.normal_color = QColor(0, 0, 0, 0)
-        self.hover_color = QColor(0, 0, 0, 0)
-        self.press_color = QColor(0, 0, 0, 0)
-
         self._bg_obj = _BgColorObject(self)
         self._ani = QPropertyAnimation(self._bg_obj, b"bg_color", self)
         self._ani.setEasingCurve(QEasingCurve.Type.OutCubic)
+        # 首次更新颜色
+        self._bg_obj._set_color(QColor(0, 0, 0, 0))
+
+    def _hover_color(self) -> QColor:
+        is_dark = _t.current_theme() == "dark"
+        base = 255 if is_dark else 0
+        return QColor(base, base, base, self._hover_alpha)
+
+    def _press_color(self) -> QColor:
+        is_dark = _t.current_theme() == "dark"
+        base = 255 if is_dark else 0
+        return QColor(base, base, base, self._press_alpha)
+
+    def _normal_color(self) -> QColor:
+        return QColor(0, 0, 0, self._normal_alpha)
 
     def _animate_to(self, color: QColor, duration: int) -> None:
         self._ani.stop()
@@ -111,16 +138,16 @@ class BackgroundAnimation(AnimationBase):
         self._ani.start()
 
     def _on_hover(self, e: QEnterEvent) -> None:
-        self._animate_to(self.hover_color, self.HOVER_DURATION)
+        self._animate_to(self._hover_color(), self.HOVER_DURATION)
 
     def _on_leave(self, e: QEvent) -> None:
-        self._animate_to(self.normal_color, self.HOVER_DURATION)
+        self._animate_to(self._normal_color(), self.HOVER_DURATION)
 
     def _on_press(self, e: QMouseEvent) -> None:
-        self._animate_to(self.press_color, self.PRESS_DURATION)
+        self._animate_to(self._press_color(), self.PRESS_DURATION)
 
     def _on_release(self, e: QMouseEvent) -> None:
-        target = self.hover_color if self._target.underMouse() else self.normal_color
+        target = self._hover_color() if self._target.underMouse() else self._normal_color()
         self._animate_to(target, self.HOVER_DURATION)
 
 

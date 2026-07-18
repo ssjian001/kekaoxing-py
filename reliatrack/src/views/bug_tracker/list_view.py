@@ -35,7 +35,7 @@ import src.styles.theme as _t
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.services.issue_service import IssueService
 from src.views.bug_tracker.fa_capa_panels import FAPanel, CAPAPanel, CAPADialog
-from src.views.bug_tracker.filter_panel import FilterPanel
+from src.views.widgets.filter_row import DynamicFilterPanel, match_row
 from src.views.bug_tracker.batch_dialog import BatchOperationDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.views.dialogs.issue_dialog import IssueEditDialog
@@ -263,12 +263,16 @@ class _BugTable(QTableWidget):
 
 
 # ═══════════════════════════════════════════════════════════════
-#  FilterPanel
-# ═══════════════════════════════════════════════════════════════
-
-# ═══════════════════════════════════════════════════════════════
 #  BugListView
 # ═══════════════════════════════════════════════════════════════
+
+_ISSUE_FILTER_FIELDS = {
+    "status": ("狀態", "enum"),
+    "severity": ("嚴重度", "enum"),
+    "priority": ("優先級", "int"),
+    "dri_name": ("DRI", "text"),
+    "title": ("標題", "text"),
+}
 
 class BugListView(QWidget):
     """增强列表视图 — 筛选面板 + 表格 + 批量操作 + Aging 列。"""
@@ -327,7 +331,7 @@ class BugListView(QWidget):
         layout.addLayout(self._build_toolbar())
 
         # 2. 筛选面板（横向，可折叠）
-        self._filter_panel = FilterPanel()
+        self._filter_panel = DynamicFilterPanel(_ISSUE_FILTER_FIELDS, self)
         layout.addWidget(self._filter_panel)
 
         # 3. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
@@ -497,8 +501,6 @@ class BugListView(QWidget):
     def set_issues(self, issues: list[Issue]) -> None:
         """设置 Issue 列表（全量缓存，筛选后显示）。"""
         self._all_issues = issues
-        # 提取 DRI 去重填充筛选下拉
-        self._filter_panel.set_dri_options([i.dri_name for i in issues if i.dri_name])
         self._apply_filters()
 
     def refresh(self) -> None:
@@ -513,16 +515,15 @@ class BugListView(QWidget):
 
     def set_filters(self, filters: dict) -> None:
         """外部设置筛选条件（跨视图同步）。"""
-        self._filter_panel.set_filters(filters)
         self._apply_filters()
 
     def _apply_filters(self) -> None:
         """根据筛选条件过滤并刷新表格。"""
-        filters = self._filter_panel.get_filters()
+        conditions = self._filter_panel.get_conditions()
         keyword = self._search_input.text().strip().lower()
 
         # 发射筛选信号（供其他视图同步）
-        self.filter_changed.emit(filters)
+        self.filter_changed.emit({"conditions": conditions})
 
         filtered = []
         for issue in self._all_issues:
@@ -532,31 +533,8 @@ class BugListView(QWidget):
                 if keyword not in search_text:
                     continue
 
-            # 状态
-            if filters["status"] and issue.status not in filters["status"]:
-                continue
-
-            # 严重度
-            if filters["severity"] and issue.severity not in filters["severity"]:
-                continue
-
-            # 优先级
-            if filters["priority"] and issue.priority not in filters["priority"]:
-                continue
-
-            # DRI（按 dri_name 过滤）
-            dri_filter = filters.get("dri_name")
-            if dri_filter is not None:
-                if (issue.dri_name or "") != dri_filter:
-                    continue
-
-            # 创建日期范围
-            date_start = filters.get("date_start", "")
-            date_end = filters.get("date_end", "")
-            created = (issue.created_at or "")[:10]
-            if date_start and created < date_start:
-                continue
-            if date_end and created > date_end:
+            # 动态筛选行条件
+            if not match_row(issue, conditions):
                 continue
 
             filtered.append(issue)

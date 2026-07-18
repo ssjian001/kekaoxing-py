@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
 
 import src.styles.theme as _t
 
-from src.styles.animation import DropShadowAnimation
+from src.styles.animation import DropShadowAnimation, BackgroundAnimation
 from src.models.issue import Issue
 from src.services.issue_service import IssueService
 from src.styles.constants import (
@@ -124,7 +124,8 @@ class _KanbanCard(QFrame):
         self._drag_started = False
 
         self.setProperty("class", "kanban-card")
-        # 动效：hover 阴影增强
+        # 动效：hover 背景色过渡 + 阴影增强
+        self._bg_anim = BackgroundAnimation(self)
         self._shadow_anim = DropShadowAnimation(self)
         self._shadow_anim.setup(blur=12, offset_y=3, normal_alpha=0, hover_alpha=30)
         # 宽度跟随列伸缩，高度固定

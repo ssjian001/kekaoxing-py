@@ -28,9 +28,10 @@ from PySide6.QtWidgets import (
 import src.styles.theme as _t
 from src.models.todo import TodoItem
 from src.models.project import Project
-from src.styles.animation import DropShadowAnimation
+from src.styles.animation import DropShadowAnimation, BackgroundAnimation
 from src.styles.constants import VIEW_MARGINS
 from src.views.quadrant_view import QuadrantView
+from src.views.widgets.filter_row import DynamicFilterPanel, match_row
 
 # ── 常量 ───────────────────────────────────────────────────────
 
@@ -49,6 +50,13 @@ _COLUMNS: list[tuple[str, str, str]] = [
     ("done",        "已完成",  "kanban-col-done"),
 ]
 _MIME_TODO_ID = "application/x-todo-id"
+
+_TODO_FILTER_FIELDS = {
+    "title": ("標題", "text"),
+    "priority": ("優先級", "int"),
+    "category": ("分類", "text"),
+    "due_date": ("到期日", "date"),
+}
 
 # ── 字体 ────────────────────────────────────────────────────────
 
@@ -75,6 +83,7 @@ class TodoCard(QFrame):
         self._selected = False
         self._drag_start: QPoint | None = None
         self._setup_ui()
+        self._bg_anim = BackgroundAnimation(self)
         self._shadow_anim = DropShadowAnimation(self)
         self._shadow_anim.setup(blur=10, offset_y=2, normal_alpha=0, hover_alpha=25)
 
@@ -311,6 +320,7 @@ class TodoView(QWidget):
         self._all_projects: list[Project] = []
         self._selected_todo_id: int | None = None
         self._selected_card: TodoCard | None = None
+        self._filter_conditions: list[dict] = []
         self._setup_ui()
 
     # ── UI ──────────────────────────────────────────────────────
@@ -325,6 +335,11 @@ class TodoView(QWidget):
 
         # 快速添加
         self._build_quick_add(layout)
+
+        # 动态筛选面板
+        self._filter_panel = DynamicFilterPanel(_TODO_FILTER_FIELDS)
+        self._filter_panel.filter_changed.connect(self._on_filter_changed)
+        layout.addWidget(self._filter_panel)
 
         # 子 Tab 切换
         self._sub_tabs = QTabBar()
@@ -503,7 +518,7 @@ class TodoView(QWidget):
     # ── 过滤 ────────────────────────────────────────────────────
 
     def _filter_todos(self, todo_list: list[TodoItem]) -> list[TodoItem]:
-        """按项目 + 搜索双重过滤。"""
+        """按项目 + 搜索 + 动态筛选条件过滤。"""
         pid = self._project_combo.currentData()
         search = self._search_edit.text().strip().lower() if hasattr(self, '_search_edit') else ""
 
@@ -516,6 +531,9 @@ class TodoView(QWidget):
                 if search in t.title.lower()
                 or (t.description and search in t.description.lower())
             ]
+        # 动态筛选条件
+        if self._filter_conditions:
+            filtered = [t for t in filtered if match_row(t, self._filter_conditions)]
         # 归档过滤（除非勾选显示已归档）
         show_archived = hasattr(self, '_show_archived_cb') and self._show_archived_cb.isChecked()
         if not show_archived:
@@ -526,6 +544,10 @@ class TodoView(QWidget):
         self._refresh_current_view()
 
     def _on_search(self, _text: str) -> None:
+        self._refresh_current_view()
+
+    def _on_filter_changed(self, data: dict) -> None:
+        self._filter_conditions = data.get("conditions", [])
         self._refresh_current_view()
 
     def _refresh_current_view(self) -> None:
