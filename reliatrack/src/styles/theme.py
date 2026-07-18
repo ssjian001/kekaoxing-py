@@ -235,6 +235,7 @@ QPushButton {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
+    border-bottom: 1px solid {SURFACE1};
     border-radius: 8px;
     padding: 6px 14px;
     min-height: 24px;
@@ -244,6 +245,7 @@ QPushButton:hover {{
 }}
 QPushButton:pressed {{
     background-color: {SURFACE2};
+    border-bottom: 1px solid {BORDER};
 }}
 QPushButton:disabled {{
     background-color: {BG_DARK};
@@ -258,21 +260,30 @@ QPushButton:checked {{
 QPushButton[class="primary"] {{
     background-color: {GREEN};
     color: {MANTLE};
-    border-color: {GREEN_DARK};
+    border: 1px solid {GREEN_DARK};
+    border-bottom: 1px solid {GREEN_DARK};
     padding: 2px 12px;
 }}
 QPushButton[class="primary"]:hover {{
     background-color: {GREEN_DARK};
+}}
+QPushButton[class="primary"]:pressed {{
+    background-color: {GREEN_DARK};
+    border-bottom: 1px solid {GREEN};
 }}
 
 /* ── 危险按钮 ── */
 QPushButton[class="danger"] {{
     background-color: {DANGER_BG};
     color: {RED};
-    border-color: {RED};
+    border: 1px solid {RED};
+    border-bottom: 1px solid {RED};
 }}
 QPushButton[class="danger"]:hover {{
     background-color: {DANGER_BG_HOV};
+}}
+QPushButton[class="danger"]:pressed {{
+    border-bottom: 1px solid {RED};
 }}
 
 /* ── 操作按钮 ── */
@@ -462,21 +473,21 @@ QStatusBar {{
 QToolBar {{
     background-color: {BG_CARD};
     border-bottom: 1px solid {BORDER};
-    spacing: 8px;
-    padding: 4px 12px;
+    spacing: 2px;
+    padding: 2px 8px;
 }}
 QToolBar QToolButton {{
     background-color: transparent;
     color: {FG_PRIMARY};
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 5px 12px;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
     font-size: 13px;
     font-weight: 500;
+    margin: 1px;
 }}
 QToolBar QToolButton:hover {{
     background-color: {BG_HOVER};
-    border-color: {BORDER};
 }}
 QToolBar QToolButton:pressed {{
     background-color: {SURFACE1};

@@ -35,6 +35,7 @@ from PySide6.QtCore import QTimer, QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from src.styles.animation import TranslateYAnimation
+from src.styles.icon import RI_REFRESH, RI_EXPORT, RI_BACKUP, RI_SETTINGS, RI_DASHBOARD
 from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
 from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
@@ -269,12 +270,14 @@ class MainWindow(QMainWindow):
         op_menu = menubar.addMenu("操作(&O)")
 
         act_refresh = QAction("刷新(&R)", self)
+        act_refresh.setIcon(RI_REFRESH.icon())
         act_refresh.setShortcut("F5")
         act_refresh.setToolTip("刷新所有数据 (F5)")
         act_refresh.triggered.connect(self._refresh_all)
         op_menu.addAction(act_refresh)
 
         act_export = QAction("导出(&E)…", self)
+        act_export.setIcon(RI_EXPORT.icon())
         act_export.setShortcut("Ctrl+E")
         act_export.setToolTip("导出报告 (Ctrl+E)")
         act_export.triggered.connect(self._export_handlers._on_export)
@@ -283,6 +286,7 @@ class MainWindow(QMainWindow):
         op_menu.addSeparator()
 
         act_backup = QAction("数据管理(&B)…", self)
+        act_backup.setIcon(RI_BACKUP.icon())
         act_backup.setToolTip("数据库备份与恢复")
         act_backup.triggered.connect(self._backup_handlers._on_data_manage)
         op_menu.addAction(act_backup)
@@ -292,6 +296,7 @@ class MainWindow(QMainWindow):
 
         # 暗色主题 Toggle
         self._act_dark_theme = QAction("暗色主题(&D)", self)
+        self._act_dark_theme.setIcon(RI_SETTINGS.icon())
         self._act_dark_theme.setCheckable(True)
         self._act_dark_theme.setChecked(current_theme() == "dark")
         self._act_dark_theme.setToolTip("切换暗色/明亮主题")
