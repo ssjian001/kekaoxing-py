@@ -38,6 +38,8 @@ from src.styles.constants import (
     add_shadow,
 )
 
+from src.styles.animation import DropShadowAnimation
+
 # ── 通用字体 ──
 _FAMILY = FONT_FAMILY.split(",")[0].strip()
 
@@ -86,6 +88,9 @@ class _StatCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         add_shadow(self)
+        # 动效：hover 增强阴影
+        self._shadow_anim = DropShadowAnimation(self)
+        self._shadow_anim.setup(blur=20, offset_y=4, normal_alpha=0, hover_alpha=40)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 10, 16, 10)

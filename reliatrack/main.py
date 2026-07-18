@@ -19,6 +19,7 @@ if not getattr(sys, 'frozen', False):
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
+    QScrollArea,
     QTabWidget,
     QWidget,
     QVBoxLayout,
@@ -33,6 +34,7 @@ from PySide6.QtCore import QTimer, QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
+from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -114,6 +116,9 @@ class MainWindow(QMainWindow):
 
         # 监听数据变更
         controller.register_on_data_changed(self._schedule_refresh)
+
+        # UX 增强：平滑滚动 + 动效
+        self._install_ux_enhancements()
 
     def _setup_central_widget(self) -> None:
         """创建中央 Tab Widget。"""
@@ -718,6 +723,14 @@ class MainWindow(QMainWindow):
                 return
         self._ctrl.shutdown()
         event.accept()
+
+    # ── UX 增强：平滑滚动 + 动效 ──
+
+    def _install_ux_enhancements(self) -> None:
+        """全局安装平滑滚动和动效。"""
+        # 查找所有 QScrollArea 安装平滑滚动
+        for sa in self.findChildren(QScrollArea):
+            SmoothScroll(sa)
 
 
 def main() -> int:
