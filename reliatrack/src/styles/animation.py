@@ -44,7 +44,7 @@ class AnimationBase(QObject):
         pass
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802
-        if obj is self._target:
+        if obj is getattr(self, '_target', None):
             t = event.type()
             if t == QEvent.Type.MouseButtonPress:
                 self._on_press(event)
