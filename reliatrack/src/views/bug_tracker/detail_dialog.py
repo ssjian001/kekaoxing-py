@@ -34,6 +34,7 @@ from src.styles.constants import (
 )
 from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
 from src.models.issue import Issue, IssueComment
+from src.styles.animation import DropShadowAnimation
 from src.views.bug_tracker.fa_capa_panels import FAPanel as _FAPanel, CAPAPanel as _CAPAPanel
 
 
@@ -121,6 +122,8 @@ class IssueDetailDialog(QDialog):
 
         tab = QTabWidget()
         tab.setProperty("class", "detail-tabs")
+        anim = DropShadowAnimation(tab)
+        anim.setup(blur=8, offset_y=1, normal_alpha=0, hover_alpha=15)
 
         tab.addTab(self._build_detail_tab(), "详情")
         tab.addTab(self._build_comment_tab(), "评论")

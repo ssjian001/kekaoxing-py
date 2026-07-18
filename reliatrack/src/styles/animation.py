@@ -178,3 +178,75 @@ class DropShadowAnimation(AnimationBase):
 
     def _on_leave(self, e: QEvent) -> None:
         self._animate_shadow_alpha(self._normal_alpha)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  TranslateYAnimation — 按鈕 press 沉降 / release 回彈
+# ═══════════════════════════════════════════════════════════════════
+
+
+class _YObject(QObject):
+    """Provide y property for QPropertyAnimation."""
+
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+        self._y = 0.0
+
+    def _get_y(self) -> float:
+        return self._y
+
+    def _set_y(self, y: float) -> None:
+        self._y = y
+
+    y = Property(float, _get_y, _set_y)
+
+
+class TranslateYAnimation(AnimationBase):
+    """按鈕按壓動畫：press 時 widget 向下偏移，release 彈回。
+
+    用法：
+        anim = TranslateYAnimation(button, offset=2)
+    """
+
+    def __init__(self, parent: QWidget, offset: float = 1.5):
+        super().__init__(parent)
+        self._offset = offset
+        self._y_obj = _YObject(self)
+        self._ani_press = QPropertyAnimation(self._y_obj, b"y", self)
+        self._ani_press.setDuration(80)
+        self._ani_press.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self._ani_release = QPropertyAnimation(self._y_obj, b"y", self)
+        self._ani_release.setDuration(200)
+        self._ani_release.setEasingCurve(QEasingCurve.Type.OutBack)
+        self._ani_release.valueChanged.connect(self._update_pos)
+        self._ani_press.valueChanged.connect(self._update_pos)
+        self._original_pos: QPoint | None = None
+
+    def _update_pos(self, y: float) -> None:
+        if self._original_pos is None:
+            self._original_pos = self._target.pos()
+        self._target.move(self._original_pos.x(),
+                         int(self._original_pos.y() + y))
+
+    def _on_press(self, e: QMouseEvent) -> None:
+        if self._original_pos is None:
+            self._original_pos = self._target.pos()
+        self._ani_release.stop()
+        self._ani_press.stop()
+        self._ani_press.setStartValue(self._y_obj._get_y())
+        self._ani_press.setEndValue(self._offset)
+        self._ani_press.start()
+
+    def _on_release(self, e: QMouseEvent) -> None:
+        self._ani_press.stop()
+        self._ani_release.setStartValue(self._y_obj._get_y())
+        self._ani_release.setEndValue(0.0)
+        self._ani_release.start()
+
+    def _on_leave(self, e: QEvent) -> None:
+        # 離開按鈕時立即歸位
+        self._ani_press.stop()
+        self._ani_release.stop()
+        self._y_obj._set_y(0.0)
+        if self._original_pos is not None:
+            self._target.move(self._original_pos)

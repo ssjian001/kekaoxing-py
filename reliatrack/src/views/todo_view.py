@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 import src.styles.theme as _t
 from src.models.todo import TodoItem
 from src.models.project import Project
+from src.styles.animation import DropShadowAnimation
 from src.styles.constants import VIEW_MARGINS
 from src.views.quadrant_view import QuadrantView
 
@@ -74,6 +75,8 @@ class TodoCard(QFrame):
         self._selected = False
         self._drag_start: QPoint | None = None
         self._setup_ui()
+        self._shadow_anim = DropShadowAnimation(self)
+        self._shadow_anim.setup(blur=10, offset_y=2, normal_alpha=0, hover_alpha=25)
 
     def _setup_ui(self) -> None:
         self.setFixedHeight(68)

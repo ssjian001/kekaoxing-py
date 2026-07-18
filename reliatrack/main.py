@@ -29,10 +29,12 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QComboBox,
     QPushButton,
+    QToolButton,
 )
 from PySide6.QtCore import QTimer, QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
+from src.styles.animation import TranslateYAnimation
 from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
 from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
@@ -731,6 +733,12 @@ class MainWindow(QMainWindow):
         # 查找所有 QScrollArea 安装平滑滚动
         for sa in self.findChildren(QScrollArea):
             SmoothScroll(sa)
+
+        # 所有按钮安装 TranslateYAnimation（press 沉降动画）
+        for btn in self.findChildren(QPushButton):
+            TranslateYAnimation(btn, offset=1.5)
+        for btn in self.findChildren(QToolButton):
+            TranslateYAnimation(btn, offset=1.5)
 
 
 def main() -> int:
