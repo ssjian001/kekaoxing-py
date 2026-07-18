@@ -56,6 +56,8 @@ _ICONS: dict[str, str] = {
         '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/><rect x="13" y="3" width="8" height="4" rx="1" stroke="currentColor" stroke-width="2"/><rect x="13" y="9" width="8" height="12" rx="1" stroke="currentColor" stroke-width="2"/><rect x="3" y="13" width="8" height="8" rx="1" stroke="currentColor" stroke-width="2"/></svg>',
     "pin":
         '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2v10l-4 3v3h8v-3l-4-3V2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    "more":
+        '<svg viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.5" stroke="currentColor" stroke-width="2" fill="currentColor"/><circle cx="12" cy="12" r="1.5" stroke="currentColor" stroke-width="2" fill="currentColor"/><circle cx="19" cy="12" r="1.5" stroke="currentColor" stroke-width="2" fill="currentColor"/></svg>',
 }
 
 
@@ -167,6 +169,7 @@ RI_REFRESH = Icon("refresh")
 RI_BACKUP = Icon("backup")
 RI_DASHBOARD = Icon("dashboard")
 RI_PIN = Icon("pin")
+RI_MORE = Icon("more")
 
 
 # ═══════════════════════════════════════════════════════════════════
