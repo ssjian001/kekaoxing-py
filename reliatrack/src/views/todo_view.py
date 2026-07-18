@@ -135,9 +135,9 @@ class TodoCard(QFrame):
             elif d.isValid() and d < today:
                 date_text = f"⚠ 逾期 {today.daysTo(d)} 天" if today.daysTo(d) < 0 else "⚠ 逾期"
             elif d.isValid() and d == today:
-                date_text = "📌 今天"
+                date_text = "今天"
             else:
-                date_text = f"📅 {self._todo.due_date}"
+                date_text = f"{self._todo.due_date}"
             date_lbl = QLabel(date_text)
             date_lbl.setFont(_FONT_CARD_META)
             date_lbl.setProperty("class", "hint-label")
