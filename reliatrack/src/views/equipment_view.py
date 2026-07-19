@@ -97,7 +97,7 @@ class EquipmentView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setProperty("class", "separator")
+        sep.setProperty("class", "sep-vline")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新增")
