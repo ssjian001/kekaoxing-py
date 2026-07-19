@@ -85,7 +85,8 @@ class _TaskTable(QTableWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
         # 空状态提示
-        self._empty_label = QLabel("暂无测试任务")
+        self._empty_label = QLabel()
+        self._empty_label.setTextFormat(Qt.TextFormat.RichText)
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_label.setProperty("class", "empty-label")
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -462,6 +463,16 @@ class _TaskTable(QTableWidget):
     def _update_empty_state(self) -> None:
         """控制空状态提示的显示/隐藏。"""
         if self.rowCount() == 0:
+            self._empty_label.setText(
+                '<div style="text-align:center;padding:32px;">'
+                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" '
+                f'stroke="{_t.OVERLAY0}" stroke-width="1.5">'
+                '<path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/>'
+                '<polyline points="13 2 13 9 20 9"/>'
+                '</svg><br/>'
+                f'<span style="color:{_t.OVERLAY0};font-size:14px;">暂无测试任务</span>'
+                '</div>'
+            )
             self._empty_label.setGeometry(self.viewport().rect())
             self._empty_label.show()
             self._empty_label.raise_()

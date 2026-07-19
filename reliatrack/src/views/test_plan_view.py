@@ -223,17 +223,12 @@ class TestPlanView(QWidget):
         row2.addStretch()
         layout.addLayout(row2)
 
-        # 今日工作摘要
-        self._summary_label = QLabel()
-        self._summary_label.setProperty("class", "summary-bar")
-        self._summary_label.setWordWrap(True)
-        layout.addWidget(self._summary_label)
-
-        # 任务统计（常驻显示）
-        self._stats_label = QLabel()
-        self._stats_label.setProperty("class", "subtext")
-        self._stats_label.setContentsMargins(0, 0, 0, 4)
-        layout.addWidget(self._stats_label)
+        # 摘要信息栏（今日工作 + 任务统计合并）
+        self._summary_bar = QLabel()
+        self._summary_bar.setProperty("class", "summary-bar")
+        self._summary_bar.setWordWrap(False)
+        self._summary_bar.setFixedHeight(28)
+        layout.addWidget(self._summary_bar)
 
         # 子 Tab: 测试项 / 甘特图
         from PySide6.QtWidgets import QTabWidget
@@ -251,17 +246,22 @@ class TestPlanView(QWidget):
         tab_gantt = QWidget()
         tab_gantt_layout = QVBoxLayout(tab_gantt)
         tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
-        # 甘特图模式切换栏
+        # 甘特图模式切换栏（pills 按钮组）
         gantt_mode_bar = QHBoxLayout()
         gantt_mode_bar.setContentsMargins(4, 2, 4, 2)
-        from PySide6.QtWidgets import QButtonGroup
-        self._gantt_mode_planned = QRadioButton("预计日期")
-        self._gantt_mode_actual = QRadioButton("实际日期")
+        self._gantt_mode_planned = QPushButton("预计日期")
+        self._gantt_mode_planned.setProperty("class", "pill")
+        self._gantt_mode_planned.setCheckable(True)
         self._gantt_mode_planned.setChecked(True)
-        gantt_mode_group = QButtonGroup(self)
-        gantt_mode_group.addButton(self._gantt_mode_planned, 0)
-        gantt_mode_group.addButton(self._gantt_mode_actual, 1)
-        gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
+        self._gantt_mode_planned.setFixedHeight(24)
+        self._gantt_mode_actual = QPushButton("实际日期")
+        self._gantt_mode_actual.setProperty("class", "pill")
+        self._gantt_mode_actual.setCheckable(True)
+        self._gantt_mode_actual.setFixedHeight(24)
+        self._gantt_mode_group = QButtonGroup(self)
+        self._gantt_mode_group.addButton(self._gantt_mode_planned, 0)
+        self._gantt_mode_group.addButton(self._gantt_mode_actual, 1)
+        self._gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
         mode_label = QLabel("显示模式:")
         mode_label.setProperty("class", "subtext")
         gantt_mode_bar.addWidget(mode_label)
@@ -521,19 +521,24 @@ class TestPlanView(QWidget):
                         overdue += 1
 
         parts = [f"共 {total} 个任务"]
+        has_stats = pending > 0 or completed > 0 or overdue > 0
         if pending > 0:
             parts.append(f"待完成 {pending}")
         if completed > 0:
             parts.append(f"已完成 {completed}")
         if overdue > 0:
             parts.append(f'<span style="color:{_t.RED}">{overdue} 个超期</span>')
-        self._stats_label.setText("  |  ".join(parts))
+        # 合并到摘要栏
+        summary = self._summary_bar.text() if self._summary_bar.text() else ""
+        if has_stats:
+            sep = "  ·  " if summary else ""
+            self._summary_bar.setText(summary + sep + "  |  ".join(parts))
 
     def _update_summary_bar(self) -> None:
         """更新今日工作摘要。"""
         tasks = self._all_tasks_for_filter
         if not tasks:
-            self._summary_label.clear()
+            self._summary_bar.clear()
             return
 
         due, pending, overdue = self._compute_summary(
@@ -541,7 +546,7 @@ class TestPlanView(QWidget):
         )
 
         if not self._last_start_date:
-            self._summary_label.setText("待办: 设定计划开始日期后显示摘要")
+            self._summary_bar.setText("待办: 设定计划开始日期后显示摘要")
             return
 
         parts: list[str] = []
@@ -553,9 +558,9 @@ class TestPlanView(QWidget):
             parts.append(f'{pending} 个结果待录入')
 
         if not parts:
-            self._summary_label.setText("待办: 全部正常")
+            self._summary_bar.setText("待办: 全部正常")
         else:
-            self._summary_label.setText("待办: " + " | ".join(parts))
+            self._summary_bar.setText("待办: " + " | ".join(parts))
 
     def set_plans(self, plan_names: list[str], plan_ids: list[int] | None = None) -> None:
         """设置计划下拉选项。"""

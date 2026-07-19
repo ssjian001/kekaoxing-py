@@ -351,10 +351,19 @@ QHeaderView::section {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: none;
-    border-bottom: 2px solid {SURFACE1};
+    border-bottom: 2px solid {BORDER};
     padding: 8px 12px;
     font-weight: bold;
     font-size: 13px;
+}}
+QHeaderView::section:hover {{
+    background-color: {SURFACE1};
+}}
+QHeaderView::down-arrow {{
+    margin-left: 4px; margin-right: 4px;
+}}
+QHeaderView::up-arrow {{
+    margin-left: 4px; margin-right: 4px;
 }}
 
 /* ── Tab ── */
@@ -363,28 +372,26 @@ QTabWidget::pane {{
     background-color: {BG_DARK};
     padding-top: 4px;
     border-radius: 8px;
+    top: -1px;
 }}
 QTabBar::tab {{
-    background-color: {BG_INPUT};
+    background-color: transparent;
     color: {FG_SECONDARY};
-    border: 1px solid transparent;
+    border: none;
     border-bottom: 2px solid transparent;
-    padding: 8px 20px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    padding: 8px 18px;
     font-size: 13px;
     font-weight: 500;
-    margin-right: 2px;
+    margin-right: 1px;
 }}
 QTabBar::tab:selected {{
-    background-color: {BG_CARD};
     color: {ACCENT};
     border-bottom: 2px solid {ACCENT};
     font-weight: bold;
 }}
 QTabBar::tab:hover:!selected {{
-    background-color: {SURFACE1};
     color: {FG_PRIMARY};
+    border-bottom: 2px solid {SURFACE1};
 }}
 
 /* ── 滚动条 ── */
@@ -679,6 +686,30 @@ QLabel[class="summary-bar"] {{
 /* ── 分隔线 ── */
 QLabel[class="separator"] {{
     background-color: {BORDER}; border: none;
+}}
+
+QFrame[class="sep-vline"] {{
+    background-color: {BORDER}; border: none;
+}}
+
+/* ── Pill 按钮组 ── */
+QPushButton[class="pill"] {{
+    background-color: {BG_INPUT};
+    color: {FG_SECONDARY};
+    border: 1px solid {BORDER};
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 12px;
+}}
+QPushButton[class="pill"]:checked {{
+    background-color: {ACCENT};
+    color: white;
+    border-color: {ACCENT};
+    font-weight: bold;
+}}
+QPushButton[class="pill"]:hover:!checked {{
+    background-color: {SURFACE1};
+    color: {FG_PRIMARY};
 }}
 
 /* ── 标签页卡片容器 ── */
