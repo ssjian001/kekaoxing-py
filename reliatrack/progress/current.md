@@ -1,45 +1,56 @@
 # ReliaTrack 当前进度
 
-**最后更新**: 2026-06-29
-**Schema 版本**: v25 (20 张表，含 todos)
-**测试**: 381 passed
+**最后更新**: 2026-07-19
+**Schema 版本**: v27 (20 张表)
+**测试**: 553 passed (541 + 12 新增)
+**覆盖率**: services 85% (+6pp)
 
 ## 当前状态
 
-项目功能开发基本完成，处于稳定维护阶段。
+项目功能开发基本完成，进入稳定维护 + 性能优化阶段。
 
 ### 最近完成
 
-- **仪表盘 Bug 修复** (2026-06-22):
-  - `pending_count` 变量覆写修复（待开始 = 任务 pending，非 Issue pending）
-  - `_card_fail` 改用 `failed_task_count`（任务状态层面），与已完成/进行中/待开始同源
-  - `count_by_status` 边界 case：项目无计划时返回空集，不扫描全量
-  - 左侧 section context 小字提示（项目/计划归属清晰）
+- **测试计划工具栏重构** (2026-07-19):
+  - 15 控件拆两行：管理+操作 / 搜索+筛选，逻辑分组 + 分隔线
+  - 统一纯文字按钮风格，无图标/文字混搭
+  - 摘要栏合并（今日工作摘要 + 任务统计合为一条）
+  - 甘特图模式切换 QRadioButton → pills 按钮组
 
-- **删除计划 → 归档** (2026-06-22):
-  - 计划管理菜单「删除计划」改为「归档」，任何状态可归档
-  - 归档不改任何级联数据（Issue/任务/FA/CAPA/样品全部保留）
-  - 归案后可取消归档恢复
+- **QSS 主题统一** (2026-07-19):
+  - Tab 样式改为纯文字+底线条（Fluent 风格）
+  - 表头加 hover 效果 + 排序箭头间距调整
+  - 统一 sep-vline 分隔线 QSS class（5 tab 同步）
+  - Pill 按钮组 QSS（甘特图模式、筛选模式等）
+  - 空状态提示加 SVG 文档图标
 
-- **归档计划数据全面隔离** (2026-06-22):
-  - `issue_repo.get_by_project` → LEFT JOIN test_plans 排除历史计划 Issue
-  - `issue_repo.count_by_severity/status` → 同上 JOIN
-  - `issue_repo.count_capa_all/done` → 同上 JOIN
-  - `test_task_repo.count_by_status` → `AND status != 'archived'`
-  - Issue 列表/看板/仪表盘/导出/全部数据源已审计，无泄漏
-  - commit: `1c5245a`, `86e3309`, `5eeb62b`, `ecaafd6`
+- **效能 Profile** (2026-07-19): 1000 任务 + 5000 结果 profile 完成
+  - DB 层最慢 ~19ms，Service 层 ~31ms
+  - 唯一瓶颈 UI 渲染 `table.set_tasks(1000)` ~185ms，仍在无感范围
+  - PRAGMA 配置完善：WAL + 64MB cache + NORMAL sync + 20 个索引
 
-- **导出异步化** (2026-06-29): export_handlers 新增 ExportWorker(QThread) + QProgressDialog，大型导出不再冻结 UI
-- **N+1 查询优化** (2026-06-29): `_export_issues` 改用批量接口 `get_fa_records_by_issue_ids` + `get_capa_records_by_issue_ids`（issue_repo / issue_service 新增，handler 调用）
-- **issue_activity_log 加 project_id** (2026-06-29): v24 schema 迁移，仪表盘 weekly_closed 按项目筛选
-- **看板拖拽可撤销** (2026-06-29): 新增 TransitionIssueStatusCommand + UndoManager.record() 方法
-- **批量操作用 record()** (2026-06-29): list_view 直接 push _undo_stack 改为 record()，清理 redo_stack
-- **get_by_task/get_by_sample 加 archive 过滤** (2026-06-29): 同步 get_by_project 的 archive plan 排除逻辑
-- **PDF/Word 列顺序一致** (2026-06-29): docx 任务表 "进度→状态" 与 PDF 对齐
+- **BackupService 测试补充** (2026-07-19): +4 个恢复场景测试
+  - 配置文件不存在/损坏时的异常处理
+  - 多表关联数据恢复完整性验证
+  - 恢复失败时的安全回滚机制测试
+  - 覆盖率 79% → 85%
 
-### 未完成 / 待处理
+- **ProjectService 级联删除测试** (2026-07-19): 新增独立测试文件 `test_project_cascade.py`
+  - cascade_stats 准确统计（含空项目、不存在项目）
+  - 级联删除正确清理 project → plan → task → result/sample/issue
+  - 删除隔离性：A 项目不影响 B 项目数据
+  - FK 级联 test_results 验证
+  - 8 tests 全部通过
 
-- **备份/导入 测试覆盖**：backup_service.py + import_service.py 无测试
+- **并发测试修复** (2026-07-19):
+  - 修复多线程共享 Connection 的 ThreadingViolationError
+  - 改为独立连接 + 临时文件 DB 的正确并发模式
+  - 6 tests + --cov 全部稳定通过
+
+### 已完成 (feature_list.json: 24/25 done)
+
+- 25 个 feature 中 24 个 done，1 个 cancelled（国际化 i18n）
+- 所有核心 CRUD + 导入导出 + 排程 + 撤销/重做
 
 ## 阻塞
 
@@ -47,4 +58,6 @@
 
 ## 下一步
 
-启动应用验证仪表盘 + 归档隔离效果。
+- 功能层：按需新增（待用户明确需求）
+- 性能：当前 1000 行数据量无瓶颈，无需优化
+- 稳定性：services 覆盖率 85%，export_utils(70%)/undo_manager(78%) 可考虑补充
