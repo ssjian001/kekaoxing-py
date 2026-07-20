@@ -326,11 +326,11 @@ class BugListView(QWidget):
         layout.setContentsMargins(*VIEW_MARGINS)
         layout.setSpacing(6)
 
-        # 1. 工具栏行
-        layout.addLayout(self._build_toolbar())
-
-        # 2. 筛选行（固定条件，竖直一列风格）
+        # 1. 筛选行（放上面）
         self._build_filter_row(layout)
+
+        # 2. 工具栏行（搜索+操作按钮放右边）
+        layout.addLayout(self._build_toolbar())
 
         # 3. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -415,7 +415,7 @@ class BugListView(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
 
-        # 搜索框
+        # 搜索框（左）
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("搜索标题/描述/根因")
         self._search_input.setMinimumWidth(160)
@@ -423,6 +423,9 @@ class BugListView(QWidget):
         self._search_input.textChanged.connect(self._apply_filters)
         toolbar.addWidget(self._search_input)
 
+        toolbar.addStretch()
+
+        # 操作按钮（右）
         # 全选/取消全选
         self._btn_select_all = QPushButton("全选")
         self._btn_select_all.setProperty("class", "action")
@@ -450,8 +453,6 @@ class BugListView(QWidget):
         btn_refresh.setProperty("class", "action")
         btn_refresh.clicked.connect(self.refresh_requested.emit)
         toolbar.addWidget(btn_refresh)
-
-        toolbar.addStretch()
 
         # 统计标签
         self._stats_label = QLabel("0 个 Issue")

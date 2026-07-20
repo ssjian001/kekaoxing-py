@@ -31,7 +31,6 @@ from src.models.project import Project
 from src.styles.animation import DropShadowAnimation, BackgroundAnimation
 from src.styles.constants import VIEW_MARGINS
 from src.views.quadrant_view import QuadrantView
-from src.views.widgets.filter_row import DynamicFilterPanel, match_row
 
 # ── 常量 ───────────────────────────────────────────────────────
 
@@ -320,7 +319,6 @@ class TodoView(QWidget):
         self._all_projects: list[Project] = []
         self._selected_todo_id: int | None = None
         self._selected_card: TodoCard | None = None
-        self._filter_conditions: list[dict] = []
         self._setup_ui()
 
     # ── UI ──────────────────────────────────────────────────────
@@ -328,15 +326,13 @@ class TodoView(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setSpacing(4)
 
-        # 工具栏（含快速添加輸入）
-        self._build_toolbar(layout)
+        # 1. 筛选行：项目 + 搜索 + 显示归档
+        self._build_filter_row(layout)
 
-        # 动态筛选面板
-        self._filter_panel = DynamicFilterPanel(_TODO_FILTER_FIELDS)
-        self._filter_panel.filter_changed.connect(self._on_filter_changed)
-        layout.addWidget(self._filter_panel)
+        # 2. 操作行：快速添加 + 操作按钮靠右
+        self._build_action_row(layout)
 
         # 子 Tab 切换
         self._sub_tabs = QTabBar()
@@ -378,77 +374,82 @@ class TodoView(QWidget):
 
         return widget
 
-    def _build_toolbar(self, parent_layout: QVBoxLayout) -> None:
-        tb = QHBoxLayout()
-        tb.setContentsMargins(*VIEW_MARGINS)
-        tb.setSpacing(6)
+    def _build_filter_row(self, parent_layout: QVBoxLayout) -> None:
+        """筛选行：项目选择 + 搜索 + 显示归档。"""
+        row = QHBoxLayout()
+        row.setContentsMargins(*VIEW_MARGINS)
+        row.setSpacing(6)
 
         self._project_combo = QComboBox()
-        self._project_combo.setMinimumWidth(160)
+        self._project_combo.setMinimumWidth(140)
         self._project_combo.addItem("全部项目", None)
         self._project_combo.currentIndexChanged.connect(self._on_project_filter)
-        proj_lbl = QLabel("项目")
-        proj_lbl.setProperty("class", "hint-label")
-        tb.addWidget(proj_lbl)
-        tb.addWidget(self._project_combo)
+        row.addWidget(self._project_combo)
 
         # 搜索框
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("搜索待办…")
-        self._search_edit.setFixedHeight(28)
-        self._search_edit.setMaximumWidth(180)
+        self._search_edit.setFixedHeight(26)
+        self._search_edit.setMaximumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
-        tb.addWidget(self._search_edit)
+        row.addWidget(self._search_edit)
 
         self._show_archived_cb = QCheckBox("显示已归档")
         self._show_archived_cb.setProperty("class", "filter-checkbox")
         self._show_archived_cb.toggled.connect(self._refresh_current_view)
-        tb.addWidget(self._show_archived_cb)
+        row.addWidget(self._show_archived_cb)
 
-        tb.addSpacing(12)
+        row.addStretch()
+        parent_layout.addLayout(row)
 
-        # 快速添加輸入框（取代單獨的快速添加行）
+    def _build_action_row(self, parent_layout: QVBoxLayout) -> None:
+        """操作行：快速添加靠左 · 编辑/删除/归档靠右。"""
+        row = QHBoxLayout()
+        row.setContentsMargins(*VIEW_MARGINS)
+        row.setSpacing(6)
+
+        # 快速添加輸入框
         self._quick_add = QLineEdit()
         self._quick_add.setPlaceholderText("快速添加待办，回车即创建…")
         self._quick_add.setClearButtonEnabled(True)
-        self._quick_add.setFixedHeight(28)
+        self._quick_add.setFixedHeight(26)
         self._quick_add.setMinimumWidth(200)
         self._quick_add.setProperty("class", "quick-add-input")
         self._quick_add.returnPressed.connect(self._on_quick_add)
-        tb.addWidget(self._quick_add)
+        row.addWidget(self._quick_add)
 
         self._btn_quick_add = QPushButton("添加")
         self._btn_quick_add.setProperty("class", "pill-primary")
-        self._btn_quick_add.setFixedHeight(28)
+        self._btn_quick_add.setFixedHeight(26)
         self._btn_quick_add.clicked.connect(self._on_quick_add)
-        tb.addWidget(self._btn_quick_add)
+        row.addWidget(self._btn_quick_add)
 
-        tb.addStretch()
+        row.addStretch()
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "pill-outline")
-        self.btn_edit.setFixedHeight(28)
+        self.btn_edit.setFixedHeight(26)
 
         self.btn_delete = QPushButton("删除")
         self.btn_delete.setProperty("class", "pill-danger")
-        self.btn_delete.setFixedHeight(28)
+        self.btn_delete.setFixedHeight(26)
 
         self.btn_archive = QPushButton("归档")
         self.btn_archive.setProperty("class", "pill-outline")
-        self.btn_archive.setFixedHeight(28)
+        self.btn_archive.setFixedHeight(26)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
-        sep.setFixedHeight(20)
+        sep.setFixedHeight(18)
         sep.setProperty("class", "sep-vline")
 
-        tb.addWidget(self.btn_edit)
-        tb.addWidget(self.btn_delete)
-        tb.addWidget(self.btn_archive)
-        tb.addWidget(sep)
+        row.addWidget(self.btn_edit)
+        row.addWidget(self.btn_delete)
+        row.addWidget(self.btn_archive)
+        row.addWidget(sep)
 
-        parent_layout.addLayout(tb)
+        parent_layout.addLayout(row)
 
     def _build_quick_add(self, parent_layout: QVBoxLayout) -> None:
         pass  # 快速添加已合併到 _build_toolbar
@@ -507,9 +508,6 @@ class TodoView(QWidget):
                 if search in t.title.lower()
                 or (t.description and search in t.description.lower())
             ]
-        # 动态筛选条件
-        if self._filter_conditions:
-            filtered = [t for t in filtered if match_row(t, self._filter_conditions)]
         # 归档过滤（除非勾选显示已归档）
         show_archived = hasattr(self, '_show_archived_cb') and self._show_archived_cb.isChecked()
         if not show_archived:
@@ -522,9 +520,6 @@ class TodoView(QWidget):
     def _on_search(self, _text: str) -> None:
         self._refresh_current_view()
 
-    def _on_filter_changed(self, data: dict) -> None:
-        self._filter_conditions = data.get("conditions", [])
-        self._refresh_current_view()
 
     def _refresh_current_view(self) -> None:
         """刷新当前子 Tab 显示内容。"""
