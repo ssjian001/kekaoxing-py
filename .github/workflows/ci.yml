@@ -36,7 +36,7 @@ jobs:
         run: |
           python -m venv .venv
           . .venv/bin/activate
-          pip install --upgrade pip pytest
+          pip install --upgrade pip pytest pytest-cov
           pip install -r reliatrack/requirements.txt
 
       - name: Compile check
@@ -66,11 +66,15 @@ jobs:
           print('init_schema OK')
           "
 
-      - name: Run pytest
+      - name: Run pytest with coverage
         run: |
           . .venv/bin/activate
           cd reliatrack
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -v --tb=long --ignore=tests/test_boundary.py 2>&1 | tee pytest-output.txt
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -v --tb=long \
+            --ignore=tests/test_boundary.py \
+            --cov=src --cov-report=term-missing --cov-report=xml \
+            --cov-fail-under=50 \
+            2>&1 | tee pytest-output.txt
           # test_boundary 单独跑，允许失败（已知 CI-only 问题）
           QT_QPA_PLATFORM=offscreen python -m pytest tests/test_boundary.py -v --tb=long || true
 
@@ -81,14 +85,21 @@ jobs:
           name: pytest-output-${{ matrix.python-version }}
           path: reliatrack/pytest-output.txt
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: reliatrack/coverage.xml
+
       - name: Run E2E tests (script mode)
         run: |
           . .venv/bin/activate
           cd reliatrack
-          QT_QPA_PLATFORM=offscreen python tests/test_e2e_full.py
+          QT_QPA_PLATFORM=offscreen python tests/manual/test_e2e_full.py
 
       - name: Run performance baseline
         run: |
           . .venv/bin/activate
           cd reliatrack
-          QT_QPA_PLATFORM=offscreen python tests/test_performance.py
+          QT_QPA_PLATFORM=offscreen python tests/manual/test_performance.py
