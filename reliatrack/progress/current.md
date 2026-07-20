@@ -1,63 +1,47 @@
-# ReliaTrack 当前进度
+# Session Handoff — 2026-07-20
 
-**最后更新**: 2026-07-19
-**Schema 版本**: v27 (20 张表)
-**测试**: 553 passed (541 + 12 新增)
-**覆盖率**: services 85% (+6pp)
+## 完成的工作
 
-## 当前状态
+### UI 優化
+- **Issue 列表**：篩選行放上層（全部狀態▾ / 全部嚴重度▾ / 全部優先級▾ / DRI…）、操作按鈕靠右（全選 / 批量操作 / 刷新 + 統計）
+- **待辦事項**：同樣兩行佈局 — 篩選行（項目▾ / 搜索 / 顯示歸檔）+ 操作行（快速添加靠左 / 編輯/刪除/歸檔靠右）
+- **移除 DynamicFilterPanel**（Issue 列表和待辦兩處都改成固定篩選下拉）
 
-项目功能开发基本完成，进入稳定维护 + 性能优化阶段。
+### 測試優化（本輪核心）
+- **新增 4 個測試文件**：`test_ui_refactor.py`(16), `test_dialog_smoke.py`(8), `test_widgets_more.py`(13), `test_dialog_coverage.py`(12) = 共 49 個新測試
+- **測試數**：553 → **587** (+34)
+- **覆蓋率**：54% → **57%**（含 test_boundary）/ 53.6% → **55.7%**（不含）
 
-### 最近完成
+### 關鍵模塊覆蓋提升
+- quick_create.py: 12% → **95%**
+- resolve_dialog.py: 18% → **94%**
+- column_persistence.py: 26% → **88%**
+- filter_row.py: 0% → 62%
+- undo_manager: 0% → 78%
+- import_tasks_from_plan_dialog: 0% → 74%
+- issue_dialog.py: 8% → 57%
+- plan_edit_dialog.py: 13% → 59%
 
-- **测试计划工具栏重构** (2026-07-19):
-  - 15 控件拆两行：管理+操作 / 搜索+筛选，逻辑分组 + 分隔线
-  - 统一纯文字按钮风格，无图标/文字混搭
-  - 摘要栏合并（今日工作摘要 + 任务统计合为一条）
-  - 甘特图模式切换 QRadioButton → pills 按钮组
+### 清理
+- `test_e2e_full.py` / `test_performance.py` → `tests/manual/`
+- `test_session_20260512.py` → `test_import_and_schema.py`
+- `test_new_features.py` → `test_service_edge_cases.py`
 
-- **QSS 主题统一** (2026-07-19):
-  - Tab 样式改为纯文字+底线条（Fluent 风格）
-  - 表头加 hover 效果 + 排序箭头间距调整
-  - 统一 sep-vline 分隔线 QSS class（5 tab 同步）
-  - Pill 按钮组 QSS（甘特图模式、筛选模式等）
-  - 空状态提示加 SVG 文档图标
+### CI
+- 添加 `--cov-fail-under=50` + coverage artifact
+- 更新 E2E/performance 測試路徑
+- 添加 `pytest.ini`（排除 manual/、過濾 warning）
 
-- **效能 Profile** (2026-07-19): 1000 任务 + 5000 结果 profile 完成
-  - DB 层最慢 ~19ms，Service 层 ~31ms
-  - 唯一瓶颈 UI 渲染 `table.set_tasks(1000)` ~185ms，仍在无感范围
-  - PRAGMA 配置完善：WAL + 64MB cache + NORMAL sync + 20 个索引
+## 最新提交
+`7683036` test: 補低覆蓋 dialog 測試 — quick_create 12%→95%, resolve 18%→94%
 
-- **BackupService 测试补充** (2026-07-19): +4 个恢复场景测试
-  - 配置文件不存在/损坏时的异常处理
-  - 多表关联数据恢复完整性验证
-  - 恢复失败时的安全回滚机制测试
-  - 覆盖率 79% → 85%
+## 覆蓋缺口（仍可補）
+- `proxy_style.py`: 0% (249 行，Qt proxy style，較難測)
+- `plan_handlers.py`: 11% (763 行，需 Qt mocking)
+- `batch_import_dialog.py`: 9% (255 行)
+- `kanban_view.py`: 58% (489 行)
+- `dashboard_view.py`: 58% (584 行)
+- `fa_capa_panels.py`: 25% (253 行)
 
-- **ProjectService 级联删除测试** (2026-07-19): 新增独立测试文件 `test_project_cascade.py`
-  - cascade_stats 准确统计（含空项目、不存在项目）
-  - 级联删除正确清理 project → plan → task → result/sample/issue
-  - 删除隔离性：A 项目不影响 B 项目数据
-  - FK 级联 test_results 验证
-  - 8 tests 全部通过
-
-- **并发测试修复** (2026-07-19):
-  - 修复多线程共享 Connection 的 ThreadingViolationError
-  - 改为独立连接 + 临时文件 DB 的正确并发模式
-  - 6 tests + --cov 全部稳定通过
-
-### 已完成 (feature_list.json: 24/25 done)
-
-- 25 个 feature 中 24 个 done，1 个 cancelled（国际化 i18n）
-- 所有核心 CRUD + 导入导出 + 排程 + 撤销/重做
-
-## 阻塞
-
-无。
-
-## 下一步
-
-- 功能层：按需新增（待用户明确需求）
-- 性能：当前 1000 行数据量无瓶颈，无需优化
-- 稳定性：services 覆盖率 85%，export_utils(70%)/undo_manager(78%) 可考虑补充
+## 阻塞 / 注意事項
+- test_boundary.py CI-only bug 仍未修復（本地 553 passed，CI 上 init_schema 空表）

@@ -632,7 +632,10 @@ class _TaskTable(QTableWidget):
 
     def _unflash_row(self, row: int) -> None:
         """移除指定行的闪烁背景。"""
+        from PySide6.QtGui import QBrush, QColor
+        # 用透明 brush 清除背景，不能用 QColor()（無效顏色）
+        # 否則暗色主題下行底色變黑（Qt 回退到系統 Base 角色）
         for col in range(self.columnCount()):
             cell = self.item(row, col)
             if cell:
-                cell.setBackground(QColor())  # 清除自定义背景
+                cell.setBackground(QBrush(Qt.GlobalColor.transparent))
