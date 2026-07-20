@@ -69,6 +69,9 @@ class TestPlanView(QWidget):
         self._act_unarchive_plan = self._plan_menu.addAction("取消归档")
         self._act_unarchive_plan.setVisible(False)
         self._act_archive_plan = self._plan_menu.addAction("归档")
+        self._plan_menu.addSeparator()
+        self._act_toggle_archived = self._plan_menu.addAction("查看归档")
+        self._act_toggle_archived.setCheckable(True)
 
         self._btn_plan_manage = QToolButton()
         self._btn_plan_manage.setText("计划管理")
@@ -76,18 +79,8 @@ class TestPlanView(QWidget):
         self._btn_plan_manage.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_plan_manage.setProperty("class", "action")
         self._btn_plan_manage.setFixedHeight(28)
-        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除、归档")
+        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、归档、查看归档")
         row1.addWidget(self._btn_plan_manage)
-
-        # ── 查看归档 ──
-        self._btn_archived = QToolButton()
-        self._btn_archived.setText("查看归档")
-        self._btn_archived.setCheckable(True)
-        self._btn_archived.setProperty("class", "action")
-        self._btn_archived.setFixedHeight(28)
-        self._btn_archived.setToolTip("切换查看已归档的计划")
-        self._btn_archived.toggled.connect(self._on_toggle_archived)
-        row1.addWidget(self._btn_archived)
 
         # ── 分隔线 1 ──
         sep1 = QFrame()
@@ -156,7 +149,7 @@ class TestPlanView(QWidget):
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("搜索任务名...")
         self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setFixedSize(160, 28)
+        self._search_edit.setFixedSize(200, 28)
         from PySide6.QtCore import QSettings as _QSettings
         saved = _QSettings().value("ReliaTrack/task_search", "")
         if saved and isinstance(saved, str):
@@ -182,24 +175,22 @@ class TestPlanView(QWidget):
 
         # ── 分组 2: 日期范围 ──
         from PySide6.QtWidgets import QDateEdit as _QDE
-        row2.addWidget(QLabel("从:"))
         self._date_from = _QDE()
         self._date_from.setCalendarPopup(True)
         self._date_from.setDisplayFormat("yyyy-MM-dd")
         self._date_from.setSpecialValueText("不限")
         self._date_from.setDate(self._date_from.minimumDate())
-        self._date_from.setFixedWidth(110)
+        self._date_from.setFixedWidth(170)
         self._date_from.setFixedHeight(28)
         self._date_from.dateChanged.connect(self._on_task_search)
         row2.addWidget(self._date_from)
 
-        row2.addWidget(QLabel("至:"))
         self._date_to = _QDE()
         self._date_to.setCalendarPopup(True)
         self._date_to.setDisplayFormat("yyyy-MM-dd")
         self._date_to.setSpecialValueText("不限")
         self._date_to.setDate(self._date_to.maximumDate())
-        self._date_to.setFixedWidth(110)
+        self._date_to.setFixedWidth(120)
         self._date_to.setFixedHeight(28)
         self._date_to.dateChanged.connect(self._on_task_search)
         row2.addWidget(self._date_to)
@@ -710,6 +701,7 @@ class TestPlanView(QWidget):
     def _on_toggle_archived(self, checked: bool) -> None:
         """显示/隐藏已归档计划切换。"""
         self.show_archived = checked
+        self._act_toggle_archived.setChecked(checked)
 
 
 # ═══════════════════════════════════════════════════════════════════

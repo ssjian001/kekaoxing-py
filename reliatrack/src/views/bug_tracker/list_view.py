@@ -420,15 +420,15 @@ class BugListView(QWidget):
         # 搜索框
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("搜索标题/描述/根因")
-        self._search_input.setMinimumWidth(200)
+        self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._apply_filters)
         toolbar.addWidget(self._search_input)
 
-        # 筛选切换按钮
+        # 筛选切换按钮（默认收起面板）
         self._btn_filter = QPushButton("筛选")
         self._btn_filter.setProperty("class", "action")
         self._btn_filter.setCheckable(True)
-        self._btn_filter.setChecked(True)
+        self._btn_filter.setChecked(False)  # 默认收起
         self._btn_filter.clicked.connect(self._toggle_filter_panel)
         toolbar.addWidget(self._btn_filter)
 
@@ -439,7 +439,7 @@ class BugListView(QWidget):
         self._btn_select_all.clicked.connect(self._on_select_all)
         toolbar.addWidget(self._btn_select_all)
 
-        # 批量操作下拉菜單（取代兩個平鋪按鈕）
+        # 批量操作下拉菜單
         from PySide6.QtWidgets import QToolButton, QMenu
         self._btn_batch = QToolButton()
         self._btn_batch.setText("批量操作")
@@ -451,7 +451,7 @@ class BugListView(QWidget):
         self._act_batch_assign = batch_menu.addAction("批量设置DRI")
         self._act_batch_assign.triggered.connect(lambda: self._open_batch_dialog("设置DRI"))
         self._btn_batch.setMenu(batch_menu)
-        self._btn_batch.setEnabled(False)  # 默認禁用，選中後啟用
+        self._btn_batch.setEnabled(False)
         toolbar.addWidget(self._btn_batch)
 
         # 刷新按钮

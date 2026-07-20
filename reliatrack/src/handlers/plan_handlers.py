@@ -47,7 +47,7 @@ class PlanHandlers:
         v.act_unarchive_plan.triggered.connect(self._on_plan_unarchive)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
         v._plan_combo.currentIndexChanged.connect(self._update_plan_menu)
-        v._btn_archived.toggled.connect(self._on_toggle_archived_view)
+        v._act_toggle_archived.triggered.connect(self._on_toggle_archived_view)
         # 任务管理菜单
         v.act_add_task.triggered.connect(self._on_task_add)
         v.act_edit_task.triggered.connect(self._on_task_edit_menu)
@@ -553,10 +553,10 @@ class PlanHandlers:
                 self._win.refresh_plan_combo()
 
     def _on_toggle_archived_view(self, checked: bool) -> None:
-        """切换查看归档计划视图。"""
+        """显示/隐藏已归档计划切换。"""
         v = self._win.test_plan_view
         v.show_archived = checked
-        v._btn_archived.setText("返回计划" if checked else "查看归档")
+        v._act_toggle_archived.setChecked(checked)
         # 归档视图下禁用写入操作
         v.act_add_plan.setEnabled(not checked)
         v.act_add_task.setEnabled(not checked)
