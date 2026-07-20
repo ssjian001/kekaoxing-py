@@ -35,7 +35,6 @@ import src.styles.theme as _t
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.services.issue_service import IssueService
 from src.views.bug_tracker.fa_capa_panels import FAPanel, CAPAPanel, CAPADialog
-from src.views.widgets.filter_row import DynamicFilterPanel, match_row
 from src.views.bug_tracker.batch_dialog import BatchOperationDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.views.dialogs.issue_dialog import IssueEditDialog
@@ -325,14 +324,13 @@ class BugListView(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*VIEW_MARGINS)
-        layout.setSpacing(SPACING_MEDIUM)
+        layout.setSpacing(6)
 
-        # 1. 顶部工具栏
+        # 1. 工具栏行
         layout.addLayout(self._build_toolbar())
 
-        # 2. 筛选面板（横向，可折叠）
-        self._filter_panel = DynamicFilterPanel(_ISSUE_FILTER_FIELDS, self)
-        layout.addWidget(self._filter_panel)
+        # 2. 筛选行（固定条件，竖直一列风格）
+        self._build_filter_row(layout)
 
         # 3. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -415,22 +413,15 @@ class BugListView(QWidget):
 
     def _build_toolbar(self) -> QHBoxLayout:
         toolbar = QHBoxLayout()
-        toolbar.setSpacing(SPACING_MEDIUM)
+        toolbar.setSpacing(8)
 
         # 搜索框
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("搜索标题/描述/根因")
         self._search_input.setMinimumWidth(160)
+        self._search_input.setMaximumWidth(260)
         self._search_input.textChanged.connect(self._apply_filters)
         toolbar.addWidget(self._search_input)
-
-        # 筛选切换按钮（默认收起面板）
-        self._btn_filter = QPushButton("筛选")
-        self._btn_filter.setProperty("class", "action")
-        self._btn_filter.setCheckable(True)
-        self._btn_filter.setChecked(False)  # 默认收起
-        self._btn_filter.clicked.connect(self._toggle_filter_panel)
-        toolbar.addWidget(self._btn_filter)
 
         # 全选/取消全选
         self._btn_select_all = QPushButton("全选")
@@ -469,10 +460,73 @@ class BugListView(QWidget):
 
         return toolbar
 
+    def _build_filter_row(self, parent: QVBoxLayout) -> None:
+        """构建固定条件筛选行（替代 DynamicFilterPanel）。"""
+        from PySide6.QtWidgets import QComboBox
+        from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
+
+        row = QHBoxLayout()
+        row.setSpacing(8)
+
+        # 状态筛选
+        self._filter_status = QComboBox()
+        self._filter_status.setProperty("class", "filter-combo")
+        self._filter_status.setFixedWidth(110)
+        self._filter_status.setFixedHeight(28)
+        self._filter_status.addItem("全部状态", "")
+        for k, v in ISSUE_STATUS_LABELS.items():
+            self._filter_status.addItem(v, k)
+        self._filter_status.currentIndexChanged.connect(self._apply_filters)
+        row.addWidget(QLabel("状态"))
+        row.addWidget(self._filter_status)
+
+        # 严重度筛选
+        self._filter_severity = QComboBox()
+        self._filter_severity.setProperty("class", "filter-combo")
+        self._filter_severity.setFixedWidth(100)
+        self._filter_severity.setFixedHeight(28)
+        self._filter_severity.addItem("全部严重度", "")
+        for k, v in SEVERITY_LABELS.items():
+            self._filter_severity.addItem(v, k)
+        self._filter_severity.currentIndexChanged.connect(self._apply_filters)
+        row.addWidget(QLabel("严重度"))
+        row.addWidget(self._filter_severity)
+
+        # 优先级筛选
+        self._filter_priority = QComboBox()
+        self._filter_priority.setProperty("class", "filter-combo")
+        self._filter_priority.setFixedWidth(80)
+        self._filter_priority.setFixedHeight(28)
+        self._filter_priority.addItem("全部优先级", "")
+        for k, v in PRIORITY_LABELS.items():
+            self._filter_priority.addItem(v, k)
+        self._filter_priority.currentIndexChanged.connect(self._apply_filters)
+        row.addWidget(QLabel("优先级"))
+        row.addWidget(self._filter_priority)
+
+        # DRI 搜索输入
+        self._filter_dri = QLineEdit()
+        self._filter_dri.setPlaceholderText("DRI…")
+        self._filter_dri.setFixedWidth(100)
+        self._filter_dri.setFixedHeight(28)
+        self._filter_dri.textChanged.connect(self._apply_filters)
+        row.addWidget(QLabel("DRI"))
+        row.addWidget(self._filter_dri)
+
+        row.addStretch()
+
+        # 清除筛选
+        btn_clear = QPushButton("清除")
+        btn_clear.setProperty("class", "action")
+        btn_clear.setFixedHeight(28)
+        btn_clear.clicked.connect(self._clear_filters)
+        row.addWidget(btn_clear)
+
+        parent.addLayout(row)
+
     # ── 信号连接 ──────────────────────────────────────────────
 
     def _connect_signals(self) -> None:
-        self._filter_panel.filter_changed.connect(self._apply_filters)
         self._table.card_double_clicked.connect(self._on_card_double_click)
         self._table.itemChanged.connect(self._on_table_item_changed)
         self._table.itemSelectionChanged.connect(self._on_issue_selection_changed)
@@ -491,10 +545,12 @@ class BugListView(QWidget):
         has_checked = bool(self._table.get_checked_ids()) if not checked else True
         self._btn_batch.setEnabled(has_checked)
 
-    def _toggle_filter_panel(self) -> None:
-        """展开/收起横向筛选面板。"""
-        self._filter_visible = self._btn_filter.isChecked()
-        self._filter_panel.setVisible(self._filter_visible)
+    def _clear_filters(self) -> None:
+        """清除所有筛选条件。"""
+        self._filter_status.setCurrentIndex(0)
+        self._filter_severity.setCurrentIndex(0)
+        self._filter_priority.setCurrentIndex(0)
+        self._filter_dri.clear()
 
     # ── 数据 ──────────────────────────────────────────────────
 
@@ -519,11 +575,13 @@ class BugListView(QWidget):
 
     def _apply_filters(self) -> None:
         """根据筛选条件过滤并刷新表格。"""
-        conditions = self._filter_panel.get_conditions()
         keyword = self._search_input.text().strip().lower()
 
-        # 发射筛选信号（供其他视图同步）
-        self.filter_changed.emit({"conditions": conditions})
+        # 读取固定筛选条件
+        status_val = self._filter_status.currentData()
+        severity_val = self._filter_severity.currentData()
+        priority_val = self._filter_priority.currentData()
+        dri_text = self._filter_dri.text().strip().lower()
 
         filtered = []
         for issue in self._all_issues:
@@ -532,9 +590,17 @@ class BugListView(QWidget):
                 search_text = f"{issue.title} {issue.description} {issue.root_cause}".lower()
                 if keyword not in search_text:
                     continue
-
-            # 动态筛选行条件
-            if not match_row(issue, conditions):
+            # 状态
+            if status_val and issue.status != status_val:
+                continue
+            # 严重度
+            if severity_val and issue.severity != severity_val:
+                continue
+            # 优先级
+            if priority_val and str(issue.priority) != str(priority_val):
+                continue
+            # DRI
+            if dri_text and dri_text not in (issue.dri_name or "").lower():
                 continue
 
             filtered.append(issue)
