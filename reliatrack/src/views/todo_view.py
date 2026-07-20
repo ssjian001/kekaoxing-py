@@ -330,11 +330,8 @@ class TodoView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 工具栏
+        # 工具栏（含快速添加輸入）
         self._build_toolbar(layout)
-
-        # 快速添加
-        self._build_quick_add(layout)
 
         # 动态筛选面板
         self._filter_panel = DynamicFilterPanel(_TODO_FILTER_FIELDS)
@@ -398,7 +395,8 @@ class TodoView(QWidget):
         # 搜索框
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("搜索待办…")
-        self._search_edit.setProperty("class", "search-input")
+        self._search_edit.setFixedHeight(28)
+        self._search_edit.setMaximumWidth(180)
         self._search_edit.textChanged.connect(self._on_search)
         tb.addWidget(self._search_edit)
 
@@ -406,6 +404,24 @@ class TodoView(QWidget):
         self._show_archived_cb.setProperty("class", "filter-checkbox")
         self._show_archived_cb.toggled.connect(self._refresh_current_view)
         tb.addWidget(self._show_archived_cb)
+
+        tb.addSpacing(12)
+
+        # 快速添加輸入框（取代單獨的快速添加行）
+        self._quick_add = QLineEdit()
+        self._quick_add.setPlaceholderText("快速添加待办，回车即创建…")
+        self._quick_add.setClearButtonEnabled(True)
+        self._quick_add.setFixedHeight(28)
+        self._quick_add.setMinimumWidth(200)
+        self._quick_add.setProperty("class", "quick-add-input")
+        self._quick_add.returnPressed.connect(self._on_quick_add)
+        tb.addWidget(self._quick_add)
+
+        self._btn_quick_add = QPushButton("添加")
+        self._btn_quick_add.setProperty("class", "pill-primary")
+        self._btn_quick_add.setFixedHeight(28)
+        self._btn_quick_add.clicked.connect(self._on_quick_add)
+        tb.addWidget(self._btn_quick_add)
 
         tb.addStretch()
 
@@ -427,52 +443,15 @@ class TodoView(QWidget):
         sep.setFixedHeight(20)
         sep.setProperty("class", "sep-vline")
 
-        self.btn_add = QPushButton("＋ 新增")
-        self.btn_add.setProperty("class", "pill-primary")
-        self.btn_add.setFixedHeight(28)
-
         tb.addWidget(self.btn_edit)
         tb.addWidget(self.btn_delete)
         tb.addWidget(self.btn_archive)
         tb.addWidget(sep)
-        tb.addWidget(self.btn_add)
+
         parent_layout.addLayout(tb)
 
     def _build_quick_add(self, parent_layout: QVBoxLayout) -> None:
-        qb = QHBoxLayout()
-        qb.setContentsMargins(12, 4, 12, 8)
-        qb.setSpacing(0)
-
-        self._quick_add_container = QWidget()
-        self._quick_add_container.setStyleSheet(
-            f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
-        )
-        self._quick_add_container.setFixedHeight(30)
-        cl = QHBoxLayout(self._quick_add_container)
-        cl.setContentsMargins(12, 0, 4, 0)
-        cl.setSpacing(0)
-
-        self._quick_add = QLineEdit()
-        self._quick_add.setPlaceholderText("添加待办，回车快速创建…")
-        self._quick_add.setClearButtonEnabled(True)
-        self._quick_add.setFixedHeight(28)
-        self._quick_add.setStyleSheet(
-            "QLineEdit{background:transparent;border:none;font-size:13px;color:%s;}" % _t.TEXT
-        )
-        self._quick_add.returnPressed.connect(self._on_quick_add)
-        cl.addWidget(self._quick_add, stretch=1)
-
-        self._btn_quick_add = QPushButton("添加")
-        self._btn_quick_add.setFixedSize(48, 22)
-        self._btn_quick_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
-            f"QPushButton:hover{{background:{_t.BLUE};}}"
-        )
-        self._btn_quick_add.clicked.connect(self._on_quick_add)
-        cl.addWidget(self._btn_quick_add)
-
-        qb.addWidget(self._quick_add_container)
-        parent_layout.addLayout(qb)
+        pass  # 快速添加已合併到 _build_toolbar
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -614,45 +593,10 @@ class TodoView(QWidget):
     # ── 主题刷新 ────────────────────────────────────────────────
 
     def refresh_theme(self) -> None:
-        """主题切换后重绘所有内联颜色。"""
-        # 工具栏按钮
-        self.btn_edit.setStyleSheet(
-            f"QPushButton{{color:{_t.ACCENT};border:1px solid {_t.BORDER};"
-            f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        self.btn_delete.setStyleSheet(
-            f"QPushButton{{color:{_t.RED};border:1px solid transparent;"
-            f"border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        self.btn_archive.setStyleSheet(
-            f"QPushButton{{color:{_t.SUBTEXT1};border:1px solid {_t.BORDER};"
-            f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        self.btn_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;font-weight:600;"
-            f"border:none;border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        # 列背景/标题由 QSS 自动刷新
+        """主题切换后刷新。按鈕樣式由 QSS class 自動更新，只需刷新自定義組件。"""
+        # 列卡片
         for col in self._columns.values():
             for card in col._cards:
                 card.refresh_theme()
-        # 快速添加栏
-        self._refresh_quick_add_theme()
         # 四象限视图
         self._quadrant_view.refresh_theme()
-
-    def _refresh_quick_add_theme(self) -> None:
-        self._quick_add_container.setStyleSheet(
-            f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
-        )
-        self._quick_add.setStyleSheet(
-            "QLineEdit{background:transparent;border:none;font-size:13px;color:%s;}" % _t.TEXT
-        )
-        self._btn_quick_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
-            f"QPushButton:hover{{background:{_t.BLUE};}}"
-        )

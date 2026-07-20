@@ -748,6 +748,19 @@ QPushButton[class="pill-primary"]:hover {{
     opacity: 0.85;
 }}
 
+/* 快速添加輸入框 */
+QLineEdit[class="quick-add-input"] {{
+    background-color: {BG_INPUT};
+    color: {TEXT};
+    border: 1px solid {BORDER};
+    border-radius: 14px;
+    padding: 2px 12px;
+    font-size: 13px;
+}}
+QLineEdit[class="quick-add-input"]:focus {{
+    border-color: {ACCENT};
+}}
+
 /* ── 标签页卡片容器 ── */
 QWidget[class="card-container"] {{
     background-color: {BG_CARD}; border-radius: 8px;
