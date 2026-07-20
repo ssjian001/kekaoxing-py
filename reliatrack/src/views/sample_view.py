@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
     QComboBox,
     QMenu,
     QAbstractItemView,
+    QFrame,
+    QToolButton,
 )
 from PySide6.QtCore import QEvent, Qt
 
@@ -173,17 +175,33 @@ class _SamplePoolTab(QWidget):
         self._btn_edit.setToolTip("编辑选中样品")
         toolbar.addWidget(self._btn_edit)
 
-        self._btn_batch_edit = QPushButton("批量编辑")
-        self._btn_batch_edit.setProperty("class", "action")
-        self._btn_batch_edit.setMinimumWidth(70)
-        self._btn_batch_edit.setToolTip("批量编辑选中的多个样品")
-        toolbar.addWidget(self._btn_batch_edit)
-
         self._btn_delete = QPushButton("删除")
         self._btn_delete.setProperty("class", "action")
         self._btn_delete.setMinimumWidth(70)
         self._btn_delete.setToolTip("彻底删除选中样品")
         toolbar.addWidget(self._btn_delete)
+
+        # 分隔线
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFixedWidth(1)
+        sep.setFixedHeight(20)
+        sep.setProperty("class", "sep-vline")
+        toolbar.addWidget(sep)
+
+        # 更多操作（批量导入、批量编辑）
+        self._more_menu = QMenu(self)
+        self._act_batch_import = self._more_menu.addAction("批量导入")
+        self._act_batch_import.setToolTip("从 Excel 批量导入样品")
+        self._act_batch_edit = self._more_menu.addAction("批量编辑")
+        self._act_batch_edit.setToolTip("批量编辑选中的多个样品")
+        self._btn_more = QToolButton()
+        self._btn_more.setText("更多")
+        self._btn_more.setMenu(self._more_menu)
+        self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._btn_more.setProperty("class", "action")
+        self._btn_more.setMinimumWidth(70)
+        toolbar.addWidget(self._btn_more)
 
         layout.addLayout(toolbar)
 
@@ -272,9 +290,9 @@ class _SamplePoolTab(QWidget):
         return self._btn_add
 
     @property
-    def btn_batch_import(self) -> QPushButton:
-        """批量导入按钮。"""
-        return self._btn_batch_import
+    def btn_batch_import(self) -> object:
+        """批量导入（在更多菜单中）。"""
+        return self._act_batch_import
 
     @property
     def btn_out(self) -> QPushButton:
@@ -287,9 +305,9 @@ class _SamplePoolTab(QWidget):
         return self._btn_edit
 
     @property
-    def btn_batch_edit(self) -> QPushButton:
-        """批量编辑按钮。"""
-        return self._btn_batch_edit
+    def btn_batch_edit(self) -> object:
+        """批量编辑（在更多菜单中）。"""
+        return self._act_batch_edit
 
     @property
     def btn_delete(self) -> QPushButton:
