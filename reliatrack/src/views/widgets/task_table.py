@@ -505,7 +505,7 @@ class _TaskTable(QTableWidget):
 
     def _edit_inline_progress(self, row: int, task: TestTask) -> None:
         """双击进度列 — 显示 QDoubleSpinBox 就地编辑。"""
-        from PySide6.QtWidgets import QDoubleSpinBox, QWidget
+        from PySide6.QtWidgets import QDoubleSpinBox
         from PySide6.QtCore import QTimer
 
         spin = QDoubleSpinBox()
@@ -518,12 +518,9 @@ class _TaskTable(QTableWidget):
         spin.setFocus()
 
         def _commit(val: float) -> None:
-            if self._on_edit_callback:
-                # 更新 task 在内存中的数据，再触发回调
-                old_prog = task.progress
-                task.progress = val
-                self._on_edit_callback(task)
-                task.progress = old_prog  # 恢复（实际由 handler 重新加载）
+            # 用批量更新回調直接寫 DB（col=6 → progress），不要走 edit_callback 否則會彈完整編輯對話框
+            if self._batch_value_callback and task.id is not None:
+                self._batch_value_callback([task.id], 6, str(int(val)))
             self.removeCellWidget(row, 6)
             self.flash_row(task.id, 500)
 
@@ -532,7 +529,7 @@ class _TaskTable(QTableWidget):
 
     def _edit_inline_priority(self, row: int, task: TestTask) -> None:
         """双击优先级列 — 显示下拉框就地编辑。"""
-        from PySide6.QtWidgets import QComboBox, QWidget
+        from PySide6.QtWidgets import QComboBox
         from PySide6.QtCore import QTimer
         from src.constants import PRIORITY_LABELS
 
@@ -546,11 +543,9 @@ class _TaskTable(QTableWidget):
 
         def _commit(idx: int) -> None:
             new_pri = items[idx][1]
-            if new_pri != task.priority and self._on_edit_callback:
-                old_pri = task.priority
-                task.priority = new_pri
-                self._on_edit_callback(task)
-                task.priority = old_pri
+            if new_pri != task.priority and self._batch_value_callback and task.id is not None:
+                # col=7 → priority，走批量更新回調直接寫 DB
+                self._batch_value_callback([task.id], 7, str(new_pri))
             self.removeCellWidget(row, 7)
             self.flash_row(task.id, 500)
 
