@@ -38,7 +38,7 @@ class PlanHandlers:
     def connect_signals(self) -> None:
         win = self._win
         v = win.test_plan_view
-        v.btn_schedule.clicked.connect(self._on_auto_schedule)
+        v.btn_schedule.triggered.connect(self._on_auto_schedule)
         v.task_moved.connect(self._on_gantt_task_moved)
         # 计划管理菜单
         v.act_add_plan.triggered.connect(self._on_plan_add)
@@ -57,7 +57,7 @@ class PlanHandlers:
         # 独立按钮
         from src.handlers.crud_helpers import debounce_connect
         debounce_connect(v.btn_record_result, self._on_record_result)
-        debounce_connect(v.btn_quick_add, self._on_task_quick_add)
+        v.btn_quick_add.triggered.connect(self._on_task_quick_add)
         # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）

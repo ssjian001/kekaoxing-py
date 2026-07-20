@@ -699,7 +699,7 @@ QPushButton[class="pill"] {{
     border: 1px solid {BORDER};
     padding: 2px 14px;
     font-size: 12px;
-    border-radius: 12px;
+    border-radius: 14px;
 }}
 QPushButton[class="pill"]:checked {{
     background-color: {ACCENT};
@@ -710,6 +710,42 @@ QPushButton[class="pill"]:checked {{
 QPushButton[class="pill"]:hover:!checked {{
     background-color: {SURFACE1};
     color: {FG_PRIMARY};
+}}
+
+/* Pill 語義變體（待辦等 tab 用） */
+QPushButton[class="pill-outline"] {{
+    color: {ACCENT};
+    border: 1px solid {BORDER};
+    background-color: {BG_INPUT};
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill-outline"]:hover {{
+    background-color: {SURFACE1};
+}}
+QPushButton[class="pill-danger"] {{
+    color: {RED};
+    border: 1px solid transparent;
+    background-color: transparent;
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill-danger"]:hover {{
+    background-color: rgba(210, 15, 57, 0.1);
+}}
+QPushButton[class="pill-primary"] {{
+    background-color: {ACCENT};
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill-primary"]:hover {{
+    opacity: 0.85;
 }}
 
 /* ── 标签页卡片容器 ── */

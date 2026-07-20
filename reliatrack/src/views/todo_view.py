@@ -410,13 +410,16 @@ class TodoView(QWidget):
         tb.addStretch()
 
         self.btn_edit = QPushButton("编辑")
-        self._style_tool_btn(self.btn_edit, f"color:{_t.ACCENT};border:1px solid {_t.BORDER};background:{_t.BG_INPUT};")
+        self.btn_edit.setProperty("class", "pill-outline")
+        self.btn_edit.setFixedHeight(28)
 
         self.btn_delete = QPushButton("删除")
-        self._style_tool_btn(self.btn_delete, f"color:{_t.RED};border:1px solid transparent;")
+        self.btn_delete.setProperty("class", "pill-danger")
+        self.btn_delete.setFixedHeight(28)
 
         self.btn_archive = QPushButton("归档")
-        self._style_tool_btn(self.btn_archive, f"color:{_t.SUBTEXT1};border:1px solid {_t.BORDER};background:{_t.BG_INPUT};")
+        self.btn_archive.setProperty("class", "pill-outline")
+        self.btn_archive.setFixedHeight(28)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
@@ -425,7 +428,8 @@ class TodoView(QWidget):
         sep.setProperty("class", "sep-vline")
 
         self.btn_add = QPushButton("＋ 新增")
-        self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:white;font-weight:600;border:none;")
+        self.btn_add.setProperty("class", "pill-primary")
+        self.btn_add.setFixedHeight(28)
 
         tb.addWidget(self.btn_edit)
         tb.addWidget(self.btn_delete)
@@ -433,13 +437,6 @@ class TodoView(QWidget):
         tb.addWidget(sep)
         tb.addWidget(self.btn_add)
         parent_layout.addLayout(tb)
-
-    def _style_tool_btn(self, btn: QPushButton, base: str) -> None:
-        btn.setFixedHeight(28)
-        btn.setStyleSheet(
-            f"QPushButton{{{base}border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
 
     def _build_quick_add(self, parent_layout: QVBoxLayout) -> None:
         qb = QHBoxLayout()

@@ -115,13 +115,6 @@ class TestPlanView(QWidget):
         self._btn_task_manage.setToolTip("任务管理：增删改、导入")
         row1.addWidget(self._btn_task_manage)
 
-        # 自动排程
-        self._btn_schedule = QPushButton("自动排程")
-        self._btn_schedule.setProperty("class", "action")
-        self._btn_schedule.setFixedHeight(28)
-        self._btn_schedule.setToolTip("自动排程（资源约束优化）")
-        row1.addWidget(self._btn_schedule)
-
         # ── 分隔线 2 ──
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.Shape.VLine)
@@ -137,13 +130,11 @@ class TestPlanView(QWidget):
         self._btn_record_result.setToolTip("录入测试结果")
         row1.addWidget(self._btn_record_result)
 
-        self._btn_quick_add = QPushButton("快速加")
-        self._btn_quick_add.setFixedHeight(28)
-        self._btn_quick_add.setToolTip("快速添加任务：填名称+天数，回车即创建")
-        self._btn_quick_add.setProperty("class", "action")
-        row1.addWidget(self._btn_quick_add)
-
+        # 更多操作下拉（自動排程 / 快速加 / 總結報告 等低頻操作）
         self._more_menu = QMenu(self)
+        self._act_schedule = self._more_menu.addAction("自动排程")
+        self._act_quick_add = self._more_menu.addAction("快速加任务")
+        self._more_menu.addSeparator()
         self._act_summary_report = self._more_menu.addAction("总结报告")
         self._btn_more = QToolButton()
         self._btn_more.setText("更多")
@@ -151,7 +142,7 @@ class TestPlanView(QWidget):
         self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_more.setProperty("class", "action")
         self._btn_more.setFixedHeight(28)
-        self._btn_more.setToolTip("总结报告等更多操作")
+        self._btn_more.setToolTip("自动排程、快速加任务、总结报告等")
         row1.addWidget(self._btn_more)
 
         row1.addStretch()
@@ -634,8 +625,8 @@ class TestPlanView(QWidget):
         return self._act_unarchive_plan
 
     @property
-    def btn_schedule(self) -> QPushButton:
-        return self._btn_schedule
+    def btn_schedule(self) -> QAction:
+        return self._act_schedule
 
     @property
     def act_add_task(self) -> QAction:
@@ -662,8 +653,8 @@ class TestPlanView(QWidget):
         return self._btn_record_result
 
     @property
-    def btn_quick_add(self) -> QPushButton:
-        return self._btn_quick_add
+    def btn_quick_add(self) -> QAction:
+        return self._act_quick_add
 
     @property
     def btn_summary_report(self) -> QAction:

@@ -439,18 +439,20 @@ class BugListView(QWidget):
         self._btn_select_all.clicked.connect(self._on_select_all)
         toolbar.addWidget(self._btn_select_all)
 
-        # 批量操作按钮
-        self._btn_batch_status = QPushButton("批量改状态")
-        self._btn_batch_status.setProperty("class", "action")
-        self._btn_batch_status.setEnabled(False)
-        self._btn_batch_status.clicked.connect(lambda: self._open_batch_dialog("改状态"))
-        toolbar.addWidget(self._btn_batch_status)
-
-        self._btn_batch_assign = QPushButton("批量设置DRI")
-        self._btn_batch_assign.setProperty("class", "action")
-        self._btn_batch_assign.setEnabled(False)
-        self._btn_batch_assign.clicked.connect(lambda: self._open_batch_dialog("设置DRI"))
-        toolbar.addWidget(self._btn_batch_assign)
+        # 批量操作下拉菜單（取代兩個平鋪按鈕）
+        from PySide6.QtWidgets import QToolButton, QMenu
+        self._btn_batch = QToolButton()
+        self._btn_batch.setText("批量操作")
+        self._btn_batch.setProperty("class", "action")
+        self._btn_batch.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        batch_menu = QMenu(self._btn_batch)
+        self._act_batch_status = batch_menu.addAction("批量改状态")
+        self._act_batch_status.triggered.connect(lambda: self._open_batch_dialog("改状态"))
+        self._act_batch_assign = batch_menu.addAction("批量设置DRI")
+        self._act_batch_assign.triggered.connect(lambda: self._open_batch_dialog("设置DRI"))
+        self._btn_batch.setMenu(batch_menu)
+        self._btn_batch.setEnabled(False)  # 默認禁用，選中後啟用
+        toolbar.addWidget(self._btn_batch)
 
         # 刷新按钮
         btn_refresh = QPushButton("刷新")
@@ -479,8 +481,7 @@ class BugListView(QWidget):
         """checkbox 状态变化时更新批量按钮状态。"""
         if item.column() == 0:
             has_checked = bool(self._table.get_checked_ids())
-            self._btn_batch_status.setEnabled(has_checked)
-            self._btn_batch_assign.setEnabled(has_checked)
+            self._btn_batch.setEnabled(has_checked)
 
     def _on_select_all(self, checked: bool) -> None:
         """全选/取消全选。"""
@@ -488,8 +489,7 @@ class BugListView(QWidget):
         text = "取消全选" if checked else "全选"
         self._btn_select_all.setText(text)
         has_checked = bool(self._table.get_checked_ids()) if not checked else True
-        self._btn_batch_status.setEnabled(has_checked)
-        self._btn_batch_assign.setEnabled(has_checked)
+        self._btn_batch.setEnabled(has_checked)
 
     def _toggle_filter_panel(self) -> None:
         """展开/收起横向筛选面板。"""
