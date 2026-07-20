@@ -466,61 +466,57 @@ class BugListView(QWidget):
         from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 
         row = QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(6)
 
         # 状态筛选
         self._filter_status = QComboBox()
         self._filter_status.setProperty("class", "filter-combo")
-        self._filter_status.setFixedWidth(110)
-        self._filter_status.setFixedHeight(28)
+        self._filter_status.setFixedWidth(90)
+        self._filter_status.setFixedHeight(26)
         self._filter_status.addItem("全部状态", "")
         for k, v in ISSUE_STATUS_LABELS.items():
             self._filter_status.addItem(v, k)
         self._filter_status.currentIndexChanged.connect(self._apply_filters)
-        row.addWidget(QLabel("状态"))
         row.addWidget(self._filter_status)
 
         # 严重度筛选
         self._filter_severity = QComboBox()
         self._filter_severity.setProperty("class", "filter-combo")
-        self._filter_severity.setFixedWidth(100)
-        self._filter_severity.setFixedHeight(28)
+        self._filter_severity.setFixedWidth(75)
+        self._filter_severity.setFixedHeight(26)
         self._filter_severity.addItem("全部严重度", "")
         for k, v in SEVERITY_LABELS.items():
             self._filter_severity.addItem(v, k)
         self._filter_severity.currentIndexChanged.connect(self._apply_filters)
-        row.addWidget(QLabel("严重度"))
         row.addWidget(self._filter_severity)
 
         # 优先级筛选
         self._filter_priority = QComboBox()
         self._filter_priority.setProperty("class", "filter-combo")
-        self._filter_priority.setFixedWidth(80)
-        self._filter_priority.setFixedHeight(28)
+        self._filter_priority.setFixedWidth(70)
+        self._filter_priority.setFixedHeight(26)
         self._filter_priority.addItem("全部优先级", "")
         for k, v in PRIORITY_LABELS.items():
             self._filter_priority.addItem(v, k)
         self._filter_priority.currentIndexChanged.connect(self._apply_filters)
-        row.addWidget(QLabel("优先级"))
         row.addWidget(self._filter_priority)
 
         # DRI 搜索输入
         self._filter_dri = QLineEdit()
         self._filter_dri.setPlaceholderText("DRI…")
-        self._filter_dri.setFixedWidth(100)
-        self._filter_dri.setFixedHeight(28)
+        self._filter_dri.setFixedWidth(80)
+        self._filter_dri.setFixedHeight(26)
         self._filter_dri.textChanged.connect(self._apply_filters)
-        row.addWidget(QLabel("DRI"))
         row.addWidget(self._filter_dri)
-
-        row.addStretch()
 
         # 清除筛选
         btn_clear = QPushButton("清除")
         btn_clear.setProperty("class", "action")
-        btn_clear.setFixedHeight(28)
+        btn_clear.setFixedHeight(26)
         btn_clear.clicked.connect(self._clear_filters)
         row.addWidget(btn_clear)
+
+        row.addStretch()
 
         parent.addLayout(row)
 
