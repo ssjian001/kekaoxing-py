@@ -11,7 +11,6 @@ from PySide6.QtCore import (
     QObject,
     QPoint,
     QPropertyAnimation,
-    QEasingCurve,
 )
 from PySide6.QtGui import QMouseEvent, QEnterEvent, QColor
 from PySide6.QtWidgets import QWidget, QGraphicsDropShadowEffect

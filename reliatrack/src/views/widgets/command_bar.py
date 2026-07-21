@@ -2,11 +2,10 @@
 
 移植自 qfluentwidgets CommandBar，適配 PySide6 + Catppuccin 色板。
 """
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QPainter, QColor
 from PySide6.QtWidgets import (
     QFrame, QToolButton, QMenu, QWidget, QHBoxLayout,
-    QSizePolicy, QStyleOption, QStyle,
 )
 
 import src.styles.theme as _t

@@ -6,7 +6,7 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QStackedWidget, QButtonGroup
 
-import src.styles.theme as _t
+
 
 
 class SegmentedWidget(QWidget):
