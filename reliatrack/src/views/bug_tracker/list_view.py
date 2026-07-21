@@ -498,15 +498,19 @@ class BugListView(QWidget):
         self._search_input.textChanged.connect(self._apply_filters)
         toolbar.addWidget(self._search_input)
 
-        # ── 右侧：操作按钮 ──
+        # ── 右侧：操作按钮（CommandBar 自動溢出）──
         toolbar.addStretch()
+
+        from src.views.widgets.command_bar import CommandBar
+        action_bar = CommandBar()
+        action_bar.setButtonTight(True)
 
         self._btn_select_all = QPushButton("全选")
         self._btn_select_all.setFixedHeight(26)
         self._btn_select_all.setProperty("class", "action")
         self._btn_select_all.setCheckable(True)
         self._btn_select_all.clicked.connect(self._on_select_all)
-        toolbar.addWidget(self._btn_select_all)
+        action_bar.addWidget(self._btn_select_all)
 
         self._btn_batch = QToolButton()
         self._btn_batch.setText("批量操作")
@@ -520,14 +524,15 @@ class BugListView(QWidget):
         self._act_batch_assign.triggered.connect(lambda: self._open_batch_dialog("设置DRI"))
         self._btn_batch.setMenu(batch_menu)
         self._btn_batch.setEnabled(False)
-        toolbar.addWidget(self._btn_batch)
+        action_bar.addWidget(self._btn_batch)
 
         btn_refresh = QPushButton("刷新")
         btn_refresh.setFixedHeight(26)
         btn_refresh.setProperty("class", "action")
         btn_refresh.clicked.connect(self.refresh_requested.emit)
-        toolbar.addWidget(btn_refresh)
+        action_bar.addWidget(btn_refresh)
 
+        toolbar.addWidget(action_bar)
         toolbar.addSpacing(8)
 
         return toolbar
