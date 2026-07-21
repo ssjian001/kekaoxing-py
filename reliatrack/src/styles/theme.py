@@ -582,6 +582,7 @@ QMessageBox {{
 /* ── 筛选栏 ── */
 QLabel[class="filter-label"] {{
     color: {FG_PRIMARY}; font-size: 12px; font-weight: bold;
+}}
 /* ── 全局筛选栏 ── */
 QWidget[class="filter-bar"] {{
     background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
