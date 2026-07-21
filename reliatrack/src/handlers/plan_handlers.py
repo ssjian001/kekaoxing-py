@@ -61,6 +61,7 @@ class PlanHandlers:
         # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
+        ctrl = self._win.ctrl
         v.setup_task_callbacks(
             on_edit=self._on_task_edit,
             on_delete=self._on_task_delete_menu,
@@ -68,6 +69,8 @@ class PlanHandlers:
             on_actual_date_edit=self._on_actual_date_edit,
             on_record_result=self._on_record_result,
             on_batch_value=self._on_batch_value,
+            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
+            equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
         )
         # 结果矩阵双击编辑
         v.set_on_matrix_edit_callback(self._on_matrix_result_edit)

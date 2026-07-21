@@ -660,14 +660,24 @@ class TestPlanView(QWidget):
         on_actual_date_edit: Callable[[int, str, str], None] | None = None,
         on_record_result: Callable[[], None] | None = None,
         on_batch_value: Callable[[list[int], int, str], None] | None = None,
+        technician_list: list | None = None,
+        equipment_list: list | None = None,
     ) -> None:
         """设置任务增删改以及实际日期编辑回调。
 
         外部调用此方法，将实际业务逻辑（打开弹窗、调用 Service 等）注入。
+        technician_list / equipment_list 用于右键菜单的批量指派等功能。
         """
         self._on_add_task = on_add
         self._on_edit_task = on_edit
         self._on_delete_task = on_delete
+
+        # 注入參考數據（技術員/設備列表），供右鍵批量指派使用
+        if technician_list is not None or equipment_list is not None:
+            self._task_table.set_reference_data(
+                equipment_list or [],
+                technician_list or [],
+            )
 
         # 表格右键 & 双击
         self._task_table.set_callbacks(
