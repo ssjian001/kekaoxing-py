@@ -32,6 +32,8 @@ from src.models.common import Equipment, Technician
 from src.views.widgets.task_table import _TaskTable
 from src.views.widgets.gantt_widget import _GanttWidget
 from src.views.widgets.result_matrix import _ResultMatrixWidget
+from src.views.widgets.command_bar import CommandBar
+from src.views.widgets.search_box import SearchBox
 
 class TestPlanView(QWidget):
     """测试计划视图 — 左侧任务表 + 右侧甘特图。"""
@@ -61,6 +63,10 @@ class TestPlanView(QWidget):
         self._plan_combo.setFixedHeight(26)
         row1.addWidget(self._plan_combo)
 
+        # ── CommandBar（计划/任务/操作管理，自動溢出）──
+        action_bar = CommandBar()
+        action_bar.setButtonTight(True)
+
         # ── 分组 1: 计划管理 ──
         self._plan_menu = QMenu(self)
         self._act_add_plan = self._plan_menu.addAction("新建计划")
@@ -80,15 +86,9 @@ class TestPlanView(QWidget):
         self._btn_plan_manage.setProperty("class", "action")
         self._btn_plan_manage.setFixedHeight(26)
         self._btn_plan_manage.setToolTip("计划管理：新建、编辑、归档、查看归档")
-        row1.addWidget(self._btn_plan_manage)
+        action_bar.addWidget(self._btn_plan_manage)
 
-        # ── 分隔线 1 ──
-        sep1 = QFrame()
-        sep1.setFrameShape(QFrame.Shape.VLine)
-        sep1.setFixedWidth(1)
-        sep1.setFixedHeight(20)
-        sep1.setProperty("class", "sep-vline")
-        row1.addWidget(sep1)
+        action_bar.addSeparator()
 
         # ── 分组 2: 任务管理 ──
         self._task_menu = QMenu(self)
@@ -106,22 +106,16 @@ class TestPlanView(QWidget):
         self._btn_task_manage.setProperty("class", "action")
         self._btn_task_manage.setFixedHeight(26)
         self._btn_task_manage.setToolTip("任务管理：增删改、导入")
-        row1.addWidget(self._btn_task_manage)
+        action_bar.addWidget(self._btn_task_manage)
 
-        # ── 分隔线 2 ──
-        sep2 = QFrame()
-        sep2.setFrameShape(QFrame.Shape.VLine)
-        sep2.setFixedWidth(1)
-        sep2.setFixedHeight(20)
-        sep2.setProperty("class", "sep-vline")
-        row1.addWidget(sep2)
+        action_bar.addSeparator()
 
         # ── 分组 3: 操作 ──
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
         self._btn_record_result.setFixedHeight(26)
         self._btn_record_result.setToolTip("录入测试结果")
-        row1.addWidget(self._btn_record_result)
+        action_bar.addWidget(self._btn_record_result)
 
         # 更多操作下拉（自動排程 / 快速加 / 總結報告 等低頻操作）
         self._more_menu = QMenu(self)
@@ -136,8 +130,9 @@ class TestPlanView(QWidget):
         self._btn_more.setProperty("class", "action")
         self._btn_more.setFixedHeight(26)
         self._btn_more.setToolTip("自动排程、快速加任务、总结报告等")
-        row1.addWidget(self._btn_more)
+        action_bar.addWidget(self._btn_more)
 
+        row1.addWidget(action_bar)
         row1.addStretch()
         layout.addLayout(row1)
 
@@ -146,10 +141,9 @@ class TestPlanView(QWidget):
         row2.setSpacing(4)
 
         # ── 分组 1: 搜索 + 筛选 ──
-        self._search_edit = QLineEdit()
+        self._search_edit = SearchBox()
         self._search_edit.setPlaceholderText("搜索任务名…")
-        self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setFixedSize(200, 28)
+        self._search_edit.setFixedSize(200, 26)
         from PySide6.QtCore import QSettings as _QSettings
         saved = _QSettings().value("ReliaTrack/task_search", "")
         if saved and isinstance(saved, str):
