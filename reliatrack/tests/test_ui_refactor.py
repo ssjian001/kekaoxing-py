@@ -78,7 +78,7 @@ class TestBugListViewFilterRow:
         assert hasattr(v, "_filter_priority")
         assert hasattr(v, "_filter_dri")
         assert isinstance(v._filter_status, QComboBox)
-        assert isinstance(v._filter_dri, QLineEdit)
+        assert isinstance(v._filter_dri, QComboBox)
 
     def test_filter_status_default_all(self, qapp, issue_svc):
         from src.views.bug_tracker.list_view import BugListView
@@ -93,13 +93,13 @@ class TestBugListViewFilterRow:
         # 設置非默認值
         v._filter_status.setCurrentIndex(1)
         v._filter_severity.setCurrentIndex(1)
-        v._filter_dri.setText("abc")
+        v._filter_dri.setEditText("abc")
         # 清除
         v._clear_filters()
         assert v._filter_status.currentIndex() == 0
         assert v._filter_severity.currentIndex() == 0
         assert v._filter_priority.currentIndex() == 0
-        assert v._filter_dri.text() == ""
+        assert v._filter_dri.currentText() == ""
 
     def test_apply_filters_status(self, qapp, issue_svc):
         from src.views.bug_tracker.list_view import BugListView
@@ -134,7 +134,7 @@ class TestBugListViewFilterRow:
             _make_issue(id=1, dri_name="Alice"),
             _make_issue(id=2, dri_name="Bob"),
         ])
-        v._filter_dri.setText("ali")  # case insensitive
+        v._filter_dri.setEditText("ali")  # case insensitive
         v._apply_filters()
         assert v._table.rowCount() == 1
 

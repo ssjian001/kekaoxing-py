@@ -468,13 +468,16 @@ class BugListView(QWidget):
         from PySide6.QtWidgets import QComboBox
         from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 
+        # ── 筛选行（状态/严重度/优先级/DRI/清除）──
         row = QHBoxLayout()
-        row.setSpacing(6)
+        row.setSpacing(8)
+
+        _FILTER_W = 80  # 统一宽度
 
         # 状态筛选
         self._filter_status = QComboBox()
         self._filter_status.setProperty("class", "filter-combo")
-        self._filter_status.setFixedWidth(90)
+        self._filter_status.setFixedWidth(_FILTER_W)
         self._filter_status.setFixedHeight(26)
         self._filter_status.addItem("全部状态", "")
         for k, v in ISSUE_STATUS_LABELS.items():
@@ -485,7 +488,7 @@ class BugListView(QWidget):
         # 严重度筛选
         self._filter_severity = QComboBox()
         self._filter_severity.setProperty("class", "filter-combo")
-        self._filter_severity.setFixedWidth(75)
+        self._filter_severity.setFixedWidth(_FILTER_W)
         self._filter_severity.setFixedHeight(26)
         self._filter_severity.addItem("全部严重度", "")
         for k, v in SEVERITY_LABELS.items():
@@ -496,7 +499,7 @@ class BugListView(QWidget):
         # 优先级筛选
         self._filter_priority = QComboBox()
         self._filter_priority.setProperty("class", "filter-combo")
-        self._filter_priority.setFixedWidth(70)
+        self._filter_priority.setFixedWidth(_FILTER_W)
         self._filter_priority.setFixedHeight(26)
         self._filter_priority.addItem("全部优先级", "")
         for k, v in PRIORITY_LABELS.items():
@@ -504,12 +507,14 @@ class BugListView(QWidget):
         self._filter_priority.currentIndexChanged.connect(self._apply_filters)
         row.addWidget(self._filter_priority)
 
-        # DRI 搜索输入
-        self._filter_dri = QLineEdit()
-        self._filter_dri.setPlaceholderText("DRI…")
-        self._filter_dri.setFixedWidth(80)
+        # DRI 搜索输入（用 QComboBox 保持统一外观）
+        self._filter_dri = QComboBox()
+        self._filter_dri.setProperty("class", "filter-combo")
+        self._filter_dri.setFixedWidth(_FILTER_W)
         self._filter_dri.setFixedHeight(26)
-        self._filter_dri.textChanged.connect(self._apply_filters)
+        self._filter_dri.setEditable(True)
+        self._filter_dri.setPlaceholderText("DRI…")
+        self._filter_dri.lineEdit().textChanged.connect(self._apply_filters)
         row.addWidget(self._filter_dri)
 
         # 清除筛选
@@ -549,7 +554,7 @@ class BugListView(QWidget):
         self._filter_status.setCurrentIndex(0)
         self._filter_severity.setCurrentIndex(0)
         self._filter_priority.setCurrentIndex(0)
-        self._filter_dri.clear()
+        self._filter_dri.setEditText("")
 
     # ── 数据 ──────────────────────────────────────────────────
 
@@ -580,7 +585,7 @@ class BugListView(QWidget):
         status_val = self._filter_status.currentData()
         severity_val = self._filter_severity.currentData()
         priority_val = self._filter_priority.currentData()
-        dri_text = self._filter_dri.text().strip().lower()
+        dri_text = self._filter_dri.currentText().strip().lower()
 
         filtered = []
         for issue in self._all_issues:

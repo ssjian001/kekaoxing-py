@@ -89,22 +89,22 @@ class BugTrackerView(QWidget):
         tab_bar.setSpacing(2)
 
         # 看板/列表/更多 统一用 QToolButton + tab 样式
-        self._tab_kanban = QToolButton()
-        self._tab_kanban.setText("看板")
-        self._tab_kanban.setProperty("class", "tab-active")
-        self._tab_kanban.setFixedHeight(26)
-        self._tab_kanban.setCheckable(True)
-        self._tab_kanban.setChecked(True)
-        self._tab_kanban.clicked.connect(lambda: self._switch_tab(0))
-        tab_bar.addWidget(self._tab_kanban)
-
         self._tab_list = QToolButton()
         self._tab_list.setText("列表")
-        self._tab_list.setProperty("class", "tab-inactive")
+        self._tab_list.setProperty("class", "tab-active")
         self._tab_list.setFixedHeight(26)
         self._tab_list.setCheckable(True)
+        self._tab_list.setChecked(True)
         self._tab_list.clicked.connect(lambda: self._switch_tab(1))
         tab_bar.addWidget(self._tab_list)
+
+        self._tab_kanban = QToolButton()
+        self._tab_kanban.setText("看板")
+        self._tab_kanban.setProperty("class", "tab-inactive")
+        self._tab_kanban.setFixedHeight(26)
+        self._tab_kanban.setCheckable(True)
+        self._tab_kanban.clicked.connect(lambda: self._switch_tab(0))
+        tab_bar.addWidget(self._tab_kanban)
 
         # 更多操作菜单
         self._more_menu = QMenu(self)
@@ -152,6 +152,8 @@ class BugTrackerView(QWidget):
 
         self._list_view = BugListView(self._svc, undo_manager=self._undo_manager)
         self._stack.addWidget(self._list_view)
+        # 默认显示列表视图
+        self._stack.setCurrentIndex(1)
 
         # 注入已缓存的 technician_map（set_technician_map 可能在 _build_views 前调用）
         if self._technician_map:
