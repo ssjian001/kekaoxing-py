@@ -249,8 +249,8 @@ class MainWindow(QMainWindow):
             pass
 
     def _create_filter_bar_content(self, parent: QWidget) -> None:
-        """创建项目/计划筛选栏 — 直接插入 QMenuBar 布局的末尾。"""
-        # 始终创建 combo，不论 layout 是否可用
+        """创建项目/计划筛选栏 — 菜单栏右上角。"""
+        # combo parent 设为 self 避免 Windows setCornerWidget 销毁问题
         self._project_filter_combo = QComboBox(self)
         self._project_filter_combo.setMinimumWidth(150)
         self._project_filter_combo.setProperty("class", "filter-combo")
@@ -263,21 +263,23 @@ class MainWindow(QMainWindow):
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
 
-        ml = parent.layout()
-        if ml is None:
-            return
-
-        # 在菜单栏右侧插入筛选控件
         filter_label = QLabel("项目筛选:", self)
         filter_label.setProperty("class", "filter-label")
         plan_label = QLabel("计划:", self)
         plan_label.setProperty("class", "filter-label")
 
-        ml.insertStretch(-1)
-        ml.insertWidget(-1, filter_label)
-        ml.insertWidget(-1, self._project_filter_combo)
-        ml.insertWidget(-1, plan_label)
-        ml.insertWidget(-1, self._plan_filter_combo)
+        filter_bar = QHBoxLayout()
+        filter_bar.setContentsMargins(8, 0, 4, 0)
+        filter_bar.setSpacing(6)
+        filter_bar.addWidget(filter_label)
+        filter_bar.addWidget(self._project_filter_combo)
+        filter_bar.addWidget(plan_label)
+        filter_bar.addWidget(self._plan_filter_combo)
+
+        widget = QWidget(self)
+        widget.setLayout(filter_bar)
+        widget.setProperty("class", "filter-bar")
+        parent.setCornerWidget(widget, Qt.Corner.TopRightCorner)
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
