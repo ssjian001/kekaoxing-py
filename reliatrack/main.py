@@ -512,13 +512,14 @@ class MainWindow(QMainWindow):
 
     def refresh_project_filter(self, projects: list, current_id: int | None = None) -> None:
         """刷新项目筛选 combo 选项（不触发信号）。
-
-        Args:
-            projects: 项目列表（需有 .name 和 .id 属性）
-            current_id: 之前选中的项目 ID，用于恢复
         """
         combo = self._project_filter_combo
-        combo.blockSignals(True)
+        if not combo:
+            return
+        try:
+            combo.blockSignals(True)
+        except RuntimeError:
+            return
         _current = current_id if current_id is not None else combo.currentData()
         combo.clear()
         combo.addItem("全部项目", None)
@@ -634,47 +635,53 @@ class MainWindow(QMainWindow):
 
     def _on_plan_filter_changed(self, index: int) -> None:
         """计划筛选变化时刷新仪表盘，并同步测试计划视图的本地 combo。"""
-        plan_id = self._plan_filter_combo.currentData()
+        if not self._plan_filter_combo:
+            return
+        try:
+            plan_id = self._plan_filter_combo.currentData()
+        except RuntimeError:
+            return
         if plan_id is not None and hasattr(self, '_test_plan_view'):
             self._test_plan_view.select_plan_by_id(plan_id)
         self._refresh_all()
 
     def refresh_plan_combo(self) -> None:
         """根据当前选中的项目更新计划筛选 combo（保留之前选中项）。"""
-        project_id = self._project_filter_combo.currentData()
         ctrl = self._ctrl
         if not ctrl or not ctrl.test_plan_service:
-            self._plan_filter_combo.setEnabled(False)
+            return
+        try:
+            project_id = self._project_filter_combo.currentData()
+        except RuntimeError:
             return
 
-        # 记住当前选中
-        _current_plan_id = self._plan_filter_combo.currentData()
+        try:
+            # 记住当前选中
+            _current_plan_id = self._plan_filter_combo.currentData()
 
-        self._plan_filter_combo.blockSignals(True)
-        self._plan_filter_combo.clear()
-        self._plan_filter_combo.addItem("全部计划", None)
+            self._plan_filter_combo.blockSignals(True)
+            self._plan_filter_combo.clear()
+            self._plan_filter_combo.addItem("全部计划", None)
 
-        if project_id is None:
-            # 全部项目 → 禁用计划筛选
-            self._plan_filter_combo.setEnabled(False)
-        else:
-            # 根据当前归档视图模式选择数据源
-            show_archived = getattr(self.test_plan_view, 'show_archived', False)
-            if show_archived:
-                plans = ctrl.test_plan_service.get_archived_plans_by_project(project_id)
+            if project_id is None:
+                self._plan_filter_combo.setEnabled(False)
             else:
-                plans = ctrl.test_plan_service.get_active_plans_by_project(project_id)
-            for p in plans:
-                self._plan_filter_combo.addItem(p.name, p.id)
-            self._plan_filter_combo.setEnabled(True)
+                show_archived = getattr(self.test_plan_view, 'show_archived', False)
+                if show_archived:
+                    plans = ctrl.test_plan_service.get_archived_plans_by_project(project_id)
+                else:
+                    plans = ctrl.test_plan_service.get_active_plans_by_project(project_id)
+                for p in plans:
+                    self._plan_filter_combo.addItem(p.name, p.id)
+                self._plan_filter_combo.setEnabled(True)
 
-            # 恢复之前选中的计划
-            for i in range(self._plan_filter_combo.count()):
-                if self._plan_filter_combo.itemData(i) == _current_plan_id:
-                    self._plan_filter_combo.setCurrentIndex(i)
-                    break
-
-        self._plan_filter_combo.blockSignals(False)
+                for i in range(self._plan_filter_combo.count()):
+                    if self._plan_filter_combo.itemData(i) == _current_plan_id:
+                        self._plan_filter_combo.setCurrentIndex(i)
+                        break
+            self._plan_filter_combo.blockSignals(False)
+        except RuntimeError:
+            pass
 
     def _on_undo(self) -> None:
         um = self._ctrl.undo_manager
