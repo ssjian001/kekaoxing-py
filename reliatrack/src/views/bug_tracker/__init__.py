@@ -89,6 +89,14 @@ class BugTrackerView(QWidget):
         tab_bar.setSpacing(2)
 
         # 看板/列表/更多 统一用 QToolButton + tab 样式
+        self._tab_kanban = QToolButton()
+        self._tab_kanban.setText("看板")
+        self._tab_kanban.setProperty("class", "tab-inactive")
+        self._tab_kanban.setFixedHeight(26)
+        self._tab_kanban.setCheckable(True)
+        self._tab_kanban.clicked.connect(lambda: self._switch_tab(0))
+        tab_bar.addWidget(self._tab_kanban)
+
         self._tab_list = QToolButton()
         self._tab_list.setText("列表")
         self._tab_list.setProperty("class", "tab-active")
@@ -97,14 +105,6 @@ class BugTrackerView(QWidget):
         self._tab_list.setChecked(True)
         self._tab_list.clicked.connect(lambda: self._switch_tab(1))
         tab_bar.addWidget(self._tab_list)
-
-        self._tab_kanban = QToolButton()
-        self._tab_kanban.setText("看板")
-        self._tab_kanban.setProperty("class", "tab-inactive")
-        self._tab_kanban.setFixedHeight(26)
-        self._tab_kanban.setCheckable(True)
-        self._tab_kanban.clicked.connect(lambda: self._switch_tab(0))
-        tab_bar.addWidget(self._tab_kanban)
 
         # 更多操作菜单
         self._more_menu = QMenu(self)
@@ -191,7 +191,7 @@ class BugTrackerView(QWidget):
         # 首次加载数据（统一走 _refresh_all 注入筛选后数据）
         self._refresh_all()
 
-        self._switch_tab(0)
+        self._switch_tab(1)
 
     def _switch_tab(self, index: int) -> None:
         """切换 0=看板 / 1=列表。"""

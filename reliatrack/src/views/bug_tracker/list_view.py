@@ -519,8 +519,9 @@ class BugListView(QWidget):
 
         # 清除筛选
         btn_clear = QPushButton("清除")
-        btn_clear.setProperty("class", "action")
+        btn_clear.setFixedWidth(60)
         btn_clear.setFixedHeight(26)
+        btn_clear.setProperty("class", "action")
         btn_clear.clicked.connect(self._clear_filters)
         row.addWidget(btn_clear)
 
