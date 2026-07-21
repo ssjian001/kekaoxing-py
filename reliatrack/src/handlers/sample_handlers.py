@@ -34,7 +34,7 @@ class SampleHandlers:
         v = win.sample_view
         v.pool_tab.btn_add.clicked.connect(self._on_sample_checkin)
         v.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
-        v.pool_tab.btn_batch_import.triggered.connect(self._on_sample_batch_import)
+        v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
         v.pool_tab.btn_batch_edit.triggered.connect(self._on_pool_batch_edit)
         v.pool_tab.btn_delete.clicked.connect(self._on_sample_delete)

@@ -25,6 +25,7 @@ from PySide6.QtCore import QEvent, Qt
 import src.styles.theme as _t
 from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
+from src.views.widgets.command_bar import CommandBar
 
 # 样品池列规格
 _POOL_SPECS = [
@@ -152,48 +153,45 @@ class _SamplePoolTab(QWidget):
         toolbar.addWidget(self._search_input)
         toolbar.addStretch()
 
+        # ── CommandBar（自動溢出）──
+        action_bar = CommandBar()
+        action_bar.setButtonTight(True)
+
         self._btn_add = QPushButton("入库")
         self._btn_add.setProperty("class", "action")
         self._btn_add.setMinimumWidth(70)
         self._btn_add.setToolTip("样品入库")
-        toolbar.addWidget(self._btn_add)
+        action_bar.addWidget(self._btn_add)
 
         self._btn_batch_import = QPushButton("批量导入")
         self._btn_batch_import.setProperty("class", "action")
         self._btn_batch_import.setMinimumWidth(70)
         self._btn_batch_import.setToolTip("从 Excel 批量导入样品")
-        toolbar.addWidget(self._btn_batch_import)
+        action_bar.addWidget(self._btn_batch_import)
 
         self._btn_out = QPushButton("出库")
         self._btn_out.setProperty("class", "action")
         self._btn_out.setMinimumWidth(70)
         self._btn_out.setToolTip("样品出库")
-        toolbar.addWidget(self._btn_out)
+        action_bar.addWidget(self._btn_out)
+
+        # 分隔線
+        action_bar.addSeparator()
 
         self._btn_edit = QPushButton("编辑")
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
         self._btn_edit.setToolTip("编辑选中样品")
-        toolbar.addWidget(self._btn_edit)
+        action_bar.addWidget(self._btn_edit)
 
         self._btn_delete = QPushButton("删除")
         self._btn_delete.setProperty("class", "action")
         self._btn_delete.setMinimumWidth(70)
         self._btn_delete.setToolTip("彻底删除选中样品")
-        toolbar.addWidget(self._btn_delete)
+        action_bar.addWidget(self._btn_delete)
 
-        # 分隔线
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setFixedWidth(1)
-        sep.setFixedHeight(20)
-        sep.setProperty("class", "sep-vline")
-        toolbar.addWidget(sep)
-
-        # 更多操作（批量导入、批量编辑）
+        # 更多操作（批量编辑）
         self._more_menu = QMenu(self)
-        self._act_batch_import = self._more_menu.addAction("批量导入")
-        self._act_batch_import.setToolTip("从 Excel 批量导入样品")
         self._act_batch_edit = self._more_menu.addAction("批量编辑")
         self._act_batch_edit.setToolTip("批量编辑选中的多个样品")
         self._btn_more = QToolButton()
@@ -202,8 +200,9 @@ class _SamplePoolTab(QWidget):
         self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_more.setProperty("class", "action")
         self._btn_more.setMinimumWidth(70)
-        toolbar.addWidget(self._btn_more)
+        action_bar.addWidget(self._btn_more)
 
+        toolbar.addWidget(action_bar)
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS, _POOL_SPECS, "sample_pool")
@@ -292,8 +291,8 @@ class _SamplePoolTab(QWidget):
 
     @property
     def btn_batch_import(self) -> object:
-        """批量导入（在更多菜单中）。"""
-        return self._act_batch_import
+        """批量导入按钮（工具栏）。"""
+        return self._btn_batch_import
 
     @property
     def btn_out(self) -> QPushButton:

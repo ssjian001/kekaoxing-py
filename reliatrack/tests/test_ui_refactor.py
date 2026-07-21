@@ -194,19 +194,18 @@ class TestSamplePoolMoreMenu:
         assert hasattr(tab, "_btn_more")
         assert hasattr(tab, "_more_menu")
         assert isinstance(tab._btn_more, QToolButton)
-        # 菜單裡有兩個 action
+        # 菜單裡有批量編輯（批量導入已提到工具欄按鈕）
         actions = tab._more_menu.actions()
         action_texts = [a.text() for a in actions]
-        assert "批量導入" in action_texts or "批量导入" in action_texts
         assert "批量編輯" in action_texts or "批量编辑" in action_texts
 
     def test_batch_import_property_returns_action(self, qapp):
-        """btn_batch_import property 應返回 QAction（向後兼容 handler 連接）。"""
+        """btn_batch_import property 應返回 QPushButton（工具欄按鈕）。"""
         from src.views.sample_view import _SamplePoolTab
         tab = _SamplePoolTab()
         act = tab.btn_batch_import
-        # 應有 triggered 信號（不是 clicked）
-        assert hasattr(act, "triggered")
+        # 現在是 QPushButton（從更多菜單提到工具欄）
+        assert hasattr(act, "clicked")
 
     def test_batch_edit_property_returns_action(self, qapp):
         from src.views.sample_view import _SamplePoolTab
