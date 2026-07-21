@@ -534,6 +534,7 @@ class _TaskTable(QTableWidget):
         from src.constants import PRIORITY_LABELS
 
         combo = QComboBox()
+        combo.setProperty("class", "filter-combo")
         items = [(PRIORITY_LABELS.get(i, str(i)), i) for i in range(1, 6)]
         combo.addItems([label for label, _ in items])
         combo.setCurrentIndex(task.priority - 1)

@@ -87,6 +87,7 @@ class FilterPanel(QFrame):
 
         row2.addWidget(self._make_group_label("DRI"))
         self._dri_combo = QComboBox()
+        self._dri_combo.setProperty("class", "filter-combo")
         self._dri_combo.setMinimumWidth(100)
         self._dri_combo.addItem("全部", None)
         self._dri_combo.currentIndexChanged.connect(self._emit_filter)

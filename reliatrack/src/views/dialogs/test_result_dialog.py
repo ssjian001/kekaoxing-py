@@ -81,6 +81,7 @@ class _ResultRow(QFrame):
 
         # 结果下拉
         self._combo = QComboBox()
+        self._combo.setProperty("class", "filter-combo")
         self._combo.setFixedWidth(90)
         for value, label_text in self._RESULT_OPTIONS:
             self._combo.addItem(label_text, value)
@@ -108,6 +109,7 @@ class _ResultRow(QFrame):
 
         # 测试人
         self._tester_combo = QComboBox()
+        self._tester_combo.setProperty("class", "filter-combo")
         self._tester_combo.setFixedWidth(80)
         self._tester_combo.addItem("（无）", None)
         if technician_list:

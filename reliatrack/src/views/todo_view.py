@@ -386,6 +386,7 @@ class TodoView(QWidget):
         row.setSpacing(6)
 
         self._project_combo = QComboBox()
+        self._project_combo.setProperty("class", "filter-combo")
         self._project_combo.setMinimumWidth(140)
         self._project_combo.addItem("全部项目", None)
         self._project_combo.currentIndexChanged.connect(self._on_project_filter)

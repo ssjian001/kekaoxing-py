@@ -39,6 +39,7 @@ class QuickCreateDialog(QDialog):
         lbl_sev = QLabel("严重度")
         row1.addWidget(lbl_sev)
         self._severity_combo = QComboBox()
+        self._severity_combo.setProperty("class", "filter-combo")
         self._severity_combo.addItems(["严重 (critical)", "主要 (major)", "次要 (minor)", "外观 (cosmetic)"])
         self._severity_combo.setCurrentIndex(1)  # major 默认
         row1.addWidget(self._severity_combo)
@@ -46,6 +47,7 @@ class QuickCreateDialog(QDialog):
         lbl_pri = QLabel("优先级")
         row1.addWidget(lbl_pri)
         self._priority_combo = QComboBox()
+        self._priority_combo.setProperty("class", "filter-combo")
         for i in range(1, 6):
             self._priority_combo.addItem(f"P{i}")
         self._priority_combo.setCurrentIndex(2)  # P3 默认

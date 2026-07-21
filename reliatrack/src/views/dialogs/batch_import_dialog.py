@@ -124,6 +124,7 @@ class BatchImportDialog(_BaseDialog):
             row.addWidget(lbl)
 
             combo = QComboBox()
+            combo.setProperty("class", "filter-combo")
             combo.setMinimumWidth(200)
             combo.addItem("— 不导入 —", None)
             row.addWidget(combo, 1)

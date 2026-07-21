@@ -157,6 +157,7 @@ class _BaseDialog(QDialog):
     ) -> QComboBox:
         """添加一行下拉框并返回控件。"""
         combo = QComboBox()
+        combo.setProperty("class", "filter-combo")
         combo.setMaximumWidth(self._FIELD_MAX_W)
         combo.setEditable(editable)
         if placeholder:

@@ -45,6 +45,7 @@ class ResolveDialog(QDialog):
         lbl_res = QLabel("处理结果（必选）")
         layout.addWidget(lbl_res)
         self._resolution_combo = QComboBox()
+        self._resolution_combo.setProperty("class", "filter-combo")
         for eng, chn in _RESOLUTIONS:
             self._resolution_combo.addItem(f"{chn} ({eng})", eng)
         layout.addWidget(self._resolution_combo)
