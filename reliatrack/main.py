@@ -20,6 +20,10 @@ from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QScrollArea,
+    QStyle,
+    QStyleOptionTab,
+    QStylePainter,
+    QTabBar,
     QTabWidget,
     QWidget,
     QVBoxLayout,
@@ -31,11 +35,15 @@ from PySide6.QtWidgets import (
     QPushButton,
     QToolButton,
 )
-from PySide6.QtCore import QTimer, QSettings, Qt
-from PySide6.QtGui import QAction, QKeySequence, QShortcut
+from PySide6.QtCore import QTimer, QSettings, Qt, QSize
+from PySide6.QtGui import (
+    QAction, QKeySequence, QShortcut,
+    QColor, QPaintEvent,
+)
 
 from src.styles.animation import TranslateYAnimation
 from src.styles.icon import RI_REFRESH, RI_EXPORT, RI_BACKUP, RI_SETTINGS, RI_DASHBOARD
+import src.styles.theme as _t
 from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
 from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
@@ -64,6 +72,32 @@ from src.handlers import (
     RefreshHandlers,
     BackupHandlers,
 )
+
+
+class HorizontalTabBar(QTabBar):
+    """TabBar 置左時文字保持橫向，不旋轉。"""
+    def tabSizeHint(self, index: int) -> QSize:
+        s = super().tabSizeHint(index)
+        return QSize(110, 34)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        painter = QStylePainter(self)
+        opt = QStyleOptionTab()
+        for i in range(self.count()):
+            self.initStyleOption(opt, i)
+            painter.drawControl(QStyle.CE_TabBarTabShape, opt)
+
+            # 自繪文字（水平方向）
+            painter.save()
+            rect = opt.rect.adjusted(8, 0, -8, 0)
+            color = _t.FG_PRIMARY if opt.state & QStyle.State_Selected else _t.FG_SECONDARY
+            painter.setPen(QColor(color))
+            font = painter.font()
+            font.setBold(bool(opt.state & QStyle.State_Selected))
+            font.setPointSize(10)
+            painter.setFont(font)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.tabText(i))
+            painter.restore()
 
 
 class MainWindow(QMainWindow):
@@ -129,9 +163,14 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        # 全局项目/计划筛选栏（放在 TabWidget 上方，不依赖 corner widget）
+        filter_bar = self._create_filter_bar()
+        layout.addWidget(filter_bar)
+
         self._tab_widget = QTabWidget()
         self._tab_widget.setTabPosition(QTabWidget.TabPosition.West)
         self._tab_widget.setTabShape(QTabWidget.TabShape.Rounded)
+        self._tab_widget.setTabBar(HorizontalTabBar())
 
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
@@ -186,9 +225,6 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central)
 
-        # 全局项目筛选器 — 作为 Tab 右侧 corner widget
-        self._create_filter_bar()
-
         # ── 待办提醒定时器 ──
         self._reminder_timer = QTimer(self)
         self._reminder_timer.setInterval(30_000)
@@ -216,10 +252,10 @@ class MainWindow(QMainWindow):
         if jump_data and isinstance(jump_data, dict):
             pass
 
-    def _create_filter_bar(self) -> None:
-        """创建项目/计划筛选栏 — 作为 TabWidget 右上角 corner widget。"""
+    def _create_filter_bar(self) -> QWidget:
+        """创建项目/计划筛选栏 — 放在 TabWidget 上方。"""
         filter_bar = QHBoxLayout()
-        filter_bar.setContentsMargins(8, 0, 8, 0)
+        filter_bar.setContentsMargins(8, 4, 8, 0)
         filter_bar.setSpacing(6)
         self._filter_label = QLabel("项目筛选:")
         self._filter_label.setProperty("class", "filter-label")
@@ -240,14 +276,14 @@ class MainWindow(QMainWindow):
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(self._plan_filter_label)
         filter_bar.addWidget(self._plan_filter_combo)
+        filter_bar.addStretch()
 
-        self._filter_layout = QWidget()
-        self._filter_layout.setLayout(filter_bar)
-        self._filter_layout.setProperty("class", "filter-bar")
-        # 挂载到 TabWidget 右上角 — Tab 标签在左，筛选在右，同一行
-        self._tab_widget.setCornerWidget(self._filter_layout, Qt.Corner.TopRightCorner)
+        widget = QWidget()
+        widget.setLayout(filter_bar)
+        widget.setProperty("class", "filter-bar")
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
+        return widget
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
