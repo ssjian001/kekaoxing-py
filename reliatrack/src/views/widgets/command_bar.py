@@ -91,6 +91,8 @@ class CommandBar(QFrame):
         self._relayout()
 
     def addWidget(self, widget: QWidget):
+        """添加外部控件，自動將其父級設為 CommandBar 以便正確定位。"""
+        widget.setParent(self)
         self._widgets.append(widget)
         self._relayout()
 
