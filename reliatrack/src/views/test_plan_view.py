@@ -56,14 +56,6 @@ class TestPlanView(QWidget):
         row1 = QHBoxLayout()
         row1.setSpacing(4)
 
-        # 计划下拉
-        row1.addWidget(QLabel("计划:"))
-        self._plan_combo = QComboBox()
-        self._plan_combo.setProperty("class", "filter-combo")
-        self._plan_combo.setFixedWidth(160)
-        self._plan_combo.setFixedHeight(26)
-        row1.addWidget(self._plan_combo)
-
         # ── CommandBar（计划/任务/操作管理，自動溢出）──
         action_bar = CommandBar()
         action_bar.setButtonTight(True)
@@ -140,6 +132,14 @@ class TestPlanView(QWidget):
         # ── Row 2: 搜索/筛选 ──
         row2 = QHBoxLayout()
         row2.setSpacing(4)
+
+        # 计划下拉（移至筛选行，与搜索/日期放一起）
+        row2.addWidget(QLabel("计划:"))
+        self._plan_combo = QComboBox()
+        self._plan_combo.setProperty("class", "filter-combo")
+        self._plan_combo.setFixedWidth(160)
+        self._plan_combo.setFixedHeight(26)
+        row2.addWidget(self._plan_combo)
 
         # ── 分组 1: 搜索 + 筛选 ──
         self._search_edit = SearchBox()
