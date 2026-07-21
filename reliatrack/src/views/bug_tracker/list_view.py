@@ -429,6 +429,7 @@ class BugListView(QWidget):
         # 操作按钮（右）
         # 全选/取消全选
         self._btn_select_all = QPushButton("全选")
+        self._btn_select_all.setFixedHeight(26)
         self._btn_select_all.setProperty("class", "action")
         self._btn_select_all.setCheckable(True)
         self._btn_select_all.clicked.connect(self._on_select_all)
@@ -438,6 +439,7 @@ class BugListView(QWidget):
         from PySide6.QtWidgets import QToolButton, QMenu
         self._btn_batch = QToolButton()
         self._btn_batch.setText("批量操作")
+        self._btn_batch.setFixedHeight(26)
         self._btn_batch.setProperty("class", "action")
         self._btn_batch.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         batch_menu = QMenu(self._btn_batch)
@@ -451,14 +453,13 @@ class BugListView(QWidget):
 
         # 刷新按钮
         btn_refresh = QPushButton("刷新")
+        btn_refresh.setFixedHeight(26)
         btn_refresh.setProperty("class", "action")
         btn_refresh.clicked.connect(self.refresh_requested.emit)
         toolbar.addWidget(btn_refresh)
 
-        # 统计标签
-        self._stats_label = QLabel("0 个 Issue")
-        self._stats_label.setProperty("class", "subtext")
-        toolbar.addWidget(self._stats_label)
+        # 搜索框让出弹性空间
+        toolbar.addSpacing(8)
 
         return toolbar
 
@@ -604,7 +605,10 @@ class BugListView(QWidget):
             filtered.append(issue)
 
         self._table.set_issues(filtered)
-        self._stats_label.setText(f"{len(filtered)} 个 Issue")
+        # 连父视图的统计信息一起更新
+        parent = self.parent()
+        if parent and hasattr(parent, '_update_stats'):
+            parent._update_stats()
 
         # 空状态提示
         self._empty_label.setVisible(len(filtered) == 0)
