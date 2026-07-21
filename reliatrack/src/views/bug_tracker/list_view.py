@@ -48,13 +48,14 @@ from src.styles.constants import (
     ISSUE_STATUS_COLORS,
     PRIORITY_COLORS,
     PADDING_SMALL,
-    PADDING_MEDIUM,
     PADDING_LARGE,
     SPACING_MEDIUM,
     VIEW_MARGINS,
-    apply_column_specs,
-    install_copy_handler,
 )
+from src.views.widgets.table_delegate import RowHighlightDelegate
+from src.views.widgets.search_box import SearchBox
+from src.styles.column_persistence import save_column_widths_debounced, restore_column_widths
+from src.styles.constants import apply_column_specs, install_copy_handler
 from src.styles.toast import ToastWidget
 from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 from src.views.bug_tracker.detail_dialog import IssueDetailDialog
@@ -104,7 +105,7 @@ class _BugTable(QTableWidget):
         apply_column_specs(self, _BUG_TABLE_SPECS, "bug_list_table")
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.setAlternatingRowColors(True)
+        self.setAlternatingRowColors(False)  # 由 delegate 自繪行背景
         self.verticalHeader().setVisible(False)
         self.setSortingEnabled(True)
         self._issues: list[Issue] = []
@@ -112,6 +113,13 @@ class _BugTable(QTableWidget):
         self._technician_map: dict[int, str] = {}  # 保留供 detail_dialog 活动日志翻译（DRI 列不再使用）
         # checkbox 列不参与排序
         self.horizontalHeader().setSortIndicatorShown(True)
+
+        # ── RowHighlightDelegate 行高亮 ──
+        self.setMouseTracking(True)
+        self._delegate = RowHighlightDelegate(self)
+        self.setItemDelegate(self._delegate)
+        self.cellEntered.connect(self._on_cell_entered)
+        self.viewportEntered.connect(self._on_viewport_entered)
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)
@@ -259,6 +267,18 @@ class _BugTable(QTableWidget):
     def _on_section_resized(self, index: int, old_size: int, new_size: int) -> None:
         """列宽变化时持久化（仅 Interactive 列）。"""
         save_column_widths_debounced(self, "bug_list_table")
+
+    # ── RowHighlightDelegate 行懸停追蹤 ──
+
+    def _on_cell_entered(self, row: int, column: int) -> None:
+        """鼠標進入單元格 → 更新 delegate hover_row。"""
+        self._delegate.hover_row = row
+        self.viewport().update()
+
+    def _on_viewport_entered(self) -> None:
+        """鼠標離開表格區域 → 清除 hover_row。"""
+        self._delegate.hover_row = -1
+        self.viewport().update()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -471,8 +491,7 @@ class BugListView(QWidget):
         toolbar.addWidget(btn_clear)
 
         # ── 中间：搜索 ──
-        self._search_input = QLineEdit()
-        self._search_input.setFixedHeight(26)
+        self._search_input = SearchBox()
         self._search_input.setPlaceholderText("搜索标题/描述/根因…")
         self._search_input.setMinimumWidth(160)
         self._search_input.setMaximumWidth(260)
@@ -669,9 +688,14 @@ class BugListView(QWidget):
         self._capa_panel.set_capa_records(records)
 
     def _on_issue_selection_changed(self) -> None:
-        """选中 Issue 时发射信号（由 issue_handlers 接收加载 FA/CAPA）。"""
+        """选中 Issue 时发射信号 + 同步 delegate 选中行。"""
         issue_id = self.get_selected_issue_id()
         self.issue_selected.emit(issue_id)
+
+        # 同步 delegate 的 selected_rows
+        selected = self._table.selectedIndexes()
+        self._table._delegate.selected_rows = {idx.row() for idx in selected}
+        self._table.viewport().update()
 
     # ── FA 步骤弹窗 ──
 
