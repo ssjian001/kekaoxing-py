@@ -20,7 +20,14 @@
 - `~/Desktop/AI/xiangmu/references/fluent-design-patterns-for-reliatrack.md` — 35KB 設計模式提取（13 組件）
 
 ## 最新提交
-`005b4d5` ui: 测试计划工具欄改用 CommandBar + SearchBox
+`9cae96c` style: 所有 QComboBox 統一使用 filter-combo class 樣式
+
+## 本次 Session (2026-07-21 第二段) 完成的工作
+- **篩選欄位置**：TabWidget corner → menubar setCornerWidget（combo parent=self + try/except RuntimeError 兜底 Windows 兼容）
+- **測試計劃頁**：計劃下拉從 row1（操作欄）移到 row2（搜索/篩選行）
+- **QComboBox 統一樣式**：全項目 22 個 combo 全部加上 `filter-combo` class
+- **代碼清理**：theme.py filter-label 缺 `}}` 修復、未使用 import 清除
+- **分支合併**：`explore/ui-ux-enhancements` → main，分支已刪除
 
 ## 測試
 596 passed（忽略 test_concurrency.py 6 個已知並發失敗）
