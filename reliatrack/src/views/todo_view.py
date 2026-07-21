@@ -398,8 +398,8 @@ class TodoView(QWidget):
         self._search_edit.textChanged.connect(self._on_search)
         row.addWidget(self._search_edit)
 
-        self._show_archived_cb = QCheckBox("显示已归档")
-        self._show_archived_cb.setProperty("class", "filter-checkbox")
+        from src.views.widgets.switch_button import SwitchButton
+        self._show_archived_cb = SwitchButton("显示已归档")
         self._show_archived_cb.toggled.connect(self._refresh_current_view)
         row.addWidget(self._show_archived_cb)
 
