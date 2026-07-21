@@ -582,7 +582,7 @@ QMessageBox {{
 /* ── 筛选栏 ── */
 QLabel[class="filter-label"] {{
     color: {FG_PRIMARY}; font-size: 12px; font-weight: bold;
-}}
+/* ── 全局筛选栏 ── */
 QWidget[class="filter-bar"] {{
     background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
 }}
@@ -899,9 +899,9 @@ QLineEdit[class="search-input"] {{
 QFrame[class="filter-panel"] {{
     background: {SURFACE0}; border-radius: 8px; border: none;
 }}
-/* ── 筛选复选框组 ── */
-QWidget[class="filter-checkbox"] {{
-    background: transparent; border: none;
+/* ── 全局筛选栏 ── */
+QWidget[class="filter-bar"] {{
+    background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
 }}
 /* ── 卡片元信息 ── */
 QLabel[class="card-meta"] {{

@@ -248,37 +248,36 @@ class MainWindow(QMainWindow):
         if jump_data and isinstance(jump_data, dict):
             pass
 
-    def _create_filter_bar(self) -> QWidget:
-        """创建项目/计划筛选栏 — 菜单栏右侧 corner widget。"""
-        filter_bar = QHBoxLayout()
-        filter_bar.setContentsMargins(8, 0, 4, 0)
-        filter_bar.setSpacing(6)
-        self._filter_label = QLabel("项目筛选:")
-        self._filter_label.setProperty("class", "filter-label")
-        self._project_filter_combo = QComboBox()
+    def _create_filter_bar_content(self, parent: QWidget) -> None:
+        """创建项目/计划筛选栏 — 直接插入 QMenuBar 布局的末尾。"""
+        # 始终创建 combo，不论 layout 是否可用
+        self._project_filter_combo = QComboBox(self)
         self._project_filter_combo.setMinimumWidth(150)
         self._project_filter_combo.setProperty("class", "filter-combo")
         self._project_filter_combo.addItem("全部项目", None)
-
-        self._plan_filter_label = QLabel("计划:")
-        self._plan_filter_label.setProperty("class", "filter-label")
-        self._plan_filter_combo = QComboBox()
+        self._plan_filter_combo = QComboBox(self)
         self._plan_filter_combo.setMinimumWidth(130)
         self._plan_filter_combo.setProperty("class", "filter-combo")
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)
-
-        filter_bar.addWidget(self._filter_label)
-        filter_bar.addWidget(self._project_filter_combo)
-        filter_bar.addWidget(self._plan_filter_label)
-        filter_bar.addWidget(self._plan_filter_combo)
-
-        widget = QWidget()
-        widget.setLayout(filter_bar)
-        widget.setProperty("class", "filter-bar")
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
-        return widget
+
+        ml = parent.layout()
+        if ml is None:
+            return
+
+        # 在菜单栏右侧插入筛选控件
+        filter_label = QLabel("项目筛选:", self)
+        filter_label.setProperty("class", "filter-label")
+        plan_label = QLabel("计划:", self)
+        plan_label.setProperty("class", "filter-label")
+
+        ml.insertStretch(-1)
+        ml.insertWidget(-1, filter_label)
+        ml.insertWidget(-1, self._project_filter_combo)
+        ml.insertWidget(-1, plan_label)
+        ml.insertWidget(-1, self._plan_filter_combo)
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
@@ -339,9 +338,8 @@ class MainWindow(QMainWindow):
         # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
         theme_host.theme_changed.connect(self._on_theme_changed)
 
-        # 全局项目/计划筛选 — 菜单栏最右侧
-        filter_widget = self._create_filter_bar()
-        menubar.setCornerWidget(filter_widget, Qt.Corner.TopRightCorner)
+        # 全局项目/计划筛选 — 菜单栏右侧（直接插入 QMenuBar 的布局，避免 setCornerWidget Windows 兼容问题）
+        self._create_filter_bar_content(menubar)
 
     def _on_toggle_dark_theme(self, checked: bool) -> None:
         """菜单 Toggle 回调 — 切换主题并持久化。"""
