@@ -515,19 +515,18 @@ class MainWindow(QMainWindow):
             return
         try:
             combo.blockSignals(True)
+            _current = current_id if current_id is not None else combo.currentData()
+            combo.clear()
+            combo.addItem("全部项目", None)
+            for p in projects:
+                combo.addItem(p.name, p.id)
+            for i in range(combo.count()):
+                if combo.itemData(i) == _current:
+                    combo.setCurrentIndex(i)
+                    break
+            combo.blockSignals(False)
         except RuntimeError:
-            return
-        _current = current_id if current_id is not None else combo.currentData()
-        combo.clear()
-        combo.addItem("全部项目", None)
-        for p in projects:
-            combo.addItem(p.name, p.id)
-        # 恢复之前选中的筛选项
-        for i in range(combo.count()):
-            if combo.itemData(i) == _current:
-                combo.setCurrentIndex(i)
-                break
-        combo.blockSignals(False)
+            pass
 
     def schedule_throttled_refresh(self, entity_type: str = "all") -> None:
         """节流刷新：合并短时间内的多次变更，100ms 后统一刷新。
