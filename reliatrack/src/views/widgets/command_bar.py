@@ -66,6 +66,15 @@ class CommandBar(QFrame):
         self._more_menu = QMenu(self._more_button)
         self._more_button.setMenu(self._more_menu)
 
+    def sizeHint(self):
+        """返回所有子控件所需寬度，讓佈局管理器分配足夠空間。"""
+        total = 0
+        for w in self._widgets:
+            total += w.sizeHint().width() + self._spacing
+        if self._actions:
+            total += self._more_button.sizeHint().width() + self._spacing
+        return self.minimumSizeHint().expandedTo(QSize(total, 30))
+
     def setButtonTight(self, tight: bool):
         self._button_tight = tight
 
@@ -165,7 +174,15 @@ class CommandBar(QFrame):
         hidden = self._widgets[len(visible):]
         if hidden or (len(visible) < len(self._widgets)):
             for w in hidden:
-                self._more_menu.addAction(w.defaultAction() if hasattr(w, 'defaultAction') else None)
+                if hasattr(w, 'defaultAction') and w.defaultAction():  # QToolButton
+                    self._more_menu.addAction(w.defaultAction())  # type: ignore[arg-type]
+                elif hasattr(w, 'text') and w.text():  # QPushButton
+                    from PySide6.QtWidgets import QPushButton
+                    a = QAction(w.text(), self._more_menu)
+                    if isinstance(w, QPushButton):
+                        btn = w
+                        a.triggered.connect(lambda: btn.click())
+                    self._more_menu.addAction(a)
             self._more_button.show()
             self._more_button.move(x, (h - self._more_button.height()) // 2)
 
