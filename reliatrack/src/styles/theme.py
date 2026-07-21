@@ -903,10 +903,6 @@ QFrame[class="filter-panel"] {{
 QWidget[class="filter-checkbox"] {{
     background: transparent; border: none;
 }}
-/* ── Issue 详情 Tab ── */
-QTabWidget[class="detail-tabs"] {{
-    background: transparent; border: none;
-}}
 /* ── 卡片元信息 ── */
 QLabel[class="card-meta"] {{
     color: {FG_SECONDARY}; font-size: 11px; border: none;
