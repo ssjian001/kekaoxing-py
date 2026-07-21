@@ -497,15 +497,12 @@ class MainWindow(QMainWindow):
             return None
 
     def get_plan_filter_id(self) -> int | None:
-        """获取当前计划筛选 combo 的 currentData（None = 全部计划）。
-
-        若 combo 禁用则返回 None。
-        """
+        """获取当前计划筛选 combo 的 currentData（None = 全部计划）。"""
         if not self._plan_filter_combo:
             return None
-        if not self._plan_filter_combo.isEnabled():
-            return None
         try:
+            if not self._plan_filter_combo.isEnabled():
+                return None
             return self._plan_filter_combo.currentData()
         except RuntimeError:
             return None
