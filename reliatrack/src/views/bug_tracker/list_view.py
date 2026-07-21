@@ -326,13 +326,10 @@ class BugListView(QWidget):
         layout.setContentsMargins(*VIEW_MARGINS)
         layout.setSpacing(6)
 
-        # 1. 筛选行（放上面）
-        self._build_filter_row(layout)
+        # 1. 筛选 + 工具栏合并为一行
+        layout.addLayout(self._build_filter_toolbar())
 
-        # 2. 工具栏行（搜索+操作按钮放右边）
-        layout.addLayout(self._build_toolbar())
-
-        # 3. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
+        # 2. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setProperty("class", "list-splitter")
 
@@ -411,11 +408,69 @@ class BugListView(QWidget):
         self._empty_label.hide()
         self._table.installEventFilter(self)
 
-    def _build_toolbar(self) -> QHBoxLayout:
-        toolbar = QHBoxLayout()
-        toolbar.setSpacing(8)
+    def _build_filter_toolbar(self) -> QHBoxLayout:
+        """筛选栏 + 工具栏合并为一行。
+        
+        左: [状态] [严重度] [优先级] [DRI] [清除]
+        中: [搜索框]
+        右: [全选] [批量操作] [刷新]
+        """
+        from PySide6.QtWidgets import QComboBox, QToolButton, QMenu
+        from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 
-        # 搜索框（左）
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(6)
+
+        _FILTER_W = 80  # 统一宽度
+
+        # ── 左侧：筛选 ──
+        self._filter_status = QComboBox()
+        self._filter_status.setProperty("class", "filter-combo")
+        self._filter_status.setFixedWidth(_FILTER_W)
+        self._filter_status.setFixedHeight(26)
+        self._filter_status.addItem("全部状态", "")
+        for k, v in ISSUE_STATUS_LABELS.items():
+            self._filter_status.addItem(v, k)
+        self._filter_status.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_status)
+
+        self._filter_severity = QComboBox()
+        self._filter_severity.setProperty("class", "filter-combo")
+        self._filter_severity.setFixedWidth(_FILTER_W)
+        self._filter_severity.setFixedHeight(26)
+        self._filter_severity.addItem("全部严重度", "")
+        for k, v in SEVERITY_LABELS.items():
+            self._filter_severity.addItem(v, k)
+        self._filter_severity.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_severity)
+
+        self._filter_priority = QComboBox()
+        self._filter_priority.setProperty("class", "filter-combo")
+        self._filter_priority.setFixedWidth(_FILTER_W)
+        self._filter_priority.setFixedHeight(26)
+        self._filter_priority.addItem("全部优先级", "")
+        for k, v in PRIORITY_LABELS.items():
+            self._filter_priority.addItem(v, k)
+        self._filter_priority.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_priority)
+
+        self._filter_dri = QComboBox()
+        self._filter_dri.setProperty("class", "filter-combo")
+        self._filter_dri.setFixedWidth(_FILTER_W)
+        self._filter_dri.setFixedHeight(26)
+        self._filter_dri.setEditable(True)
+        self._filter_dri.setPlaceholderText("DRI…")
+        self._filter_dri.lineEdit().textChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_dri)
+
+        btn_clear = QPushButton("清除")
+        btn_clear.setFixedWidth(60)
+        btn_clear.setFixedHeight(26)
+        btn_clear.setProperty("class", "action")
+        btn_clear.clicked.connect(self._clear_filters)
+        toolbar.addWidget(btn_clear)
+
+        # ── 中间：搜索 ──
         self._search_input = QLineEdit()
         self._search_input.setFixedHeight(26)
         self._search_input.setPlaceholderText("搜索标题/描述/根因…")
@@ -424,10 +479,9 @@ class BugListView(QWidget):
         self._search_input.textChanged.connect(self._apply_filters)
         toolbar.addWidget(self._search_input)
 
+        # ── 右侧：操作按钮 ──
         toolbar.addStretch()
 
-        # 操作按钮（右）
-        # 全选/取消全选
         self._btn_select_all = QPushButton("全选")
         self._btn_select_all.setFixedHeight(26)
         self._btn_select_all.setProperty("class", "action")
@@ -435,8 +489,6 @@ class BugListView(QWidget):
         self._btn_select_all.clicked.connect(self._on_select_all)
         toolbar.addWidget(self._btn_select_all)
 
-        # 批量操作下拉菜單
-        from PySide6.QtWidgets import QToolButton, QMenu
         self._btn_batch = QToolButton()
         self._btn_batch.setText("批量操作")
         self._btn_batch.setFixedHeight(26)
@@ -451,83 +503,15 @@ class BugListView(QWidget):
         self._btn_batch.setEnabled(False)
         toolbar.addWidget(self._btn_batch)
 
-        # 刷新按钮
         btn_refresh = QPushButton("刷新")
         btn_refresh.setFixedHeight(26)
         btn_refresh.setProperty("class", "action")
         btn_refresh.clicked.connect(self.refresh_requested.emit)
         toolbar.addWidget(btn_refresh)
 
-        # 搜索框让出弹性空间
         toolbar.addSpacing(8)
 
         return toolbar
-
-    def _build_filter_row(self, parent: QVBoxLayout) -> None:
-        """构建固定条件筛选行（替代 DynamicFilterPanel）。"""
-        from PySide6.QtWidgets import QComboBox
-        from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
-
-        # ── 筛选行（状态/严重度/优先级/DRI/清除）──
-        row = QHBoxLayout()
-        row.setSpacing(8)
-
-        _FILTER_W = 80  # 统一宽度
-
-        # 状态筛选
-        self._filter_status = QComboBox()
-        self._filter_status.setProperty("class", "filter-combo")
-        self._filter_status.setFixedWidth(_FILTER_W)
-        self._filter_status.setFixedHeight(26)
-        self._filter_status.addItem("全部状态", "")
-        for k, v in ISSUE_STATUS_LABELS.items():
-            self._filter_status.addItem(v, k)
-        self._filter_status.currentIndexChanged.connect(self._apply_filters)
-        row.addWidget(self._filter_status)
-
-        # 严重度筛选
-        self._filter_severity = QComboBox()
-        self._filter_severity.setProperty("class", "filter-combo")
-        self._filter_severity.setFixedWidth(_FILTER_W)
-        self._filter_severity.setFixedHeight(26)
-        self._filter_severity.addItem("全部严重度", "")
-        for k, v in SEVERITY_LABELS.items():
-            self._filter_severity.addItem(v, k)
-        self._filter_severity.currentIndexChanged.connect(self._apply_filters)
-        row.addWidget(self._filter_severity)
-
-        # 优先级筛选
-        self._filter_priority = QComboBox()
-        self._filter_priority.setProperty("class", "filter-combo")
-        self._filter_priority.setFixedWidth(_FILTER_W)
-        self._filter_priority.setFixedHeight(26)
-        self._filter_priority.addItem("全部优先级", "")
-        for k, v in PRIORITY_LABELS.items():
-            self._filter_priority.addItem(v, k)
-        self._filter_priority.currentIndexChanged.connect(self._apply_filters)
-        row.addWidget(self._filter_priority)
-
-        # DRI 搜索输入（用 QComboBox 保持统一外观）
-        self._filter_dri = QComboBox()
-        self._filter_dri.setProperty("class", "filter-combo")
-        self._filter_dri.setFixedWidth(_FILTER_W)
-        self._filter_dri.setFixedHeight(26)
-        self._filter_dri.setEditable(True)
-        self._filter_dri.setPlaceholderText("DRI…")
-        self._filter_dri.lineEdit().textChanged.connect(self._apply_filters)
-        row.addWidget(self._filter_dri)
-
-        # 清除筛选
-        btn_clear = QPushButton("清除")
-        btn_clear.setFixedWidth(60)
-        btn_clear.setFixedHeight(26)
-        btn_clear.setProperty("class", "action")
-        btn_clear.clicked.connect(self._clear_filters)
-        row.addWidget(btn_clear)
-
-        row.addStretch()
-
-        parent.addLayout(row)
 
     # ── 信号连接 ──────────────────────────────────────────────
 
