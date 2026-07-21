@@ -163,9 +163,6 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # 全局项目/计划筛选栏（放在 TabWidget 上方，不依赖 corner widget）
-        filter_bar = self._create_filter_bar()
-        layout.addWidget(filter_bar)
-
         self._tab_widget = QTabWidget()
         self._tab_widget.setTabBar(SidebarTabBar())
         self._tab_widget.setTabPosition(QTabWidget.TabPosition.West)
@@ -252,21 +249,21 @@ class MainWindow(QMainWindow):
             pass
 
     def _create_filter_bar(self) -> QWidget:
-        """创建项目/计划筛选栏 — 放在 TabWidget 上方。"""
+        """创建项目/计划筛选栏 — 菜单栏右侧 corner widget。"""
         filter_bar = QHBoxLayout()
-        filter_bar.setContentsMargins(8, 4, 8, 0)
+        filter_bar.setContentsMargins(8, 0, 4, 0)
         filter_bar.setSpacing(6)
         self._filter_label = QLabel("项目筛选:")
         self._filter_label.setProperty("class", "filter-label")
         self._project_filter_combo = QComboBox()
-        self._project_filter_combo.setMinimumWidth(160)
+        self._project_filter_combo.setMinimumWidth(150)
         self._project_filter_combo.setProperty("class", "filter-combo")
         self._project_filter_combo.addItem("全部项目", None)
 
         self._plan_filter_label = QLabel("计划:")
         self._plan_filter_label.setProperty("class", "filter-label")
         self._plan_filter_combo = QComboBox()
-        self._plan_filter_combo.setMinimumWidth(140)
+        self._plan_filter_combo.setMinimumWidth(130)
         self._plan_filter_combo.setProperty("class", "filter-combo")
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)
@@ -275,7 +272,6 @@ class MainWindow(QMainWindow):
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(self._plan_filter_label)
         filter_bar.addWidget(self._plan_filter_combo)
-        filter_bar.addStretch()
 
         widget = QWidget()
         widget.setLayout(filter_bar)
@@ -342,6 +338,10 @@ class MainWindow(QMainWindow):
 
         # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
         theme_host.theme_changed.connect(self._on_theme_changed)
+
+        # 全局项目/计划筛选 — 菜单栏最右侧
+        filter_widget = self._create_filter_bar()
+        menubar.setCornerWidget(filter_widget, Qt.Corner.TopRightCorner)
 
     def _on_toggle_dark_theme(self, checked: bool) -> None:
         """菜单 Toggle 回调 — 切换主题并持久化。"""
