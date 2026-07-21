@@ -1009,6 +1009,40 @@ QLabel[class="import-result-warn"] {{
 QLabel[class="req-field"] {{
     color: {PEACH}; font-size: 13px;
 }}
+
+/* ── Issue 详情弹窗 ── */
+QLabel[class="header-title"] {{
+    color: {TEXT}; font-size: 15px; font-weight: bold;
+}}
+QLabel[class="badge"] {{
+    padding: 2px 8px; border-radius: 4px; font-weight: bold;
+    font-size: 12px;
+}}
+QFrame[class="attach-section"] {{
+    background: {SURFACE0}; border-radius: 6px; padding: 8px;
+}}
+QFrame[class="comment-card"] {{
+    background: {BASE}; border: 1px solid {SURFACE1};
+    border-radius: 6px; padding: 8px; margin: 4px 0px;
+}}
+QLabel[class="comment-author"] {{
+    color: {ACCENT}; font-weight: bold; font-size: 12px;
+}}
+QLabel[class="avatar-placeholder"] {{
+    background: {SURFACE2}; color: {SUBTEXT0};
+    border-radius: 12px; padding: 4px 8px;
+    font-size: 11px; font-weight: bold;
+}}
+QFrame[class="activity-card"] {{
+    background: transparent; border: none;
+    padding: 4px 0px;
+}}
+QLabel[class="activity-change"] {{
+    color: {SUBTEXT0}; font-size: 12px;
+}}
+QSplitter::handle[class="list-splitter"] {{
+    background: {SURFACE1}; width: 4px; border-radius: 2px;
+}}
 """
 
 

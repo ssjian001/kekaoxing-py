@@ -84,14 +84,14 @@ class FAPanel(QScrollArea):
 
             # 編輯/刪除按鈕
             btn_edit = QPushButton("編輯")
-            btn_edit.setFixedHeight(24)
+            btn_edit.setFixedHeight(26)
             btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
             rec_id = rec.id
             btn_edit.clicked.connect(lambda checked, rid=rec_id: self.fa_edit_requested.emit(rid))
             header.addWidget(btn_edit)
 
             btn_del = QPushButton("刪除")
-            btn_del.setFixedHeight(24)
+            btn_del.setFixedHeight(26)
             btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_del.clicked.connect(lambda checked, rid=rec_id: self.fa_delete_requested.emit(rid))
             header.addWidget(btn_del)
@@ -223,13 +223,13 @@ class CAPAPanel(QScrollArea):
 
             # 編輯/刪除按鈕
             btn_edit = QPushButton("編輯")
-            btn_edit.setFixedHeight(24)
+            btn_edit.setFixedHeight(26)
             btn_edit.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_edit.clicked.connect(lambda checked, r=rec: self.capa_edit_requested.emit(r))
             header.addWidget(btn_edit)
 
             btn_del = QPushButton("刪除")
-            btn_del.setFixedHeight(24)
+            btn_del.setFixedHeight(26)
             btn_del.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_del.clicked.connect(lambda checked, r=rec: self.capa_delete_requested.emit(r))
             header.addWidget(btn_del)

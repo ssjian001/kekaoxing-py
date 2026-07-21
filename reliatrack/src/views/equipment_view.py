@@ -75,6 +75,7 @@ class EquipmentView(QWidget):
         toolbar.setSpacing(8)
 
         self._search_edit = QLineEdit()
+        self._search_edit.setFixedHeight(26)
         self._search_edit.setPlaceholderText("搜索设备名称 / 型号 / 类型…")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setMinimumWidth(160)

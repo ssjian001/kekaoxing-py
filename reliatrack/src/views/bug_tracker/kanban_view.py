@@ -425,7 +425,7 @@ class _KanbanColumn(QFrame):
         self._fold_info = QLabel("")
         self._fold_info.setProperty("class", "fold-info")
         self._fold_info.setFont(_FONT_COLLAPSED)
-        self._fold_info.setFixedHeight(28)
+        self._fold_info.setFixedHeight(26)
         self._fold_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._fold_info.setVisible(False)
         self._fold_info.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -631,6 +631,7 @@ class BugKanbanView(QWidget):
         toolbar.addSpacing(16)
 
         self._search_input = QLineEdit()
+        self._search_input.setFixedHeight(26)
         self._search_input.setPlaceholderText("搜索 Issue 标题...")
         self._search_input.setFixedWidth(220)
         self._search_input.setClearButtonEnabled(True)

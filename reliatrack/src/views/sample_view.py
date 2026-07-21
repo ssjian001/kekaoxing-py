@@ -145,6 +145,7 @@ class _SamplePoolTab(QWidget):
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
+        self._search_input.setFixedHeight(26)
         self._search_input.setPlaceholderText("搜索 SN / 批次号...")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._on_search)
@@ -352,6 +353,7 @@ class _SampleUsageTab(QWidget):
         toolbar = QHBoxLayout()
 
         self._search_input = QLineEdit()
+        self._search_input.setFixedHeight(26)
         self._search_input.setPlaceholderText("搜索 SN...")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._apply_filter)
@@ -532,6 +534,7 @@ class _SampleLedgerTab(QWidget):
         toolbar = QHBoxLayout()
 
         self._search_input = QLineEdit()
+        self._search_input.setFixedHeight(26)
         self._search_input.setPlaceholderText("搜索 SN / 批次号 / 规格...")
         self._search_input.setMinimumWidth(160)
         self._search_input.setClearButtonEnabled(True)

@@ -69,7 +69,7 @@ class _ResultMatrixWidget(QWidget):
         self._mode_group = QButtonGroup(self)
         for i, label in enumerate(self._DISPLAY_MODES):
             btn = QPushButton(label)
-            btn.setFixedHeight(22)
+            btn.setFixedHeight(26)
             btn.setCheckable(True)
             btn.setStyleSheet(self._mode_qss(False))
             self._mode_group.addButton(btn, i)
