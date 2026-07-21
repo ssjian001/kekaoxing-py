@@ -74,11 +74,10 @@ from src.handlers import (
 )
 
 
-class HorizontalTabBar(QTabBar):
-    """TabBar 置左時文字保持橫向，不旋轉。"""
+class SidebarTabBar(QTabBar):
+    """TabBar 置左時文字橫排，窄側欄樣式。"""
     def tabSizeHint(self, index: int) -> QSize:
-        s = super().tabSizeHint(index)
-        return QSize(110, 34)
+        return QSize(72, 34)
 
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QStylePainter(self)
@@ -87,14 +86,14 @@ class HorizontalTabBar(QTabBar):
             self.initStyleOption(opt, i)
             painter.drawControl(QStyle.CE_TabBarTabShape, opt)
 
-            # 自繪文字（水平方向）
+            # 自繪文字（橫向）
             painter.save()
-            rect = opt.rect.adjusted(8, 0, -8, 0)
+            rect = opt.rect.adjusted(4, 0, -4, 0)
             color = _t.FG_PRIMARY if opt.state & QStyle.State_Selected else _t.FG_SECONDARY
             painter.setPen(QColor(color))
             font = painter.font()
             font.setBold(bool(opt.state & QStyle.State_Selected))
-            font.setPointSize(10)
+            font.setPointSize(8)
             painter.setFont(font)
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.tabText(i))
             painter.restore()
@@ -168,9 +167,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(filter_bar)
 
         self._tab_widget = QTabWidget()
+        self._tab_widget.setTabBar(SidebarTabBar())
         self._tab_widget.setTabPosition(QTabWidget.TabPosition.West)
         self._tab_widget.setTabShape(QTabWidget.TabShape.Rounded)
-        self._tab_widget.setTabBar(HorizontalTabBar())
 
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
