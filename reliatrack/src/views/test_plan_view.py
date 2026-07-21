@@ -595,6 +595,12 @@ class TestPlanView(QWidget):
             return self._plan_ids[idx]
         return None
 
+    def select_plan_by_id(self, plan_id: int) -> None:
+        """按 plan_id 选中本地 combo（響應全局篩選同步）。"""
+        if plan_id in self._plan_ids:
+            idx = self._plan_ids.index(plan_id)
+            self._plan_combo.setCurrentIndex(idx)
+
     @property
     def selected_plan_index(self) -> int:
         return self._plan_combo.currentIndex()

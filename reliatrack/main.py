@@ -623,7 +623,10 @@ class MainWindow(QMainWindow):
         self._refresh_all()
 
     def _on_plan_filter_changed(self, index: int) -> None:
-        """计划筛选变化时刷新仪表盘。"""
+        """计划筛选变化时刷新仪表盘，并同步测试计划视图的本地 combo。"""
+        plan_id = self._plan_filter_combo.currentData()
+        if plan_id is not None and hasattr(self, '_test_plan_view'):
+            self._test_plan_view.select_plan_by_id(plan_id)
         self._refresh_all()
 
     def refresh_plan_combo(self) -> None:
