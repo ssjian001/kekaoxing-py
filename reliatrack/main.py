@@ -489,16 +489,26 @@ class MainWindow(QMainWindow):
 
     def get_project_filter_id(self) -> int | None:
         """获取当前项目筛选 combo 的 currentData（None = 全部项目）。"""
-        return self._project_filter_combo.currentData()
+        if not self._project_filter_combo:
+            return None
+        try:
+            return self._project_filter_combo.currentData()
+        except RuntimeError:
+            return None
 
     def get_plan_filter_id(self) -> int | None:
         """获取当前计划筛选 combo 的 currentData（None = 全部计划）。
 
         若 combo 禁用则返回 None。
         """
+        if not self._plan_filter_combo:
+            return None
         if not self._plan_filter_combo.isEnabled():
             return None
-        return self._plan_filter_combo.currentData()
+        try:
+            return self._plan_filter_combo.currentData()
+        except RuntimeError:
+            return None
 
     def refresh_project_filter(self, projects: list, current_id: int | None = None) -> None:
         """刷新项目筛选 combo 选项（不触发信号）。
