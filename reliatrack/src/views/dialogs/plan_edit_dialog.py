@@ -13,6 +13,7 @@ from PySide6.QtCore import QDate
 from src.models.test_plan import TestPlan, TestPlanStatus
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.constants import PLAN_STATUS_OPTIONS
+from src.styles.icon import RI_ADD, RI_EDIT
 
 
 class PlanEditDialog(_BaseDialog):
@@ -36,11 +37,9 @@ class PlanEditDialog(_BaseDialog):
         parent: QWidget | None = None,
     ) -> None:
         is_edit = plan is not None
-        super().__init__(
-            "✏️ 编辑测试计划" if is_edit else "➕ 新建测试计划",
-            parent,
-            width=460,
-        )
+        title = "编辑测试计划" if is_edit else "新建测试计划"
+        super().__init__(title, parent, width=460)
+        self.setWindowIcon((RI_EDIT if is_edit else RI_ADD).icon())
         self._plan = plan
         self._project_list = project_list or []
 

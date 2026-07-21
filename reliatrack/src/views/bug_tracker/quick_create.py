@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QComboBox, QTextEdit, QPushButton, QWidget,
 )
 from PySide6.QtCore import Qt, QTimer, Signal
+from src.styles.icon import RI_CHECK, RI_CLOSE
 
 
 class QuickCreateDialog(QDialog):
@@ -64,10 +65,12 @@ class QuickCreateDialog(QDialog):
         btn_row.addStretch()
         btn_cancel = QPushButton("取消")
         btn_cancel.setProperty("class", "action")
+        btn_cancel.setIcon(RI_CLOSE.icon())
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
         self._btn_create = QPushButton("创建")
         self._btn_create.setProperty("class", "primary")
+        self._btn_create.setIcon(RI_CHECK.icon())
         self._btn_create.setDefault(True)
         self._btn_create.clicked.connect(self._on_create)
         btn_row.addWidget(self._btn_create)

@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QTabWidget,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
@@ -17,12 +17,16 @@ from PySide6.QtWidgets import (
     QComboBox,
     QMenu,
     QAbstractItemView,
+    QFrame,
+    QToolButton,
 )
 from PySide6.QtCore import QEvent, Qt
 
 import src.styles.theme as _t
 from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
+from src.views.widgets.command_bar import CommandBar
+from src.views.widgets.segmented_widget import SegmentedWidget
 
 # 样品池列规格
 _POOL_SPECS = [
@@ -143,48 +147,63 @@ class _SamplePoolTab(QWidget):
         # 工具栏
         toolbar = QHBoxLayout()
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("搜索 SN / 批次号...")
+        self._search_input.setFixedHeight(26)
+        self._search_input.setPlaceholderText("搜索 SN / 批次号…")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_input)
         toolbar.addStretch()
 
+        # ── CommandBar（自動溢出）──
+        action_bar = CommandBar()
+        action_bar.setButtonTight(True)
+
         self._btn_add = QPushButton("入库")
         self._btn_add.setProperty("class", "action")
         self._btn_add.setMinimumWidth(70)
         self._btn_add.setToolTip("样品入库")
-        toolbar.addWidget(self._btn_add)
+        action_bar.addWidget(self._btn_add)
 
         self._btn_batch_import = QPushButton("批量导入")
         self._btn_batch_import.setProperty("class", "action")
         self._btn_batch_import.setMinimumWidth(70)
         self._btn_batch_import.setToolTip("从 Excel 批量导入样品")
-        toolbar.addWidget(self._btn_batch_import)
+        action_bar.addWidget(self._btn_batch_import)
 
         self._btn_out = QPushButton("出库")
         self._btn_out.setProperty("class", "action")
         self._btn_out.setMinimumWidth(70)
         self._btn_out.setToolTip("样品出库")
-        toolbar.addWidget(self._btn_out)
+        action_bar.addWidget(self._btn_out)
+
+        # 分隔線
+        action_bar.addSeparator()
 
         self._btn_edit = QPushButton("编辑")
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
         self._btn_edit.setToolTip("编辑选中样品")
-        toolbar.addWidget(self._btn_edit)
-
-        self._btn_batch_edit = QPushButton("批量编辑")
-        self._btn_batch_edit.setProperty("class", "action")
-        self._btn_batch_edit.setMinimumWidth(70)
-        self._btn_batch_edit.setToolTip("批量编辑选中的多个样品")
-        toolbar.addWidget(self._btn_batch_edit)
+        action_bar.addWidget(self._btn_edit)
 
         self._btn_delete = QPushButton("删除")
         self._btn_delete.setProperty("class", "action")
         self._btn_delete.setMinimumWidth(70)
         self._btn_delete.setToolTip("彻底删除选中样品")
-        toolbar.addWidget(self._btn_delete)
+        action_bar.addWidget(self._btn_delete)
 
+        # 更多操作（批量编辑）
+        self._more_menu = QMenu(self)
+        self._act_batch_edit = self._more_menu.addAction("批量编辑")
+        self._act_batch_edit.setToolTip("批量编辑选中的多个样品")
+        self._btn_more = QToolButton()
+        self._btn_more.setText("更多")
+        self._btn_more.setMenu(self._more_menu)
+        self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._btn_more.setProperty("class", "action")
+        self._btn_more.setMinimumWidth(70)
+        action_bar.addWidget(self._btn_more)
+
+        toolbar.addWidget(action_bar)
         layout.addLayout(toolbar)
 
         self._table = _SampleTable(self.COLUMNS, _POOL_SPECS, "sample_pool")
@@ -272,8 +291,8 @@ class _SamplePoolTab(QWidget):
         return self._btn_add
 
     @property
-    def btn_batch_import(self) -> QPushButton:
-        """批量导入按钮。"""
+    def btn_batch_import(self) -> object:
+        """批量导入按钮（工具栏）。"""
         return self._btn_batch_import
 
     @property
@@ -287,9 +306,9 @@ class _SamplePoolTab(QWidget):
         return self._btn_edit
 
     @property
-    def btn_batch_edit(self) -> QPushButton:
-        """批量编辑按钮。"""
-        return self._btn_batch_edit
+    def btn_batch_edit(self) -> object:
+        """批量编辑（在更多菜单中）。"""
+        return self._act_batch_edit
 
     @property
     def btn_delete(self) -> QPushButton:
@@ -334,7 +353,8 @@ class _SampleUsageTab(QWidget):
         toolbar = QHBoxLayout()
 
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("搜索 SN...")
+        self._search_input.setFixedHeight(26)
+        self._search_input.setPlaceholderText("搜索 SN…")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._apply_filter)
         toolbar.addWidget(self._search_input)
@@ -514,7 +534,8 @@ class _SampleLedgerTab(QWidget):
         toolbar = QHBoxLayout()
 
         self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("搜索 SN / 批次号 / 规格...")
+        self._search_input.setFixedHeight(26)
+        self._search_input.setPlaceholderText("搜索 SN / 批次号 / 规格…")
         self._search_input.setMinimumWidth(160)
         self._search_input.setClearButtonEnabled(True)
         self._search_input.textChanged.connect(self._on_search)
@@ -647,17 +668,25 @@ class SampleView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*VIEW_MARGINS)
 
-        self._tabs = QTabWidget()
+        self._segmented = SegmentedWidget()
 
+        self._stack = QStackedWidget()
         self._pool_tab = _SamplePoolTab()
         self._ledger_tab = _SampleLedgerTab()
         self._usage_tab = _SampleUsageTab()
 
-        self._tabs.addTab(self._pool_tab, "样品池")
-        self._tabs.addTab(self._ledger_tab, "样品台账")
-        self._tabs.addTab(self._usage_tab, "出入库记录")
+        self._stack.addWidget(self._pool_tab)
+        self._stack.addWidget(self._ledger_tab)
+        self._stack.addWidget(self._usage_tab)
 
-        layout.addWidget(self._tabs)
+        self._segmented.addSegment("样品池", self._pool_tab)
+        self._segmented.addSegment("样品台账", self._ledger_tab)
+        self._segmented.addSegment("出入库记录", self._usage_tab)
+        self._segmented.setStackedWidget(self._stack)
+        self._segmented.setCurrentIndex(0)
+
+        layout.addWidget(self._segmented)
+        layout.addWidget(self._stack)
 
     def refresh_pool(self, samples: list[Sample]) -> None:
         self._pool_tab.refresh(samples)

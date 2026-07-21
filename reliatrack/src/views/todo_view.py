@@ -1,7 +1,7 @@
 """待办事项 Tab — 看板（Kanban）视图 + 四象限子 Tab。
 
 包含看板 3 列（待处理 / 进行中 / 已完成）和 Eisenhower 四象限视图，
-通过子 TabBar 切换。顶部工具栏含项目筛选 + 搜索框。
+通过 SegmentedWidget 子导航切换。顶部工具栏含项目筛选 + 搜索框。
 """
 
 from __future__ import annotations
@@ -20,14 +20,16 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedWidget,
-    QTabBar,
     QVBoxLayout,
     QWidget,
 )
 
+from src.views.widgets.segmented_widget import SegmentedWidget
+
 import src.styles.theme as _t
 from src.models.todo import TodoItem
 from src.models.project import Project
+from src.styles.animation import DropShadowAnimation, BackgroundAnimation
 from src.styles.constants import VIEW_MARGINS
 from src.views.quadrant_view import QuadrantView
 
@@ -48,6 +50,13 @@ _COLUMNS: list[tuple[str, str, str]] = [
     ("done",        "已完成",  "kanban-col-done"),
 ]
 _MIME_TODO_ID = "application/x-todo-id"
+
+_TODO_FILTER_FIELDS = {
+    "title": ("標題", "text"),
+    "priority": ("優先級", "int"),
+    "category": ("分類", "text"),
+    "due_date": ("到期日", "date"),
+}
 
 # ── 字体 ────────────────────────────────────────────────────────
 
@@ -74,6 +83,9 @@ class TodoCard(QFrame):
         self._selected = False
         self._drag_start: QPoint | None = None
         self._setup_ui()
+        self._bg_anim = BackgroundAnimation(self)
+        self._shadow_anim = DropShadowAnimation(self)
+        self._shadow_anim.setup(blur=10, offset_y=2, normal_alpha=0, hover_alpha=25)
 
     def _setup_ui(self) -> None:
         self.setFixedHeight(68)
@@ -132,9 +144,9 @@ class TodoCard(QFrame):
             elif d.isValid() and d < today:
                 date_text = f"⚠ 逾期 {today.daysTo(d)} 天" if today.daysTo(d) < 0 else "⚠ 逾期"
             elif d.isValid() and d == today:
-                date_text = "📌 今天"
+                date_text = "今天"
             else:
-                date_text = f"📅 {self._todo.due_date}"
+                date_text = f"{self._todo.due_date}"
             date_lbl = QLabel(date_text)
             date_lbl.setFont(_FONT_CARD_META)
             date_lbl.setProperty("class", "hint-label")
@@ -315,16 +327,16 @@ class TodoView(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setSpacing(4)
 
-        # 工具栏
-        self._build_toolbar(layout)
+        # 1. 筛选行：项目 + 搜索 + 显示归档
+        self._build_filter_row(layout)
 
-        # 快速添加
-        self._build_quick_add(layout)
+        # 2. 操作行：快速添加 + 操作按钮靠右
+        self._build_action_row(layout)
 
         # 子 Tab 切换
-        self._sub_tabs = QTabBar()
+        self._sub_tabs = SegmentedWidget()
         self._stack = QStackedWidget()
 
         # 看板视图
@@ -336,9 +348,9 @@ class TodoView(QWidget):
         self._quadrant_view.quadrant_changed.connect(self._on_quadrant_changed)
         self._stack.addWidget(self._quadrant_view)
 
-        self._sub_tabs.addTab("看板")
-        self._sub_tabs.addTab("四象限")
-        self._sub_tabs.currentChanged.connect(self._stack.setCurrentIndex)
+        self._sub_tabs.addSegment("看板")
+        self._sub_tabs.addSegment("四象限")
+        self._sub_tabs.setStackedWidget(self._stack)
 
         layout.addWidget(self._sub_tabs)
         layout.addWidget(self._stack, stretch=1)
@@ -349,9 +361,9 @@ class TodoView(QWidget):
     def _build_kanban_view(self) -> QWidget:
         """构建看板 3 列内容，返回 QWidget。"""
         widget = QWidget()
-        board = QHBoxLayout(widget)
-        board.setContentsMargins(8, 4, 8, 8)
-        board.setSpacing(8)
+        self._kanban_board = QHBoxLayout(widget)
+        self._kanban_board.setContentsMargins(8, 4, 8, 8)
+        self._kanban_board.setSpacing(8)
 
         self._columns: dict[str, KanbanColumn] = {}
         for status, label, cls in _COLUMNS:
@@ -359,105 +371,93 @@ class TodoView(QWidget):
             col.todo_dropped.connect(self._on_todo_dropped)
             col.card_selected.connect(self._on_card_selected)
             self._columns[status] = col
-            board.addWidget(col, stretch=1)
+            self._kanban_board.addWidget(col, stretch=1)
 
         return widget
 
-    def _build_toolbar(self, parent_layout: QVBoxLayout) -> None:
-        tb = QHBoxLayout()
-        tb.setContentsMargins(*VIEW_MARGINS)
-        tb.setSpacing(6)
+    def _toggle_empty_state(self, count: int) -> None:
+        """空状态提示显隐。"""
+        # 由子类 call 暂不实现，后续可加 UI 提示
+
+    def _build_filter_row(self, parent_layout: QVBoxLayout) -> None:
+        """筛选行：项目选择 + 搜索 + 显示归档。"""
+        row = QHBoxLayout()
+        row.setContentsMargins(*VIEW_MARGINS)
+        row.setSpacing(6)
 
         self._project_combo = QComboBox()
-        self._project_combo.setMinimumWidth(160)
+        self._project_combo.setMinimumWidth(140)
         self._project_combo.addItem("全部项目", None)
         self._project_combo.currentIndexChanged.connect(self._on_project_filter)
-        proj_lbl = QLabel("项目")
-        proj_lbl.setProperty("class", "hint-label")
-        tb.addWidget(proj_lbl)
-        tb.addWidget(self._project_combo)
+        row.addWidget(self._project_combo)
 
         # 搜索框
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText("搜索待办…")
-        self._search_edit.setProperty("class", "search-input")
+        self._search_edit.setFixedHeight(26)
+        self._search_edit.setMaximumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
-        tb.addWidget(self._search_edit)
+        row.addWidget(self._search_edit)
 
-        self._show_archived_cb = QCheckBox("显示已归档")
-        self._show_archived_cb.setProperty("class", "filter-checkbox")
+        from src.views.widgets.switch_button import SwitchButton
+        self._show_archived_cb = SwitchButton("显示已归档")
         self._show_archived_cb.toggled.connect(self._refresh_current_view)
-        tb.addWidget(self._show_archived_cb)
+        row.addWidget(self._show_archived_cb)
 
-        tb.addStretch()
+        row.addStretch()
+        parent_layout.addLayout(row)
+
+    def _build_action_row(self, parent_layout: QVBoxLayout) -> None:
+        """操作行：快速添加靠左 · 编辑/删除/归档靠右。"""
+        row = QHBoxLayout()
+        row.setContentsMargins(*VIEW_MARGINS)
+        row.setSpacing(6)
+
+        # 快速添加輸入框
+        self._quick_add = QLineEdit()
+        self._quick_add.setPlaceholderText("快速添加待办，回车即创建…")
+        self._quick_add.setClearButtonEnabled(True)
+        self._quick_add.setFixedHeight(26)
+        self._quick_add.setMinimumWidth(200)
+        self._quick_add.setProperty("class", "quick-add-input")
+        self._quick_add.returnPressed.connect(self._on_quick_add)
+        row.addWidget(self._quick_add)
+
+        self._btn_quick_add = QPushButton("添加")
+        self._btn_quick_add.setProperty("class", "pill-primary")
+        self._btn_quick_add.setFixedHeight(26)
+        self._btn_quick_add.clicked.connect(self._on_quick_add)
+        row.addWidget(self._btn_quick_add)
+
+        row.addStretch()
 
         self.btn_edit = QPushButton("编辑")
-        self._style_tool_btn(self.btn_edit, f"color:{_t.ACCENT};border:1px solid {_t.BORDER};background:{_t.BG_INPUT};")
+        self.btn_edit.setProperty("class", "pill-outline")
+        self.btn_edit.setFixedHeight(26)
 
         self.btn_delete = QPushButton("删除")
-        self._style_tool_btn(self.btn_delete, f"color:{_t.RED};border:1px solid transparent;")
+        self.btn_delete.setProperty("class", "pill-danger")
+        self.btn_delete.setFixedHeight(26)
 
         self.btn_archive = QPushButton("归档")
-        self._style_tool_btn(self.btn_archive, f"color:{_t.SUBTEXT1};border:1px solid {_t.BORDER};background:{_t.BG_INPUT};")
+        self.btn_archive.setProperty("class", "pill-outline")
+        self.btn_archive.setFixedHeight(26)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
-        sep.setFixedHeight(20)
+        sep.setFixedHeight(18)
         sep.setProperty("class", "sep-vline")
 
-        self.btn_add = QPushButton("＋ 新增")
-        self._style_tool_btn(self.btn_add, f"background:{_t.ACCENT};color:white;font-weight:600;border:none;")
+        row.addWidget(self.btn_edit)
+        row.addWidget(self.btn_delete)
+        row.addWidget(self.btn_archive)
+        row.addWidget(sep)
 
-        tb.addWidget(self.btn_edit)
-        tb.addWidget(self.btn_delete)
-        tb.addWidget(self.btn_archive)
-        tb.addWidget(sep)
-        tb.addWidget(self.btn_add)
-        parent_layout.addLayout(tb)
-
-    def _style_tool_btn(self, btn: QPushButton, base: str) -> None:
-        btn.setFixedHeight(28)
-        btn.setStyleSheet(
-            f"QPushButton{{{base}border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
+        parent_layout.addLayout(row)
 
     def _build_quick_add(self, parent_layout: QVBoxLayout) -> None:
-        qb = QHBoxLayout()
-        qb.setContentsMargins(12, 4, 12, 8)
-        qb.setSpacing(0)
-
-        self._quick_add_container = QWidget()
-        self._quick_add_container.setStyleSheet(
-            f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
-        )
-        self._quick_add_container.setFixedHeight(30)
-        cl = QHBoxLayout(self._quick_add_container)
-        cl.setContentsMargins(12, 0, 4, 0)
-        cl.setSpacing(0)
-
-        self._quick_add = QLineEdit()
-        self._quick_add.setPlaceholderText("添加待办，回车快速创建…")
-        self._quick_add.setClearButtonEnabled(True)
-        self._quick_add.setFixedHeight(28)
-        self._quick_add.setStyleSheet(
-            "QLineEdit{background:transparent;border:none;font-size:13px;color:%s;}" % _t.TEXT
-        )
-        self._quick_add.returnPressed.connect(self._on_quick_add)
-        cl.addWidget(self._quick_add, stretch=1)
-
-        self._btn_quick_add = QPushButton("添加")
-        self._btn_quick_add.setFixedSize(48, 22)
-        self._btn_quick_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
-            f"QPushButton:hover{{background:{_t.BLUE};}}"
-        )
-        self._btn_quick_add.clicked.connect(self._on_quick_add)
-        cl.addWidget(self._btn_quick_add)
-
-        qb.addWidget(self._quick_add_container)
-        parent_layout.addLayout(qb)
+        pass  # 快速添加已合併到 _build_toolbar
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -500,7 +500,7 @@ class TodoView(QWidget):
     # ── 过滤 ────────────────────────────────────────────────────
 
     def _filter_todos(self, todo_list: list[TodoItem]) -> list[TodoItem]:
-        """按项目 + 搜索双重过滤。"""
+        """按项目 + 搜索 + 动态筛选条件过滤。"""
         pid = self._project_combo.currentData()
         search = self._search_edit.text().strip().lower() if hasattr(self, '_search_edit') else ""
 
@@ -525,6 +525,7 @@ class TodoView(QWidget):
     def _on_search(self, _text: str) -> None:
         self._refresh_current_view()
 
+
     def _refresh_current_view(self) -> None:
         """刷新当前子 Tab 显示内容。"""
         filtered = self._filter_todos(self._todo_list)
@@ -545,6 +546,10 @@ class TodoView(QWidget):
 
         for status, col in self._columns.items():
             col.set_cards(groups.get(status, []))
+
+        # 空状态：检查全部列
+        in_view = sum(len(col._cards) for col in self._columns.values())
+        self._toggle_empty_state(in_view)
 
     def _on_card_selected(self, todo_id: int) -> None:
         """卡片单击选中 — 取消旧选中，标记新选中。"""
@@ -592,45 +597,10 @@ class TodoView(QWidget):
     # ── 主题刷新 ────────────────────────────────────────────────
 
     def refresh_theme(self) -> None:
-        """主题切换后重绘所有内联颜色。"""
-        # 工具栏按钮
-        self.btn_edit.setStyleSheet(
-            f"QPushButton{{color:{_t.ACCENT};border:1px solid {_t.BORDER};"
-            f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        self.btn_delete.setStyleSheet(
-            f"QPushButton{{color:{_t.RED};border:1px solid transparent;"
-            f"border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        self.btn_archive.setStyleSheet(
-            f"QPushButton{{color:{_t.SUBTEXT1};border:1px solid {_t.BORDER};"
-            f"background:{_t.BG_INPUT};border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        self.btn_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;font-weight:600;"
-            f"border:none;border-radius:14px;padding:2px 14px;font-size:12px;}}"
-            f"QPushButton:hover{{opacity:0.8;}}"
-        )
-        # 列背景/标题由 QSS 自动刷新
+        """主题切换后刷新。按鈕樣式由 QSS class 自動更新，只需刷新自定義組件。"""
+        # 列卡片
         for col in self._columns.values():
             for card in col._cards:
                 card.refresh_theme()
-        # 快速添加栏
-        self._refresh_quick_add_theme()
         # 四象限视图
         self._quadrant_view.refresh_theme()
-
-    def _refresh_quick_add_theme(self) -> None:
-        self._quick_add_container.setStyleSheet(
-            f"background:{_t.BG_INPUT};border:1px solid {_t.BORDER};border-radius:15px;"
-        )
-        self._quick_add.setStyleSheet(
-            "QLineEdit{background:transparent;border:none;font-size:13px;color:%s;}" % _t.TEXT
-        )
-        self._btn_quick_add.setStyleSheet(
-            f"QPushButton{{background:{_t.ACCENT};color:white;border:none;border-radius:11px;font-size:11px;}}"
-            f"QPushButton:hover{{background:{_t.BLUE};}}"
-        )

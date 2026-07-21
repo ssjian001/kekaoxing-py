@@ -32,7 +32,7 @@ class ProjectEditDialog(_BaseDialog):
     ) -> None:
         is_edit = project is not None
         super().__init__(
-            "✏️ 编辑项目" if is_edit else "➕ 新建项目",
+            "编辑项目" if is_edit else "新建项目",
             parent,
             width=440,
         )

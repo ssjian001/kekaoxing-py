@@ -39,7 +39,7 @@ class EquipmentEditDialog(_BaseDialog):
     ) -> None:
         is_edit = equipment is not None
         super().__init__(
-            "✏️ 编辑设备" if is_edit else "➕ 新建设备",
+            "编辑设备" if is_edit else "新建设备",
             parent,
             width=440,
         )

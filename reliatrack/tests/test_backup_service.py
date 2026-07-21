@@ -176,6 +176,97 @@ class TestRestoreBackup:
         assert not (tmp_path / "test.db-wal").exists()
         assert not (tmp_path / "test.db-shm").exists()
 
+    def test_restore_nonexistent_raises(self, backup_svc, tmp_path):
+        """恢复不存在的备份文件应抛 FileNotFoundError。"""
+        with pytest.raises(FileNotFoundError):
+            backup_svc.restore_backup(tmp_path / "no_such_backup.db")
+
+    def test_restore_corrupt_raises(self, backup_svc, tmp_path):
+        """恢复损坏的文件应抛 ValueError。"""
+        bad = tmp_path / "corrupt.db"
+        bad.write_text("not a database file")
+        with pytest.raises(ValueError):
+            backup_svc.restore_backup(bad)
+
+    def test_restore_same_version_no_loss(self, backup_svc, tmp_path):
+        """恢复同 schema 版本备份，数据完整无损。"""
+        db_path = tmp_path / "test.db"
+        # 原库添加复杂关联数据：project → plan → task → result
+        from src.db.connection import get_connection, close_connection
+        conn = get_connection(str(db_path))
+        conn.execute("INSERT INTO projects (name, product, customer, status) VALUES ('项目B', 'P', 'C', 'active')")
+        proj_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute("INSERT INTO test_plans (name, project_id, status, start_date) VALUES ('计划B', ?, 'active', '2026-07-19')", (proj_id,))
+        plan_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute("INSERT INTO test_tasks (plan_id, name, category, duration, start_day, status, priority, sort_order) VALUES (?, '任务B', '功能', 3, 0, 'pending', 3, 0)", (plan_id,))
+        close_connection(str(db_path))
+
+        # 完整备份
+        backup_path = tmp_path / "full_backup.db"
+        backup_svc.create_backup(backup_path)
+
+        # 清空 DB 后恢复
+        import os as _os
+        close_connection(str(db_path))
+        _os.remove(str(db_path))
+        # 重建空库（让 restore 有目标）
+        new_conn = apsw.Connection(str(db_path))
+        init_schema(new_conn)
+        new_conn.close()
+
+        backup_svc.restore_backup(backup_path)
+
+        # 验证全部数据完整
+        verify = apsw.Connection(str(db_path))
+        projs = verify.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+        plans = verify.execute("SELECT COUNT(*) FROM test_plans").fetchone()[0]
+        tasks = verify.execute("SELECT COUNT(*) FROM test_tasks").fetchone()[0]
+        verify.close()
+        assert projs == 2  # 原始 1 + 后加 1
+        assert plans == 1
+        assert tasks == 1
+
+    def test_restore_rollback_on_failure(self, backup_svc, tmp_path, monkeypatch):
+        """恢复过程中文件替换失败时，应回滚到安全备份。"""
+        from src.services import backup_service as bs_module
+        backups_dir = tmp_path / "backups"
+        monkeypatch.setattr(bs_module, "DEFAULT_BACKUPS_DIR", backups_dir)
+
+        backup_path = tmp_path / "backup.db"
+        backup_svc.create_backup(backup_path)
+
+        # 记录原始数据
+        from src.db.connection import get_connection, close_connection
+        db_path = tmp_path / "test.db"
+        conn = get_connection(str(db_path))
+        original_count = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+        close_connection(str(db_path))
+
+        # mock shutil.copy2：安全备份照常，恢复替换时失败
+        import shutil as _shutil
+        original_copy2 = _shutil.copy2
+        state = {"safety_done": False}
+
+        def failing_copy2(src, dst):
+            # 安全备份路径在 backups_dir 内
+            if str(dst).startswith(str(backups_dir)):
+                state["safety_done"] = True
+                return original_copy2(src, dst)
+            # 恢复替换 → 失败
+            raise OSError("模拟磁盘故障")
+
+        monkeypatch.setattr(bs_module.shutil, "copy2", failing_copy2)
+
+        # 应抛 RuntimeError
+        with pytest.raises(RuntimeError, match="恢复失败"):
+            backup_svc.restore_backup(backup_path)
+
+        # 回滚后原数据应仍在（safety_backup 被复制回去）
+        verify = apsw.Connection(str(db_path))
+        rollback_count = verify.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+        verify.close()
+        assert rollback_count == original_count
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  list_backups

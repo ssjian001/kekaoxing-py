@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from PySide6.QtCore import Qt, QTimer
+from src.styles.icon import RI_CHECK, RI_CLOSE
+from PySide6.QtCore import QSize
 
 
 class _BaseDialog(QDialog):
@@ -76,12 +78,16 @@ class _BaseDialog(QDialog):
         self._btn_cancel = QPushButton("取消")
         self._btn_cancel.setToolTip("取消 (Esc)")
         self._btn_cancel.setProperty("class", "action")
+        self._btn_cancel.setIcon(RI_CLOSE.icon())
+        self._btn_cancel.setIconSize(QSize(16, 16))
         self._btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self._btn_cancel)
 
         self._btn_ok = QPushButton("确定")
         self._btn_ok.setToolTip("确认 (Enter)")
         self._btn_ok.setProperty("class", "primary")
+        self._btn_ok.setIcon(RI_CHECK.icon())
+        self._btn_ok.setIconSize(QSize(16, 16))
         self._btn_ok.clicked.connect(self.accept)
         btn_layout.addWidget(self._btn_ok)
 

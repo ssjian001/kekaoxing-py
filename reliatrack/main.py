@@ -19,6 +19,11 @@ if not getattr(sys, 'frozen', False):
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
+    QScrollArea,
+    QStyle,
+    QStyleOptionTab,
+    QStylePainter,
+    QTabBar,
     QTabWidget,
     QWidget,
     QVBoxLayout,
@@ -28,11 +33,19 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QComboBox,
     QPushButton,
+    QToolButton,
 )
-from PySide6.QtCore import QTimer, QSettings, Qt
-from PySide6.QtGui import QAction, QKeySequence, QShortcut
+from PySide6.QtCore import QTimer, QSettings, Qt, QSize
+from PySide6.QtGui import (
+    QAction, QKeySequence, QShortcut,
+    QColor, QPaintEvent,
+)
 
+from src.styles.animation import TranslateYAnimation
+from src.styles.icon import RI_REFRESH, RI_EXPORT, RI_BACKUP, RI_SETTINGS, RI_DASHBOARD
+import src.styles.theme as _t
 from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
+from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
@@ -59,6 +72,31 @@ from src.handlers import (
     RefreshHandlers,
     BackupHandlers,
 )
+
+
+class SidebarTabBar(QTabBar):
+    """TabBar 置左時文字橫排，窄側欄樣式。"""
+    def tabSizeHint(self, index: int) -> QSize:
+        return QSize(72, 34)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        painter = QStylePainter(self)
+        opt = QStyleOptionTab()
+        for i in range(self.count()):
+            self.initStyleOption(opt, i)
+            painter.drawControl(QStyle.CE_TabBarTabShape, opt)
+
+            # 自繪文字（橫向）
+            painter.save()
+            rect = opt.rect.adjusted(4, 0, -4, 0)
+            color = _t.FG_PRIMARY if opt.state & QStyle.State_Selected else _t.FG_SECONDARY
+            painter.setPen(QColor(color))
+            font = painter.font()
+            font.setBold(bool(opt.state & QStyle.State_Selected))
+            font.setPointSize(8)
+            painter.setFont(font)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.tabText(i))
+            painter.restore()
 
 
 class MainWindow(QMainWindow):
@@ -115,13 +153,20 @@ class MainWindow(QMainWindow):
         # 监听数据变更
         controller.register_on_data_changed(self._schedule_refresh)
 
+        # UX 增强：平滑滚动 + 动效
+        self._install_ux_enhancements()
+
     def _setup_central_widget(self) -> None:
         """创建中央 Tab Widget。"""
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        # 全局项目/计划筛选栏（放在 TabWidget 上方，不依赖 corner widget）
         self._tab_widget = QTabWidget()
+        self._tab_widget.setTabBar(SidebarTabBar())
+        self._tab_widget.setTabPosition(QTabWidget.TabPosition.West)
+        self._tab_widget.setTabShape(QTabWidget.TabShape.Rounded)
 
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()
@@ -176,9 +221,6 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central)
 
-        # 全局项目筛选器 — 作为 Tab 右侧 corner widget
-        self._create_filter_bar()
-
         # ── 待办提醒定时器 ──
         self._reminder_timer = QTimer(self)
         self._reminder_timer.setInterval(30_000)
@@ -206,38 +248,38 @@ class MainWindow(QMainWindow):
         if jump_data and isinstance(jump_data, dict):
             pass
 
-    def _create_filter_bar(self) -> None:
-        """创建项目/计划筛选栏 — 作为 TabWidget 右上角 corner widget。"""
-        filter_bar = QHBoxLayout()
-        filter_bar.setContentsMargins(8, 0, 8, 0)
-        filter_bar.setSpacing(6)
-        self._filter_label = QLabel("项目筛选:")
-        self._filter_label.setProperty("class", "filter-label")
-        self._project_filter_combo = QComboBox()
-        self._project_filter_combo.setMinimumWidth(160)
+    def _create_filter_bar_content(self, parent: QWidget) -> None:
+        """创建项目/计划筛选栏 — 菜单栏右上角。"""
+        # combo parent 设为 self 避免 Windows setCornerWidget 销毁问题
+        self._project_filter_combo = QComboBox(self)
+        self._project_filter_combo.setMinimumWidth(150)
         self._project_filter_combo.setProperty("class", "filter-combo")
         self._project_filter_combo.addItem("全部项目", None)
-
-        self._plan_filter_label = QLabel("计划:")
-        self._plan_filter_label.setProperty("class", "filter-label")
-        self._plan_filter_combo = QComboBox()
-        self._plan_filter_combo.setMinimumWidth(140)
+        self._plan_filter_combo = QComboBox(self)
+        self._plan_filter_combo.setMinimumWidth(130)
         self._plan_filter_combo.setProperty("class", "filter-combo")
         self._plan_filter_combo.addItem("全部计划", None)
         self._plan_filter_combo.setEnabled(False)
-
-        filter_bar.addWidget(self._filter_label)
-        filter_bar.addWidget(self._project_filter_combo)
-        filter_bar.addWidget(self._plan_filter_label)
-        filter_bar.addWidget(self._plan_filter_combo)
-
-        self._filter_layout = QWidget()
-        self._filter_layout.setLayout(filter_bar)
-        self._filter_layout.setProperty("class", "filter-bar")
-        # 挂载到 TabWidget 右上角 — Tab 标签在左，筛选在右，同一行
-        self._tab_widget.setCornerWidget(self._filter_layout, Qt.Corner.TopRightCorner)
         self._project_filter_combo.currentIndexChanged.connect(self._on_project_filter_changed)
         self._plan_filter_combo.currentIndexChanged.connect(self._on_plan_filter_changed)
+
+        filter_label = QLabel("项目筛选:", self)
+        filter_label.setProperty("class", "filter-label")
+        plan_label = QLabel("计划:", self)
+        plan_label.setProperty("class", "filter-label")
+
+        filter_bar = QHBoxLayout()
+        filter_bar.setContentsMargins(8, 0, 4, 0)
+        filter_bar.setSpacing(6)
+        filter_bar.addWidget(filter_label)
+        filter_bar.addWidget(self._project_filter_combo)
+        filter_bar.addWidget(plan_label)
+        filter_bar.addWidget(self._plan_filter_combo)
+
+        widget = QWidget(self)
+        widget.setLayout(filter_bar)
+        widget.setProperty("class", "filter-bar")
+        parent.setCornerWidget(widget, Qt.Corner.TopRightCorner)
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
@@ -262,12 +304,14 @@ class MainWindow(QMainWindow):
         op_menu = menubar.addMenu("操作(&O)")
 
         act_refresh = QAction("刷新(&R)", self)
+        act_refresh.setIcon(RI_REFRESH.icon())
         act_refresh.setShortcut("F5")
         act_refresh.setToolTip("刷新所有数据 (F5)")
         act_refresh.triggered.connect(self._refresh_all)
         op_menu.addAction(act_refresh)
 
         act_export = QAction("导出(&E)…", self)
+        act_export.setIcon(RI_EXPORT.icon())
         act_export.setShortcut("Ctrl+E")
         act_export.setToolTip("导出报告 (Ctrl+E)")
         act_export.triggered.connect(self._export_handlers._on_export)
@@ -276,6 +320,7 @@ class MainWindow(QMainWindow):
         op_menu.addSeparator()
 
         act_backup = QAction("数据管理(&B)…", self)
+        act_backup.setIcon(RI_BACKUP.icon())
         act_backup.setToolTip("数据库备份与恢复")
         act_backup.triggered.connect(self._backup_handlers._on_data_manage)
         op_menu.addAction(act_backup)
@@ -285,6 +330,7 @@ class MainWindow(QMainWindow):
 
         # 暗色主题 Toggle
         self._act_dark_theme = QAction("暗色主题(&D)", self)
+        self._act_dark_theme.setIcon(RI_SETTINGS.icon())
         self._act_dark_theme.setCheckable(True)
         self._act_dark_theme.setChecked(current_theme() == "dark")
         self._act_dark_theme.setToolTip("切换暗色/明亮主题")
@@ -293,6 +339,9 @@ class MainWindow(QMainWindow):
 
         # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
         theme_host.theme_changed.connect(self._on_theme_changed)
+
+        # 全局项目/计划筛选 — 菜单栏右侧（直接插入 QMenuBar 的布局，避免 setCornerWidget Windows 兼容问题）
+        self._create_filter_bar_content(menubar)
 
     def _on_toggle_dark_theme(self, checked: bool) -> None:
         """菜单 Toggle 回调 — 切换主题并持久化。"""
@@ -440,37 +489,44 @@ class MainWindow(QMainWindow):
 
     def get_project_filter_id(self) -> int | None:
         """获取当前项目筛选 combo 的 currentData（None = 全部项目）。"""
-        return self._project_filter_combo.currentData()
+        if not self._project_filter_combo:
+            return None
+        try:
+            return self._project_filter_combo.currentData()
+        except RuntimeError:
+            return None
 
     def get_plan_filter_id(self) -> int | None:
-        """获取当前计划筛选 combo 的 currentData（None = 全部计划）。
-
-        若 combo 禁用则返回 None。
-        """
-        if not self._plan_filter_combo.isEnabled():
+        """获取当前计划筛选 combo 的 currentData（None = 全部计划）。"""
+        if not self._plan_filter_combo:
             return None
-        return self._plan_filter_combo.currentData()
+        try:
+            if not self._plan_filter_combo.isEnabled():
+                return None
+            return self._plan_filter_combo.currentData()
+        except RuntimeError:
+            return None
 
     def refresh_project_filter(self, projects: list, current_id: int | None = None) -> None:
         """刷新项目筛选 combo 选项（不触发信号）。
-
-        Args:
-            projects: 项目列表（需有 .name 和 .id 属性）
-            current_id: 之前选中的项目 ID，用于恢复
         """
         combo = self._project_filter_combo
-        combo.blockSignals(True)
-        _current = current_id if current_id is not None else combo.currentData()
-        combo.clear()
-        combo.addItem("全部项目", None)
-        for p in projects:
-            combo.addItem(p.name, p.id)
-        # 恢复之前选中的筛选项
-        for i in range(combo.count()):
-            if combo.itemData(i) == _current:
-                combo.setCurrentIndex(i)
-                break
-        combo.blockSignals(False)
+        if not combo:
+            return
+        try:
+            combo.blockSignals(True)
+            _current = current_id if current_id is not None else combo.currentData()
+            combo.clear()
+            combo.addItem("全部项目", None)
+            for p in projects:
+                combo.addItem(p.name, p.id)
+            for i in range(combo.count()):
+                if combo.itemData(i) == _current:
+                    combo.setCurrentIndex(i)
+                    break
+            combo.blockSignals(False)
+        except RuntimeError:
+            pass
 
     def schedule_throttled_refresh(self, entity_type: str = "all") -> None:
         """节流刷新：合并短时间内的多次变更，100ms 后统一刷新。
@@ -574,45 +630,54 @@ class MainWindow(QMainWindow):
         self._refresh_all()
 
     def _on_plan_filter_changed(self, index: int) -> None:
-        """计划筛选变化时刷新仪表盘。"""
+        """计划筛选变化时刷新仪表盘，并同步测试计划视图的本地 combo。"""
+        if not self._plan_filter_combo:
+            return
+        try:
+            plan_id = self._plan_filter_combo.currentData()
+        except RuntimeError:
+            return
+        if plan_id is not None and hasattr(self, '_test_plan_view'):
+            self._test_plan_view.select_plan_by_id(plan_id)
         self._refresh_all()
 
     def refresh_plan_combo(self) -> None:
         """根据当前选中的项目更新计划筛选 combo（保留之前选中项）。"""
-        project_id = self._project_filter_combo.currentData()
         ctrl = self._ctrl
         if not ctrl or not ctrl.test_plan_service:
-            self._plan_filter_combo.setEnabled(False)
+            return
+        try:
+            project_id = self._project_filter_combo.currentData()
+        except RuntimeError:
             return
 
-        # 记住当前选中
-        _current_plan_id = self._plan_filter_combo.currentData()
+        try:
+            # 记住当前选中
+            _current_plan_id = self._plan_filter_combo.currentData()
 
-        self._plan_filter_combo.blockSignals(True)
-        self._plan_filter_combo.clear()
-        self._plan_filter_combo.addItem("全部计划", None)
+            self._plan_filter_combo.blockSignals(True)
+            self._plan_filter_combo.clear()
+            self._plan_filter_combo.addItem("全部计划", None)
 
-        if project_id is None:
-            # 全部项目 → 禁用计划筛选
-            self._plan_filter_combo.setEnabled(False)
-        else:
-            # 根据当前归档视图模式选择数据源
-            show_archived = getattr(self.test_plan_view, 'show_archived', False)
-            if show_archived:
-                plans = ctrl.test_plan_service.get_archived_plans_by_project(project_id)
+            if project_id is None:
+                self._plan_filter_combo.setEnabled(False)
             else:
-                plans = ctrl.test_plan_service.get_active_plans_by_project(project_id)
-            for p in plans:
-                self._plan_filter_combo.addItem(p.name, p.id)
-            self._plan_filter_combo.setEnabled(True)
+                show_archived = getattr(self.test_plan_view, 'show_archived', False)
+                if show_archived:
+                    plans = ctrl.test_plan_service.get_archived_plans_by_project(project_id)
+                else:
+                    plans = ctrl.test_plan_service.get_active_plans_by_project(project_id)
+                for p in plans:
+                    self._plan_filter_combo.addItem(p.name, p.id)
+                self._plan_filter_combo.setEnabled(True)
 
-            # 恢复之前选中的计划
-            for i in range(self._plan_filter_combo.count()):
-                if self._plan_filter_combo.itemData(i) == _current_plan_id:
-                    self._plan_filter_combo.setCurrentIndex(i)
-                    break
-
-        self._plan_filter_combo.blockSignals(False)
+                for i in range(self._plan_filter_combo.count()):
+                    if self._plan_filter_combo.itemData(i) == _current_plan_id:
+                        self._plan_filter_combo.setCurrentIndex(i)
+                        break
+            self._plan_filter_combo.blockSignals(False)
+        except RuntimeError:
+            pass
 
     def _on_undo(self) -> None:
         um = self._ctrl.undo_manager
@@ -718,6 +783,20 @@ class MainWindow(QMainWindow):
                 return
         self._ctrl.shutdown()
         event.accept()
+
+    # ── UX 增强：平滑滚动 + 动效 ──
+
+    def _install_ux_enhancements(self) -> None:
+        """全局安装平滑滚动和动效。"""
+        # 查找所有 QScrollArea 安装平滑滚动
+        for sa in self.findChildren(QScrollArea):
+            SmoothScroll(sa)
+
+        # 所有按钮安装 TranslateYAnimation（press 沉降动画）
+        for btn in self.findChildren(QPushButton):
+            TranslateYAnimation(btn, offset=1.5)
+        for btn in self.findChildren(QToolButton):
+            TranslateYAnimation(btn, offset=1.5)
 
 
 def main() -> int:

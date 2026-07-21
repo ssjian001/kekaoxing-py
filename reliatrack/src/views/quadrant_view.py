@@ -206,7 +206,7 @@ class TodoCard(QFrame):
         layout.addWidget(title, stretch=1)
 
         if self._todo.due_date:
-            date_lbl = QLabel(f"📅 {self._todo.due_date}")
+            date_lbl = QLabel(f"{self._todo.due_date}")
             date_lbl.setProperty("class", "hint-label")
             layout.addWidget(date_lbl)
 

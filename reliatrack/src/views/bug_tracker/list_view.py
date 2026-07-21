@@ -35,7 +35,6 @@ import src.styles.theme as _t
 from src.models.issue import Issue, FARecord, CAPARecord
 from src.services.issue_service import IssueService
 from src.views.bug_tracker.fa_capa_panels import FAPanel, CAPAPanel, CAPADialog
-from src.views.bug_tracker.filter_panel import FilterPanel
 from src.views.bug_tracker.batch_dialog import BatchOperationDialog
 from src.views.dialogs.fa_record_dialog import FARecordDialog
 from src.views.dialogs.issue_dialog import IssueEditDialog
@@ -49,13 +48,14 @@ from src.styles.constants import (
     ISSUE_STATUS_COLORS,
     PRIORITY_COLORS,
     PADDING_SMALL,
-    PADDING_MEDIUM,
     PADDING_LARGE,
     SPACING_MEDIUM,
     VIEW_MARGINS,
-    apply_column_specs,
-    install_copy_handler,
 )
+from src.views.widgets.table_delegate import RowHighlightDelegate
+from src.views.widgets.search_box import SearchBox
+from src.styles.column_persistence import save_column_widths_debounced, restore_column_widths
+from src.styles.constants import apply_column_specs, install_copy_handler
 from src.styles.toast import ToastWidget
 from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 from src.views.bug_tracker.detail_dialog import IssueDetailDialog
@@ -105,7 +105,7 @@ class _BugTable(QTableWidget):
         apply_column_specs(self, _BUG_TABLE_SPECS, "bug_list_table")
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.setAlternatingRowColors(True)
+        self.setAlternatingRowColors(False)  # 由 delegate 自繪行背景
         self.verticalHeader().setVisible(False)
         self.setSortingEnabled(True)
         self._issues: list[Issue] = []
@@ -113,6 +113,13 @@ class _BugTable(QTableWidget):
         self._technician_map: dict[int, str] = {}  # 保留供 detail_dialog 活动日志翻译（DRI 列不再使用）
         # checkbox 列不参与排序
         self.horizontalHeader().setSortIndicatorShown(True)
+
+        # ── RowHighlightDelegate 行高亮 ──
+        self.setMouseTracking(True)
+        self._delegate = RowHighlightDelegate(self)
+        self.setItemDelegate(self._delegate)
+        self.cellEntered.connect(self._on_cell_entered)
+        self.viewportEntered.connect(self._on_viewport_entered)
 
         # 信号
         self.doubleClicked.connect(self._on_double_click)
@@ -261,14 +268,30 @@ class _BugTable(QTableWidget):
         """列宽变化时持久化（仅 Interactive 列）。"""
         save_column_widths_debounced(self, "bug_list_table")
 
+    # ── RowHighlightDelegate 行懸停追蹤 ──
 
-# ═══════════════════════════════════════════════════════════════
-#  FilterPanel
-# ═══════════════════════════════════════════════════════════════
+    def _on_cell_entered(self, row: int, column: int) -> None:
+        """鼠標進入單元格 → 更新 delegate hover_row。"""
+        self._delegate.hover_row = row
+        self.viewport().update()
+
+    def _on_viewport_entered(self) -> None:
+        """鼠標離開表格區域 → 清除 hover_row。"""
+        self._delegate.hover_row = -1
+        self.viewport().update()
+
 
 # ═══════════════════════════════════════════════════════════════
 #  BugListView
 # ═══════════════════════════════════════════════════════════════
+
+_ISSUE_FILTER_FIELDS = {
+    "status": ("狀態", "enum"),
+    "severity": ("嚴重度", "enum"),
+    "priority": ("優先級", "int"),
+    "dri_name": ("DRI", "text"),
+    "title": ("標題", "text"),
+}
 
 class BugListView(QWidget):
     """增强列表视图 — 筛选面板 + 表格 + 批量操作 + Aging 列。"""
@@ -321,16 +344,12 @@ class BugListView(QWidget):
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*VIEW_MARGINS)
-        layout.setSpacing(SPACING_MEDIUM)
+        layout.setSpacing(6)
 
-        # 1. 顶部工具栏
-        layout.addLayout(self._build_toolbar())
+        # 1. 筛选 + 工具栏合并为一行
+        layout.addLayout(self._build_filter_toolbar())
 
-        # 2. 筛选面板（横向，可折叠）
-        self._filter_panel = FilterPanel()
-        layout.addWidget(self._filter_panel)
-
-        # 3. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
+        # 2. 主区域 — 水平分割：左=表格，右=FA/CAPA（垂直）
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setProperty("class", "list-splitter")
 
@@ -354,7 +373,7 @@ class BugListView(QWidget):
         fa_header.addStretch()
         self._btn_add_fa = QPushButton("新建 FA")
         self._btn_add_fa.setProperty("class", "action")
-        self._btn_add_fa.setFixedHeight(24)
+        self._btn_add_fa.setFixedHeight(26)
         self._btn_add_fa.clicked.connect(self._open_fa_dialog)
         fa_header.addWidget(self._btn_add_fa)
         fa_layout.addLayout(fa_header)
@@ -376,7 +395,7 @@ class BugListView(QWidget):
         capa_header.addStretch()
         self._btn_add_capa = QPushButton("新建 CAPA")
         self._btn_add_capa.setProperty("class", "action")
-        self._btn_add_capa.setFixedHeight(24)
+        self._btn_add_capa.setFixedHeight(26)
         self._btn_add_capa.clicked.connect(self._open_capa_dialog)
         capa_header.addWidget(self._btn_add_capa)
         capa_layout.addLayout(capa_header)
@@ -409,64 +428,118 @@ class BugListView(QWidget):
         self._empty_label.hide()
         self._table.installEventFilter(self)
 
-    def _build_toolbar(self) -> QHBoxLayout:
-        toolbar = QHBoxLayout()
-        toolbar.setSpacing(SPACING_MEDIUM)
+    def _build_filter_toolbar(self) -> QHBoxLayout:
+        """筛选栏 + 工具栏合并为一行。
+        
+        左: [状态] [严重度] [优先级] [DRI] [清除]
+        中: [搜索框]
+        右: [全选] [批量操作] [刷新]
+        """
+        from PySide6.QtWidgets import QComboBox, QToolButton, QMenu
+        from src.constants import ISSUE_STATUS_LABELS, SEVERITY_LABELS, PRIORITY_LABELS
 
-        # 搜索框
-        self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("搜索标题/描述/根因")
-        self._search_input.setMinimumWidth(200)
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(6)
+
+        _FILTER_W = 80  # 统一宽度
+
+        # ── 左侧：筛选 ──
+        self._filter_status = QComboBox()
+        self._filter_status.setProperty("class", "filter-combo")
+        self._filter_status.setFixedWidth(_FILTER_W)
+        self._filter_status.setFixedHeight(26)
+        self._filter_status.addItem("全部状态", "")
+        for k, v in ISSUE_STATUS_LABELS.items():
+            self._filter_status.addItem(v, k)
+        self._filter_status.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_status)
+
+        self._filter_severity = QComboBox()
+        self._filter_severity.setProperty("class", "filter-combo")
+        self._filter_severity.setFixedWidth(_FILTER_W)
+        self._filter_severity.setFixedHeight(26)
+        self._filter_severity.addItem("全部严重度", "")
+        for k, v in SEVERITY_LABELS.items():
+            self._filter_severity.addItem(v, k)
+        self._filter_severity.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_severity)
+
+        self._filter_priority = QComboBox()
+        self._filter_priority.setProperty("class", "filter-combo")
+        self._filter_priority.setFixedWidth(_FILTER_W)
+        self._filter_priority.setFixedHeight(26)
+        self._filter_priority.addItem("全部优先级", "")
+        for k, v in PRIORITY_LABELS.items():
+            self._filter_priority.addItem(v, k)
+        self._filter_priority.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_priority)
+
+        self._filter_dri = QComboBox()
+        self._filter_dri.setProperty("class", "filter-combo")
+        self._filter_dri.setFixedWidth(_FILTER_W)
+        self._filter_dri.setFixedHeight(26)
+        self._filter_dri.setEditable(True)
+        self._filter_dri.setPlaceholderText("DRI…")
+        self._filter_dri.lineEdit().textChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_dri)
+
+        btn_clear = QPushButton("清除")
+        btn_clear.setFixedWidth(60)
+        btn_clear.setFixedHeight(26)
+        btn_clear.setProperty("class", "action")
+        btn_clear.clicked.connect(self._clear_filters)
+        toolbar.addWidget(btn_clear)
+
+        # ── 中间：搜索 ──
+        self._search_input = SearchBox()
+        self._search_input.setPlaceholderText("搜索标题/描述/根因…")
+        self._search_input.setMinimumWidth(160)
+        self._search_input.setMaximumWidth(260)
         self._search_input.textChanged.connect(self._apply_filters)
         toolbar.addWidget(self._search_input)
 
-        # 筛选切换按钮
-        self._btn_filter = QPushButton("筛选")
-        self._btn_filter.setProperty("class", "action")
-        self._btn_filter.setCheckable(True)
-        self._btn_filter.setChecked(True)
-        self._btn_filter.clicked.connect(self._toggle_filter_panel)
-        toolbar.addWidget(self._btn_filter)
+        # ── 右侧：操作按钮（CommandBar 自動溢出）──
+        toolbar.addStretch()
 
-        # 全选/取消全选
+        from src.views.widgets.command_bar import CommandBar
+        action_bar = CommandBar()
+        action_bar.setButtonTight(True)
+
         self._btn_select_all = QPushButton("全选")
+        self._btn_select_all.setFixedHeight(26)
         self._btn_select_all.setProperty("class", "action")
         self._btn_select_all.setCheckable(True)
         self._btn_select_all.clicked.connect(self._on_select_all)
-        toolbar.addWidget(self._btn_select_all)
+        action_bar.addWidget(self._btn_select_all)
 
-        # 批量操作按钮
-        self._btn_batch_status = QPushButton("批量改状态")
-        self._btn_batch_status.setProperty("class", "action")
-        self._btn_batch_status.setEnabled(False)
-        self._btn_batch_status.clicked.connect(lambda: self._open_batch_dialog("改状态"))
-        toolbar.addWidget(self._btn_batch_status)
+        self._btn_batch = QToolButton()
+        self._btn_batch.setText("批量操作")
+        self._btn_batch.setFixedHeight(26)
+        self._btn_batch.setProperty("class", "action")
+        self._btn_batch.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        batch_menu = QMenu(self._btn_batch)
+        self._act_batch_status = batch_menu.addAction("批量改状态")
+        self._act_batch_status.triggered.connect(lambda: self._open_batch_dialog("改状态"))
+        self._act_batch_assign = batch_menu.addAction("批量设置DRI")
+        self._act_batch_assign.triggered.connect(lambda: self._open_batch_dialog("设置DRI"))
+        self._btn_batch.setMenu(batch_menu)
+        self._btn_batch.setEnabled(False)
+        action_bar.addWidget(self._btn_batch)
 
-        self._btn_batch_assign = QPushButton("批量设置DRI")
-        self._btn_batch_assign.setProperty("class", "action")
-        self._btn_batch_assign.setEnabled(False)
-        self._btn_batch_assign.clicked.connect(lambda: self._open_batch_dialog("设置DRI"))
-        toolbar.addWidget(self._btn_batch_assign)
-
-        # 刷新按钮
         btn_refresh = QPushButton("刷新")
+        btn_refresh.setFixedHeight(26)
         btn_refresh.setProperty("class", "action")
         btn_refresh.clicked.connect(self.refresh_requested.emit)
-        toolbar.addWidget(btn_refresh)
+        action_bar.addWidget(btn_refresh)
 
-        toolbar.addStretch()
-
-        # 统计标签
-        self._stats_label = QLabel("0 个 Issue")
-        self._stats_label.setProperty("class", "subtext")
-        toolbar.addWidget(self._stats_label)
+        toolbar.addWidget(action_bar)
+        toolbar.addSpacing(8)
 
         return toolbar
 
     # ── 信号连接 ──────────────────────────────────────────────
 
     def _connect_signals(self) -> None:
-        self._filter_panel.filter_changed.connect(self._apply_filters)
         self._table.card_double_clicked.connect(self._on_card_double_click)
         self._table.itemChanged.connect(self._on_table_item_changed)
         self._table.itemSelectionChanged.connect(self._on_issue_selection_changed)
@@ -475,8 +548,7 @@ class BugListView(QWidget):
         """checkbox 状态变化时更新批量按钮状态。"""
         if item.column() == 0:
             has_checked = bool(self._table.get_checked_ids())
-            self._btn_batch_status.setEnabled(has_checked)
-            self._btn_batch_assign.setEnabled(has_checked)
+            self._btn_batch.setEnabled(has_checked)
 
     def _on_select_all(self, checked: bool) -> None:
         """全选/取消全选。"""
@@ -484,21 +556,20 @@ class BugListView(QWidget):
         text = "取消全选" if checked else "全选"
         self._btn_select_all.setText(text)
         has_checked = bool(self._table.get_checked_ids()) if not checked else True
-        self._btn_batch_status.setEnabled(has_checked)
-        self._btn_batch_assign.setEnabled(has_checked)
+        self._btn_batch.setEnabled(has_checked)
 
-    def _toggle_filter_panel(self) -> None:
-        """展开/收起横向筛选面板。"""
-        self._filter_visible = self._btn_filter.isChecked()
-        self._filter_panel.setVisible(self._filter_visible)
+    def _clear_filters(self) -> None:
+        """清除所有筛选条件。"""
+        self._filter_status.setCurrentIndex(0)
+        self._filter_severity.setCurrentIndex(0)
+        self._filter_priority.setCurrentIndex(0)
+        self._filter_dri.setEditText("")
 
     # ── 数据 ──────────────────────────────────────────────────
 
     def set_issues(self, issues: list[Issue]) -> None:
         """设置 Issue 列表（全量缓存，筛选后显示）。"""
         self._all_issues = issues
-        # 提取 DRI 去重填充筛选下拉
-        self._filter_panel.set_dri_options([i.dri_name for i in issues if i.dri_name])
         self._apply_filters()
 
     def refresh(self) -> None:
@@ -513,16 +584,17 @@ class BugListView(QWidget):
 
     def set_filters(self, filters: dict) -> None:
         """外部设置筛选条件（跨视图同步）。"""
-        self._filter_panel.set_filters(filters)
         self._apply_filters()
 
     def _apply_filters(self) -> None:
         """根据筛选条件过滤并刷新表格。"""
-        filters = self._filter_panel.get_filters()
         keyword = self._search_input.text().strip().lower()
 
-        # 发射筛选信号（供其他视图同步）
-        self.filter_changed.emit(filters)
+        # 读取固定筛选条件
+        status_val = self._filter_status.currentData()
+        severity_val = self._filter_severity.currentData()
+        priority_val = self._filter_priority.currentData()
+        dri_text = self._filter_dri.currentText().strip().lower()
 
         filtered = []
         for issue in self._all_issues:
@@ -531,38 +603,26 @@ class BugListView(QWidget):
                 search_text = f"{issue.title} {issue.description} {issue.root_cause}".lower()
                 if keyword not in search_text:
                     continue
-
             # 状态
-            if filters["status"] and issue.status not in filters["status"]:
+            if status_val and issue.status != status_val:
                 continue
-
             # 严重度
-            if filters["severity"] and issue.severity not in filters["severity"]:
+            if severity_val and issue.severity != severity_val:
                 continue
-
             # 优先级
-            if filters["priority"] and issue.priority not in filters["priority"]:
+            if priority_val and str(issue.priority) != str(priority_val):
                 continue
-
-            # DRI（按 dri_name 过滤）
-            dri_filter = filters.get("dri_name")
-            if dri_filter is not None:
-                if (issue.dri_name or "") != dri_filter:
-                    continue
-
-            # 创建日期范围
-            date_start = filters.get("date_start", "")
-            date_end = filters.get("date_end", "")
-            created = (issue.created_at or "")[:10]
-            if date_start and created < date_start:
-                continue
-            if date_end and created > date_end:
+            # DRI
+            if dri_text and dri_text not in (issue.dri_name or "").lower():
                 continue
 
             filtered.append(issue)
 
         self._table.set_issues(filtered)
-        self._stats_label.setText(f"{len(filtered)} 个 Issue")
+        # 连父视图的统计信息一起更新
+        parent = self.parent()
+        if parent and hasattr(parent, '_update_stats'):
+            parent._update_stats()
 
         # 空状态提示
         self._empty_label.setVisible(len(filtered) == 0)
@@ -633,9 +693,14 @@ class BugListView(QWidget):
         self._capa_panel.set_capa_records(records)
 
     def _on_issue_selection_changed(self) -> None:
-        """选中 Issue 时发射信号（由 issue_handlers 接收加载 FA/CAPA）。"""
+        """选中 Issue 时发射信号 + 同步 delegate 选中行。"""
         issue_id = self.get_selected_issue_id()
         self.issue_selected.emit(issue_id)
+
+        # 同步 delegate 的 selected_rows
+        selected = self._table.selectedIndexes()
+        self._table._delegate.selected_rows = {idx.row() for idx in selected}
+        self._table.viewport().update()
 
     # ── FA 步骤弹窗 ──
 

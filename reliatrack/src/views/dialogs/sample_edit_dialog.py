@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 
 from src.models.sample import Sample
 from src.views.dialogs.base_dialog import _BaseDialog
+from src.styles.icon import RI_EDIT
 from src.constants import (
     SAMPLE_STATUS_OPTIONS,
     SAMPLE_STATUS_MAP,
@@ -38,7 +39,7 @@ class SampleEditDialog(_BaseDialog):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(
-            "✏️ 编辑样品",
+            "编辑样品",
             parent,
             width=440,
         )

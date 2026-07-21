@@ -65,6 +65,7 @@ class TechnicianView(QWidget):
         toolbar.setSpacing(8)
 
         self._search_edit = QLineEdit()
+        self._search_edit.setFixedHeight(26)
         self._search_edit.setPlaceholderText("搜索姓名 / 工号 / 部门…")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setMinimumWidth(160)
@@ -87,7 +88,7 @@ class TechnicianView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setProperty("class", "separator")
+        sep.setProperty("class", "sep-vline")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新增")

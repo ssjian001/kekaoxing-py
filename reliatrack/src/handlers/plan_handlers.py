@@ -38,7 +38,7 @@ class PlanHandlers:
     def connect_signals(self) -> None:
         win = self._win
         v = win.test_plan_view
-        v.btn_schedule.clicked.connect(self._on_auto_schedule)
+        v.btn_schedule.triggered.connect(self._on_auto_schedule)
         v.task_moved.connect(self._on_gantt_task_moved)
         # 计划管理菜单
         v.act_add_plan.triggered.connect(self._on_plan_add)
@@ -47,7 +47,7 @@ class PlanHandlers:
         v.act_unarchive_plan.triggered.connect(self._on_plan_unarchive)
         v._plan_combo.currentIndexChanged.connect(self._on_plan_changed)
         v._plan_combo.currentIndexChanged.connect(self._update_plan_menu)
-        v._btn_archived.toggled.connect(self._on_toggle_archived_view)
+        v._act_toggle_archived.triggered.connect(self._on_toggle_archived_view)
         # 任务管理菜单
         v.act_add_task.triggered.connect(self._on_task_add)
         v.act_edit_task.triggered.connect(self._on_task_edit_menu)
@@ -57,10 +57,11 @@ class PlanHandlers:
         # 独立按钮
         from src.handlers.crud_helpers import debounce_connect
         debounce_connect(v.btn_record_result, self._on_record_result)
-        debounce_connect(v.btn_quick_add, self._on_task_quick_add)
+        v.btn_quick_add.triggered.connect(self._on_task_quick_add)
         # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
+        ctrl = self._win.ctrl
         v.setup_task_callbacks(
             on_edit=self._on_task_edit,
             on_delete=self._on_task_delete_menu,
@@ -68,6 +69,8 @@ class PlanHandlers:
             on_actual_date_edit=self._on_actual_date_edit,
             on_record_result=self._on_record_result,
             on_batch_value=self._on_batch_value,
+            technician_list=ctrl.technicians.list_all() if ctrl.technicians else [],
+            equipment_list=ctrl.equipment.list_all() if ctrl.equipment else [],
         )
         # 结果矩阵双击编辑
         v.set_on_matrix_edit_callback(self._on_matrix_result_edit)
@@ -553,10 +556,10 @@ class PlanHandlers:
                 self._win.refresh_plan_combo()
 
     def _on_toggle_archived_view(self, checked: bool) -> None:
-        """切换查看归档计划视图。"""
+        """显示/隐藏已归档计划切换。"""
         v = self._win.test_plan_view
         v.show_archived = checked
-        v._btn_archived.setText("返回计划" if checked else "查看归档")
+        v._act_toggle_archived.setChecked(checked)
         # 归档视图下禁用写入操作
         v.act_add_plan.setEnabled(not checked)
         v.act_add_task.setEnabled(not checked)

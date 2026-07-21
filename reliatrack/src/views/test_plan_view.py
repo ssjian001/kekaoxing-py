@@ -21,8 +21,9 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QRadioButton,
     QButtonGroup,
+    QStackedWidget,
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QSize
 
 import src.styles.theme as _t
 from src.styles.constants import VIEW_MARGINS, FONT_FAMILY
@@ -32,6 +33,8 @@ from src.models.common import Equipment, Technician
 from src.views.widgets.task_table import _TaskTable
 from src.views.widgets.gantt_widget import _GanttWidget
 from src.views.widgets.result_matrix import _ResultMatrixWidget
+from src.views.widgets.command_bar import CommandBar
+from src.views.widgets.search_box import SearchBox
 
 class TestPlanView(QWidget):
     """测试计划视图 — 左侧任务表 + 右侧甘特图。"""
@@ -49,19 +52,15 @@ class TestPlanView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*VIEW_MARGINS)
 
-        # 工具栏
-        toolbar = QHBoxLayout()
-        toolbar.setSpacing(8)
+        # ── Row 1: 计划/任务管理 ──
+        row1 = QHBoxLayout()
+        row1.setSpacing(4)
 
-        # ── 计划下拉 ──
-        toolbar.addWidget(QLabel("计划:"))
-        self._plan_combo = QComboBox()
-        self._plan_combo.setProperty("class", "filter-combo")
-        self._plan_combo.setFixedWidth(180)
-        self._plan_combo.setFixedHeight(28)
-        toolbar.addWidget(self._plan_combo)
+        # ── CommandBar（计划/任务/操作管理，自動溢出）──
+        action_bar = CommandBar()
+        action_bar.setButtonTight(True)
 
-        # ── 计划管理 ──
+        # ── 分组 1: 计划管理 ──
         self._plan_menu = QMenu(self)
         self._act_add_plan = self._plan_menu.addAction("新建计划")
         self._act_edit_plan = self._plan_menu.addAction("编辑计划")
@@ -69,27 +68,22 @@ class TestPlanView(QWidget):
         self._act_unarchive_plan = self._plan_menu.addAction("取消归档")
         self._act_unarchive_plan.setVisible(False)
         self._act_archive_plan = self._plan_menu.addAction("归档")
+        self._plan_menu.addSeparator()
+        self._act_toggle_archived = self._plan_menu.addAction("查看归档")
+        self._act_toggle_archived.setCheckable(True)
 
         self._btn_plan_manage = QToolButton()
         self._btn_plan_manage.setText("计划管理")
         self._btn_plan_manage.setMenu(self._plan_menu)
         self._btn_plan_manage.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_plan_manage.setProperty("class", "action")
-        self._btn_plan_manage.setFixedHeight(28)
-        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、删除、归档")
-        toolbar.addWidget(self._btn_plan_manage)
+        self._btn_plan_manage.setFixedHeight(26)
+        self._btn_plan_manage.setToolTip("计划管理：新建、编辑、归档、查看归档")
+        action_bar.addWidget(self._btn_plan_manage)
 
-        # ── 查看归档 ──
-        self._btn_archived = QToolButton()
-        self._btn_archived.setText("查看归档")
-        self._btn_archived.setCheckable(True)
-        self._btn_archived.setProperty("class", "action")
-        self._btn_archived.setFixedHeight(28)
-        self._btn_archived.setToolTip("切换查看已归档的计划")
-        self._btn_archived.toggled.connect(self._on_toggle_archived)
-        toolbar.addWidget(self._btn_archived)
+        action_bar.addSeparator()
 
-        # ── 任务管理 ──
+        # ── 分组 2: 任务管理 ──
         self._task_menu = QMenu(self)
         self._act_add_task = self._task_menu.addAction("添加任务")
         self._act_edit_task = self._task_menu.addAction("编辑任务")
@@ -103,140 +97,150 @@ class TestPlanView(QWidget):
         self._btn_task_manage.setMenu(self._task_menu)
         self._btn_task_manage.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_task_manage.setProperty("class", "action")
-        self._btn_task_manage.setFixedHeight(28)
+        self._btn_task_manage.setFixedHeight(26)
         self._btn_task_manage.setToolTip("任务管理：增删改、导入")
-        toolbar.addWidget(self._btn_task_manage)
+        action_bar.addWidget(self._btn_task_manage)
 
-        # ── 自动排程 ──
-        self._btn_schedule = QPushButton("自动排程")
-        self._btn_schedule.setProperty("class", "action")
-        self._btn_schedule.setFixedHeight(28)
-        self._btn_schedule.setToolTip("自动排程（资源约束优化）")
-        toolbar.addWidget(self._btn_schedule)
+        action_bar.addSeparator()
 
-        # ── 搜索任务 ──
-        self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("搜索任务名...")
-        self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setFixedSize(160, 28)
-        # 恢复上次搜索关键词
-        from PySide6.QtCore import QSettings as _QSettings
-        saved = _QSettings().value("ReliaTrack/task_search", "")
-        if saved and isinstance(saved, str):
-            self._search_edit.setText(saved)
-        self._search_edit.textChanged.connect(self._on_task_search)
-        toolbar.addWidget(self._search_edit)
-
-        # ── 技术员筛选 ──
-        self._tech_filter_combo = QComboBox()
-        self._tech_filter_combo.setProperty("class", "filter-combo")
-        self._tech_filter_combo.setFixedWidth(100)
-        self._tech_filter_combo.setFixedHeight(28)
-        self._tech_filter_combo.addItem("全部技术员", None)
-        # 运行时由 refresh 填充具体技术员
-        self._tech_filter_combo.currentIndexChanged.connect(self._on_task_search)
-        toolbar.addWidget(self._tech_filter_combo)
-
-        # ── 日期范围筛选 ──
-        from PySide6.QtWidgets import QDateEdit as _QDE
-        toolbar.addWidget(QLabel("从:"))
-        self._date_from = _QDE()
-        self._date_from.setCalendarPopup(True)
-        self._date_from.setDisplayFormat("yyyy-MM-dd")
-        self._date_from.setSpecialValueText("不限")
-        self._date_from.setDate(self._date_from.minimumDate())
-        self._date_from.setFixedWidth(110)
-        self._date_from.setFixedHeight(28)
-        self._date_from.dateChanged.connect(self._on_task_search)
-        toolbar.addWidget(self._date_from)
-
-        toolbar.addWidget(QLabel("至:"))
-        self._date_to = _QDE()
-        self._date_to.setCalendarPopup(True)
-        self._date_to.setDisplayFormat("yyyy-MM-dd")
-        self._date_to.setSpecialValueText("不限")
-        self._date_to.setDate(self._date_to.maximumDate())
-        self._date_to.setFixedWidth(110)
-        self._date_to.setFixedHeight(28)
-        self._date_to.dateChanged.connect(self._on_task_search)
-        toolbar.addWidget(self._date_to)
-
-        # ── 重置筛选 ──
-        self._btn_reset_filter = QPushButton("重置")
-        self._btn_reset_filter.setFixedHeight(28)
-        self._btn_reset_filter.setProperty("class", "action")
-        self._btn_reset_filter.clicked.connect(self._reset_filters)
-        toolbar.addWidget(self._btn_reset_filter)
-
-        # ── 录入结果 ──
+        # ── 分组 3: 操作 ──
         self._btn_record_result = QPushButton("录入结果")
         self._btn_record_result.setProperty("class", "primary")
-        self._btn_record_result.setFixedHeight(28)
+        self._btn_record_result.setFixedHeight(26)
         self._btn_record_result.setToolTip("录入测试结果")
-        toolbar.addWidget(self._btn_record_result)
+        action_bar.addWidget(self._btn_record_result)
 
-        # ── 快速加 ──
-        self._btn_quick_add = QPushButton("快速加")
-        self._btn_quick_add.setFixedHeight(28)
-        self._btn_quick_add.setToolTip("快速添加任务：填名称+天数，回车即创建")
-        self._btn_quick_add.setProperty("class", "action")
-        toolbar.addWidget(self._btn_quick_add)
-
-        # ── 更多操作（收起低频按钮） ──
+        # 更多操作下拉（自動排程 / 快速加 / 總結報告 等低頻操作）
         self._more_menu = QMenu(self)
+        self._act_schedule = self._more_menu.addAction("自动排程")
+        self._act_quick_add = self._more_menu.addAction("快速加任务")
+        self._more_menu.addSeparator()
         self._act_summary_report = self._more_menu.addAction("总结报告")
-
         self._btn_more = QToolButton()
         self._btn_more.setText("更多")
         self._btn_more.setMenu(self._more_menu)
         self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_more.setProperty("class", "action")
-        self._btn_more.setFixedHeight(28)
-        self._btn_more.setToolTip("总结报告等更多操作")
-        toolbar.addWidget(self._btn_more)
+        self._btn_more.setFixedHeight(26)
+        self._btn_more.setToolTip("自动排程、快速加任务、总结报告等")
+        action_bar.addWidget(self._btn_more)
 
-        toolbar.addStretch()
-        layout.addLayout(toolbar)
+        row1.addWidget(action_bar)
+        row1.addStretch()
+        layout.addLayout(row1)
 
-        # 今日工作摘要
-        self._summary_label = QLabel()
-        self._summary_label.setProperty("class", "summary-bar")
-        self._summary_label.setWordWrap(True)
-        layout.addWidget(self._summary_label)
+        # ── Row 2: 搜索/筛选 ──
+        row2 = QHBoxLayout()
+        row2.setSpacing(4)
 
-        # 任务统计（常驻显示）
-        self._stats_label = QLabel()
-        self._stats_label.setProperty("class", "subtext")
-        self._stats_label.setContentsMargins(0, 0, 0, 4)
-        layout.addWidget(self._stats_label)
+        # 计划下拉（移至筛选行，与搜索/日期放一起）
+        row2.addWidget(QLabel("计划:"))
+        self._plan_combo = QComboBox()
+        self._plan_combo.setProperty("class", "filter-combo")
+        self._plan_combo.setFixedWidth(160)
+        self._plan_combo.setFixedHeight(26)
+        row2.addWidget(self._plan_combo)
+
+        # ── 分组 1: 搜索 + 筛选 ──
+        self._search_edit = SearchBox()
+        self._search_edit.setPlaceholderText("搜索任务名…")
+        self._search_edit.setFixedSize(200, 26)
+        from PySide6.QtCore import QSettings as _QSettings
+        saved = _QSettings().value("ReliaTrack/task_search", "")
+        if saved and isinstance(saved, str):
+            self._search_edit.setText(saved)
+        self._search_edit.textChanged.connect(self._on_task_search)
+        row2.addWidget(self._search_edit)
+
+        self._tech_filter_combo = QComboBox()
+        self._tech_filter_combo.setProperty("class", "filter-combo")
+        self._tech_filter_combo.setFixedWidth(100)
+        self._tech_filter_combo.setFixedHeight(26)
+        self._tech_filter_combo.addItem("全部技术员", None)
+        self._tech_filter_combo.currentIndexChanged.connect(self._on_task_search)
+        row2.addWidget(self._tech_filter_combo)
+
+        # ── 分隔线 1 ──
+        sep2a = QFrame()
+        sep2a.setFrameShape(QFrame.Shape.VLine)
+        sep2a.setFixedWidth(1)
+        sep2a.setFixedHeight(20)
+        sep2a.setProperty("class", "sep-vline")
+        row2.addWidget(sep2a)
+
+        # ── 分组 2: 日期范围 ──
+        from PySide6.QtWidgets import QDateEdit as _QDE
+        self._date_from = _QDE()
+        self._date_from.setCalendarPopup(True)
+        self._date_from.setDisplayFormat("yyyy-MM-dd")
+        self._date_from.setSpecialValueText("不限")
+        self._date_from.setDate(self._date_from.minimumDate())
+        self._date_from.setFixedWidth(170)
+        self._date_from.setFixedHeight(26)
+        self._date_from.dateChanged.connect(self._on_task_search)
+        row2.addWidget(self._date_from)
+
+        self._date_to = _QDE()
+        self._date_to.setCalendarPopup(True)
+        self._date_to.setDisplayFormat("yyyy-MM-dd")
+        self._date_to.setSpecialValueText("不限")
+        self._date_to.setDate(self._date_to.maximumDate())
+        self._date_to.setFixedWidth(120)
+        self._date_to.setFixedHeight(26)
+        self._date_to.dateChanged.connect(self._on_task_search)
+        row2.addWidget(self._date_to)
+
+        # 重置
+        self._btn_reset_filter = QPushButton("重置")
+        self._btn_reset_filter.setFixedHeight(26)
+        self._btn_reset_filter.setProperty("class", "action")
+        self._btn_reset_filter.clicked.connect(self._reset_filters)
+        row2.addWidget(self._btn_reset_filter)
+
+        row2.addStretch()
+        layout.addLayout(row2)
+
+        # 摘要信息栏（今日工作 + 任务统计合并）
+        self._summary_bar = QLabel()
+        self._summary_bar.setProperty("class", "summary-bar")
+        self._summary_bar.setWordWrap(False)
+        self._summary_bar.setFixedHeight(26)
+        layout.addWidget(self._summary_bar)
 
         # 子 Tab: 测试项 / 甘特图
-        from PySide6.QtWidgets import QTabWidget
-        self._sub_tabs = QTabWidget()
+        from src.views.widgets.segmented_widget import SegmentedWidget
+        self._sub_stacked = QStackedWidget()
+        self._sub_tabs = SegmentedWidget()
 
-        # Tab 1: 任务表格
+        # Tab 0: 任务表格
         tab_table = QWidget()
         tab_table_layout = QVBoxLayout(tab_table)
         tab_table_layout.setContentsMargins(0, 0, 0, 0)
         self._task_table = _TaskTable()
         tab_table_layout.addWidget(self._task_table)
-        self._sub_tabs.addTab(tab_table, "测试项")
+        self._sub_stacked.addWidget(tab_table)
+        self._sub_tabs.addSegment("测试项", tab_table)
 
-        # Tab 2: 甘特图（QScrollArea 包裹，支持大量任务纵向滚动）
+        # Tab 1: 甘特图（QScrollArea 包裹，支持大量任务纵向滚动）
         tab_gantt = QWidget()
         tab_gantt_layout = QVBoxLayout(tab_gantt)
         tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
-        # 甘特图模式切换栏
+        # 甘特图模式切换栏（pills 按钮组）
         gantt_mode_bar = QHBoxLayout()
         gantt_mode_bar.setContentsMargins(4, 2, 4, 2)
-        from PySide6.QtWidgets import QButtonGroup
-        self._gantt_mode_planned = QRadioButton("预计日期")
-        self._gantt_mode_actual = QRadioButton("实际日期")
+        self._gantt_mode_planned = QPushButton("预计日期")
+        self._gantt_mode_planned.setProperty("class", "pill")
+        self._gantt_mode_planned.setCheckable(True)
         self._gantt_mode_planned.setChecked(True)
-        gantt_mode_group = QButtonGroup(self)
-        gantt_mode_group.addButton(self._gantt_mode_planned, 0)
-        gantt_mode_group.addButton(self._gantt_mode_actual, 1)
-        gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
+        self._gantt_mode_planned.setFixedHeight(26)
+        self._gantt_mode_actual = QPushButton("实际日期")
+        self._gantt_mode_actual.setProperty("class", "pill")
+        self._gantt_mode_actual.setCheckable(True)
+        self._gantt_mode_actual.setFixedHeight(26)
+        self._gantt_mode_group = QButtonGroup(self)
+        self._gantt_mode_group.addButton(self._gantt_mode_planned, 0)
+        self._gantt_mode_group.addButton(self._gantt_mode_actual, 1)
+        self._gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
         mode_label = QLabel("显示模式:")
         mode_label.setProperty("class", "subtext")
         gantt_mode_bar.addWidget(mode_label)
@@ -254,27 +258,35 @@ class TestPlanView(QWidget):
         self._gantt_scroll.setProperty("class", "scroll-base")
         self._gantt.bind_scroll_area(self._gantt_scroll)
         tab_gantt_layout.addWidget(self._gantt_scroll)
-        self._sub_tabs.addTab(tab_gantt, "甘特图")
+        self._sub_stacked.addWidget(tab_gantt)
+        self._sub_tabs.addSegment("甘特图", tab_gantt)
 
-        # Tab 3: 结果矩阵（任务×样品 pass/fail 矩阵）
+        # Tab 2: 结果矩阵（任务×样品 pass/fail 矩阵）
         tab_matrix = QWidget()
         tab_matrix_layout = QVBoxLayout(tab_matrix)
         tab_matrix_layout.setContentsMargins(0, 0, 0, 0)
         self._result_matrix = _ResultMatrixWidget(parent=self)
         self._result_matrix.set_on_result_changed(self._on_matrix_result_changed)
         tab_matrix_layout.addWidget(self._result_matrix)
-        self._sub_tabs.addTab(tab_matrix, "结果矩阵")
+        self._sub_stacked.addWidget(tab_matrix)
+        self._sub_tabs.addSegment("结果矩阵", tab_matrix)
 
-        # Tab 4: 失效模式分析
+        # Tab 3: 失效模式分析
         from src.views.widgets.analysis_widget import _AnalysisWidget
         tab_analysis = QWidget()
         tab_analysis_layout = QVBoxLayout(tab_analysis)
         tab_analysis_layout.setContentsMargins(0, 0, 0, 0)
         self._analysis = _AnalysisWidget()
         tab_analysis_layout.addWidget(self._analysis)
-        self._sub_tabs.addTab(tab_analysis, "分析")
+        self._sub_stacked.addWidget(tab_analysis)
+        self._sub_tabs.addSegment("分析", tab_analysis)
 
-        layout.addWidget(self._sub_tabs, stretch=1)
+        # 聯繫 SegmentedWidget ↔ QStackedWidget
+        self._sub_tabs.setStackedWidget(self._sub_stacked)
+        self._sub_tabs.setCurrentIndex(0)
+
+        layout.addWidget(self._sub_tabs)
+        layout.addWidget(self._sub_stacked, stretch=1)
 
         # 全量任务缓存（用于搜索过滤）
         self._all_tasks_for_filter: list[TestTask] = []
@@ -496,19 +508,24 @@ class TestPlanView(QWidget):
                         overdue += 1
 
         parts = [f"共 {total} 个任务"]
+        has_stats = pending > 0 or completed > 0 or overdue > 0
         if pending > 0:
             parts.append(f"待完成 {pending}")
         if completed > 0:
             parts.append(f"已完成 {completed}")
         if overdue > 0:
             parts.append(f'<span style="color:{_t.RED}">{overdue} 个超期</span>')
-        self._stats_label.setText("  |  ".join(parts))
+        # 合并到摘要栏
+        summary = self._summary_bar.text() if self._summary_bar.text() else ""
+        if has_stats:
+            sep = "  ·  " if summary else ""
+            self._summary_bar.setText(summary + sep + "  |  ".join(parts))
 
     def _update_summary_bar(self) -> None:
         """更新今日工作摘要。"""
         tasks = self._all_tasks_for_filter
         if not tasks:
-            self._summary_label.clear()
+            self._summary_bar.clear()
             return
 
         due, pending, overdue = self._compute_summary(
@@ -516,7 +533,7 @@ class TestPlanView(QWidget):
         )
 
         if not self._last_start_date:
-            self._summary_label.setText("待办: 设定计划开始日期后显示摘要")
+            self._summary_bar.setText("待办: 设定计划开始日期后显示摘要")
             return
 
         parts: list[str] = []
@@ -528,9 +545,9 @@ class TestPlanView(QWidget):
             parts.append(f'{pending} 个结果待录入')
 
         if not parts:
-            self._summary_label.setText("待办: 全部正常")
+            self._summary_bar.setText("待办: 全部正常")
         else:
-            self._summary_label.setText("待办: " + " | ".join(parts))
+            self._summary_bar.setText("待办: " + " | ".join(parts))
 
     def set_plans(self, plan_names: list[str], plan_ids: list[int] | None = None) -> None:
         """设置计划下拉选项。"""
@@ -578,6 +595,12 @@ class TestPlanView(QWidget):
             return self._plan_ids[idx]
         return None
 
+    def select_plan_by_id(self, plan_id: int) -> None:
+        """按 plan_id 选中本地 combo（響應全局篩選同步）。"""
+        if plan_id in self._plan_ids:
+            idx = self._plan_ids.index(plan_id)
+            self._plan_combo.setCurrentIndex(idx)
+
     @property
     def selected_plan_index(self) -> int:
         return self._plan_combo.currentIndex()
@@ -604,8 +627,8 @@ class TestPlanView(QWidget):
         return self._act_unarchive_plan
 
     @property
-    def btn_schedule(self) -> QPushButton:
-        return self._btn_schedule
+    def btn_schedule(self) -> QAction:
+        return self._act_schedule
 
     @property
     def act_add_task(self) -> QAction:
@@ -632,8 +655,8 @@ class TestPlanView(QWidget):
         return self._btn_record_result
 
     @property
-    def btn_quick_add(self) -> QPushButton:
-        return self._btn_quick_add
+    def btn_quick_add(self) -> QAction:
+        return self._act_quick_add
 
     @property
     def btn_summary_report(self) -> QAction:
@@ -648,14 +671,24 @@ class TestPlanView(QWidget):
         on_actual_date_edit: Callable[[int, str, str], None] | None = None,
         on_record_result: Callable[[], None] | None = None,
         on_batch_value: Callable[[list[int], int, str], None] | None = None,
+        technician_list: list | None = None,
+        equipment_list: list | None = None,
     ) -> None:
         """设置任务增删改以及实际日期编辑回调。
 
         外部调用此方法，将实际业务逻辑（打开弹窗、调用 Service 等）注入。
+        technician_list / equipment_list 用于右键菜单的批量指派等功能。
         """
         self._on_add_task = on_add
         self._on_edit_task = on_edit
         self._on_delete_task = on_delete
+
+        # 注入參考數據（技術員/設備列表），供右鍵批量指派使用
+        if technician_list is not None or equipment_list is not None:
+            self._task_table.set_reference_data(
+                equipment_list or [],
+                technician_list or [],
+            )
 
         # 表格右键 & 双击
         self._task_table.set_callbacks(
@@ -689,6 +722,7 @@ class TestPlanView(QWidget):
     def _on_toggle_archived(self, checked: bool) -> None:
         """显示/隐藏已归档计划切换。"""
         self.show_archived = checked
+        self._act_toggle_archived.setChecked(checked)
 
 
 # ═══════════════════════════════════════════════════════════════════

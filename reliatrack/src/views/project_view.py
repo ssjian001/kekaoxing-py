@@ -67,6 +67,7 @@ class ProjectView(QWidget):
         toolbar.setSpacing(8)
 
         self.search_input = QLineEdit()
+        self.search_input.setFixedHeight(26)
         self.search_input.setPlaceholderText("搜索项目名称 / 产品 / 客户…")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setMinimumWidth(160)
@@ -89,7 +90,7 @@ class ProjectView(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setProperty("class", "separator")
+        sep.setProperty("class", "sep-vline")
         toolbar.addWidget(sep)
 
         self.btn_add = QPushButton("新建")

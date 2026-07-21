@@ -235,6 +235,7 @@ QPushButton {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
+    border-bottom: 1px solid {SURFACE1};
     border-radius: 8px;
     padding: 6px 14px;
     min-height: 24px;
@@ -244,6 +245,7 @@ QPushButton:hover {{
 }}
 QPushButton:pressed {{
     background-color: {SURFACE2};
+    border-bottom: 1px solid {BORDER};
 }}
 QPushButton:disabled {{
     background-color: {BG_DARK};
@@ -258,21 +260,30 @@ QPushButton:checked {{
 QPushButton[class="primary"] {{
     background-color: {GREEN};
     color: {MANTLE};
-    border-color: {GREEN_DARK};
+    border: 1px solid {GREEN_DARK};
+    border-bottom: 1px solid {GREEN_DARK};
     padding: 2px 12px;
 }}
 QPushButton[class="primary"]:hover {{
     background-color: {GREEN_DARK};
+}}
+QPushButton[class="primary"]:pressed {{
+    background-color: {GREEN_DARK};
+    border-bottom: 1px solid {GREEN};
 }}
 
 /* ── 危险按钮 ── */
 QPushButton[class="danger"] {{
     background-color: {DANGER_BG};
     color: {RED};
-    border-color: {RED};
+    border: 1px solid {RED};
+    border-bottom: 1px solid {RED};
 }}
 QPushButton[class="danger"]:hover {{
     background-color: {DANGER_BG_HOV};
+}}
+QPushButton[class="danger"]:pressed {{
+    border-bottom: 1px solid {RED};
 }}
 
 /* ── 操作按钮 ── */
@@ -309,6 +320,24 @@ QToolButton[class="tab-inactive"]:hover {{
     background-color: {BG_HOVER};
 }}
 
+/* ── SegmentedWidget 分段控件 ── */
+QPushButton[class="segmented-button"] {{
+    background-color: transparent; color: {FG_SECONDARY};
+    border-radius: 6px; padding: 4px 14px;
+    border: 1px solid {BORDER};
+    min-width: 60px;
+}}
+QPushButton[class="segmented-button"]:hover {{
+    background-color: {BG_HOVER};
+}}
+QPushButton[class="segmented-active"] {{
+    background-color: {ACCENT}; color: {MANTLE};
+    border-radius: 6px; padding: 4px 14px;
+    border: 1px solid {ACCENT};
+    font-weight: bold;
+    min-width: 60px;
+}}
+
 /* ── 列表 ── */
 QListWidget {{
     background-color: {BG_DARK};
@@ -340,10 +369,19 @@ QHeaderView::section {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: none;
-    border-bottom: 2px solid {SURFACE1};
+    border-bottom: 2px solid {BORDER};
     padding: 8px 12px;
     font-weight: bold;
     font-size: 13px;
+}}
+QHeaderView::section:hover {{
+    background-color: {SURFACE1};
+}}
+QHeaderView::down-arrow {{
+    margin-left: 4px; margin-right: 4px;
+}}
+QHeaderView::up-arrow {{
+    margin-left: 4px; margin-right: 4px;
 }}
 
 /* ── Tab ── */
@@ -352,28 +390,26 @@ QTabWidget::pane {{
     background-color: {BG_DARK};
     padding-top: 4px;
     border-radius: 8px;
+    top: -1px;
 }}
 QTabBar::tab {{
-    background-color: {BG_INPUT};
+    background-color: transparent;
     color: {FG_SECONDARY};
-    border: 1px solid transparent;
+    border: none;
     border-bottom: 2px solid transparent;
-    padding: 8px 20px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    padding: 8px 18px;
     font-size: 13px;
     font-weight: 500;
-    margin-right: 2px;
+    margin-right: 1px;
 }}
 QTabBar::tab:selected {{
-    background-color: {BG_CARD};
     color: {ACCENT};
     border-bottom: 2px solid {ACCENT};
     font-weight: bold;
 }}
 QTabBar::tab:hover:!selected {{
-    background-color: {SURFACE1};
     color: {FG_PRIMARY};
+    border-bottom: 2px solid {SURFACE1};
 }}
 
 /* ── 滚动条 ── */
@@ -462,21 +498,21 @@ QStatusBar {{
 QToolBar {{
     background-color: {BG_CARD};
     border-bottom: 1px solid {BORDER};
-    spacing: 8px;
-    padding: 4px 12px;
+    spacing: 2px;
+    padding: 2px 8px;
 }}
 QToolBar QToolButton {{
     background-color: transparent;
     color: {FG_PRIMARY};
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 5px 12px;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
     font-size: 13px;
     font-weight: 500;
+    margin: 1px;
 }}
 QToolBar QToolButton:hover {{
     background-color: {BG_HOVER};
-    border-color: {BORDER};
 }}
 QToolBar QToolButton:pressed {{
     background-color: {SURFACE1};
@@ -546,7 +582,7 @@ QMessageBox {{
 /* ── 筛选栏 ── */
 QLabel[class="filter-label"] {{
     color: {FG_PRIMARY}; font-size: 12px; font-weight: bold;
-}}
+/* ── 全局筛选栏 ── */
 QWidget[class="filter-bar"] {{
     background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
 }}
@@ -670,6 +706,79 @@ QLabel[class="separator"] {{
     background-color: {BORDER}; border: none;
 }}
 
+QFrame[class="sep-vline"] {{
+    background-color: {BORDER}; border: none;
+}}
+
+/* ── Pill 按钮组 ── */
+QPushButton[class="pill"] {{
+    background-color: {BG_INPUT};
+    color: {FG_SECONDARY};
+    border: 1px solid {BORDER};
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill"]:checked {{
+    background-color: {ACCENT};
+    color: white;
+    border-color: {ACCENT};
+    font-weight: bold;
+}}
+QPushButton[class="pill"]:hover:!checked {{
+    background-color: {SURFACE1};
+    color: {FG_PRIMARY};
+}}
+
+/* Pill 語義變體（待辦等 tab 用） */
+QPushButton[class="pill-outline"] {{
+    color: {ACCENT};
+    border: 1px solid {BORDER};
+    background-color: {BG_INPUT};
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill-outline"]:hover {{
+    background-color: {SURFACE1};
+}}
+QPushButton[class="pill-danger"] {{
+    color: {RED};
+    border: 1px solid transparent;
+    background-color: transparent;
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill-danger"]:hover {{
+    background-color: rgba(210, 15, 57, 0.1);
+}}
+QPushButton[class="pill-primary"] {{
+    background-color: {ACCENT};
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 2px 14px;
+    font-size: 12px;
+    border-radius: 14px;
+}}
+QPushButton[class="pill-primary"]:hover {{
+    opacity: 0.85;
+}}
+
+/* 快速添加輸入框 */
+QLineEdit[class="quick-add-input"] {{
+    background-color: {BG_INPUT};
+    color: {TEXT};
+    border: 1px solid {BORDER};
+    border-radius: 14px;
+    padding: 2px 12px;
+    font-size: 13px;
+}}
+QLineEdit[class="quick-add-input"]:focus {{
+    border-color: {ACCENT};
+}}
+
 /* ── 标签页卡片容器 ── */
 QWidget[class="card-container"] {{
     background-color: {BG_CARD}; border-radius: 8px;
@@ -790,13 +899,9 @@ QLineEdit[class="search-input"] {{
 QFrame[class="filter-panel"] {{
     background: {SURFACE0}; border-radius: 8px; border: none;
 }}
-/* ── 筛选复选框组 ── */
-QWidget[class="filter-checkbox"] {{
-    background: transparent; border: none;
-}}
-/* ── Issue 详情 Tab ── */
-QTabWidget[class="detail-tabs"] {{
-    background: transparent; border: none;
+/* ── 全局筛选栏 ── */
+QWidget[class="filter-bar"] {{
+    background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
 }}
 /* ── 卡片元信息 ── */
 QLabel[class="card-meta"] {{
@@ -917,6 +1022,40 @@ QLabel[class="import-result-warn"] {{
 /* ── 必填标签 ── */
 QLabel[class="req-field"] {{
     color: {PEACH}; font-size: 13px;
+}}
+
+/* ── Issue 详情弹窗 ── */
+QLabel[class="header-title"] {{
+    color: {TEXT}; font-size: 15px; font-weight: bold;
+}}
+QLabel[class="badge"] {{
+    padding: 2px 8px; border-radius: 4px; font-weight: bold;
+    font-size: 12px;
+}}
+QFrame[class="attach-section"] {{
+    background: {SURFACE0}; border-radius: 6px; padding: 8px;
+}}
+QFrame[class="comment-card"] {{
+    background: {BASE}; border: 1px solid {SURFACE1};
+    border-radius: 6px; padding: 8px; margin: 4px 0px;
+}}
+QLabel[class="comment-author"] {{
+    color: {ACCENT}; font-weight: bold; font-size: 12px;
+}}
+QLabel[class="avatar-placeholder"] {{
+    background: {SURFACE2}; color: {SUBTEXT0};
+    border-radius: 12px; padding: 4px 8px;
+    font-size: 11px; font-weight: bold;
+}}
+QFrame[class="activity-card"] {{
+    background: transparent; border: none;
+    padding: 4px 0px;
+}}
+QLabel[class="activity-change"] {{
+    color: {SUBTEXT0}; font-size: 12px;
+}}
+QSplitter::handle[class="list-splitter"] {{
+    background: {SURFACE1}; width: 4px; border-radius: 2px;
 }}
 """
 

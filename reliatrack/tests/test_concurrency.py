@@ -33,38 +33,48 @@ def _make_db() -> apsw.Connection:
 # ═══════════════════════════════════════════════════════════════════
 
 class TestConcurrentReads:
-    """多线程同时读 DB 不应崩溃或数据错乱。"""
+    """多线程同时读 DB 不应崩溃或数据错乱。
+
+    注意：apsw 預設禁止多線程共用同一 Connection，這是設計上的安全保護，
+    不是 bug。生產環境中每個線程（如 ExportWorker）都有獨立連接
+    （見 WorkerDataProvider 模式）。本測試驗證：
+      1. 獨立連接 + 共享臨時 DB 文件：可正常並發
+      2. 共享連接：預期拋 ThreadingViolationError（驗證保護機制有效）
+    """
 
     N_WORKERS = 10
     N_ITERATIONS = 50
 
     @pytest.fixture(autouse=True)
-    def _setup(self):
-        conn = _make_db()
-        repo = IssueRepository(conn)
-        # 写入一批数据
+    def _setup(self, tmp_path):
+        # 用臨時文件 DB + WAL 模式，讓多連接並發讀寫
+        self._db_path = str(tmp_path / "concurrent_test.db")
+        setup_conn = apsw.Connection(self._db_path)
+        setup_conn.execute("PRAGMA journal_mode=WAL")
+        setup_conn.execute("PRAGMA busy_timeout=10000")
+        init_schema(setup_conn)
+        repo = IssueRepository(setup_conn)
         for i in range(20):
             repo.insert(title=f"Concurrent Issue {i}", status="open", severity="major", priority=3)
-        self._repo = repo
-        self._conn = conn
+        setup_conn.close()
         yield
-        conn.close()
 
-    def test_parallel_reads(self):
-        """多个线程并发读不崩溃。"""
+    def test_parallel_reads_independent_connections(self):
+        """每個線程用獨立連接，並發讀不崩潰。"""
         errors = []
 
         def _reader():
             try:
-                repo = IssueRepository(self._conn)
+                conn = apsw.Connection(self._db_path)
+                repo = IssueRepository(conn)
                 for _ in range(self.N_ITERATIONS):
                     issues = repo.list_all()
                     assert len(issues) >= 20
-                    # 随机读单个
                     for iid in range(1, 21):
                         issue = repo.get_by_id(iid)
                         if issue is not None:
                             assert "Concurrent Issue" in issue.title
+                conn.close()
             except Exception as exc:
                 errors.append(exc)
 
@@ -76,26 +86,30 @@ class TestConcurrentReads:
 
         assert not errors, f"Parallel reads failed: {errors}"
 
-    def test_parallel_read_write(self):
-        """并发读写同一张表不崩溃（不开启单个事务）。"""
+    def test_parallel_read_write_independent_connections(self):
+        """每個線程用獨立連接，並發讀寫不崩潰。"""
         errors = []
-        lock = threading.Lock()
 
         def _writer():
             try:
-                repo = IssueRepository(self._conn)
+                conn = apsw.Connection(self._db_path)
+                conn.execute("PRAGMA busy_timeout=5000")
+                repo = IssueRepository(conn)
                 for i in range(10):
-                    repo.insert(title=f"Written from thread", status="open", severity="minor", priority=1)
-                    # 避免 WAL 模式下的超快耗尽
+                    repo.insert(title="Written from thread", status="open", severity="minor", priority=1)
+                conn.close()
             except Exception as exc:
                 errors.append(exc)
 
         def _reader():
             try:
-                repo = IssueRepository(self._conn)
+                conn = apsw.Connection(self._db_path)
+                conn.execute("PRAGMA busy_timeout=10000")
+                repo = IssueRepository(conn)
                 for _ in range(10):
                     issues = repo.list_all()
                     _ = len(issues)
+                conn.close()
             except Exception as exc:
                 errors.append(exc)
 

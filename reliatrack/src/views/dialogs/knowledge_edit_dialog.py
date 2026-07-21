@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget,
+    QLabel,
+    QHBoxLayout,
     QMessageBox,
 )
 
 from src.models.knowledge import KnowledgeEntry
+from src.styles.icon import RI_EDIT, RI_ADD
 from src.views.dialogs.base_dialog import _BaseDialog
 
 
@@ -31,11 +34,25 @@ class KnowledgeEditDialog(_BaseDialog):
     ) -> None:
         is_edit = entry is not None
         super().__init__(
-            "✏️ 编辑知识条目" if is_edit else "➕ 新增知识条目",
+            "编辑知识条目" if is_edit else "新增知识条目",
             parent,
             width=520,
         )
         self._entry = entry
+
+        # ── 标题图标 ──
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap((RI_EDIT if is_edit else RI_ADD).icon().pixmap(20, 20))
+        title_lbl = QLabel("编辑知识条目" if is_edit else "新增知识条目")
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
+        title_w = QWidget()
+        title_row = QHBoxLayout(title_w)
+        title_row.setContentsMargins(0, 0, 0, 4)
+        title_row.addWidget(icon_lbl)
+        title_row.addSpacing(6)
+        title_row.addWidget(title_lbl)
+        title_row.addStretch()
+        self._root.insertWidget(0, title_w)
 
         # ── 基本信息 ──
         self._category_combo = self._add_combo_field(

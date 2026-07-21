@@ -36,7 +36,7 @@ class SampleHandlers:
         v.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
         v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
-        v.pool_tab.btn_batch_edit.clicked.connect(self._on_pool_batch_edit)
+        v.pool_tab.btn_batch_edit.triggered.connect(self._on_pool_batch_edit)
         v.pool_tab.btn_delete.clicked.connect(self._on_sample_delete)
         v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
         v.ledger_tab.btn_return.clicked.connect(self._on_sample_return)

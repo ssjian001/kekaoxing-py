@@ -382,7 +382,7 @@ class BatchImportDialog(_BaseDialog):
 
         self._imported = True
         self._import_result = (success_count, skip_count)
-        self._btn_import.setText("✅ 导入完成")
+        self._btn_import.setText("导入完成")
         self._btn_close.setText("关闭")
 
         # 显示结果统计
