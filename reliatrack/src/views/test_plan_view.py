@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QRadioButton,
     QButtonGroup,
+    QStackedWidget,
 )
 from PySide6.QtCore import Qt, Signal, QSize
 
@@ -207,18 +208,20 @@ class TestPlanView(QWidget):
         layout.addWidget(self._summary_bar)
 
         # 子 Tab: 测试项 / 甘特图
-        from PySide6.QtWidgets import QTabWidget
-        self._sub_tabs = QTabWidget()
+        from src.views.widgets.segmented_widget import SegmentedWidget
+        self._sub_stacked = QStackedWidget()
+        self._sub_tabs = SegmentedWidget()
 
-        # Tab 1: 任务表格
+        # Tab 0: 任务表格
         tab_table = QWidget()
         tab_table_layout = QVBoxLayout(tab_table)
         tab_table_layout.setContentsMargins(0, 0, 0, 0)
         self._task_table = _TaskTable()
         tab_table_layout.addWidget(self._task_table)
-        self._sub_tabs.addTab(tab_table, "测试项")
+        self._sub_stacked.addWidget(tab_table)
+        self._sub_tabs.addSegment("测试项", tab_table)
 
-        # Tab 2: 甘特图（QScrollArea 包裹，支持大量任务纵向滚动）
+        # Tab 1: 甘特图（QScrollArea 包裹，支持大量任务纵向滚动）
         tab_gantt = QWidget()
         tab_gantt_layout = QVBoxLayout(tab_gantt)
         tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
@@ -255,27 +258,35 @@ class TestPlanView(QWidget):
         self._gantt_scroll.setProperty("class", "scroll-base")
         self._gantt.bind_scroll_area(self._gantt_scroll)
         tab_gantt_layout.addWidget(self._gantt_scroll)
-        self._sub_tabs.addTab(tab_gantt, "甘特图")
+        self._sub_stacked.addWidget(tab_gantt)
+        self._sub_tabs.addSegment("甘特图", tab_gantt)
 
-        # Tab 3: 结果矩阵（任务×样品 pass/fail 矩阵）
+        # Tab 2: 结果矩阵（任务×样品 pass/fail 矩阵）
         tab_matrix = QWidget()
         tab_matrix_layout = QVBoxLayout(tab_matrix)
         tab_matrix_layout.setContentsMargins(0, 0, 0, 0)
         self._result_matrix = _ResultMatrixWidget(parent=self)
         self._result_matrix.set_on_result_changed(self._on_matrix_result_changed)
         tab_matrix_layout.addWidget(self._result_matrix)
-        self._sub_tabs.addTab(tab_matrix, "结果矩阵")
+        self._sub_stacked.addWidget(tab_matrix)
+        self._sub_tabs.addSegment("结果矩阵", tab_matrix)
 
-        # Tab 4: 失效模式分析
+        # Tab 3: 失效模式分析
         from src.views.widgets.analysis_widget import _AnalysisWidget
         tab_analysis = QWidget()
         tab_analysis_layout = QVBoxLayout(tab_analysis)
         tab_analysis_layout.setContentsMargins(0, 0, 0, 0)
         self._analysis = _AnalysisWidget()
         tab_analysis_layout.addWidget(self._analysis)
-        self._sub_tabs.addTab(tab_analysis, "分析")
+        self._sub_stacked.addWidget(tab_analysis)
+        self._sub_tabs.addSegment("分析", tab_analysis)
 
-        layout.addWidget(self._sub_tabs, stretch=1)
+        # 聯繫 SegmentedWidget ↔ QStackedWidget
+        self._sub_tabs.setStackedWidget(self._sub_stacked)
+        self._sub_tabs.setCurrentIndex(0)
+
+        layout.addWidget(self._sub_tabs)
+        layout.addWidget(self._sub_stacked, stretch=1)
 
         # 全量任务缓存（用于搜索过滤）
         self._all_tasks_for_filter: list[TestTask] = []

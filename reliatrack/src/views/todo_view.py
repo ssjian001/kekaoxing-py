@@ -1,7 +1,7 @@
 """待办事项 Tab — 看板（Kanban）视图 + 四象限子 Tab。
 
 包含看板 3 列（待处理 / 进行中 / 已完成）和 Eisenhower 四象限视图，
-通过子 TabBar 切换。顶部工具栏含项目筛选 + 搜索框。
+通过 SegmentedWidget 子导航切换。顶部工具栏含项目筛选 + 搜索框。
 """
 
 from __future__ import annotations
@@ -20,10 +20,11 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedWidget,
-    QTabBar,
     QVBoxLayout,
     QWidget,
 )
+
+from src.views.widgets.segmented_widget import SegmentedWidget
 
 import src.styles.theme as _t
 from src.models.todo import TodoItem
@@ -335,7 +336,7 @@ class TodoView(QWidget):
         self._build_action_row(layout)
 
         # 子 Tab 切换
-        self._sub_tabs = QTabBar()
+        self._sub_tabs = SegmentedWidget()
         self._stack = QStackedWidget()
 
         # 看板视图
@@ -347,9 +348,9 @@ class TodoView(QWidget):
         self._quadrant_view.quadrant_changed.connect(self._on_quadrant_changed)
         self._stack.addWidget(self._quadrant_view)
 
-        self._sub_tabs.addTab("看板")
-        self._sub_tabs.addTab("四象限")
-        self._sub_tabs.currentChanged.connect(self._stack.setCurrentIndex)
+        self._sub_tabs.addSegment("看板")
+        self._sub_tabs.addSegment("四象限")
+        self._sub_tabs.setStackedWidget(self._stack)
 
         layout.addWidget(self._sub_tabs)
         layout.addWidget(self._stack, stretch=1)

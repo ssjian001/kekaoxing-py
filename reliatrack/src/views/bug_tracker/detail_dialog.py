@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QStackedWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -117,21 +118,36 @@ class IssueDetailDialog(QDialog):
         return header
 
     def _build_tabs(self):
-        """构建 5 个 Tab。"""
-        from PySide6.QtWidgets import QTabWidget
+        """构建 5 个 Tab（SegmentedWidget + QStackedWidget）。"""
+        from src.views.widgets.segmented_widget import SegmentedWidget
 
-        tab = QTabWidget()
-        tab.setProperty("class", "detail-tabs")
-        anim = DropShadowAnimation(tab)
-        anim.setup(blur=8, offset_y=1, normal_alpha=0, hover_alpha=15)
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
 
-        tab.addTab(self._build_detail_tab(), "详情")
-        tab.addTab(self._build_comment_tab(), "评论")
-        tab.addTab(self._build_activity_tab(), "活动")
-        tab.addTab(self._build_fa_tab(), "FA")
-        tab.addTab(self._build_capa_tab(), "CAPA")
+        seg = SegmentedWidget()
+        stack = QStackedWidget()
 
-        return tab
+        # 依次構建各頁面並添加到 stack + segment
+        for name, builder in [
+            ("详情", self._build_detail_tab),
+            ("评论", self._build_comment_tab),
+            ("活动", self._build_activity_tab),
+            ("FA", self._build_fa_tab),
+            ("CAPA", self._build_capa_tab),
+        ]:
+            page = builder()
+            stack.addWidget(page)
+            seg.addSegment(name)
+
+        seg.setStackedWidget(stack)
+        seg.setCurrentIndex(0)
+
+        layout.addWidget(seg)
+        layout.addWidget(stack, stretch=1)
+
+        return container
 
     # ── Tab 1: 详情 ────────────────────────────────────────────────
 

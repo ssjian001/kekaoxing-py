@@ -130,6 +130,8 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._tab_widget = QTabWidget()
+        self._tab_widget.setTabPosition(QTabWidget.TabPosition.West)
+        self._tab_widget.setTabShape(QTabWidget.TabShape.Rounded)
 
         # Tab 0: 仪表盘（首页）
         self._dashboard = DashboardView()

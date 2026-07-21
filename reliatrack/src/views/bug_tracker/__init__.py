@@ -29,6 +29,7 @@ from src.views.bug_tracker.shortcuts import (
     ShortcutHandler,
     QuickSearchDialog,
 )
+from src.views.widgets.segmented_widget import SegmentedWidget
 from src.models.issue import Issue
 from src.services.issue_service import IssueService
 
@@ -84,27 +85,19 @@ class BugTrackerView(QWidget):
         layout.setContentsMargins(*VIEW_MARGINS)
         layout.setSpacing(SPACING_SMALL)
 
-        # ── 顶部 Tab 切换栏 ──
-        tab_bar = QHBoxLayout()
-        tab_bar.setSpacing(2)
+        # ── 顶部操作栏（SegmentedWidget 切换看板/列表 + 更多菜单 + 状态信息）──
+        top_row = QHBoxLayout()
+        top_row.setSpacing(2)
 
-        # 看板/列表/更多 统一用 QToolButton + tab 样式
-        self._tab_kanban = QToolButton()
-        self._tab_kanban.setText("看板")
-        self._tab_kanban.setProperty("class", "tab-inactive")
-        self._tab_kanban.setFixedHeight(26)
-        self._tab_kanban.setCheckable(True)
-        self._tab_kanban.clicked.connect(lambda: self._switch_tab(0))
-        tab_bar.addWidget(self._tab_kanban)
+        # 内容区（Stack 在分段控件前創建，供 setStackedWidget 使用）
+        self._stack = QStackedWidget()
 
-        self._tab_list = QToolButton()
-        self._tab_list.setText("列表")
-        self._tab_list.setProperty("class", "tab-active")
-        self._tab_list.setFixedHeight(26)
-        self._tab_list.setCheckable(True)
-        self._tab_list.setChecked(True)
-        self._tab_list.clicked.connect(lambda: self._switch_tab(1))
-        tab_bar.addWidget(self._tab_list)
+        # 分段切换控件
+        self._seg = SegmentedWidget()
+        self._seg.addSegment("看板")
+        self._seg.addSegment("列表")
+        self._seg.setStackedWidget(self._stack)
+        top_row.addWidget(self._seg)
 
         # 更多操作菜单
         self._more_menu = QMenu(self)
@@ -123,19 +116,17 @@ class BugTrackerView(QWidget):
         self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_more.setProperty("class", "tab-inactive")
         self._btn_more.setFixedHeight(26)
-        tab_bar.addWidget(self._btn_more)
+        top_row.addWidget(self._btn_more)
 
-        tab_bar.addStretch()
+        top_row.addStretch()
 
         # 状态信息区
         self._stats_label = QLabel("")
         self._stats_label.setProperty("class", "subtext")
-        tab_bar.addWidget(self._stats_label)
+        top_row.addWidget(self._stats_label)
 
-        layout.addLayout(tab_bar)
+        layout.addLayout(top_row)
 
-        # ── 内容区 ──
-        self._stack = QStackedWidget()
         layout.addWidget(self._stack, stretch=1)
 
     def _connect_signals(self) -> None:
@@ -194,17 +185,8 @@ class BugTrackerView(QWidget):
         self._switch_tab(1)
 
     def _switch_tab(self, index: int) -> None:
-        """切换 0=看板 / 1=列表。"""
-        self._tab_kanban.setProperty("class", "tab-active" if index == 0 else "tab-inactive")
-        self._tab_list.setProperty("class", "tab-active" if index == 1 else "tab-inactive")
-        self._tab_kanban.setChecked(index == 0)
-        self._tab_list.setChecked(index == 1)
-        # 刷新样式
-        for btn in (self._tab_kanban, self._tab_list):
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
-
-        self._stack.setCurrentIndex(index)
+        """切换 0=看板 / 1=列表（兼容接口，委托 SegmentedWidget）。"""
+        self._seg.setCurrentIndex(index)
         self._update_stats()
 
     def _update_stats(self) -> None:

@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QTabWidget,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
@@ -26,6 +26,7 @@ import src.styles.theme as _t
 from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
 from src.views.widgets.command_bar import CommandBar
+from src.views.widgets.segmented_widget import SegmentedWidget
 
 # 样品池列规格
 _POOL_SPECS = [
@@ -667,17 +668,25 @@ class SampleView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*VIEW_MARGINS)
 
-        self._tabs = QTabWidget()
+        self._segmented = SegmentedWidget()
 
+        self._stack = QStackedWidget()
         self._pool_tab = _SamplePoolTab()
         self._ledger_tab = _SampleLedgerTab()
         self._usage_tab = _SampleUsageTab()
 
-        self._tabs.addTab(self._pool_tab, "样品池")
-        self._tabs.addTab(self._ledger_tab, "样品台账")
-        self._tabs.addTab(self._usage_tab, "出入库记录")
+        self._stack.addWidget(self._pool_tab)
+        self._stack.addWidget(self._ledger_tab)
+        self._stack.addWidget(self._usage_tab)
 
-        layout.addWidget(self._tabs)
+        self._segmented.addSegment("样品池", self._pool_tab)
+        self._segmented.addSegment("样品台账", self._ledger_tab)
+        self._segmented.addSegment("出入库记录", self._usage_tab)
+        self._segmented.setStackedWidget(self._stack)
+        self._segmented.setCurrentIndex(0)
+
+        layout.addWidget(self._segmented)
+        layout.addWidget(self._stack)
 
     def refresh_pool(self, samples: list[Sample]) -> None:
         self._pool_tab.refresh(samples)

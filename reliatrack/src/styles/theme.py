@@ -320,6 +320,24 @@ QToolButton[class="tab-inactive"]:hover {{
     background-color: {BG_HOVER};
 }}
 
+/* ── SegmentedWidget 分段控件 ── */
+QPushButton[class="segmented-button"] {{
+    background-color: transparent; color: {FG_SECONDARY};
+    border-radius: 6px; padding: 4px 14px;
+    border: 1px solid {BORDER};
+    min-width: 60px;
+}}
+QPushButton[class="segmented-button"]:hover {{
+    background-color: {BG_HOVER};
+}}
+QPushButton[class="segmented-active"] {{
+    background-color: {ACCENT}; color: {MANTLE};
+    border-radius: 6px; padding: 4px 14px;
+    border: 1px solid {ACCENT};
+    font-weight: bold;
+    min-width: 60px;
+}}
+
 /* ── 列表 ── */
 QListWidget {{
     background-color: {BG_DARK};
