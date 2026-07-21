@@ -360,9 +360,9 @@ class TodoView(QWidget):
     def _build_kanban_view(self) -> QWidget:
         """构建看板 3 列内容，返回 QWidget。"""
         widget = QWidget()
-        board = QHBoxLayout(widget)
-        board.setContentsMargins(8, 4, 8, 8)
-        board.setSpacing(8)
+        self._kanban_board = QHBoxLayout(widget)
+        self._kanban_board.setContentsMargins(8, 4, 8, 8)
+        self._kanban_board.setSpacing(8)
 
         self._columns: dict[str, KanbanColumn] = {}
         for status, label, cls in _COLUMNS:
@@ -370,9 +370,13 @@ class TodoView(QWidget):
             col.todo_dropped.connect(self._on_todo_dropped)
             col.card_selected.connect(self._on_card_selected)
             self._columns[status] = col
-            board.addWidget(col, stretch=1)
+            self._kanban_board.addWidget(col, stretch=1)
 
         return widget
+
+    def _toggle_empty_state(self, count: int) -> None:
+        """空状态提示显隐。"""
+        # 由子类 call 暂不实现，后续可加 UI 提示
 
     def _build_filter_row(self, parent_layout: QVBoxLayout) -> None:
         """筛选行：项目选择 + 搜索 + 显示归档。"""
@@ -541,6 +545,10 @@ class TodoView(QWidget):
 
         for status, col in self._columns.items():
             col.set_cards(groups.get(status, []))
+
+        # 空状态：检查全部列
+        in_view = sum(len(col._cards) for col in self._columns.values())
+        self._toggle_empty_state(in_view)
 
     def _on_card_selected(self, todo_id: int) -> None:
         """卡片单击选中 — 取消旧选中，标记新选中。"""

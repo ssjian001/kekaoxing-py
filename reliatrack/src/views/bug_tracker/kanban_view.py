@@ -632,7 +632,7 @@ class BugKanbanView(QWidget):
 
         self._search_input = QLineEdit()
         self._search_input.setFixedHeight(26)
-        self._search_input.setPlaceholderText("搜索 Issue 标题...")
+        self._search_input.setPlaceholderText("搜索 Issue 标题…")
         self._search_input.setFixedWidth(220)
         self._search_input.setClearButtonEnabled(True)
         self._search_input.textChanged.connect(self._on_search)
@@ -670,6 +670,14 @@ class BugKanbanView(QWidget):
 
         scroll.setWidget(columns_widget)
         root_layout.addWidget(scroll)
+
+        # ── 空状态提示 ──
+        self._empty_label = QLabel("暂无 Issue 数据")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(scroll)
+        self._empty_label.hide()
 
     # ── 数据加载 ──────────────────────────────────────────────
 
@@ -753,6 +761,10 @@ class BugKanbanView(QWidget):
 
             col = self._columns[status]
             col.set_cards(cards, history_cards if status == "closed" else None)
+
+        # 空状态：全部列均无卡片时显示提示
+        total = sum(len(col._cards) for col in self._columns.values())
+        self._scroll_area_empty_state(total)
 
     def set_issues(self, issues: list[Issue] | None = None) -> None:
         """外部注入已筛选数据，然后渲染。"""
@@ -847,6 +859,18 @@ class BugKanbanView(QWidget):
             self._load_issues()
 
     # ── 卡片交互 ──────────────────────────────────────────────
+
+    def _scroll_area_empty_state(self, total_cards: int) -> None:
+        """空状态提示的显隐控制。"""
+        if total_cards == 0:
+            # 获取 scroll 区域作为父容器
+            scroll = self.findChild(QScrollArea)
+            if scroll and self._empty_label:
+                self._empty_label.setGeometry(scroll.viewport().rect())
+                self._empty_label.raise_()
+                self._empty_label.show()
+        else:
+            self._empty_label.hide()
 
     def _on_card_double_clicked(self, issue_id: int) -> None:
         """卡片双击 → 发射信号给父视图打开详情。"""

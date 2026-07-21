@@ -418,7 +418,7 @@ class BugListView(QWidget):
         # 搜索框（左）
         self._search_input = QLineEdit()
         self._search_input.setFixedHeight(26)
-        self._search_input.setPlaceholderText("搜索标题/描述/根因")
+        self._search_input.setPlaceholderText("搜索标题/描述/根因…")
         self._search_input.setMinimumWidth(160)
         self._search_input.setMaximumWidth(260)
         self._search_input.textChanged.connect(self._apply_filters)

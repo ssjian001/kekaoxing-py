@@ -147,7 +147,7 @@ class TestPlanView(QWidget):
 
         # ── 分组 1: 搜索 + 筛选 ──
         self._search_edit = QLineEdit()
-        self._search_edit.setPlaceholderText("搜索任务名...")
+        self._search_edit.setPlaceholderText("搜索任务名…")
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setFixedSize(200, 28)
         from PySide6.QtCore import QSettings as _QSettings
