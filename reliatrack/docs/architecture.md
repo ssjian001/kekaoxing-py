@@ -22,7 +22,7 @@ Project ──< TestPlan ──< TestTask >── Sample
    └──< Knowledge
 ```
 
-### Schema 版本：v25
+### Schema 版本：v27
 
 - **v25**：新增 todos 表（待办事项看板模块）
 - **v24**：活动日志加 project_id 列 + 索引 + 后台回填（仪表盘 weekly_closed 按项目筛选，避免跨项目数据泄漏）
@@ -43,7 +43,7 @@ Project ──< TestPlan ──< TestTask >── Sample
 ```
 View (Qt UI)
   ↓ Signal
-Handler (信号处理器, 10个类)
+Handler (信号处理器, 12个类)
   ↓ 调用
 Service (业务逻辑)
   ↓ 调用
