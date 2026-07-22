@@ -25,6 +25,7 @@ from PySide6.QtCore import QEvent, Qt
 import src.styles.theme as _t
 from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
 from src.models.sample import Sample
+from src.styles.icon import set_icon, RI_ADD, RI_IMPORT, RI_EXPORT, RI_EDIT, RI_DELETE, RI_MORE
 from src.views.widgets.command_bar import CommandBar
 from src.views.widgets.segmented_widget import SegmentedWidget
 
@@ -162,18 +163,21 @@ class _SamplePoolTab(QWidget):
         self._btn_add.setProperty("class", "action")
         self._btn_add.setMinimumWidth(70)
         self._btn_add.setToolTip("样品入库")
+        set_icon(self._btn_add, RI_ADD)
         action_bar.addWidget(self._btn_add)
 
         self._btn_batch_import = QPushButton("批量导入")
         self._btn_batch_import.setProperty("class", "action")
         self._btn_batch_import.setMinimumWidth(70)
         self._btn_batch_import.setToolTip("从 Excel 批量导入样品")
+        set_icon(self._btn_batch_import, RI_IMPORT)
         action_bar.addWidget(self._btn_batch_import)
 
         self._btn_out = QPushButton("出库")
         self._btn_out.setProperty("class", "action")
         self._btn_out.setMinimumWidth(70)
         self._btn_out.setToolTip("样品出库")
+        set_icon(self._btn_out, RI_EXPORT)
         action_bar.addWidget(self._btn_out)
 
         # 分隔線
@@ -183,12 +187,14 @@ class _SamplePoolTab(QWidget):
         self._btn_edit.setProperty("class", "action")
         self._btn_edit.setMinimumWidth(70)
         self._btn_edit.setToolTip("编辑选中样品")
+        set_icon(self._btn_edit, RI_EDIT)
         action_bar.addWidget(self._btn_edit)
 
         self._btn_delete = QPushButton("删除")
         self._btn_delete.setProperty("class", "action")
         self._btn_delete.setMinimumWidth(70)
         self._btn_delete.setToolTip("彻底删除选中样品")
+        set_icon(self._btn_delete, RI_DELETE)
         action_bar.addWidget(self._btn_delete)
 
         # 更多操作（批量编辑）
@@ -201,6 +207,7 @@ class _SamplePoolTab(QWidget):
         self._btn_more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._btn_more.setProperty("class", "action")
         self._btn_more.setMinimumWidth(70)
+        set_icon(self._btn_more, RI_MORE)
         action_bar.addWidget(self._btn_more)
 
         toolbar.addWidget(action_bar)

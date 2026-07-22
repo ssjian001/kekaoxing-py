@@ -33,6 +33,7 @@ from src.models.common import Equipment, Technician
 from src.views.widgets.task_table import _TaskTable
 from src.views.widgets.gantt_widget import _GanttWidget
 from src.views.widgets.result_matrix import _ResultMatrixWidget
+from src.styles.icon import set_icon, RI_IMPORT, RI_CHECK, RI_MORE
 from src.views.widgets.command_bar import CommandBar
 from src.views.widgets.search_box import SearchBox
 
@@ -108,6 +109,7 @@ class TestPlanView(QWidget):
         self._btn_record_result.setProperty("class", "primary")
         self._btn_record_result.setFixedHeight(26)
         self._btn_record_result.setToolTip("录入测试结果")
+        set_icon(self._btn_record_result, RI_CHECK)
         action_bar.addWidget(self._btn_record_result)
 
         # 更多操作下拉（自動排程 / 快速加 / 總結報告 等低頻操作）
@@ -123,6 +125,7 @@ class TestPlanView(QWidget):
         self._btn_more.setProperty("class", "action")
         self._btn_more.setFixedHeight(26)
         self._btn_more.setToolTip("自动排程、快速加任务、总结报告等")
+        set_icon(self._btn_more, RI_MORE)
         action_bar.addWidget(self._btn_more)
 
         row1.addWidget(action_bar)
