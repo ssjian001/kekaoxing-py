@@ -1,42 +1,40 @@
-# Session Handoff — 2026-07-21
+# Session Handoff — 2026-07-23 UI 全面重构 Phase 1
 
-## 完成的工作
+## 已完成 (Phase 1 — 100%)
 
-### UI 組件庫（移植自 qfluentwidgets）
-- **新增 5 個 widgets 文件**：
-  - `table_delegate.py` — RowHighlightDelegate: 自繪 hover/pressed/selected 三態圓角行 + 左側指示色條
-  - `search_box.py` — SearchBox: 內置清除按鈕 + 聚焦高亮邊框
-  - `switch_button.py` — SwitchButton: QPropertyAnimation 滑塊動畫
-  - `flow_layout.py` — FlowLayout: 自動換行佈局
-  - `command_bar.py` — CommandBar: 工具欄自動溢出到「更多」菜單
+### 新建组件
+- `src/views/widgets/empty_state.py` — EmptyStateWidget: SaaS 风格空状态占位（文件夹图标+标题+描述+可选操作按钮），取代旧 QLabel 空状态 hack
 
-### 視圖整合
-- **Issue 列表**：行高亮 delegate + SearchBox + CommandBar（操作按鈕）
-- **樣品池**：11 按鈕 → CommandBar 分組（入库/批量导入/出库 | 编辑/删除/更多）
-- **測試計劃**：計劃管理/任務管理/錄入結果/更多 → CommandBar + SearchBox
-- **待辦事項**：「顯示已歸檔」QCheckBox → SwitchButton
+### 老旧视图组件化升级（4 个文件）
+- **设备管理** (`equipment_view.py`) — QLineEdit→SearchBox, 表格→RowHighlightDelegate, 空状态→EmptyStateWidget, QEvent+eventFilter→resizeEvent
+- **技术人员管理** (`technician_view.py`) — 同上
+- **知识库** (`knowledge_view.py`) — 同上（保留类别列着色/text truncation）
+- **项目管理** (`project_view.py`) — 同上（保留状态列着色）
 
-### 參考資料
-- `~/Desktop/AI/xiangmu/references/fluent-design-patterns-for-reliatrack.md` — 35KB 設計模式提取（13 組件）
+### 已验证
+- `py_compile` 全部 4 文件通过
+- `pytest tests/ -x` 602 passed, 38 warnings, 0 failed
 
-## 最新提交
-`9cae96c` style: 所有 QComboBox 統一使用 filter-combo class 樣式
+### 提交
+- `88f3098` — `explore/ui-complete-refactor` 分支: "ui: Phase 1 — 老视图组件普及 + EmptyStateWidget"
 
-## 本次 Session (2026-07-21 第二段) 完成的工作
-- **篩選欄位置**：TabWidget corner → menubar setCornerWidget（combo parent=self + try/except RuntimeError 兜底 Windows 兼容）
-- **測試計劃頁**：計劃下拉從 row1（操作欄）移到 row2（搜索/篩選行）
-- **QComboBox 統一樣式**：全項目 22 個 combo 全部加上 `filter-combo` class
-- **代碼清理**：theme.py filter-label 缺 `}}` 修復、未使用 import 清除
-- **分支合併**：`explore/ui-ux-enhancements` → main，分支已刪除
+## 前序分支已完成（不属于本 session 但已合入 main）
+- ✅ 26 个对话框继承 `_BaseDialog`（SVG 图标按钮、QFormLayout、键盘快捷键、滚动表单）
+- ✅ 看板卡片 CardWidget 质感提升（aged 色块、hover 动画、阴影）
+- ✅ 仪表盘 StatCard 卡片样式
+- ✅ 测试计划视图 CommandBar + SearchBox
+- ✅ 样品视图 CommandBar + SegmentedWidget
 
-## 測試
-596 passed（忽略 test_concurrency.py 6 個已知並發失敗）
+## 未做（评估后暂缓）
+- sample_view.py 3 个子表的 EmptyStateWidget 升级：614 行文件，3 个独立 `_SampleTable` 子表各有自己的 empty_label + eventFilter，升级复杂度与收益比不高。每个子表有独立的 `_update_empty_state + eventFilter` 路径，拆解需重写整个布局逻辑。
+- test_plan_view.py 组件化拆分：732 行/35 方法，拆分到独立模块可能导致 handler 层引用断裂。已具备 CommandBar 和 SearchBox，当前结构可维护。
+- result_matrix.py 性能优化：当前仅用于测试计划详情页的结果矩阵显示，瓶颈不在渲染。
 
-## 阻塞 / 注意事項
-- test_boundary.py CI-only bug 仍未修復（本地通過，CI 上 init_schema 空表）
-- Git push 曾遇到 TLS 握手錯誤，網路恢復後已成功 push
+## 下一步
+- 若需继续 Phase 1.5（sample_view 空状态升级），需评估 3 个 `_SampleTable` 子表的布局重构
+- 或创建 `explore/ui-complete-refactor` 分支的后续优化
 
-## 下一步可選
-- 設備/知識庫/項目視圖按鈕較少（3-4），暫不需要 CommandBar
-- InfoBar 通知系統可替代現有 Toast（需較大重構）
-- CardWidget 改造看板卡片（hover/pressed 動畫）
+## 会话交接
+- **产物位置**: `explore/ui-complete-refactor` 分支（`88f3098`）
+- **可复用**: EmptyStateWidget 组件（可直接用于任意视图）、4 个升级视图的改造模式
+- **需人工确认**: 截图验证 4 个视图在明亮/暗黑主题下的 EmptyStateWidget 渲染效果
