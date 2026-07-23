@@ -15,11 +15,14 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QFrame,
 )
-from PySide6.QtCore import QEvent, Signal, Qt
+from PySide6.QtCore import Signal, Qt
 
 from src.models.common import Technician
 import src.styles.theme as _theme
 from src.styles.constants import VIEW_MARGINS, apply_column_specs
+from src.views.widgets.table_delegate import RowHighlightDelegate
+from src.views.widgets.search_box import SearchBox
+from src.views.widgets.empty_state import EmptyStateWidget
 
 _TECHNICIAN_SPECS = [
     ("ID", "fixed", 50),
@@ -64,11 +67,8 @@ class TechnicianView(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
 
-        self._search_edit = QLineEdit()
-        self._search_edit.setFixedHeight(26)
+        self._search_edit = SearchBox()
         self._search_edit.setPlaceholderText("搜索姓名 / 工号 / 部门…")
-        self._search_edit.setClearButtonEnabled(True)
-        self._search_edit.setMinimumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_edit)
 
@@ -115,6 +115,14 @@ class TechnicianView(QWidget):
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
 
+        # RowHighlightDelegate
+        self._table.setMouseTracking(True)
+        self._delegate = RowHighlightDelegate(self._table)
+        self._table.setItemDelegate(self._delegate)
+        self._table.cellEntered.connect(self._on_cell_entered)
+        self._table.viewportEntered.connect(self._on_viewport_entered)
+        self._table.selectionModel().selectionChanged.connect(self._on_selection_changed)
+
         self._table.cellDoubleClicked.connect(self._on_double_click)
         layout.addWidget(self._table)
 
@@ -127,14 +135,14 @@ class TechnicianView(QWidget):
         self._ctx_act_edit.triggered.connect(self._on_ctx_edit)
         self._ctx_act_delete.triggered.connect(self._on_ctx_delete)
 
-        # 空状态提示
-        self._empty_label = QLabel("暂无技术员数据")
-        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
-        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._empty_label.setParent(self._table)
-        self._empty_label.hide()
-        self._table.installEventFilter(self)
+        # 空状态
+        self._empty_widget = EmptyStateWidget(
+            title="暂无技术员数据",
+            description="尚未添加任何技术员，点击上方「新增」按钮添加技术员",
+            parent=self._table,
+        )
+        self._empty_widget.hide()
+        self._empty_widget.raise_()
 
     # ── 数据加载 ────────────────────────────────────────────────
 
@@ -160,6 +168,22 @@ class TechnicianView(QWidget):
         self._table.setSortingEnabled(True)
 
         self._update_empty_state()
+
+    # ── RowHighlightDelegate ──
+
+    def _on_cell_entered(self, row: int, column: int) -> None:
+        self._delegate.hover_row = row
+        self._table.viewport().update()
+
+    def _on_viewport_entered(self) -> None:
+        self._delegate.hover_row = -1
+        self._table.viewport().update()
+
+    def _on_selection_changed(self) -> None:
+        selected = self._table.selectedIndexes()
+        rows = {idx.row() for idx in selected}
+        self._delegate.selected_rows = rows
+        self._table.viewport().update()
 
     # ── 选中 & 搜索 ────────────────────────────────────────────
 
@@ -225,13 +249,13 @@ class TechnicianView(QWidget):
     def _update_empty_state(self) -> None:
         """根据表格行数显示/隐藏空状态提示。"""
         if self._table.rowCount() == 0:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-            self._empty_label.show()
+            self._empty_widget.setGeometry(self._table.viewport().rect())
+            self._empty_widget.show()
         else:
-            self._empty_label.hide()
+            self._empty_widget.hide()
 
-    def eventFilter(self, obj, event) -> bool:
-        """监听表格缩放以更新空状态标签位置。"""
-        if obj is self._table and event.type() == QEvent.Type.Resize:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-        return super().eventFilter(obj, event)
+    def resizeEvent(self, event) -> None:
+        """窗口缩放时调整空状态位置。"""
+        super().resizeEvent(event)
+        if hasattr(self, "_empty_widget") and self._empty_widget.isVisible():
+            self._empty_widget.setGeometry(self._table.viewport().rect())
