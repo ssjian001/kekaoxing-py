@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QToolButton,
 )
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import Qt
 
 import src.styles.theme as _t
 from src.styles.constants import SAMPLE_TYPE_COLORS, VIEW_MARGINS, apply_column_specs
@@ -28,6 +28,9 @@ from src.models.sample import Sample
 from src.styles.icon import set_icon, RI_ADD, RI_IMPORT, RI_EXPORT, RI_EDIT, RI_DELETE, RI_MORE
 from src.views.widgets.command_bar import CommandBar
 from src.views.widgets.segmented_widget import SegmentedWidget
+from src.views.widgets.table_delegate import RowHighlightDelegate
+from src.views.widgets.search_box import SearchBox
+from src.views.widgets.empty_state import EmptyStateWidget
 
 # 样品池列规格
 _POOL_SPECS = [
@@ -82,8 +85,15 @@ class _SampleTable(QTableWidget):
         apply_column_specs(self, specs, table_key)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.setAlternatingRowColors(True)
         self.verticalHeader().setVisible(False)
+
+        # RowHighlightDelegate
+        self.setMouseTracking(True)
+        self._delegate = RowHighlightDelegate(self)
+        self.setItemDelegate(self._delegate)
+        self.cellEntered.connect(self._on_cell_entered)
+        self.viewportEntered.connect(self._on_viewport_entered)
+        self.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
     def set_samples(self, samples: list[Sample]) -> None:
         self._data = samples
@@ -105,6 +115,22 @@ class _SampleTable(QTableWidget):
                     item.setData(Qt.ItemDataRole.UserRole, sample.id)
                 self.setItem(row_idx, col_idx, item)
         self.setSortingEnabled(True)
+
+    # ── RowHighlightDelegate ──
+
+    def _on_cell_entered(self, row: int, column: int) -> None:
+        self._delegate.hover_row = row
+        self.viewport().update()
+
+    def _on_viewport_entered(self) -> None:
+        self._delegate.hover_row = -1
+        self.viewport().update()
+
+    def _on_selection_changed(self) -> None:
+        selected = self.selectedIndexes()
+        rows = {idx.row() for idx in selected}
+        self._delegate.selected_rows = rows
+        self.viewport().update()
 
     def get_selected_sample_id(self) -> int | None:
         row = self.currentRow()
@@ -147,8 +173,7 @@ class _SamplePoolTab(QWidget):
 
         # 工具栏
         toolbar = QHBoxLayout()
-        self._search_input = QLineEdit()
-        self._search_input.setFixedHeight(26)
+        self._search_input = SearchBox()
         self._search_input.setPlaceholderText("搜索 SN / 批次号…")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._on_search)
@@ -230,14 +255,14 @@ class _SamplePoolTab(QWidget):
         self._ctx_act_delete = self._context_menu.addAction("删除样品")
         self._ctx_act_delete.triggered.connect(self._on_ctx_delete)
 
-        # 空状态提示
-        self._empty_label = QLabel("暂无样品数据")
-        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
-        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._empty_label.setParent(self._table)
-        self._empty_label.hide()
-        self._table.installEventFilter(self)
+        # 空状态
+        self._empty_widget = EmptyStateWidget(
+            title="暂无样品数据",
+            description="尚未录入任何样品，点击上方「入库」按钮添加样品",
+            parent=self._table,
+        )
+        self._empty_widget.hide()
+        self._empty_widget.raise_()
 
         # 全量数据缓存（用于搜索过滤）
         self._all_samples: list[Sample] = []
@@ -275,16 +300,16 @@ class _SamplePoolTab(QWidget):
     def _update_empty_state(self) -> None:
         """根据表格行数显示/隐藏空状态提示。"""
         if self._table.rowCount() == 0:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-            self._empty_label.show()
+            self._empty_widget.setGeometry(self._table.viewport().rect())
+            self._empty_widget.show()
         else:
-            self._empty_label.hide()
+            self._empty_widget.hide()
 
-    def eventFilter(self, obj, event) -> bool:
-        """监听表格缩放以更新空状态标签位置。"""
-        if obj is self._table and event.type() == QEvent.Type.Resize:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-        return super().eventFilter(obj, event)
+    def resizeEvent(self, event) -> None:
+        """窗口缩放时调整空状态位置。"""
+        super().resizeEvent(event)
+        if hasattr(self, "_empty_widget") and self._empty_widget.isVisible():
+            self._empty_widget.setGeometry(self._table.viewport().rect())
 
     def refresh(self, samples: list[Sample]) -> None:
         """刷新样品池数据并应用当前搜索过滤。"""
@@ -359,8 +384,7 @@ class _SampleUsageTab(QWidget):
         # ── 筛选栏 ──
         toolbar = QHBoxLayout()
 
-        self._search_input = QLineEdit()
-        self._search_input.setFixedHeight(26)
+        self._search_input = SearchBox()
         self._search_input.setPlaceholderText("搜索 SN…")
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._apply_filter)
@@ -402,14 +426,14 @@ class _SampleUsageTab(QWidget):
         self._table.setSortingEnabled(True)
         layout.addWidget(self._table)
 
-        # 空状态提示
-        self._empty_label = QLabel("暂无出入库记录")
-        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
-        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._empty_label.setParent(self._table)
-        self._empty_label.hide()
-        self._table.installEventFilter(self)
+        # 空状态
+        self._empty_widget = EmptyStateWidget(
+            title="暂无出入库记录",
+            description="该样品尚无出入库操作记录",
+            parent=self._table,
+        )
+        self._empty_widget.hide()
+        self._empty_widget.raise_()
 
         # 全量数据缓存
         self._all_data: list[dict] = []
@@ -501,16 +525,16 @@ class _SampleUsageTab(QWidget):
     def _update_empty_state(self) -> None:
         """根据表格行数显示/隐藏空状态提示。"""
         if self._table.rowCount() == 0:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-            self._empty_label.show()
+            self._empty_widget.setGeometry(self._table.viewport().rect())
+            self._empty_widget.show()
         else:
-            self._empty_label.hide()
+            self._empty_widget.hide()
 
-    def eventFilter(self, obj, event) -> bool:
-        """监听表格缩放以更新空状态标签位置。"""
-        if obj is self._table and event.type() == QEvent.Type.Resize:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-        return super().eventFilter(obj, event)
+    def resizeEvent(self, event) -> None:
+        """窗口缩放时调整空状态位置。"""
+        super().resizeEvent(event)
+        if hasattr(self, "_empty_widget") and self._empty_widget.isVisible():
+            self._empty_widget.setGeometry(self._table.viewport().rect())
 
 
 def _color_fg(hex_color: str):
@@ -540,8 +564,7 @@ class _SampleLedgerTab(QWidget):
         # 工具栏
         toolbar = QHBoxLayout()
 
-        self._search_input = QLineEdit()
-        self._search_input.setFixedHeight(26)
+        self._search_input = SearchBox()
         self._search_input.setPlaceholderText("搜索 SN / 批次号 / 规格…")
         self._search_input.setMinimumWidth(160)
         self._search_input.setClearButtonEnabled(True)
@@ -587,14 +610,14 @@ class _SampleLedgerTab(QWidget):
         # 全量数据缓存（用于搜索过滤）
         self._all_samples: list[Sample] = []
 
-        # 空状态提示
-        self._empty_label = QLabel("暂无样品台账数据")
-        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setProperty("class", "empty-label")
-        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._empty_label.setParent(self._table)
-        self._empty_label.hide()
-        self._table.viewport().installEventFilter(self)
+        # 空状态
+        self._empty_widget = EmptyStateWidget(
+            title="暂无样品台账数据",
+            description="所有样品的历史记录将在此显示",
+            parent=self._table,
+        )
+        self._empty_widget.hide()
+        self._empty_widget.raise_()
 
     def _show_context_menu(self, pos) -> None:
         """在表格行上显示右键菜单。"""
@@ -611,17 +634,16 @@ class _SampleLedgerTab(QWidget):
     def _update_empty_state(self) -> None:
         """更新空状态提示。"""
         if self._table.rowCount() == 0:
-            self._empty_label.setGeometry(self._table.viewport().rect())
-            self._empty_label.show()
+            self._empty_widget.setGeometry(self._table.viewport().rect())
+            self._empty_widget.show()
         else:
-            self._empty_label.hide()
+            self._empty_widget.hide()
 
-    def eventFilter(self, obj, event):
-        """表格 viewport resize 时同步空状态标签位置。"""
-        if obj is self._table.viewport() and event.type() == event.Type.Resize:
-            if self._empty_label.isVisible():
-                self._empty_label.setGeometry(self._table.viewport().rect())
-        return super().eventFilter(obj, event)
+    def resizeEvent(self, event) -> None:
+        """窗口缩放时调整空状态位置。"""
+        super().resizeEvent(event)
+        if hasattr(self, "_empty_widget") and self._empty_widget.isVisible():
+            self._empty_widget.setGeometry(self._table.viewport().rect())
 
     def _on_search(self, text: str) -> None:
         """根据搜索关键词过滤样品列表。"""
