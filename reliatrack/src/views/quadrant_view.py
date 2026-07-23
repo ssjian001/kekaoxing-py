@@ -243,8 +243,8 @@ class TodoCard(QFrame):
 
     def mouseDoubleClickEvent(self, event: Any) -> None:
         if self._todo.id is not None:
-            from src.views.todo_view import _global_edit_request
-            _global_edit_request.emit(self._todo.id)
+            from src.views.widgets.todo_globals import _global_signals
+            _global_signals.edit_requested.emit(self._todo.id)
         super().mouseDoubleClickEvent(event)
 
 
