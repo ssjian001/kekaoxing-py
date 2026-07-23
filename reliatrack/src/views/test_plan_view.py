@@ -5,16 +5,13 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Callable, Optional
 
-from PySide6.QtGui import QAction, QFont
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
-    QLabel,
-    QButtonGroup,
     QStackedWidget,
-    QScrollArea,
     QMessageBox,
 )
 from PySide6.QtCore import Qt, Signal
@@ -23,7 +20,6 @@ import src.styles.theme as _t
 from src.styles.constants import VIEW_MARGINS
 from src.models.test_plan import TestTask
 from src.views.widgets.task_table import _TaskTable
-from src.views.widgets.gantt_widget import _GanttWidget
 from src.views.widgets.result_matrix import _ResultMatrixWidget
 from src.views.widgets.plan_toolbar import PlanToolbar
 from src.views.widgets.plan_filter_bar import PlanFilterBar
@@ -115,45 +111,16 @@ class TestPlanView(QWidget):
         self._sub_stacked.addWidget(tab_table)
         self._sub_tabs.addSegment("测试项", tab_table)
 
-        # Tab 1: 甘特图（QScrollArea 包裹，支持大量任务纵向滚动）
-        tab_gantt = QWidget()
-        tab_gantt_layout = QVBoxLayout(tab_gantt)
-        tab_gantt_layout.setContentsMargins(0, 0, 0, 0)
-        # 甘特图模式切换栏（pills 按钮组）
-        gantt_mode_bar = QHBoxLayout()
-        gantt_mode_bar.setContentsMargins(4, 2, 4, 2)
-        self._gantt_mode_planned = QPushButton("预计日期")
-        self._gantt_mode_planned.setProperty("class", "pill")
-        self._gantt_mode_planned.setCheckable(True)
-        self._gantt_mode_planned.setChecked(True)
-        self._gantt_mode_planned.setFixedHeight(26)
-        self._gantt_mode_actual = QPushButton("实际日期")
-        self._gantt_mode_actual.setProperty("class", "pill")
-        self._gantt_mode_actual.setCheckable(True)
-        self._gantt_mode_actual.setFixedHeight(26)
-        self._gantt_mode_group = QButtonGroup(self)
-        self._gantt_mode_group.addButton(self._gantt_mode_planned, 0)
-        self._gantt_mode_group.addButton(self._gantt_mode_actual, 1)
-        self._gantt_mode_group.idToggled.connect(self._on_gantt_mode_toggled)
-        mode_label = QLabel("显示模式:")
-        mode_label.setProperty("class", "subtext")
-        gantt_mode_bar.addWidget(mode_label)
-        gantt_mode_bar.addWidget(self._gantt_mode_planned)
-        gantt_mode_bar.addWidget(self._gantt_mode_actual)
-        gantt_mode_bar.addStretch()
-        tab_gantt_layout.addLayout(gantt_mode_bar)
-        self._gantt = _GanttWidget()
-        self._gantt.setProperty("class", "bg-base")
-        self._gantt.task_moved.connect(self.task_moved.emit)
-        self._gantt_scroll = QScrollArea()
-        self._gantt_scroll.setWidget(self._gantt)
-        self._gantt_scroll.setWidgetResizable(True)
-        self._gantt_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._gantt_scroll.setProperty("class", "scroll-base")
-        self._gantt.bind_scroll_area(self._gantt_scroll)
-        tab_gantt_layout.addWidget(self._gantt_scroll)
-        self._sub_stacked.addWidget(tab_gantt)
-        self._sub_tabs.addSegment("甘特图", tab_gantt)
+        # Tab 1: 甘特图 — 提取为 PlanGanttTab
+        from src.views.widgets.plan_gantt_tab import PlanGanttTab
+        self._gantt_tab = PlanGanttTab(self)
+        self._gantt_tab.mode_toggled.connect(self._on_gantt_mode_toggled)
+        self._gantt_tab.task_moved.connect(self.task_moved.emit)
+        self._sub_stacked.addWidget(self._gantt_tab)
+        self._sub_tabs.addSegment("甘特图", self._gantt_tab)
+
+        # 代理 gantt 属性
+        self._gantt = self._gantt_tab.gantt
 
         # Tab 2: 结果矩阵（任务×样品 pass/fail 矩阵）
         tab_matrix = QWidget()
