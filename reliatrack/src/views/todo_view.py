@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.views.widgets.segmented_widget import SegmentedWidget
+from src.views.widgets.search_box import SearchBox
 
 import src.styles.theme as _t
 from src.models.todo import TodoItem
@@ -393,9 +394,8 @@ class TodoView(QWidget):
         row.addWidget(self._project_combo)
 
         # 搜索框
-        self._search_edit = QLineEdit()
+        self._search_edit = SearchBox()
         self._search_edit.setPlaceholderText("搜索待办…")
-        self._search_edit.setFixedHeight(26)
         self._search_edit.setMaximumWidth(160)
         self._search_edit.textChanged.connect(self._on_search)
         row.addWidget(self._search_edit)

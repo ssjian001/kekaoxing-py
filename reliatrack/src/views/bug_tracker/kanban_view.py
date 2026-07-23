@@ -60,6 +60,7 @@ from src.styles.constants import (
 )
 from src.styles.toast import ToastWidget
 from src.constants import ISSUE_STATUS_LABELS, PRIORITY_LABELS, SEVERITY_LABELS
+from src.views.widgets.search_box import SearchBox
 
 # ── Aging 色块阈值 ──────────────────────────────────────────────
 # 使用 styles.constants 中的 AGING_THRESHOLD_LOW / AGING_THRESHOLD_MID
@@ -630,11 +631,9 @@ class BugKanbanView(QWidget):
 
         toolbar.addSpacing(16)
 
-        self._search_input = QLineEdit()
-        self._search_input.setFixedHeight(26)
+        self._search_input = SearchBox()
         self._search_input.setPlaceholderText("搜索 Issue 标题…")
         self._search_input.setFixedWidth(220)
-        self._search_input.setClearButtonEnabled(True)
         self._search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_input)
 
