@@ -23,6 +23,7 @@ from src.views.widgets.task_table import _TaskTable
 from src.views.widgets.result_matrix import _ResultMatrixWidget
 from src.views.widgets.plan_toolbar import PlanToolbar
 from src.views.widgets.plan_filter_bar import PlanFilterBar
+from src.views.widgets.plan_summary import compute_summary, format_summary_text
 
 class TestPlanView(QWidget):
     """测试计划视图 — 左侧任务表 + 右侧甘特图。"""
@@ -287,100 +288,20 @@ class TestPlanView(QWidget):
         self._analysis.refresh(tasks, matrix_results or [], issues or [], sample_map)
         self._update_summary_bar()
 
-    @staticmethod
     def _compute_summary(
+        self,
         tasks: list[TestTask],
         result_map: dict[int, tuple[int, int]],
         start_date: str,
     ) -> tuple[int, int, int]:
-        """计算摘要指标: (到期数, 待录入数, 超期数)。
-
-        到期: 预计结束日期 <= 今天且未完成。
-        待录入: 有样品但结果数不足。
-        超期: 预计结束日期 < 今天且未完成。
-        """
-        import json as _json
-
-        if not start_date:
-            return 0, 0, 0
-
-        try:
-            base = date.fromisoformat(start_date)
-        except ValueError:
-            return 0, 0, 0
-
-        today = date.today()
-        due_count = 0
-        overdue_count = 0
-        pending_result_count = 0
-
-        for task in tasks:
-            if task.status in ("completed", "skipped"):
-                continue
-            end_day = (task.start_day or 0) + task.duration
-            end_date = base + timedelta(days=end_day)
-
-            # 超期
-            if end_date < today:
-                overdue_count += 1
-            # 到期（含超期和今天到期）
-            elif end_date == today:
-                due_count += 1
-
-            # 待录入: sample_ids 有内容但结果数不足
-            if task.id is not None:
-                try:
-                    sids = _json.loads(task.sample_ids) if task.sample_ids else []
-                except (ValueError, TypeError):
-                    sids = []
-                if sids:
-                    pass_cnt, total_cnt = result_map.get(task.id, (0, 0))
-                    if total_cnt < len(sids):
-                        pending_result_count += 1
-
-        return due_count, pending_result_count, overdue_count
+        """计算摘要指标: (到期数, 待录入数, 超期数)。"""
+        return compute_summary(tasks, result_map, start_date)
 
     def _update_stats(self, tasks: list[TestTask]) -> None:
         """更新任务统计：总数/完成/未完成/超期。"""
-        total = len(tasks)
-        completed = sum(1 for t in tasks if t.status == "completed")
-        pending = total - completed
-        # 超期
-        from datetime import date
-        today = date.today()
-        overdue = 0
-        for t in tasks:
-            if t.status in ("completed", "done", "skipped", "failed"):
-                continue
-            # 超期判断基于预计结束日期
-            if t.start_day is not None:
-                from datetime import timedelta
-                from src.models.test_plan import TestTask as _TT
-                # 用计划开始日期推算
-                plan_start = None
-                if self._last_start_date:
-                    try:
-                        plan_start = date.fromisoformat(self._last_start_date)
-                    except ValueError:
-                        pass
-                if plan_start:
-                    end = plan_start + timedelta(days=t.start_day + t.duration - 1)
-                    if end < today:
-                        overdue += 1
-
-        parts = [f"共 {total} 个任务"]
-        has_stats = pending > 0 or completed > 0 or overdue > 0
-        if pending > 0:
-            parts.append(f"待完成 {pending}")
-        if completed > 0:
-            parts.append(f"已完成 {completed}")
-        if overdue > 0:
-            parts.append(f'<span style="color:{_t.RED}">{overdue} 个超期</span>')
-        # 合并到摘要栏
-        summary = self._summary_bar.text() if self._summary_bar.text() else ""
-        if has_stats:
-            sep = "  ·  " if summary else ""
-            self._summary_bar.setText(summary + sep + "  |  ".join(parts))
+        self._summary_bar.setText(
+            format_summary_text(tasks, self._last_start_date, self._summary_bar.text())
+        )
 
     def _update_summary_bar(self) -> None:
         """更新今日工作摘要。"""
