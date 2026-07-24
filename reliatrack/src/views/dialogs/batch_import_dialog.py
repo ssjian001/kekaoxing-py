@@ -246,13 +246,12 @@ class BatchImportDialog(_BaseDialog):
             return
 
         # 填充列映射下拉框
-        col_options = ["— 不导入 —"]
-        for h in self._headers:
-            col_options.append(h if h.strip() else "（無表頭）")
         for field_name, combo in self._combos.items():
             combo.clear()
-            for opt in col_options:
-                combo.addItem(opt, None if opt == "— 不导入 —" else opt)
+            combo.addItem("— 不导入 —", None)
+            for h in self._headers:
+                label = h if h.strip() else "（無表頭）"
+                combo.addItem(label, h)  # userData=實際表頭（可能空字串）
 
         # 自动匹配：根据表头文字猜测
         for field_name, combo in self._combos.items():
