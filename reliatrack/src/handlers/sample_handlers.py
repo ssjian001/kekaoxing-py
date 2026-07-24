@@ -167,6 +167,9 @@ class SampleHandlers:
         if not ctrl or not ctrl.sample_service:
             return
 
+        # 获取当前選中的项目 ID，导入的样品自动关联该项目
+        project_id = self._win.get_project_filter_id()
+
         def _do_import(sample_list: list[dict]) -> tuple[int, int]:
             """执行批量导入，返回 (成功数, 跳过数)。"""
             assert ctrl is not None and ctrl.sample_service is not None
@@ -181,7 +184,7 @@ class SampleHandlers:
                     skip += 1
                     continue
                 try:
-                    ctrl.sample_service.create(
+                    kwargs = dict(
                         sn=sn,
                         batch_no=data.get("batch_no") or "",
                         spec=data.get("spec") or "",
@@ -190,6 +193,9 @@ class SampleHandlers:
                         notes=data.get("notes") or "",
                         status="in_stock",
                     )
+                    if project_id is not None:
+                        kwargs["project_id"] = project_id
+                    ctrl.sample_service.create(**kwargs)
                     success += 1
                 except Exception:
                     logger.exception("Failed to import sample SN=%s: data=%s", sn, data)
