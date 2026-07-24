@@ -246,7 +246,9 @@ class BatchImportDialog(_BaseDialog):
             return
 
         # 填充列映射下拉框
-        col_options = ["— 不导入 —"] + self._headers
+        col_options = ["— 不导入 —"]
+        for h in self._headers:
+            col_options.append(h if h.strip() else "（無表頭）")
         for field_name, combo in self._combos.items():
             combo.clear()
             for opt in col_options:

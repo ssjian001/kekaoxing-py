@@ -1,34 +1,29 @@
-# Session Handoff — 2026-07-23 UI 全面重构 Phase 1
+# Session Handoff — 2026-07-24 quadrant_view 拆分 + 覆蓋率審計
 
-## 已完成 (Phase 1 + Extension)
+## 已完成
 
-### 新建组件
-- `src/views/widgets/empty_state.py` — EmptyStateWidget: SaaS 风格空状态占位
+### quadrant_view.py 模組化拆分
+- `src/views/widgets/quadrant_card.py` (106行) — 四象限專用小卡片（54px高）
+- `src/views/widgets/quadrant_cell.py` (124行) — 四象限單元格（drop target + scroll + 卡片列表）
+- `quadrant_view.py` **336 → 98 行 (−71%)**，只保留 QuadrantView 組裝邏輯
+- todo_view.py 引用無影響（仍導入 `QuadrantView`）
 
-### 老旧视图组件化升级（7 个视图/子视图）
-| 视图 | SearchBox | RowHighlightDelegate | EmptyStateWidget |
-|------|:---------:|:-------------------:|:----------------:|
-| 设备管理 | ✅ | ✅ | ✅ |
-| 技术人员管理 | ✅ | ✅ | ✅ |
-| 知识库 | ✅ | ✅ | ✅ |
-| 项目管理 | ✅ | ✅ | ✅ |
-| 样品池 Tab | ✅ | ✅（基类） | ✅ |
-| 出入库 Tab | ✅ | — | ✅ |
-| 台账 Tab | ✅ | ✅（基类） | ✅ |
+### 測試覆蓋率審計
+- 總體 56% (18,391 行)
+- 識別出 10 個 < 30% 的低覆蓋模組
+- 報告已寫入 `progress/test_coverage_report.md`
 
-### 前序分支已合入（不属于本 session）
-- 26 个对话框继承 `_BaseDialog`（SVG 图标按钮、QFormLayout、QScrollArea）
-- 看板卡片 + 仪表盘 CardWidget 质感
-- 测试计划/样品视图 CommandBar + SegmentedWidget
+## 提交歷史
+- `2f15dc9` — refactor: quadrant_view 拆分 — 336→98行，2個組件
 
-### 提交历史（explore/ui-complete-refactor）
-1. `88f3098` — ui: Phase 1 — 老视图组件普及 + EmptyStateWidget
-2. `060fcb2` — ui: sample_view 全面组件化 — RowHighlightDelegate + SearchBox + EmptyStateWidget
-3. 均推送至 GitHub
+## 測試狀態
+- 全部通過（602+ passed, 0 failed）
+- 已推送到 GitHub main
 
-### 测试
-- all tests passed（602+ 通过，0 失败）
+## widgets/ 目錄
+已從最初約 5 個組件成長到 **26 個可複用組件**。
 
-## 未完成（可选续做）
-- dialogs 内 3 个旧空状态（attachment/holiday/import_tasks） — 低优先级，位于 _BaseDialog 内
-- test_plan_view.py 组件化拆分 — 732 行/35 方法，拆分风险与收益比偏低
+## 未完成（可續做）
+- **測試覆蓋改善**：plan_handlers.py (11%, 764行) 最優先
+- **list_view.py** (390行) — bug_tracker，已有 bug_table 但還可再拆
+- **filter_row.py** (247行) — 已確認 62% 覆蓋，可加新功能
