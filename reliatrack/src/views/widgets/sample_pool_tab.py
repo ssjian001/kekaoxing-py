@@ -56,10 +56,9 @@ class _SamplePoolTab(QWidget):
         self._search_input.setMinimumWidth(160)
         self._search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self._search_input)
-        toolbar.addStretch()
-
         # ── CommandBar（自動溢出）──
         action_bar = CommandBar()
+        toolbar.addWidget(action_bar, 1)
         action_bar.setButtonTight(True)
 
         self._btn_add = QPushButton("入库")

@@ -5,7 +5,7 @@
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QPainter, QColor
 from PySide6.QtWidgets import (
-    QFrame, QToolButton, QMenu, QWidget, QHBoxLayout,
+    QFrame, QToolButton, QMenu, QWidget, QHBoxLayout, QSizePolicy,
 )
 
 import src.styles.theme as _t
@@ -51,6 +51,7 @@ class CommandBar(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._actions: list[QAction] = []
         self._widgets: list[QWidget] = []
         self._button_tight = True
@@ -67,10 +68,11 @@ class CommandBar(QFrame):
         self._more_button.setMenu(self._more_menu)
 
     def sizeHint(self):
-        return QSize(200, 30)
+        """返回約 4 個按鈕的寬度，更多由 Expanding policy + layout 分配。"""
+        return QSize(350, 30)
 
     def minimumSizeHint(self):
-        return QSize(120, 30)
+        return QSize(160, 30)
 
     def setButtonTight(self, tight: bool):
         self._button_tight = tight
