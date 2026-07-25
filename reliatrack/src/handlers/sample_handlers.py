@@ -220,10 +220,15 @@ class SampleHandlers:
 
     def _on_sample_tag(self) -> None:
         """生成并查看选中样品的二维码/条形码标签。"""
-        v = self._win.sample_view
-        sample = v.pool_tab.selected_sample
-        if not sample:
-            QMessageBox.information(self._win, "提示", "请先选择要生成标签的样品")
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.sample_service:
+            return
+        sample_id = self._win.sample_view.pool_tab.table.get_selected_sample_id()
+        if sample_id is None:
+            QMessageBox.warning(self._win, "提示", "请先选中一个样品。")
+            return
+        sample = ctrl.sample_service.get(sample_id)
+        if sample is None:
             return
         from src.views.dialogs.sample_tag_dialog import SampleTagDialog
         dlg = SampleTagDialog(sample, parent=self._win)
