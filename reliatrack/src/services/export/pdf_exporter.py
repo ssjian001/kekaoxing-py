@@ -131,6 +131,50 @@ def _build_header_footer(canvas: _Canvas, doc: object, title_text: str = "ReliaT
     canvas.restoreState()
 
 
+def _build_signature_block(font_name: str = "CJK") -> Table:
+    """生成三级审核与电子签名盖章栏。"""
+    font_bold = font_name + "-Bold" if font_name == "CJK" else font_name
+    style_sign_header = ParagraphStyle(
+        "SignHeader", fontName=font_bold,
+        fontSize=9, textColor=HexColor("#2B579A"), alignment=TA_LEFT,
+    )
+    style_sign_cell = ParagraphStyle(
+        "SignCell", fontName=font_name, fontSize=8, textColor=HexColor("#323232"), alignment=TA_LEFT,
+    )
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    sign_data = [
+        [
+            Paragraph("<b>编制人 (Prepared By):</b>", style_sign_header),
+            Paragraph("<b>审核人 (Reviewed By):</b>", style_sign_header),
+            Paragraph("<b>批准人 (Approved By):</b>", style_sign_header),
+        ],
+        [
+            Paragraph("签名 / 签章: _________________", style_sign_cell),
+            Paragraph("签名 / 签章: _________________", style_sign_cell),
+            Paragraph("签名 / 签章: _________________", style_sign_cell),
+        ],
+        [
+            Paragraph(f"日期: {today_str}", style_sign_cell),
+            Paragraph(f"日期: {today_str}", style_sign_cell),
+            Paragraph(f"日期: {today_str}", style_sign_cell),
+        ],
+    ]
+
+    sign_table = Table(sign_data, colWidths=[60 * mm, 60 * mm, 60 * mm])
+    sign_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), HexColor("#FAFAFA")),
+        ("BOX", (0, 0), (-1, -1), 1, HexColor("#CCCCCC")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#E0E0E0")),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    return sign_table
+
+
 def export_report_pdf(
     output_dir: Path,
     plan: TestPlan,
@@ -374,6 +418,10 @@ def export_report_pdf(
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
         story.append(res_table)
+
+    # ── 电子签名 / 三级审核盖章栏 ──
+    story.append(Spacer(1, 10 * mm))
+    story.append(_build_signature_block(font_name=_FN))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     _validate_output_path(out, output_dir)
