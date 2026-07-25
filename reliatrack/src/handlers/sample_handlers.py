@@ -36,6 +36,7 @@ class SampleHandlers:
         v.pool_tab.btn_out.clicked.connect(self._on_sample_checkout)
         v.pool_tab.btn_batch_import.clicked.connect(self._on_sample_batch_import)
         v.pool_tab.btn_edit.clicked.connect(self._on_sample_edit)
+        v.pool_tab.btn_tag.clicked.connect(self._on_sample_tag)
         v.pool_tab.btn_batch_edit.triggered.connect(self._on_pool_batch_edit)
         v.pool_tab.btn_delete.clicked.connect(self._on_sample_delete)
         v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
@@ -216,6 +217,17 @@ class SampleHandlers:
             if skip:
                 msg += f"，{skip} 条跳过（详见日志）"
             self._win.toast(msg, "success" if not skip else "warning")
+
+    def _on_sample_tag(self) -> None:
+        """生成并查看选中样品的二维码/条形码标签。"""
+        v = self._win.sample_view
+        sample = v.pool_tab.selected_sample
+        if not sample:
+            QMessageBox.information(self._win, "提示", "请先选择要生成标签的样品")
+            return
+        from src.views.dialogs.sample_tag_dialog import SampleTagDialog
+        dlg = SampleTagDialog(sample, parent=self._win)
+        dlg.exec()
 
     def _on_sample_edit(self) -> None:
         """编辑选中样品（样品池 Tab）。"""

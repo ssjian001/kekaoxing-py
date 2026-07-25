@@ -93,6 +93,12 @@ class _SamplePoolTab(QWidget):
         set_icon(self._btn_edit, RI_EDIT)
         action_bar.addWidget(self._btn_edit)
 
+        self._btn_tag = QPushButton("标签")
+        self._btn_tag.setProperty("class", "action")
+        self._btn_tag.setMinimumWidth(70)
+        self._btn_tag.setToolTip("生成样品条形码/二维码标签")
+        action_bar.addWidget(self._btn_tag)
+
         self._btn_delete = QPushButton("删除")
         self._btn_delete.setProperty("class", "action")
         self._btn_delete.setMinimumWidth(70)
@@ -214,6 +220,11 @@ class _SamplePoolTab(QWidget):
     def btn_edit(self) -> QPushButton:
         """编辑按钮。"""
         return self._btn_edit
+
+    @property
+    def btn_tag(self) -> QPushButton:
+        """标签按钮。"""
+        return self._btn_tag
 
     @property
     def btn_batch_edit(self) -> object:
