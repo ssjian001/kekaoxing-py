@@ -119,6 +119,19 @@ class TestPlanView(QWidget):
         self._sub_stacked.addWidget(tab_table)
         self._sub_tabs.addSegment("测试项", tab_table)
 
+        # 浮动批量操作栏
+        from src.views.widgets.batch_action_bar import BatchActionBar
+        self._batch_bar = BatchActionBar(self)
+        self._batch_bar.set_status_options([
+            ("已完成 (completed)", "completed"),
+            ("进行中 (in_progress)", "in_progress"),
+            ("待处理 (pending)", "pending"),
+            ("Fail (fail)", "fail"),
+        ])
+        self._batch_bar.clear_clicked.connect(self._task_table.clearSelection)
+        self._task_table.itemSelectionChanged.connect(self._on_table_selection_changed)
+
+
         # Tab 1: 甘特图 — 提取为 PlanGanttTab
         from src.views.widgets.plan_gantt_tab import PlanGanttTab
         self._gantt_tab = PlanGanttTab(self)
@@ -405,8 +418,22 @@ class TestPlanView(QWidget):
             self._plan_combo.setCurrentIndex(0)
 
 
+    def _on_table_selection_changed(self) -> None:
+        selected_rows = set()
+        for item in self._task_table.selectedItems():
+            selected_rows.add(item.row())
+        if hasattr(self, '_batch_bar'):
+            self._batch_bar.update_selection_count(len(selected_rows))
+            self._batch_bar.move((self.width() - 560) // 2, self.height() - 70)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        if hasattr(self, '_batch_bar') and not self._batch_bar.isHidden():
+            self._batch_bar.move((self.width() - 560) // 2, self.height() - 70)
+
     @property
     def selected_plan_index(self) -> int:
+
         return self._plan_combo.currentIndex()
 
     @property
