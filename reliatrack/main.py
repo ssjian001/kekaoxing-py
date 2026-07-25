@@ -343,12 +343,21 @@ class MainWindow(QMainWindow):
         widget.setProperty("class", "filter-bar")
         parent.setCornerWidget(widget, Qt.Corner.TopRightCorner)
 
-        # 绑定 Ctrl+K 快捷键
+        # 绑定 Ctrl+K 与 ? 快捷键
         from PySide6.QtGui import QKeySequence, QShortcut
         self._shortcut_cmd_k = QShortcut(QKeySequence("Ctrl+K"), self)
         self._shortcut_cmd_k.activated.connect(self._open_command_palette)
+        self._shortcut_help = QShortcut(QKeySequence("?"), self)
+        self._shortcut_help.activated.connect(self._open_keyboard_shortcuts)
+
+    def _open_keyboard_shortcuts(self) -> None:
+        """打开键盘快捷键地图弹窗。"""
+        from src.views.widgets.keyboard_shortcuts_dialog import KeyboardShortcutsDialog
+        dlg = KeyboardShortcutsDialog(self)
+        dlg.show_centered()
 
     def _open_command_palette(self) -> None:
+
         """打开 Spotlight 命令面板。"""
         from src.views.widgets.command_palette_dialog import CommandPaletteDialog
         dlg = CommandPaletteDialog(self, self._ctrl)
@@ -950,9 +959,12 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(300, lambda tid=task_id: table.flash_row(tid))
 
     def toast(self, message: str, level: str = "success") -> None:
-        """显示 Toast 提示（替代 statusBar 的成功/警告消息）。"""
-        from src.styles.toast import ToastWidget
-        ToastWidget.show_toast(self, message, level)
+        """显示 Toast 提示（使用 ToastNotificationStack 浮动叠放）。"""
+        if not hasattr(self, '_toast_stack'):
+            from src.views.widgets.toast_stack import ToastNotificationStack
+            self._toast_stack = ToastNotificationStack(self)
+        self._toast_stack.show_toast(message, level)
+
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """处理窗口关闭事件 — 检查打开的 dialog 和未撤销操作。"""
