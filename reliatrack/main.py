@@ -303,7 +303,7 @@ class MainWindow(QMainWindow):
 
 
     def _create_filter_bar_content(self, parent: QWidget) -> None:
-        """创建项目/计划筛选栏 — 菜单栏右上角。"""
+        """创建项目/计划筛选栏 + Ctrl+K 搜索按钮 — 菜单栏右上角。"""
         # combo parent 设为 self 避免 Windows setCornerWidget 销毁问题
         self._project_filter_combo = QComboBox(self)
         self._project_filter_combo.setMinimumWidth(150)
@@ -322,9 +322,17 @@ class MainWindow(QMainWindow):
         plan_label = QLabel("计划:", self)
         plan_label.setProperty("class", "filter-label")
 
+        # 快捷 Spotlight 按钮
+        from PySide6.QtWidgets import QPushButton
+        cmd_btn = QPushButton("🔍 命令 (Ctrl+K)", self)
+        cmd_btn.setProperty("class", "btn-secondary")
+        cmd_btn.setToolTip("快捷搜功能、指引、项目或 Issue (Ctrl+K)")
+        cmd_btn.clicked.connect(self._open_command_palette)
+
         filter_bar = QHBoxLayout()
         filter_bar.setContentsMargins(8, 0, 4, 0)
         filter_bar.setSpacing(6)
+        filter_bar.addWidget(cmd_btn)
         filter_bar.addWidget(filter_label)
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(plan_label)
@@ -334,6 +342,44 @@ class MainWindow(QMainWindow):
         widget.setLayout(filter_bar)
         widget.setProperty("class", "filter-bar")
         parent.setCornerWidget(widget, Qt.Corner.TopRightCorner)
+
+        # 绑定 Ctrl+K 快捷键
+        from PySide6.QtGui import QKeySequence, QShortcut
+        self._shortcut_cmd_k = QShortcut(QKeySequence("Ctrl+K"), self)
+        self._shortcut_cmd_k.activated.connect(self._open_command_palette)
+
+    def _open_command_palette(self) -> None:
+        """打开 Spotlight 命令面板。"""
+        from src.views.widgets.command_palette_dialog import CommandPaletteDialog
+        dlg = CommandPaletteDialog(self, self._ctrl)
+        dlg.action_triggered.connect(self._on_command_palette_action)
+        dlg.show_centered()
+
+    def _on_command_palette_action(self, result: tuple) -> None:
+        """命令面板触发动作执行。"""
+        if not result or not isinstance(result, tuple):
+            return
+        kind, value = result[0], result[1]
+        if kind == "tab":
+            if isinstance(value, int) and 0 <= value < self._tab_widget.count():
+                self._tab_widget.setCurrentIndex(value)
+        elif kind == "action":
+            if value == "8d_report":
+                self._on_8d_report()
+            elif value == "backup":
+                self._on_backup_db()
+            elif value == "theme":
+                self._on_toggle_dark_theme(True)
+        elif kind == "project":
+            idx = self._project_filter_combo.findData(value)
+            if idx >= 0:
+                self._project_filter_combo.setCurrentIndex(idx)
+            self._tab_widget.setCurrentIndex(1)
+        elif kind == "sample":
+            self._tab_widget.setCurrentIndex(2)
+        elif kind == "issue":
+            self._tab_widget.setCurrentIndex(4)
+
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
