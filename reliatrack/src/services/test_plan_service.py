@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 class TestPlanService:
     """测试计划业务逻辑。"""
 
+    __test__ = False
+
     def __init__(
         self,
         plan_repo: TestPlanRepository,

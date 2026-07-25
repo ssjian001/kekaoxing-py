@@ -22,6 +22,8 @@ _COLS = [
 class TestResultRepository(BaseRepository):
     """测试结果数据访问。"""
 
+    __test__ = False
+
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "test_results", TestResult)
 

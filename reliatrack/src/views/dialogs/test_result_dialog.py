@@ -304,6 +304,8 @@ class TestResultDialog(QWidget):
     这里直接继承 QWidget 以便在 main.py 中嵌入通用弹窗模式。
     """
 
+    __test__ = False
+
     def __init__(
         self,
         task: TestTask,

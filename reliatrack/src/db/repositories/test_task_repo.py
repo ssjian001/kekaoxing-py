@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class TestTaskRepository(BaseRepository):
     """测试任务数据访问。"""
 
+    __test__ = False
+
     # 显式列名列表（与 schema 顺序一致，用于 SELECT 和映射）。
     # 始终传入 _rows_to_models(rows, cols=_TASK_COLS) 以保证列序一致；
     # 不能依赖 PRAGMA table_info 序——ALTER TABLE ADD COLUMN 会将新列加到物理末尾。

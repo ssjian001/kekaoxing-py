@@ -53,6 +53,7 @@ class TestResultStatus(str, Enum):
 @dataclass
 class TestPlan:
     """测试计划 — 项目下的测试批次。"""
+    __test__ = False
     id: Optional[int] = None
     project_id: int = 0
     name: str = ""
@@ -77,6 +78,7 @@ class TestPlan:
 @dataclass
 class TestTask:
     """测试任务 — 计划下的单个测试项。"""
+    __test__ = False
     id: Optional[int] = None
     plan_id: int = 0
     name: str = ""
@@ -119,6 +121,7 @@ class TestTask:
 @dataclass
 class TestResult:
     """测试结果 — 任务 × 样品的测试结论。"""
+    __test__ = False
     id: Optional[int] = None
     task_id: int = 0
     sample_id: Optional[int] = None

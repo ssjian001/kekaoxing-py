@@ -13,6 +13,8 @@ from src.db.repositories.base import BaseRepository
 class TestPlanRepository(BaseRepository):
     """测试计划数据访问。"""
 
+    __test__ = False
+
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "test_plans", TestPlan)
 

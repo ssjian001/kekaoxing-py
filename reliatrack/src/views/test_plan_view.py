@@ -28,6 +28,8 @@ from src.views.widgets.plan_summary import compute_summary, format_summary_text
 class TestPlanView(QWidget):
     """测试计划视图 — 左侧任务表 + 右侧甘特图。"""
 
+    __test__ = False
+
     # 转发甘特图拖拽信号
     task_moved = Signal(int, int)  # (task_id, new_start_day)
 

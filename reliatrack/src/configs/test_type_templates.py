@@ -15,6 +15,7 @@ from typing import Optional
 @dataclass
 class TestTypeTemplate:
     """单个测试类型模板。"""
+    __test__ = False
 
     name: str                          # 显示名称（中文）
     category: str                      # 对应 _CATEGORIES 之一
