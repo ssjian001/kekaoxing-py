@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QMessageBox
@@ -368,7 +368,7 @@ class IssueHandlers:
                     issue, fa_records, capa_records,
                     technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
                 )
-            self._win.toast(f"8D 报告已导出: {os.path.basename(filepath)}", "success")
+            self._win.toast(f"8D 报告已导出: {Path(filepath).name}", "success")
         except Exception as e:
             logger.exception("8D report export failed for issue_id=%s", issue_id)
             QMessageBox.critical(self._win, "导出失败", f"8D 报告导出失败: {e}")

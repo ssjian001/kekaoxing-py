@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
@@ -28,5 +29,4 @@ class KnowledgeEntry:
         if self.category is None:
             self.category = ""
         if not self.title:
-            import warnings
             warnings.warn("KnowledgeEntry.title is empty")

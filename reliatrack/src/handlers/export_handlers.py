@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class WorkerDataProvider:
@@ -157,9 +156,9 @@ class ExportHandlers:
     @staticmethod
     def _get_export_dir() -> str:
         """确保导出目录存在并返回路径。"""
-        export_dir = os.path.join(_PROJECT_ROOT, "exports")
-        os.makedirs(export_dir, exist_ok=True)
-        return export_dir
+        export_dir = _PROJECT_ROOT / "exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        return str(export_dir)
 
     # -- 各内容类型导出方法 ------------------------------------------
 

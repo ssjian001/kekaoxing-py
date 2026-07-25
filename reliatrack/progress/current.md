@@ -1,29 +1,40 @@
-# Session Handoff — 2026-07-24 quadrant_view 拆分 + 覆蓋率審計
+# ReliaTrack 当前进度
 
-## 已完成
+**最后更新**: 2026-07-25
+**Schema 版本**: v27 (20 张表，含 todos)
 
-### quadrant_view.py 模組化拆分
-- `src/views/widgets/quadrant_card.py` (106行) — 四象限專用小卡片（54px高）
-- `src/views/widgets/quadrant_cell.py` (124行) — 四象限單元格（drop target + scroll + 卡片列表）
-- `quadrant_view.py` **336 → 98 行 (−71%)**，只保留 QuadrantView 組裝邏輯
-- todo_view.py 引用無影響（仍導入 `QuadrantView`）
+## 当前状态
 
-### 測試覆蓋率審計
-- 總體 56% (18,391 行)
-- 識別出 10 個 < 30% 的低覆蓋模組
-- 報告已寫入 `progress/test_coverage_report.md`
+短期优化目标（P0级）已全部完成：
 
-## 提交歷史
-- `2f15dc9` — refactor: quadrant_view 拆分 — 336→98行，2個組件
+### 最近完成
 
-## 測試狀態
-- 全部通過（602+ passed, 0 failed）
-- 已推送到 GitHub main
+- **quadrant_view.py 模块化拆分**:
+  - `src/views/widgets/quadrant_card.py` — 四象限专用小卡片
+  - `src/views/widgets/quadrant_cell.py` — 四象限单元格
+  - `quadrant_view.py` 拆分为独立组件
 
-## widgets/ 目錄
-已從最初約 5 個組件成長到 **26 個可複用組件**。
+- **修复循环导入**:
+  - 将 `TAB_*` Tab 索引常量统一移至 `src/constants.py`
+  - 消除 `issue_view.py` 对 `main.py` 的顶层强依赖
+  - 解决 `test_arch_optimization.py` 及视图层加载时的 `ImportError` 循环依赖
 
-## 未完成（可續做）
-- **測試覆蓋改善**：plan_handlers.py (11%, 764行) 最優先
-- **list_view.py** (390行) — bug_tracker，已有 bug_table 但還可再拆
-- **filter_row.py** (247行) — 已確認 62% 覆蓋，可加新功能
+- **补充 `BackupService` 与 `ImportService` 单元测试**:
+  - 新增 `tests/test_backup_and_import.py`（8 项全覆盖单元测试）
+  - 覆盖 `BackupService` 备份创建、恢复、校验、非法文件拦截、删除权限隔离
+  - 覆盖 `import_equipment` 与 `import_technicians` 批处理成功、重复数据跳过、事务回滚
+
+- **修复 Schema 动态断言**:
+  - 升级 `test_bug_tracker.py` 与 `test_soft_delete.py` 中的硬编码版本断言为 `SCHEMA_VERSION`
+
+### 未完成 / 待处理
+
+- 中期优化项：8D 报告生成、Weibull 寿命预测、Ctrl+K 快捷搜索
+
+## 阻塞
+
+无。
+
+## 下一步
+
+根据需求推进中期（P1级）可靠性专业计算与 8D 报告导出等功能。

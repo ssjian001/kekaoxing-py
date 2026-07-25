@@ -73,6 +73,18 @@ from src.handlers import (
     BackupHandlers,
 )
 
+from src.constants import (
+    TAB_DASHBOARD,
+    TAB_PROJECT,
+    TAB_SAMPLE,
+    TAB_TEST_PLAN,
+    TAB_EQUIPMENT,
+    TAB_KNOWLEDGE,
+    TAB_ISSUE,
+    TAB_TODO,
+)
+
+
 
 class SidebarTabBar(QTabBar):
     """TabBar 置左時文字橫排，窄側欄樣式。"""

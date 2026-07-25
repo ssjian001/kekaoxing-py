@@ -1036,16 +1036,13 @@ class PlanHandlers:
             if ctrl.sample_service and plan.project_id:
                 samples = ctrl.sample_service.get_by_project(plan.project_id)
 
-            export_dir = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                "exports",
-            )
-            os.makedirs(export_dir, exist_ok=True)
+            export_dir = Path(__file__).resolve().parent.parent.parent / "exports"
+            export_dir.mkdir(parents=True, exist_ok=True)
 
             svc = ctrl.export_service
             if svc is None:
                 from src.services.export import ExportService
-                svc = ExportService(output_dir=export_dir)
+                svc = ExportService(output_dir=str(export_dir))
             else:
                 svc._output_dir = Path(export_dir)
 

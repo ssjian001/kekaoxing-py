@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -29,9 +30,7 @@ class Project:
     def __post_init__(self):
         # 防御性验证：不 raise，只修正和警告
         if isinstance(self.name, str) and not self.name:
-            import warnings
             warnings.warn("Project.name is empty string")
         _valid_status = {s.value for s in ProjectStatus}
         if self.status not in _valid_status:
-            import warnings
             warnings.warn(f"Unknown Project.status: {self.status!r}")

@@ -176,3 +176,17 @@ ISSUE_TRANSITIONS: dict[str, set[str]] = {
     "verified": {"open", "analyzing", "closed"},
     "closed": {"open"},
 }
+
+# ═══════════════════════════════════════════════════════════════════
+#  Tab 索引常量
+# ═══════════════════════════════════════════════════════════════════
+
+TAB_DASHBOARD = 0
+TAB_PROJECT = 1
+TAB_SAMPLE = 2
+TAB_TEST_PLAN = 3
+TAB_EQUIPMENT = 5
+TAB_KNOWLEDGE = 6
+TAB_ISSUE = 7
+TAB_TODO = 8
+

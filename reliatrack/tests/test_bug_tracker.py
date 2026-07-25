@@ -55,6 +55,7 @@ class TestSchemaV27:
         ).fetchone()
         assert row[0] == SCHEMA_VERSION
 
+
     def test_activity_log_has_project_id(self, db_conn):
         """v24 新增 project_id 列应存在。"""
         cols = {
