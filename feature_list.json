@@ -171,7 +171,7 @@
     "id": "F018",
     "name": "暗色主题",
     "description": "Catppuccin Mocha 暗色主题，支持菜单切换+QSettings持久化。仪表盘/Gantt图表语义色保持亮色不变；PDF导出保持白底。",
-    "status": "planned",
+    "status": "done",
     "dependencies": [],
     "priority": "low",
     "design_decisions": [

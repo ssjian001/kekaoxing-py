@@ -56,3 +56,21 @@ class EquipmentService:
     def transaction(self):
         """事务上下文管理器。"""
         return self._repo.transaction()
+
+    def get_expiring_calibrations(self, days: int = 30) -> list[tuple[Equipment, int]]:
+        """查找 N 天内即将到期或已过期的校准设备，返回 [(Equipment, remaining_days)]。"""
+        from datetime import date
+        today = date.today()
+        expiring = []
+        for eq in self.list_all():
+            if not eq.next_calibration_date:
+                continue
+            try:
+                cal_date = date.fromisoformat(eq.next_calibration_date)
+                delta_days = (cal_date - today).days
+                if delta_days <= days:
+                    expiring.append((eq, delta_days))
+            except ValueError:
+                pass
+        expiring.sort(key=lambda x: x[1])
+        return expiring
