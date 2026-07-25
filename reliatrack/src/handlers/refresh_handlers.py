@@ -381,7 +381,13 @@ class RefreshHandlers:
         current_plan_id = self._win.test_plan_view.get_selected_plan_id()
         plan_names = [p.name for p in all_plans]
         plan_ids = [p.id for p in all_plans]  # type: ignore[misc]
-        target_id = current_plan_id if current_plan_id else (all_plans[0].id if all_plans else None)
+
+        if not all_plans:
+            self._win.test_plan_view.set_plans_and_restore([], [], None)
+            self._win.test_plan_view.refresh([], 30)
+            return
+
+        target_id = current_plan_id if (current_plan_id and current_plan_id in plan_ids) else (all_plans[0].id if all_plans else None)
         self._win.test_plan_view.set_plans_and_restore(plan_names, plan_ids, target_id)
         # 确定恢复后的索引
         restore_idx = 0
@@ -389,6 +395,7 @@ class RefreshHandlers:
             restore_idx = plan_ids.index(target_id)
         # 手动加载选中计划的任务
         if all_plans:
+
             plan_id = all_plans[restore_idx].id
             if plan_id is None:
                 return
