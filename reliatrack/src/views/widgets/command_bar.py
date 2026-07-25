@@ -67,13 +67,10 @@ class CommandBar(QFrame):
         self._more_button.setMenu(self._more_menu)
 
     def sizeHint(self):
-        """返回所有子控件所需寬度，讓佈局管理器分配足夠空間。"""
-        total = 0
-        for w in self._widgets:
-            total += w.sizeHint().width() + self._spacing
-        if self._actions:
-            total += self._more_button.sizeHint().width() + self._spacing
-        return self.minimumSizeHint().expandedTo(QSize(total, 30))
+        return QSize(200, 30)
+
+    def minimumSizeHint(self):
+        return QSize(120, 30)
 
     def setButtonTight(self, tight: bool):
         self._button_tight = tight
