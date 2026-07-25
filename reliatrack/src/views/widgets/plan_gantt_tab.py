@@ -1,4 +1,4 @@
-"""甘特图 Tab 组件 — 模式切换栏 + 甘特图 + 滚动区。
+"""甘特图 Tab 组件 — 模式切换栏 + 控制按钮 + 甘特图 + 滚动区。
 
 提取自 test_plan_view.py Tab 1 的 inline 代码。
 """
@@ -19,7 +19,7 @@ from src.views.widgets.gantt_widget import _GanttWidget
 
 
 class PlanGanttTab(QWidget):
-    """甘特图 Tab：模式切换 + 甘特图 + 滚动区域。"""
+    """甘特图 Tab：模式切换 + 功能开关 + 甘特图 + 滚动区域。"""
 
     mode_toggled = Signal(int, bool)  # (btn_id, checked)
     task_moved = Signal(int, int)     # (task_id, new_start_day) — 转发
@@ -35,6 +35,7 @@ class PlanGanttTab(QWidget):
         # 模式切换栏
         mode_bar = QHBoxLayout()
         mode_bar.setContentsMargins(4, 2, 4, 2)
+        mode_bar.setSpacing(6)
 
         self._planned_btn = QPushButton("预计日期")
         self._planned_btn.setProperty("class", "pill")
@@ -57,6 +58,38 @@ class PlanGanttTab(QWidget):
         mode_bar.addWidget(mode_label)
         mode_bar.addWidget(self._planned_btn)
         mode_bar.addWidget(self._actual_btn)
+
+        mode_bar.addSpacing(16)
+
+        # 功能开关按钮: 依赖矢线 / 冲突检测 / 关键路径
+        opt_label = QLabel("高级特性:")
+        opt_label.setProperty("class", "subtext")
+        mode_bar.addWidget(opt_label)
+
+        self._btn_deps = QPushButton("依赖矢线")
+        self._btn_deps.setProperty("class", "pill")
+        self._btn_deps.setCheckable(True)
+        self._btn_deps.setChecked(True)
+        self._btn_deps.setFixedHeight(26)
+        self._btn_deps.toggled.connect(self._on_options_changed)
+        mode_bar.addWidget(self._btn_deps)
+
+        self._btn_conflicts = QPushButton("冲突告警")
+        self._btn_conflicts.setProperty("class", "pill")
+        self._btn_conflicts.setCheckable(True)
+        self._btn_conflicts.setChecked(True)
+        self._btn_conflicts.setFixedHeight(26)
+        self._btn_conflicts.toggled.connect(self._on_options_changed)
+        mode_bar.addWidget(self._btn_conflicts)
+
+        self._btn_critical = QPushButton("关键路径")
+        self._btn_critical.setProperty("class", "pill")
+        self._btn_critical.setCheckable(True)
+        self._btn_critical.setChecked(False)
+        self._btn_critical.setFixedHeight(26)
+        self._btn_critical.toggled.connect(self._on_options_changed)
+        mode_bar.addWidget(self._btn_critical)
+
         mode_bar.addStretch()
         layout.addLayout(mode_bar)
 
@@ -83,6 +116,13 @@ class PlanGanttTab(QWidget):
 
     def _on_mode_toggled(self, btn_id: int, checked: bool) -> None:
         self.mode_toggled.emit(btn_id, checked)
+
+    def _on_options_changed(self) -> None:
+        self._gantt.set_render_options(
+            show_dependencies=self._btn_deps.isChecked(),
+            show_conflicts=self._btn_conflicts.isChecked(),
+            show_critical_path=self._btn_critical.isChecked(),
+        )
 
     def _on_gantt_moved(self, task_id: int, new_day: int) -> None:
         self.task_moved.emit(task_id, new_day)

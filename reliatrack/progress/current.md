@@ -2,34 +2,27 @@
 
 **最后更新**: 2026-07-25
 **Schema 版本**: v27 (20 张表，含 todos)
+**测试**: 417 passed
 
 ## 当前状态
 
-短期优化目标（P0级）已全部完成：
+甘特图高级特性与 8D 报告可视化弹窗均已完成上线！
 
 ### 最近完成
 
-- **quadrant_view.py 模块化拆分**:
-  - `src/views/widgets/quadrant_card.py` — 四象限专用小卡片
-  - `src/views/widgets/quadrant_cell.py` — 四象限单元格
-  - `quadrant_view.py` 拆分为独立组件
+- **8D 质量报告可视化预览弹窗 (EightDReportDialog)**:
+  - 结构化渲染 D1~D8 8大卡片（团队/描述/围堵/根因/对策/验证/预防/结案）
+  - 支持弹窗中一键导出 PDF/Word 报告及复制纯文本摘要
 
-- **修复循环导入**:
-  - 将 `TAB_*` Tab 索引常量统一移至 `src/constants.py`
-  - 消除 `issue_view.py` 对 `main.py` 的顶层强依赖
-  - 解决 `test_arch_optimization.py` 及视图层加载时的 `ImportError` 循环依赖
-
-- **补充 `BackupService` 与 `ImportService` 单元测试**:
-  - 新增 `tests/test_backup_and_import.py`（8 项全覆盖单元测试）
-  - 覆盖 `BackupService` 备份创建、恢复、校验、非法文件拦截、删除权限隔离
-  - 覆盖 `import_equipment` 与 `import_technicians` 批处理成功、重复数据跳过、事务回滚
-
-- **修复 Schema 动态断言**:
-  - 升级 `test_bug_tracker.py` 与 `test_soft_delete.py` 中的硬编码版本断言为 `SCHEMA_VERSION`
+- **甘特图高阶特性升级 (gantt_widget.py & plan_gantt_tab.py)**:
+  - **任务依赖矢线与箭头**: 自动解析 `task.dependencies`，绘制折线与指向箭头
+  - **冲突实时检测与告警**: 自动判定设备同一时间窗口重叠与依赖倒退冲突，绘制 `⚠️ 冲突` 角标与红色告警框
+  - **关键路径 (Critical Path) 计算**: 最长路径算法推算，突出高亮关键路径节点
+  - **里程碑节点渲染**: 支持 0 工期 / 里程碑菱形节点渲染
 
 ### 未完成 / 待处理
 
-- 中期优化项：8D 报告生成、Weibull 寿命预测、Ctrl+K 快捷搜索
+- 远期优化项：Weibull 寿命预测、加速寿命 (ALT) 计算面板
 
 ## 阻塞
 
@@ -37,4 +30,4 @@
 
 ## 下一步
 
-根据需求推进中期（P1级）可靠性专业计算与 8D 报告导出等功能。
+根据需求继续拓展 Reliability 分析面板与数据计算。
