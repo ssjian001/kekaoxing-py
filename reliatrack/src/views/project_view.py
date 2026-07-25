@@ -83,8 +83,6 @@ class ProjectView(QWidget):
         self.status_filter.addItem("全部状态", None)
         self.status_filter.addItem("进行中", "active")
         self.status_filter.addItem("已暂停", "paused")
-        self.status_filter.addItem("已完成", "completed")
-        self.status_filter.addItem("已归档", "archived")
         self.status_filter.addItem("已关闭", "closed")
         self.status_filter.currentIndexChanged.connect(lambda: self._on_search(self.search_input.text()))
         toolbar.addWidget(self.status_filter)
