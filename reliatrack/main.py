@@ -752,9 +752,10 @@ class MainWindow(QMainWindow):
             plan_id = self._plan_filter_combo.currentData()
         except RuntimeError:
             return
-        if plan_id is not None and hasattr(self, '_test_plan_view'):
+        if hasattr(self, '_test_plan_view') and self._test_plan_view:
             self._test_plan_view.select_plan_by_id(plan_id)
         self._refresh_all()
+
 
     def refresh_plan_combo(self) -> None:
         """根据当前选中的项目更新计划筛选 combo（保留之前选中项）。"""

@@ -24,8 +24,8 @@ class TestProjectAndPlanFilters:
         view = ProjectView()
         projects = [
             Project(id=1, name="项目Alpha", product="Product A", customer="Customer X", status="active"),
-            Project(id=2, name="项目Beta", product="Product B", customer="Customer Y", status="completed"),
-            Project(id=3, name="项目Gamma", product="Product C", customer="Customer X", status="archived"),
+            Project(id=2, name="项目Beta", product="Product B", customer="Customer Y", status="closed"),
+            Project(id=3, name="项目Gamma", product="Product C", customer="Customer X", status="paused"),
         ]
 
         view.refresh(projects)
@@ -33,8 +33,8 @@ class TestProjectAndPlanFilters:
         # Default: all 3 projects
         assert view._table.rowCount() == 3
 
-        # Filter by status = "in_progress"
-        view.status_filter.setCurrentIndex(1)  # in_progress
+        # Filter by status = "active"
+        view.status_filter.setCurrentIndex(1)  # active
         assert view._table.rowCount() == 1
         assert view._table.item(0, 1).text() == "项目Alpha"
 
@@ -64,3 +64,16 @@ class TestProjectAndPlanFilters:
         assert view._task_table.rowCount() == 3
         view._category_filter_combo.setCurrentIndex(1)  # 环境试验
         assert view._task_table.rowCount() == 1
+
+    def test_plan_combo_all_plans_item(self, qapp):
+        view = TestPlanView()
+        view.set_plans_and_restore(["计划 A", "计划 B"], [10, 20], restore_id=20)
+
+        # Item 0 is "全部计划" (None), Item 1 is "计划 A" (10), Item 2 is "计划 B" (20)
+        assert view._plan_combo.count() == 3
+        assert view._plan_combo.itemText(0) == "全部计划"
+        assert view.get_selected_plan_id() == 20
+
+        view.select_plan_by_id(None)
+        assert view.get_selected_plan_id() is None
+        assert view._plan_combo.currentIndex() == 0

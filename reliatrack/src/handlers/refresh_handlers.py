@@ -387,74 +387,84 @@ class RefreshHandlers:
             self._win.test_plan_view.refresh([], 30)
             return
 
-        target_id = current_plan_id if (current_plan_id and current_plan_id in plan_ids) else (all_plans[0].id if all_plans else None)
+        # 确定选中的 plan_id
+        target_id = self._get_filter_plan_id()
+        if target_id is None and current_plan_id and current_plan_id in plan_ids:
+            target_id = current_plan_id
+
         self._win.test_plan_view.set_plans_and_restore(plan_names, plan_ids, target_id)
-        # 确定恢复后的索引
-        restore_idx = 0
-        if target_id and target_id in plan_ids:
-            restore_idx = plan_ids.index(target_id)
-        # 手动加载选中计划的任务
-        if all_plans:
 
-            plan_id = all_plans[restore_idx].id
-            if plan_id is None:
-                return
-            tasks = ctrl.test_plan_service.get_tasks(plan_id)
-            max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
+        selected_plan_id = self._win.test_plan_view.get_selected_plan_id()
 
-            # 构建技术员映射 {technician_id: name}
-            technician_map: dict[int, str] = {}
-            if ctrl.technician_service:
-                for t in ctrl.technician_service.list_all():
-                    if t.id is not None:
-                        technician_map[t.id] = t.name
+        if selected_plan_id is None:
+            tasks = []
+            for p in all_plans:
+                if p.id is not None:
+                    tasks.extend(ctrl.test_plan_service.get_tasks(p.id))
+            start_date = all_plans[0].start_date if all_plans else ""
+            task_prefix = "ALL"
+            plan_obj = all_plans[0] if all_plans else None
+        else:
+            tasks = ctrl.test_plan_service.get_tasks(selected_plan_id)
+            plan_obj = ctrl.test_plan_service.get_plan(selected_plan_id)
+            start_date = plan_obj.start_date if plan_obj else ""
+            task_prefix = plan_obj.task_prefix if plan_obj else ""
 
-            # 批量获取通过率映射 {task_id: (pass_count, total)}
-            result_map: dict[int, tuple[int, int]] = {}
-            matrix_results: list = []
-            task_ids = [t.id for t in tasks if t.id is not None]
-            if task_ids and ctrl.test_plan_service:
-                result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
-                matrix_results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids)
+        max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
 
-            # 样品映射 {sample_id: sn}
-            sample_map: dict[int, str] = {}
-            if ctrl.sample_service:
-                for s in ctrl.sample_service.list_all():
-                    if s.id is not None:
-                        sample_map[s.id] = s.sn
+        # 构建技术员映射 {technician_id: name}
+        technician_map: dict[int, str] = {}
+        if ctrl.technician_service:
+            for t in ctrl.technician_service.list_all():
+                if t.id is not None:
+                    technician_map[t.id] = t.name
 
-            # 设备映射 {equipment_id: name} — 甘特图按设备着色
-            equipment_map: dict[int, str] = {}
-            if ctrl.equipment:
-                for eq in ctrl.equipment.list_all():
-                    if eq.id is not None:
-                        equipment_map[eq.id] = eq.name
+        # 批量获取通过率映射 {task_id: (pass_count, total)}
+        result_map: dict[int, tuple[int, int]] = {}
+        matrix_results: list = []
+        task_ids = [t.id for t in tasks if t.id is not None]
+        if task_ids and ctrl.test_plan_service:
+            result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
+            matrix_results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids)
 
-            # 节假日集合
-            holidays: set[str] = set()
-            if ctrl.holiday_service:
-                holidays = ctrl.holiday_service.get_holidays_set()
+        # 样品映射 {sample_id: sn}
+        sample_map: dict[int, str] = {}
+        if ctrl.sample_service:
+            for s in ctrl.sample_service.list_all():
+                if s.id is not None:
+                    sample_map[s.id] = s.sn
 
-            # 关联 Issue（用于失效模式分析）
-            plan_issues: list = []
-            if ctrl.issue_service:
-                plan = all_plans[restore_idx]
-                if plan.project_id:
-                    plan_issues = ctrl.issue_service.get_by_project(plan.project_id)
-                else:
-                    plan_issues = ctrl.issue_service.list_all()
+        # 设备映射 {equipment_id: name} — 甘特图按设备着色
+        equipment_map: dict[int, str] = {}
+        if ctrl.equipment:
+            for eq in ctrl.equipment.list_all():
+                if eq.id is not None:
+                    equipment_map[eq.id] = eq.name
 
-            self._win.test_plan_view.refresh(
-                tasks, max_day, technician_map, result_map,
-                start_date=all_plans[restore_idx].start_date,
-                matrix_results=matrix_results,
-                sample_map=sample_map,
-                equipment_map=equipment_map,
-                issues=plan_issues,
-                task_prefix=all_plans[restore_idx].task_prefix,
-                holidays=holidays,
-            )
+        # 节假日集合
+        holidays: set[str] = set()
+        if ctrl.holiday_service:
+            holidays = ctrl.holiday_service.get_holidays_set()
+
+        # 关联 Issue（用于失效模式分析）
+        plan_issues: list = []
+        if ctrl.issue_service:
+            if plan_obj and plan_obj.project_id:
+                plan_issues = ctrl.issue_service.get_by_project(plan_obj.project_id)
+            else:
+                plan_issues = ctrl.issue_service.list_all()
+
+        self._win.test_plan_view.refresh(
+            tasks, max_day, technician_map, result_map,
+            start_date=start_date,
+            matrix_results=matrix_results,
+            sample_map=sample_map,
+            equipment_map=equipment_map,
+            issues=plan_issues,
+            task_prefix=task_prefix,
+            holidays=holidays,
+        )
+
 
     def _refresh_issues(self) -> None:
         """刷新 Issue 追踪视图 + Bug Tracker 视图。"""

@@ -363,53 +363,47 @@ class TestPlanView(QWidget):
         """设置计划下拉选项。"""
         self._plan_combo.blockSignals(True)
         self._plan_combo.clear()
-        for i, name in enumerate(plan_names):
-            self._plan_combo.addItem(name)
-            self._plan_combo.setItemData(i, name, Qt.ItemDataRole.ToolTipRole)
-        self._plan_ids = plan_ids or list(range(len(plan_names)))
+        self._plan_combo.addItem("全部计划", None)
+        self._plan_ids = plan_ids or []
+        for name, pid in zip(plan_names, self._plan_ids):
+            self._plan_combo.addItem(name, pid)
         self._plan_combo.blockSignals(False)
-        # blockSignals 期间 index 可能变化，手动触发菜单更新
         self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
 
     def set_plans_and_restore(
         self, plan_names: list[str], plan_ids: list[int], restore_id: int | None = None,
     ) -> None:
-        """设置计划下拉选项并恢复选中（不触发信号）。
-
-        Args:
-            plan_names: 计划名称列表
-            plan_ids: 计划 ID 列表（与 plan_names 等长）
-            restore_id: 要恢复选中的计划 ID，None 则选第一项
-        """
+        """设置计划下拉选项并恢复选中。"""
         self._plan_combo.blockSignals(True)
         self._plan_combo.clear()
-        for i, name in enumerate(plan_names):
-            self._plan_combo.addItem(name)
-            self._plan_combo.setItemData(i, name, Qt.ItemDataRole.ToolTipRole)
-        self._plan_ids = plan_ids or list(range(len(plan_names)))
-        # 恢复选中
+        self._plan_combo.addItem("全部计划", None)
+        self._plan_ids = plan_ids or []
+        for name, pid in zip(plan_names, self._plan_ids):
+            self._plan_combo.addItem(name, pid)
+
         restore_idx = 0
-        if plan_ids and restore_id is not None:
-            if restore_id in plan_ids:
-                restore_idx = plan_ids.index(restore_id)
+        if restore_id is not None:
+            found = self._plan_combo.findData(restore_id)
+            if found >= 0:
+                restore_idx = found
+
         if self._plan_combo.count() > 0:
             self._plan_combo.setCurrentIndex(restore_idx)
         self._plan_combo.blockSignals(False)
-        # blockSignals 期间 index 可能变化，手动触发菜单更新
         self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
 
     def get_selected_plan_id(self) -> int | None:
-        """获取当前选中计划的 ID。"""
-        idx = self._plan_combo.currentIndex()
-        if 0 <= idx < len(self._plan_ids):
-            return self._plan_ids[idx]
-        return None
+        """获取当前选中计划的 ID（None = 全部计划）。"""
+        return self._plan_combo.currentData()
 
-    def select_plan_by_id(self, plan_id: int) -> None:
-        """按 plan_id 选中本地 combo（響應全局篩選同步）。"""
-        if plan_id in self._plan_ids:
-            idx = self._plan_ids.index(plan_id)
+    def select_plan_by_id(self, plan_id: int | None) -> None:
+        """按 plan_id 选中本地 combo（响应全局筛选同步）。"""
+        idx = self._plan_combo.findData(plan_id)
+        if idx >= 0:
             self._plan_combo.setCurrentIndex(idx)
+        else:
+            self._plan_combo.setCurrentIndex(0)
+
 
     @property
     def selected_plan_index(self) -> int:
