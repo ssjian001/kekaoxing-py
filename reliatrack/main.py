@@ -137,6 +137,8 @@ class MainWindow(QMainWindow):
         # 跨 handler 引用
         self._refresh_handlers._sample_handlers = self._sample_handlers
 
+        self._pending_entity_types: set[str] = set()
+
         self._setup_central_widget()
         self._setup_menubar()
         self._setup_toolbar()
@@ -157,7 +159,6 @@ class MainWindow(QMainWindow):
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.setInterval(100)  # 100ms debounce
         self._refresh_timer.timeout.connect(self._refresh_handlers._do_refresh_all)
-        self._pending_entity_types: set[str] = set()
 
         # 初始数据加载
         self._refresh_all()
