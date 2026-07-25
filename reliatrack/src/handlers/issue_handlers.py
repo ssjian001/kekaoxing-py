@@ -10,6 +10,8 @@ from PySide6.QtWidgets import QMessageBox
 
 from src.services.undo_manager import DeleteEntityCommand
 from src.views.dialogs.attachment_dialog import AttachmentDialog
+from src.views.dialogs.eight_d_dialog import EightDReportDialog
+
 
 if TYPE_CHECKING:
     from main import MainWindow
@@ -329,16 +331,6 @@ class IssueHandlers:
                 QMessageBox.warning(self._win, "导出失败", f"Issue #{issue_id} 不存在。")
                 return
 
-            # 格式选择
-            fmt = QMessageBox.question(
-                self._win, "导出格式",
-                "选择导出格式：\n\n"
-                "「是」= PDF\n「否」= Word (.docx)\n「取消」= 放弃",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
-            )
-            if fmt == QMessageBox.StandardButton.Cancel:
-                return
-
             fa_records = ctrl.issue_service.get_fa_records(issue_id)
             capa_records = ctrl.issue_service.get_capa_records(issue_id)
 
@@ -346,32 +338,35 @@ class IssueHandlers:
             _task = None
             _sample_sn = ""
             _tech_name = ""
-            if issue.task_id:
+            if issue.task_id and hasattr(ctrl, "test_plan_service") and ctrl.test_plan_service:
                 _task = ctrl.test_plan_service.get_task(issue.task_id)
-            if issue.sample_id:
+            if issue.sample_id and hasattr(ctrl, "sample_service") and ctrl.sample_service:
                 s = ctrl.sample_service.get(issue.sample_id)
                 if s:
                     _sample_sn = s.sn or ""
-            if issue.assignee_id and ctrl.technicians:
+            if issue.assignee_id and hasattr(ctrl, "technicians") and ctrl.technicians:
                 for t in ctrl.technicians.list_all():
                     if t.id == issue.assignee_id:
                         _tech_name = t.name
                         break
 
-            if fmt == QMessageBox.StandardButton.Yes:
-                filepath = ctrl.export_service.export_8d_pdf(
-                    issue, fa_records, capa_records,
-                    technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
-                )
-            else:
-                filepath = ctrl.export_service.export_8d_docx(
-                    issue, fa_records, capa_records,
-                    technician_name=_tech_name, task=_task, sample_sn=_sample_sn,
-                )
-            self._win.toast(f"8D 报告已导出: {Path(filepath).name}", "success")
+            # 弹出 8D 报告可视化预览弹窗
+            dlg = EightDReportDialog(
+                issue=issue,
+                fa_records=fa_records,
+                capa_records=capa_records,
+                technician_name=_tech_name,
+                task=_task,
+                sample_sn=_sample_sn,
+                export_service=ctrl.export_service,
+                parent=self._win,
+            )
+            dlg.exec()
+            dlg.deleteLater()
         except Exception as e:
-            logger.exception("8D report export failed for issue_id=%s", issue_id)
-            QMessageBox.critical(self._win, "导出失败", f"8D 报告导出失败: {e}")
+            logger.exception("8D report visual preview failed for issue_id=%s", issue_id)
+            QMessageBox.critical(self._win, "预览失败", f"8D 报告预览失败: {e}")
+
 
     # ══════════════════════════════════════════════════════════════
     #  Issue ↔ FA/CAPA 联动
