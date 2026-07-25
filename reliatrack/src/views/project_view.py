@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QComboBox,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QFrame,
 )
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
@@ -73,6 +75,21 @@ class ProjectView(QWidget):
         self.search_input.setPlaceholderText("搜索项目名称 / 产品 / 客户…")
         self.search_input.textChanged.connect(self._on_search)
         toolbar.addWidget(self.search_input)
+
+        self.status_filter = QComboBox()
+        self.status_filter.setProperty("class", "filter-combo")
+        self.status_filter.setFixedHeight(26)
+        self.status_filter.setFixedWidth(110)
+        self.status_filter.addItem("全部状态", None)
+        self.status_filter.addItem("进行中", "active")
+        self.status_filter.addItem("已暂停", "paused")
+        self.status_filter.addItem("已完成", "completed")
+        self.status_filter.addItem("已归档", "archived")
+        self.status_filter.addItem("已关闭", "closed")
+        self.status_filter.currentIndexChanged.connect(lambda: self._on_search(self.search_input.text()))
+        toolbar.addWidget(self.status_filter)
+
+
 
         toolbar.addStretch()
 
@@ -213,18 +230,28 @@ class ProjectView(QWidget):
         return None
 
     def _on_search(self, text: str) -> None:
-        """搜索过滤。"""
+        """搜索与状态多重过滤。"""
         keyword = text.strip().lower()
-        if not keyword:
-            self._populate_table(self._all_projects)
-            return
-        filtered = [
-            proj for proj in self._all_projects
-            if keyword in (proj.name or "").lower()
-            or keyword in (proj.product or "").lower()
-            or keyword in (proj.customer or "").lower()
-        ]
+        selected_status = self.status_filter.currentData()
+
+        filtered = self._all_projects
+
+        if keyword:
+            filtered = [
+                proj for proj in filtered
+                if keyword in (proj.name or "").lower()
+                or keyword in (proj.product or "").lower()
+                or keyword in (proj.customer or "").lower()
+            ]
+
+        if selected_status is not None:
+            filtered = [
+                proj for proj in filtered
+                if proj.status == selected_status
+            ]
+
         self._populate_table(filtered)
+
 
     def _on_double_click(self, row: int, _col: int) -> None:
         """双击行触发编辑。"""

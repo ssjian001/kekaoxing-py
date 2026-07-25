@@ -1,4 +1,4 @@
-"""测试计划筛选栏组件 — 计划下拉/搜索/技术员/日期范围。
+"""测试计划筛选栏组件 — 计划下拉/搜索/技术员/状态/类别/日期范围。
 
 提取自 test_plan_view.py row2 + summary_bar，封装为独立 QWidget。
 """
@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -18,7 +19,7 @@ from src.views.widgets.search_box import SearchBox
 
 
 class PlanFilterBar(QWidget):
-    """测试计划筛选行：计划下拉、搜索、技术员、日期范围 + 摘要栏。"""
+    """测试计划筛选行：计划下拉、搜索、技术员、状态、类别、日期范围 + 摘要栏。"""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -43,15 +44,41 @@ class PlanFilterBar(QWidget):
         # 搜索框
         self._search_edit = SearchBox()
         self._search_edit.setPlaceholderText("搜索任务名…")
-        self._search_edit.setFixedSize(200, 26)
+        self._search_edit.setFixedSize(160, 26)
         row.addWidget(self._search_edit)
 
+        # 技术员筛选
         self._tech_filter_combo = QComboBox()
         self._tech_filter_combo.setProperty("class", "filter-combo")
         self._tech_filter_combo.setFixedWidth(100)
         self._tech_filter_combo.setFixedHeight(26)
         self._tech_filter_combo.addItem("全部技术员", None)
         row.addWidget(self._tech_filter_combo)
+
+        # 状态筛选
+        self._status_filter_combo = QComboBox()
+        self._status_filter_combo.setProperty("class", "filter-combo")
+        self._status_filter_combo.setFixedWidth(95)
+        self._status_filter_combo.setFixedHeight(26)
+        self._status_filter_combo.addItem("全部状态", None)
+        self._status_filter_combo.addItem("待开始", "pending")
+        self._status_filter_combo.addItem("进行中", "in_progress")
+        self._status_filter_combo.addItem("已完成", "completed")
+        self._status_filter_combo.addItem("已跳过", "skipped")
+        row.addWidget(self._status_filter_combo)
+
+        # 类别筛选
+        self._category_filter_combo = QComboBox()
+        self._category_filter_combo.setProperty("class", "filter-combo")
+        self._category_filter_combo.setFixedWidth(95)
+        self._category_filter_combo.setFixedHeight(26)
+        self._category_filter_combo.addItem("全部类别", None)
+        self._category_filter_combo.addItem("环境试验", "环境试验")
+        self._category_filter_combo.addItem("机械试验", "机械试验")
+        self._category_filter_combo.addItem("表面处理", "表面处理")
+        self._category_filter_combo.addItem("包装", "包装")
+        self._category_filter_combo.addItem("其他", "其他")
+        row.addWidget(self._category_filter_combo)
 
         # 分隔线
         sep = QFrame()
@@ -62,16 +89,19 @@ class PlanFilterBar(QWidget):
         row.addWidget(sep)
 
         # 日期范围
-        from PySide6.QtWidgets import QDateEdit
-
+        row.addWidget(QLabel("日期:"))
         self._date_from = QDateEdit()
         self._date_from.setCalendarPopup(True)
         self._date_from.setDisplayFormat("yyyy-MM-dd")
         self._date_from.setSpecialValueText("不限")
         self._date_from.setDate(self._date_from.minimumDate())
-        self._date_from.setFixedWidth(170)
+        self._date_from.setFixedWidth(120)
         self._date_from.setFixedHeight(26)
         row.addWidget(self._date_from)
+
+        to_lbl = QLabel("至")
+        to_lbl.setProperty("class", "subtext")
+        row.addWidget(to_lbl)
 
         self._date_to = QDateEdit()
         self._date_to.setCalendarPopup(True)

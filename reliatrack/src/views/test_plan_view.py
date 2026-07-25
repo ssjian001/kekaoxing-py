@@ -83,6 +83,8 @@ class TestPlanView(QWidget):
         self._plan_combo = fb._plan_combo
         self._search_edit = fb._search_edit
         self._tech_filter_combo = fb._tech_filter_combo
+        self._status_filter_combo = fb._status_filter_combo
+        self._category_filter_combo = fb._category_filter_combo
         self._date_from = fb._date_from
         self._date_to = fb._date_to
         self._btn_reset_filter = fb._btn_reset_filter
@@ -91,9 +93,12 @@ class TestPlanView(QWidget):
         # 连接筛选信号
         self._search_edit.textChanged.connect(self._on_task_search)
         self._tech_filter_combo.currentIndexChanged.connect(self._on_task_search)
+        self._status_filter_combo.currentIndexChanged.connect(self._on_task_search)
+        self._category_filter_combo.currentIndexChanged.connect(self._on_task_search)
         self._date_from.dateChanged.connect(self._on_task_search)
         self._date_to.dateChanged.connect(self._on_task_search)
         self._btn_reset_filter.clicked.connect(self._reset_filters)
+
         # 恢复搜索历史
         from PySide6.QtCore import QSettings as _QSettings
         saved = _QSettings().value("ReliaTrack/task_search", "")
@@ -197,8 +202,23 @@ class TestPlanView(QWidget):
                 if t.technician_id == tech_id
             ]
 
-        # 日期范围过滤（预计结束日期）
-        today = date.today()
+        # 状态过滤
+        status_val = self._status_filter_combo.currentData()
+        if status_val is not None:
+            filtered = [
+                t for t in filtered
+                if t.status == status_val
+            ]
+
+        # 类别过滤
+        cat_val = self._category_filter_combo.currentData()
+        if cat_val is not None:
+            filtered = [
+                t for t in filtered
+                if (t.category or "其他") == cat_val
+            ]
+
+        # 日期范围过滤（任务起止日期重叠校验）
         d_from = self._date_from.date().toPython() if self._date_from.date() > self._date_from.minimumDate() else None
         d_to = self._date_to.date().toPython() if self._date_to.date() < self._date_to.maximumDate() else None
         if d_from or d_to:
@@ -210,14 +230,15 @@ class TestPlanView(QWidget):
             if plan_start:
                 date_filtered = []
                 for t in filtered:
-                    end_day = (t.start_day or 0) + t.duration
-                    end_date = plan_start + timedelta(days=end_day - 1)
-                    if d_from and end_date < d_from:
+                    s_date = plan_start + timedelta(days=t.start_day)
+                    e_date = plan_start + timedelta(days=t.start_day + max(t.duration, 1) - 1)
+                    if d_from and e_date < d_from:
                         continue
-                    if d_to and end_date > d_to:
+                    if d_to and s_date > d_to:
                         continue
                     date_filtered.append(t)
                 filtered = date_filtered
+
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
             start_date=self._last_start_date,
@@ -235,9 +256,12 @@ class TestPlanView(QWidget):
         """重置所有筛选条件到默认值。"""
         self._search_edit.clear()
         self._tech_filter_combo.setCurrentIndex(0)
+        self._status_filter_combo.setCurrentIndex(0)
+        self._category_filter_combo.setCurrentIndex(0)
         self._date_from.setDate(self._date_from.minimumDate())
         self._date_to.setDate(self._date_to.maximumDate())
-        # _on_task_search 由控件信号自动触发
+        self._on_task_search()
+
 
     def refresh(
         self,
