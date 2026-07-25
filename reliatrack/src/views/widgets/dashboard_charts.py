@@ -47,6 +47,17 @@ class _DonutChart(QWidget):
         self.setProperty("class", "card-bg")
         self.setMinimumHeight(160)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, event):  # noqa: N802
+        w = self.parent()
+        while w is not None:
+            if hasattr(w, "card_clicked"):
+                w.card_clicked.emit(3, {"task_status": None})
+                break
+            w = w.parent()
+        super().mousePressEvent(event)
+
 
     def setData(self, data: dict[str, int]) -> None:
         self._data = dict(data)

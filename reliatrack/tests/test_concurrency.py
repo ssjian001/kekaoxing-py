@@ -66,7 +66,9 @@ class TestConcurrentReads:
         def _reader():
             try:
                 conn = apsw.Connection(self._db_path)
+                conn.setbusytimeout(5000)
                 repo = IssueRepository(conn)
+
                 for _ in range(self.N_ITERATIONS):
                     issues = repo.list_all()
                     assert len(issues) >= 20

@@ -212,10 +212,10 @@ class DashboardView(QWidget):
         # KPI 4 卡（已完成 / 进行中 / 待开始 / Fail）
         ga = QHBoxLayout()
         ga.setSpacing(10)
-        self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3)
-        self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3)
-        self._card_wait   = _StatCard("待开始", "0", _theme.SUBTEXT0, 3)
-        self._card_fail   = _StatCard("Fail", "0", DASH_DANGER, 3)
+        self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3, jump_data={"task_status": "completed"})
+        self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3, jump_data={"task_status": "in_progress"})
+        self._card_wait   = _StatCard("待开始", "0", _theme.SUBTEXT0, 3, jump_data={"task_status": "pending"})
+        self._card_fail   = _StatCard("Fail", "0", DASH_DANGER, 3, jump_data={"task_status": "fail"})
         ga.addWidget(self._card_done)
         ga.addWidget(self._card_active)
         ga.addWidget(self._card_wait)
@@ -247,9 +247,9 @@ class DashboardView(QWidget):
         # KPI 3 卡
         gb = QHBoxLayout()
         gb.setSpacing(10)
-        self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4)
-        self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4)
-        self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4)
+        self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4, jump_data={"issue_status": None})
+        self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4, jump_data={"issue_status": "closed"})
+        self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4, jump_data={"issue_status": "closed"})
         gb.addWidget(self._card_issues)
         gb.addWidget(self._card_issue_close)
         gb.addWidget(self._card_capa)
@@ -258,15 +258,16 @@ class DashboardView(QWidget):
         # Bug Tracker 4 指标
         gb2 = QHBoxLayout()
         gb2.setSpacing(10)
-        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4)
-        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4)
-        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4)
-        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4)
+        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4, jump_data={"issue_status": "open"})
+        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4, jump_data={"issue_status": "closed"})
+        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4, jump_data={"issue_status": "open"})
+        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4, jump_data={"issue_status": "open"})
         gb2.addWidget(self._card_pending)
         gb2.addWidget(self._card_week_close)
         gb2.addWidget(self._card_avg_age)
         gb2.addWidget(self._card_aging)
         right.addLayout(gb2)
+
 
         # 进度环（两个独立卡片）
         ring_row = QHBoxLayout()

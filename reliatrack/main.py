@@ -243,8 +243,14 @@ class MainWindow(QMainWindow):
     # ── Tab 切换自动刷新 ──
 
     def _on_tab_changed(self, index: int) -> None:
-        """切换 Tab 时保存索引 + 自动刷新数据。"""
+        """切换 Tab 时保存索引 + 自动刷新数据 + 平滑淡入动画。"""
         QSettings().setValue("ReliaTrack/last_tab_index", index)
+
+        # 淡入平滑微动效
+        current_widget = self._tab_widget.widget(index)
+        if current_widget:
+            self._animate_tab_transition(current_widget)
+
         # Tab 0 仪表盘 / Tab 3 测试计划 / Tab 4 Issue 管理
         if index == 0:
             self._schedule_refresh("dashboard")
@@ -253,13 +259,48 @@ class MainWindow(QMainWindow):
         elif index == 4:
             self._schedule_refresh("issue")
 
+    def _animate_tab_transition(self, widget: QWidget) -> None:
+        """为 Tab 切换增加 150ms 平滑淡入动效。"""
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
+        from PySide6.QtCore import QPropertyAnimation
+
+        effect = QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity", widget)
+        anim.setDuration(150)
+        anim.setStartValue(0.3)
+        anim.setEndValue(1.0)
+        anim.finished.connect(lambda: widget.setGraphicsEffect(None))
+        anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
     # ── 仪表盘卡片点击 ──
 
     def _on_dashboard_card_clicked(self, tab_index: int, jump_data: object = None) -> None:
-        """点击仪表盘 KPI 卡片 → 跳转 Tab + 可选携带筛选上下文。"""
-        self._tab_widget.setCurrentIndex(tab_index)
+        """点击仪表盘 KPI 卡片 → 跳转 Tab + 自动应用关联筛选条件。"""
+        if 0 <= tab_index < self._tab_widget.count():
+            self._tab_widget.setCurrentIndex(tab_index)
+
         if jump_data and isinstance(jump_data, dict):
-            pass
+            # 跳转至测试计划 Tab (Tab 3)
+            if tab_index == 3 and hasattr(self, '_test_plan_view'):
+                if "task_status" in jump_data:
+                    status = jump_data["task_status"]
+                    combo = getattr(self._test_plan_view, '_status_filter_combo', None)
+                    if combo:
+                        idx = combo.findData(status)
+                        if idx >= 0:
+                            combo.setCurrentIndex(idx)
+
+            # 跳转至 Issue 管理 Tab (Tab 4)
+            elif tab_index == 4 and hasattr(self, '_bug_tracker_view'):
+                if "issue_status" in jump_data:
+                    status = jump_data["issue_status"]
+                    bug_list = getattr(self._bug_tracker_view, '_list_view', None)
+                    if bug_list and hasattr(bug_list, '_status_combo'):
+                        idx = bug_list._status_combo.findData(status)
+                        if idx >= 0:
+                            bug_list._status_combo.setCurrentIndex(idx)
+
 
     def _create_filter_bar_content(self, parent: QWidget) -> None:
         """创建项目/计划筛选栏 — 菜单栏右上角。"""
