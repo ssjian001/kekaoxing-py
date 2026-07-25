@@ -365,6 +365,12 @@ QTableWidget, QTableView {{
     selection-background-color: {SELECTION_BG};
     selection-color: {FG_PRIMARY};
 }}
+QTableWidget::item, QTableView::item {{
+    padding: 6px 10px;
+}}
+QTableWidget::item:hover, QTableView::item:hover {{
+    background-color: {BG_HOVER};
+}}
 QHeaderView::section {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};

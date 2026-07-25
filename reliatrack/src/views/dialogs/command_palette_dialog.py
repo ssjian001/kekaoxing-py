@@ -12,9 +12,10 @@ from PySide6.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QWidget,
+    QGraphicsDropShadowEffect,
 )
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QKeyEvent
+from PySide6.QtGui import QIcon, QKeyEvent, QColor
 
 import src.styles.theme as _t
 from src.styles.constants import FONT_FAMILY
@@ -26,6 +27,15 @@ class CommandPaletteDialog(QDialog):
     # 发射 (category_key, item_id)
     item_selected = Signal(str, object)
 
+    _CAT_ICONS = {
+        "project": "📌",
+        "sample": "📦",
+        "equipment": "🔧",
+        "task": "📋",
+        "issue": "🐛",
+        "knowledge": "💡",
+    }
+
     def __init__(
         self,
         fetcher: Callable[[str], list[dict[str, Any]]],
@@ -33,31 +43,47 @@ class CommandPaletteDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("全局搜索 (Ctrl+K)")
-        self.setFixedWidth(560)
-        self.setFixedHeight(380)
+        self.setFixedWidth(580)
+        self.setFixedHeight(400)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self._fetcher = fetcher
 
-        # 布局
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        # 外层圆角容器卡片
+        card = QWidget(self)
+        card.setStyleSheet(f"""
+            QWidget {{
+                background-color: {_t.BG_CARD};
+                border: 1px solid {_t.BORDER};
+                border-radius: 12px;
+            }}
+        """)
+
+        # 悬浮阴影
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(24)
+        shadow.setColor(QColor(0, 0, 0, 60 if _t.current_theme() == "light" else 140))
+        shadow.setOffset(0, 8)
+        card.setGraphicsEffect(shadow)
+
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(16, 16, 16, 16)
+        card_layout.setSpacing(10)
 
         # 标题提示
         header = QHBoxLayout()
         title = QLabel("🔍 全局速查 (Ctrl+K)")
-        title.setStyleSheet(f"font-weight: bold; font-size: 14px; color: {_t.FG_PRIMARY};")
+        title.setStyleSheet(f"font-weight: bold; font-size: 14px; color: {_t.FG_PRIMARY}; border: none; background: transparent;")
         hint = QLabel("Esc 退出 | ↑↓ 移动 | Enter 打开")
-        hint.setStyleSheet(f"font-size: 11px; color: {_t.FG_MUTED};")
+        hint.setStyleSheet(f"font-size: 11px; color: {_t.FG_MUTED}; border: none; background: transparent;")
         header.addWidget(title)
         header.addStretch()
         header.addWidget(hint)
-        layout.addLayout(header)
+        card_layout.addLayout(header)
 
         # 搜索框
-        self._search_input = QLineEdit(self)
+        self._search_input = QLineEdit(card)
         self._search_input.setPlaceholderText("输入关键字搜索项目、样品、设备、任务、Issue...")
         self._search_input.setClearButtonEnabled(True)
         self._search_input.setStyleSheet(f"""
@@ -71,21 +97,26 @@ class CommandPaletteDialog(QDialog):
             }}
         """)
         self._search_input.textChanged.connect(self._on_search_changed)
-        layout.addWidget(self._search_input)
+        card_layout.addWidget(self._search_input)
 
         # 结果列表
-        self._list_widget = QListWidget(self)
+        self._list_widget = QListWidget(card)
         self._list_widget.setStyleSheet(f"""
             QListWidget {{
                 border: 1px solid {_t.BORDER};
-                border-radius: 6px;
-                background-color: {_t.BG_CARD};
+                border-radius: 8px;
+                background-color: {_t.BG_DARK};
                 color: {_t.FG_PRIMARY};
                 outline: none;
             }}
             QListWidget::item {{
-                padding: 6px 10px;
+                padding: 8px 12px;
                 border-bottom: 1px solid {_t.BORDER};
+                border-radius: 4px;
+                margin: 1px 2px;
+            }}
+            QListWidget::item:hover {{
+                background-color: {_t.BG_HOVER};
             }}
             QListWidget::item:selected {{
                 background-color: {_t.SELECTION_BG};
@@ -94,7 +125,12 @@ class CommandPaletteDialog(QDialog):
             }}
         """)
         self._list_widget.itemActivated.connect(self._on_item_activated)
-        layout.addWidget(self._list_widget)
+        card_layout.addWidget(self._list_widget)
+
+        # 主布局包覆 card
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.addWidget(card)
 
         # 聚焦到输入框
         self._search_input.setFocus()
@@ -131,10 +167,12 @@ class CommandPaletteDialog(QDialog):
             return
 
         for res in results:
+            cat_key = res.get("category_key", "")
+            icon = self._CAT_ICONS.get(cat_key, "📄")
             cat = res.get("category", "数据")
             name = res.get("name", "")
             detail = res.get("detail", "")
-            display_text = f"[{cat}]  {name}"
+            display_text = f"{icon} [{cat}]  {name}"
             if detail:
                 display_text += f"  ({detail})"
 

@@ -7,8 +7,9 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QGraphicsOpacityEffect,
+    QGraphicsDropShadowEffect,
     QLabel,
-    QVBoxLayout,
+    QHBoxLayout,
     QWidget,
 )
 
@@ -16,7 +17,7 @@ import src.styles.theme as _t
 
 
 class ToastWidget(QWidget):
-    """在屏幕底部中央短暂显示的提示条。
+    """在屏幕底部中央短暂显示的悬浮 Pill 提示条。
 
     用法：
         ToastWidget.show_toast(parent, "操作成功", ToastWidget.SUCCESS)
@@ -29,6 +30,13 @@ class ToastWidget(QWidget):
     WARNING = "warning"
     INFO = "info"
 
+    _ICON_MAP = {
+        SUCCESS: "✓",
+        ERROR: "✕",
+        WARNING: "⚠",
+        INFO: "ℹ",
+    }
+
     @classmethod
     def _colors(cls) -> dict[str, str]:
         """动态读取主题色，主题切换后自动生效。"""
@@ -36,7 +44,7 @@ class ToastWidget(QWidget):
             cls.SUCCESS: _t.GREEN,
             cls.ERROR: _t.RED,
             cls.WARNING: _t.PEACH,
-            cls.INFO: _t.SURFACE1,
+            cls.INFO: _t.ACCENT,
         }
 
     # 多 Toast 堆叠偏移计数
@@ -56,17 +64,46 @@ class ToastWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
-        bg_color = self._colors().get(level, _t.BASE)
-        self.setStyleSheet(
-            f"background-color: {bg_color}; color: {_t.TEXT}; "
-            f"border-radius: 6px; padding: 8px 16px; font-size: 13px;"
-        )
+        accent_color = self._colors().get(level, _t.ACCENT)
+        icon_str = self._ICON_MAP.get(level, "ℹ")
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
-        label = QLabel(message)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(label)
+        # 内部容器，用于设置悬浮 Shadow
+        container = QWidget(self)
+        container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {_t.BG_CARD};
+                border: 1px solid {_t.BORDER};
+                border-left: 4px solid {accent_color};
+                border-radius: 8px;
+            }}
+        """)
+
+        # 容器布局
+        c_layout = QHBoxLayout(container)
+        c_layout.setContentsMargins(14, 8, 16, 8)
+        c_layout.setSpacing(10)
+
+        # 图标 Icon
+        icon_label = QLabel(icon_str)
+        icon_label.setStyleSheet(f"color: {accent_color}; font-weight: bold; font-size: 14px; border: none; background: transparent;")
+        c_layout.addWidget(icon_label)
+
+        # 文本
+        msg_label = QLabel(message)
+        msg_label.setStyleSheet(f"color: {_t.FG_PRIMARY}; font-size: 13px; font-weight: 500; border: none; background: transparent;")
+        c_layout.addWidget(msg_label)
+
+        # 主布局
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.addWidget(container)
+
+        # 阴影效果
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(16)
+        shadow.setColor(QColor(0, 0, 0, 40 if _t.current_theme() == "light" else 100))
+        shadow.setOffset(0, 4)
+        container.setGraphicsEffect(shadow)
 
         # 淡出效果
         self._opacity_effect = QGraphicsOpacityEffect(self)
@@ -75,7 +112,7 @@ class ToastWidget(QWidget):
 
         # 定时淡出
         self._fade_animation = QPropertyAnimation(self._opacity_effect, b"opacity")
-        self._fade_animation.setDuration(400)
+        self._fade_animation.setDuration(350)
         self._fade_animation.setStartValue(1.0)
         self._fade_animation.setEndValue(0.0)
 
@@ -100,11 +137,10 @@ class ToastWidget(QWidget):
     def _center_on_parent(self, parent: QWidget) -> None:
         if not parent:
             return
-        parent_geo = parent.geometry()
-        x = parent_geo.x() + (parent_geo.width() - self.width()) // 2
-        # 多条 Toast 向上堆叠，每条偏移 (高度+4)
-        offset = (self._stack_idx - 1) * (self.height() + 4) if hasattr(self, "_stack_idx") else 0
-        y = parent_geo.y() + parent_geo.height() - self.height() - 40 - offset
+        geo = parent.geometry()
+        pt = parent.mapToGlobal(geo.topLeft())
+        x = pt.x() + (geo.width() - self.width()) // 2
+        y = pt.y() + geo.height() - 70 - (self._stack_idx - 1) * 44
         self.move(x, y)
 
     @classmethod
@@ -115,6 +151,4 @@ class ToastWidget(QWidget):
         level: str = INFO,
         duration_ms: int = 2500,
     ) -> ToastWidget:
-        """在父窗口上方显示 Toast 提示。"""
-        toast = cls(parent, message, level, duration_ms)
-        return toast
+        return cls(parent, message, level, duration_ms)
