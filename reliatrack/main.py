@@ -355,6 +355,9 @@ class MainWindow(QMainWindow):
         # 全局项目/计划筛选 — 菜单栏右侧（直接插入 QMenuBar 的布局，避免 setCornerWidget Windows 兼容问题）
         self._create_filter_bar_content(menubar)
 
+        # 筛选栏创建后才触发完整刷新（否则 combo 尚未创建，填充不了项目列表）
+        self._refresh_all()
+
     def _on_toggle_dark_theme(self, checked: bool) -> None:
         """菜单 Toggle 回调 — 切换主题并持久化。"""
         from PySide6.QtWidgets import QApplication
