@@ -616,9 +616,21 @@ class PlanHandlers:
         plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
             return
+        # 同步顶端 MainWindow._plan_filter_combo (若存在)
+        if hasattr(self._win, '_plan_filter_combo') and self._win._plan_filter_combo:
+            cb = self._win._plan_filter_combo
+            if cb.currentData() != plan_id:
+                cb.blockSignals(True)
+                for i in range(cb.count()):
+                    if cb.itemData(i) == plan_id:
+                        cb.setCurrentIndex(i)
+                        break
+                cb.blockSignals(False)
+
         plan = ctrl.test_plan_service.get_plan(plan_id)
         tasks = ctrl.test_plan_service.get_tasks(plan_id)
         max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
+
 
         # 构建技术员映射
         technician_map: dict[int, str] = {}

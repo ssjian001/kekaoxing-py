@@ -244,11 +244,13 @@ class TestPlanView(QWidget):
             start_date=self._last_start_date,
             task_prefix=self._last_task_prefix,
         )
-        self._gantt.set_tasks(filtered, start_date=self._last_start_date,
+        total_d = getattr(self, '_last_total_days', 30)
+        self._gantt.set_tasks(filtered, total_days=total_d, start_date=self._last_start_date,
                               equipment_map=self._last_equipment_map,
                               technician_map=self._last_technician_map,
                               task_prefix=self._last_task_prefix,
                               holidays=self._last_holidays)
+
         self._update_summary_bar()
         self._update_stats(filtered)
 
@@ -278,6 +280,7 @@ class TestPlanView(QWidget):
         holidays: set[str] | None = None,
     ) -> None:
         self._all_tasks_for_filter = tasks
+        self._last_total_days = total_days
         self._last_technician_map = technician_map or {}
         self._last_result_map = result_map or {}
         self._last_start_date = start_date
@@ -302,17 +305,16 @@ class TestPlanView(QWidget):
             if idx >= 0:
                 self._tech_filter_combo.setCurrentIndex(idx)
         self._tech_filter_combo.blockSignals(False)
-        self._on_task_search(self._search_edit.text())
-        self._gantt.set_tasks(tasks, total_days, start_date,
-                              equipment_map=equipment_map,
-                              technician_map=technician_map,
-                              task_prefix=task_prefix,
-                              holidays=holidays)
+
+        # 应用当前所有筛选条件并更新表格、甘特图和统计栏
+        self._on_task_search()
+
         # 结果矩阵
         self._result_matrix.refresh(tasks, matrix_results or [], sample_map or {})
         # 失效模式分析
         self._analysis.refresh(tasks, matrix_results or [], issues or [], sample_map)
         self._update_summary_bar()
+
 
     def _compute_summary(
         self,
