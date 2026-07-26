@@ -1,9 +1,7 @@
-"""测试计划筛选栏组件 — 计划下拉/搜索/技术员/状态/类别/日期范围。
-
-提取自 test_plan_view.py row2 + summary_bar，封装为独立 QWidget。
-"""
+"""测试计划筛选栏组件 — 单行紧凑精致布局 (配可加宽的自定义列按钮)。"""
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
@@ -13,13 +11,14 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QTableWidget,
 )
 
 from src.views.widgets.search_box import SearchBox
 
 
 class PlanFilterBar(QWidget):
-    """测试计划筛选行：计划下拉、搜索、技术员、状态、类别、日期范围 + 摘要栏。"""
+    """测试计划筛选栏：计划选择 + 搜索 + 状态/技术员/类别筛选 + 日期范围 + 统计摘要。"""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -27,30 +26,35 @@ class PlanFilterBar(QWidget):
 
     def _build(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 2, 0, 2)
         layout.setSpacing(4)
 
-        # ── Row: 搜索/筛选 ──
+        # ── 单行筛选主容器 ──
         row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(4)
 
         row.addWidget(QLabel("计划:"))
         self._plan_combo = QComboBox()
         self._plan_combo.setProperty("class", "filter-combo")
-        self._plan_combo.setFixedWidth(160)
+        self._plan_combo.setMinimumWidth(110)
+        self._plan_combo.setMaximumWidth(150)
         self._plan_combo.setFixedHeight(26)
         row.addWidget(self._plan_combo)
 
         # 搜索框
         self._search_edit = SearchBox()
         self._search_edit.setPlaceholderText("搜索任务名…")
-        self._search_edit.setFixedSize(160, 26)
+        self._search_edit.setMinimumWidth(100)
+        self._search_edit.setMaximumWidth(140)
+        self._search_edit.setFixedHeight(26)
         row.addWidget(self._search_edit)
 
         # 技术员筛选
         self._tech_filter_combo = QComboBox()
         self._tech_filter_combo.setProperty("class", "filter-combo")
-        self._tech_filter_combo.setFixedWidth(100)
+        self._tech_filter_combo.setMinimumWidth(85)
+        self._tech_filter_combo.setMaximumWidth(105)
         self._tech_filter_combo.setFixedHeight(26)
         self._tech_filter_combo.addItem("全部技术员", None)
         row.addWidget(self._tech_filter_combo)
@@ -58,7 +62,8 @@ class PlanFilterBar(QWidget):
         # 状态筛选
         self._status_filter_combo = QComboBox()
         self._status_filter_combo.setProperty("class", "filter-combo")
-        self._status_filter_combo.setFixedWidth(95)
+        self._status_filter_combo.setMinimumWidth(80)
+        self._status_filter_combo.setMaximumWidth(95)
         self._status_filter_combo.setFixedHeight(26)
         self._status_filter_combo.addItem("全部状态", None)
         self._status_filter_combo.addItem("待开始", "pending")
@@ -70,7 +75,8 @@ class PlanFilterBar(QWidget):
         # 类别筛选
         self._category_filter_combo = QComboBox()
         self._category_filter_combo.setProperty("class", "filter-combo")
-        self._category_filter_combo.setFixedWidth(95)
+        self._category_filter_combo.setMinimumWidth(80)
+        self._category_filter_combo.setMaximumWidth(95)
         self._category_filter_combo.setFixedHeight(26)
         self._category_filter_combo.addItem("全部类别", None)
         self._category_filter_combo.addItem("环境试验", "环境试验")
@@ -84,7 +90,7 @@ class PlanFilterBar(QWidget):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
-        sep.setFixedHeight(20)
+        sep.setFixedHeight(18)
         sep.setProperty("class", "sep-vline")
         row.addWidget(sep)
 
@@ -95,7 +101,8 @@ class PlanFilterBar(QWidget):
         self._date_from.setDisplayFormat("yyyy-MM-dd")
         self._date_from.setSpecialValueText("不限")
         self._date_from.setDate(self._date_from.minimumDate())
-        self._date_from.setFixedWidth(120)
+        self._date_from.setMinimumWidth(95)
+        self._date_from.setMaximumWidth(110)
         self._date_from.setFixedHeight(26)
         row.addWidget(self._date_from)
 
@@ -108,7 +115,8 @@ class PlanFilterBar(QWidget):
         self._date_to.setDisplayFormat("yyyy-MM-dd")
         self._date_to.setSpecialValueText("不限")
         self._date_to.setDate(self._date_to.maximumDate())
-        self._date_to.setFixedWidth(120)
+        self._date_to.setMinimumWidth(95)
+        self._date_to.setMaximumWidth(110)
         self._date_to.setFixedHeight(26)
         row.addWidget(self._date_to)
 
@@ -117,12 +125,34 @@ class PlanFilterBar(QWidget):
         self._btn_reset_filter.setProperty("class", "action")
         row.addWidget(self._btn_reset_filter)
 
+
+        self._row_layout = row
+
         row.addStretch()
+
+        # 统计摘要栏
+        self._summary_bar = QLabel("")
+        self._summary_bar.setProperty("class", "summary-bar")
+        row.addWidget(self._summary_bar)
+
         layout.addLayout(row)
 
-        # 摘要信息栏
-        self._summary_bar = QLabel()
-        self._summary_bar.setProperty("class", "summary-bar")
-        self._summary_bar.setWordWrap(False)
-        self._summary_bar.setFixedHeight(26)
-        layout.addWidget(self._summary_bar)
+        # 搜索历史气泡行
+        from src.views.widgets.search_history_chips import SearchHistoryChips
+        self._chips = SearchHistoryChips("tasks", self)
+        self._chips.chip_clicked.connect(self._on_chip_clicked)
+        layout.addWidget(self._chips)
+
+    def _on_chip_clicked(self, keyword: str) -> None:
+        self._search_edit.setText(keyword)
+
+    def save_search_keyword(self, keyword: str) -> None:
+        if hasattr(self, '_chips'):
+            self._chips.save_keyword(keyword)
+
+    def attach_column_visibility_button(self, table: QTableWidget, key: str) -> None:
+        """挂载列显示控制按钮。"""
+        from src.views.widgets.column_visibility_menu import create_column_visibility_button
+        btn = create_column_visibility_button(table, key, self)
+        idx = self._row_layout.indexOf(self._btn_reset_filter)
+        self._row_layout.insertWidget(idx + 1, btn)

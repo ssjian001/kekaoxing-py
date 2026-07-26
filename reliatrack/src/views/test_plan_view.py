@@ -106,6 +106,7 @@ class TestPlanView(QWidget):
             self._search_edit.setText(saved)
 
         # 子 Tab: 测试项 / 甘特图
+        from PySide6.QtWidgets import QStackedWidget
         from src.views.widgets.segmented_widget import SegmentedWidget
         self._sub_stacked = QStackedWidget()
         self._sub_tabs = SegmentedWidget()
@@ -116,8 +117,27 @@ class TestPlanView(QWidget):
         tab_table_layout.setContentsMargins(0, 0, 0, 0)
         self._task_table = _TaskTable()
         tab_table_layout.addWidget(self._task_table)
+
+        # 挂载列显示控制按钮
+        self._filter_bar.attach_column_visibility_button(self._task_table, "task_table")
+
         self._sub_stacked.addWidget(tab_table)
+
+
         self._sub_tabs.addSegment("测试项", tab_table)
+
+        # 浮动批量操作栏
+        from src.views.widgets.batch_action_bar import BatchActionBar
+        self._batch_bar = BatchActionBar(self)
+        self._batch_bar.set_status_options([
+            ("已完成 (completed)", "completed"),
+            ("进行中 (in_progress)", "in_progress"),
+            ("待处理 (pending)", "pending"),
+            ("Fail (fail)", "fail"),
+        ])
+        self._batch_bar.clear_clicked.connect(self._task_table.clearSelection)
+        self._task_table.itemSelectionChanged.connect(self._on_table_selection_changed)
+
 
         # Tab 1: 甘特图 — 提取为 PlanGanttTab
         from src.views.widgets.plan_gantt_tab import PlanGanttTab
@@ -405,8 +425,22 @@ class TestPlanView(QWidget):
             self._plan_combo.setCurrentIndex(0)
 
 
+    def _on_table_selection_changed(self) -> None:
+        selected_rows = set()
+        for item in self._task_table.selectedItems():
+            selected_rows.add(item.row())
+        if hasattr(self, '_batch_bar'):
+            self._batch_bar.update_selection_count(len(selected_rows))
+            self._batch_bar.move((self.width() - 560) // 2, self.height() - 70)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        if hasattr(self, '_batch_bar') and not self._batch_bar.isHidden():
+            self._batch_bar.move((self.width() - 560) // 2, self.height() - 70)
+
     @property
     def selected_plan_index(self) -> int:
+
         return self._plan_combo.currentIndex()
 
     @property

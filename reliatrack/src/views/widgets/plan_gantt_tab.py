@@ -90,6 +90,36 @@ class PlanGanttTab(QWidget):
         self._btn_critical.toggled.connect(self._on_options_changed)
         mode_bar.addWidget(self._btn_critical)
 
+        mode_bar.addSpacing(16)
+
+        # 时间轴放缩滑块与视图范式选择
+        zoom_label = QLabel("时间轴缩放:")
+        zoom_label.setProperty("class", "subtext")
+        mode_bar.addWidget(zoom_label)
+
+        from PySide6.QtWidgets import QSlider, QComboBox
+        self._zoom_slider = QSlider(Qt.Orientation.Horizontal)
+        self._zoom_slider.setRange(4, 150)
+        self._zoom_slider.setValue(30)
+        self._zoom_slider.setFixedWidth(90)
+        self._zoom_slider.setToolTip("无级调节甘特图每日列宽 (支持 Ctrl + 滚轮)")
+        self._zoom_slider.valueChanged.connect(self._on_zoom_slider_changed)
+        mode_bar.addWidget(self._zoom_slider)
+
+        self._zoom_val_label = QLabel("100%")
+        self._zoom_val_label.setProperty("class", "subtext")
+        self._zoom_val_label.setFixedWidth(40)
+        mode_bar.addWidget(self._zoom_val_label)
+
+        self._view_mode_combo = QComboBox()
+        self._view_mode_combo.setProperty("class", "filter-combo")
+        self._view_mode_combo.addItem("日视图 (标准)", 30)
+        self._view_mode_combo.addItem("周视图 (紧凑)", 12)
+        self._view_mode_combo.addItem("月视图 (宏观)", 5)
+        self._view_mode_combo.addItem("放大视角 (精细)", 75)
+        self._view_mode_combo.currentIndexChanged.connect(self._on_view_mode_changed)
+        mode_bar.addWidget(self._view_mode_combo)
+
         mode_bar.addStretch()
         layout.addLayout(mode_bar)
 
@@ -97,6 +127,8 @@ class PlanGanttTab(QWidget):
         self._gantt = _GanttWidget()
         self._gantt.setProperty("class", "bg-base")
         self._gantt.task_moved.connect(self._on_gantt_moved)
+        self._gantt.zoom_changed.connect(self._on_gantt_zoom_changed)
+
 
         self._scroll = QScrollArea()
         self._scroll.setWidget(self._gantt)
@@ -124,5 +156,22 @@ class PlanGanttTab(QWidget):
             show_critical_path=self._btn_critical.isChecked(),
         )
 
-    def _on_gantt_moved(self, task_id: int, new_day: int) -> None:
-        self.task_moved.emit(task_id, new_day)
+    def _on_zoom_slider_changed(self, val: int) -> None:
+        self._gantt.set_day_width(float(val))
+        pct = int(val / 30.0 * 100)
+        self._zoom_val_label.setText(f"{pct}%")
+
+    def _on_view_mode_changed(self, index: int) -> None:
+        val = self._view_mode_combo.currentData()
+        if val:
+            self._zoom_slider.setValue(int(val))
+
+    def _on_gantt_zoom_changed(self, day_w: float) -> None:
+        self._zoom_slider.blockSignals(True)
+        self._zoom_slider.setValue(int(day_w))
+        self._zoom_slider.blockSignals(False)
+        pct = int(day_w / 30.0 * 100)
+        self._zoom_val_label.setText(f"{pct}%")
+
+    def _on_gantt_moved(self, task_id: int, new_start_day: int) -> None:
+        self.task_moved.emit(task_id, new_start_day)

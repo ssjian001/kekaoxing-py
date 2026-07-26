@@ -486,7 +486,48 @@ class _TaskTable(QTableWidget):
                 self._empty_label.setGeometry(self.viewport().rect())
         return super().eventFilter(obj, event)
 
+    def _show_context_menu(self, pos: QPoint) -> None:
+        """表格右键上下文菜单。"""
+        from PySide6.QtWidgets import QMenu
+        from PySide6.QtGui import QAction
+
+        item = self.itemAt(pos)
+        if not item:
+            return
+
+        row = item.row()
+        task = self.get_task_at_row(row)
+        if not task:
+            return
+
+        menu = QMenu(self)
+        
+        act_edit = menu.addAction("✏️ 编辑任务信息")
+        
+        menu.addSeparator()
+
+        sub_status = menu.addMenu("🏷️ 快速修改状态")
+        act_p = sub_status.addAction("进行中 (in_progress)")
+        act_f = sub_status.addAction("已完成 (completed)")
+        act_w = sub_status.addAction("待处理 (pending)")
+        act_fail = sub_status.addAction("Fail (fail)")
+
+        menu.addSeparator()
+        act_del = menu.addAction("🗑️ 删除该任务")
+
+        action = menu.exec(self.viewport().mapToGlobal(pos))
+        if action == act_edit and self._on_edit_callback:
+            self._on_edit_callback(task)
+        elif action == act_del and self._on_delete_callback:
+            self._on_delete_callback(task)
+        elif action in (act_p, act_f, act_w, act_fail):
+            status_map = {act_p: "in_progress", act_f: "completed", act_w: "pending", act_fail: "fail"}
+            new_st = status_map[action]
+            if self._on_status_advance_callback:
+                self._on_status_advance_callback(task, new_st)
+
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
+
         """获取指定视觉行对应的任务对象（排序安全）。"""
         item = self.item(row, 0)
         if item is None:

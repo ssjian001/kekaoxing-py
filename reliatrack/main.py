@@ -243,8 +243,14 @@ class MainWindow(QMainWindow):
     # ── Tab 切换自动刷新 ──
 
     def _on_tab_changed(self, index: int) -> None:
-        """切换 Tab 时保存索引 + 自动刷新数据。"""
+        """切换 Tab 时保存索引 + 自动刷新数据 + 平滑淡入动画。"""
         QSettings().setValue("ReliaTrack/last_tab_index", index)
+
+        # 淡入平滑微动效
+        current_widget = self._tab_widget.widget(index)
+        if current_widget:
+            self._animate_tab_transition(current_widget)
+
         # Tab 0 仪表盘 / Tab 3 测试计划 / Tab 4 Issue 管理
         if index == 0:
             self._schedule_refresh("dashboard")
@@ -253,16 +259,51 @@ class MainWindow(QMainWindow):
         elif index == 4:
             self._schedule_refresh("issue")
 
+    def _animate_tab_transition(self, widget: QWidget) -> None:
+        """为 Tab 切换增加 150ms 平滑淡入动效。"""
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
+        from PySide6.QtCore import QPropertyAnimation
+
+        effect = QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity", widget)
+        anim.setDuration(150)
+        anim.setStartValue(0.3)
+        anim.setEndValue(1.0)
+        anim.finished.connect(lambda: widget.setGraphicsEffect(None))
+        anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
     # ── 仪表盘卡片点击 ──
 
     def _on_dashboard_card_clicked(self, tab_index: int, jump_data: object = None) -> None:
-        """点击仪表盘 KPI 卡片 → 跳转 Tab + 可选携带筛选上下文。"""
-        self._tab_widget.setCurrentIndex(tab_index)
+        """点击仪表盘 KPI 卡片 → 跳转 Tab + 自动应用关联筛选条件。"""
+        if 0 <= tab_index < self._tab_widget.count():
+            self._tab_widget.setCurrentIndex(tab_index)
+
         if jump_data and isinstance(jump_data, dict):
-            pass
+            # 跳转至测试计划 Tab (Tab 3)
+            if tab_index == 3 and hasattr(self, '_test_plan_view'):
+                if "task_status" in jump_data:
+                    status = jump_data["task_status"]
+                    combo = getattr(self._test_plan_view, '_status_filter_combo', None)
+                    if combo:
+                        idx = combo.findData(status)
+                        if idx >= 0:
+                            combo.setCurrentIndex(idx)
+
+            # 跳转至 Issue 管理 Tab (Tab 4)
+            elif tab_index == 4 and hasattr(self, '_bug_tracker_view'):
+                if "issue_status" in jump_data:
+                    status = jump_data["issue_status"]
+                    bug_list = getattr(self._bug_tracker_view, '_list_view', None)
+                    if bug_list and hasattr(bug_list, '_status_combo'):
+                        idx = bug_list._status_combo.findData(status)
+                        if idx >= 0:
+                            bug_list._status_combo.setCurrentIndex(idx)
+
 
     def _create_filter_bar_content(self, parent: QWidget) -> None:
-        """创建项目/计划筛选栏 — 菜单栏右上角。"""
+        """创建项目/计划筛选栏 + Ctrl+K 搜索按钮 — 菜单栏右上角。"""
         # combo parent 设为 self 避免 Windows setCornerWidget 销毁问题
         self._project_filter_combo = QComboBox(self)
         self._project_filter_combo.setMinimumWidth(150)
@@ -281,18 +322,86 @@ class MainWindow(QMainWindow):
         plan_label = QLabel("计划:", self)
         plan_label.setProperty("class", "filter-label")
 
+        # 快捷 Spotlight 按钮
+        from PySide6.QtWidgets import QPushButton
+        cmd_btn = QPushButton("🔍 命令 (Ctrl+K)", self)
+        cmd_btn.setProperty("class", "btn-secondary")
+        cmd_btn.setToolTip("快捷搜功能、指引、项目或 Issue (Ctrl+K)")
+        cmd_btn.clicked.connect(self._open_command_palette)
+
         filter_bar = QHBoxLayout()
         filter_bar.setContentsMargins(8, 0, 4, 0)
         filter_bar.setSpacing(6)
+        filter_bar.addWidget(cmd_btn)
         filter_bar.addWidget(filter_label)
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(plan_label)
         filter_bar.addWidget(self._plan_filter_combo)
 
+
+
         widget = QWidget(self)
         widget.setLayout(filter_bar)
         widget.setProperty("class", "filter-bar")
         parent.setCornerWidget(widget, Qt.Corner.TopRightCorner)
+
+        # 绑定 Ctrl+K 与 ? 快捷键
+        from PySide6.QtGui import QKeySequence, QShortcut
+        self._shortcut_cmd_k = QShortcut(QKeySequence("Ctrl+K"), self)
+        self._shortcut_cmd_k.activated.connect(self._open_command_palette)
+        self._shortcut_help = QShortcut(QKeySequence("?"), self)
+        self._shortcut_help.activated.connect(self._open_keyboard_shortcuts)
+
+    def _open_view_theme_settings(self) -> None:
+        """打开视图偏好与主题融合设置中心。"""
+        from src.views.widgets.view_theme_settings_dialog import ViewThemeSettingsDialog
+        dlg = ViewThemeSettingsDialog(self)
+        dlg.show_centered()
+
+    def _open_report_bundle(self) -> None:
+
+        """打开测试全景简报打包导出中心。"""
+        from src.views.widgets.report_bundle_dialog import ReportBundleDialog
+        dlg = ReportBundleDialog(self)
+        dlg.show_centered()
+
+    def _open_keyboard_shortcuts(self) -> None:
+        """打开键盘快捷键地图弹窗。"""
+        from src.views.widgets.keyboard_shortcuts_dialog import KeyboardShortcutsDialog
+        dlg = KeyboardShortcutsDialog(self)
+        dlg.show_centered()
+
+
+    def _open_command_palette(self) -> None:
+
+        """打开 Spotlight 命令面板。"""
+        from src.views.widgets.command_palette_dialog import CommandPaletteDialog
+        dlg = CommandPaletteDialog(self, self._ctrl)
+        dlg.action_triggered.connect(self._on_command_palette_action)
+        dlg.show_centered()
+
+    def _on_command_palette_action(self, result: tuple) -> None:
+        """命令面板触发动作执行。"""
+        if not result or not isinstance(result, tuple):
+            return
+        kind, value = result[0], result[1]
+        if kind == "tab":
+            if isinstance(value, int) and 0 <= value < self._tab_widget.count():
+                self._tab_widget.setCurrentIndex(value)
+        elif kind == "action":
+            if value == "8d_report":
+                self._on_8d_report()
+            elif value == "backup":
+                self._on_backup_db()
+            elif value == "theme":
+                self._on_toggle_dark_theme(True)
+        elif kind == "project":
+            idx = self._project_filter_combo.findData(value)
+            if idx >= 0:
+                self._project_filter_combo.setCurrentIndex(idx)
+            self._tab_widget.setCurrentIndex(1)
+        elif kind == "sample":
+            self._tab_widget.setCurrentIndex(2)
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
@@ -323,12 +432,11 @@ class MainWindow(QMainWindow):
         act_refresh.triggered.connect(self._refresh_all)
         op_menu.addAction(act_refresh)
 
-        act_export = QAction("导出(&E)…", self)
-        act_export.setIcon(RI_EXPORT.icon())
-        act_export.setShortcut("Ctrl+E")
-        act_export.setToolTip("导出报告 (Ctrl+E)")
-        act_export.triggered.connect(self._export_handlers._on_export)
-        op_menu.addAction(act_export)
+
+        act_report_bundle = QAction("📊 导出全景总结简报(&B)…", self)
+        act_report_bundle.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
+        act_report_bundle.triggered.connect(self._open_report_bundle)
+        op_menu.addAction(act_report_bundle)
 
         op_menu.addSeparator()
 
@@ -338,20 +446,19 @@ class MainWindow(QMainWindow):
         act_backup.triggered.connect(self._backup_handlers._on_data_manage)
         op_menu.addAction(act_backup)
 
-        # 视图菜单
+        # 视图菜单 — 唯一精简入口
         view_menu = menubar.addMenu("视图(&V)")
 
-        # 暗色主题 Toggle
-        self._act_dark_theme = QAction("暗色主题(&D)", self)
-        self._act_dark_theme.setIcon(RI_SETTINGS.icon())
-        self._act_dark_theme.setCheckable(True)
-        self._act_dark_theme.setChecked(current_theme() == "dark")
-        self._act_dark_theme.setToolTip("切换暗色/明亮主题")
-        self._act_dark_theme.toggled.connect(self._on_toggle_dark_theme)
-        view_menu.addAction(self._act_dark_theme)
+        act_view_theme_settings = QAction("⚙️ 视图偏好与主题设置(&S)…", self)
+        act_view_theme_settings.setShortcut("Ctrl+Shift+T")
+        act_view_theme_settings.setToolTip("实时切换主题风格、强调色与表格列偏好 (Ctrl+Shift+T)")
+        act_view_theme_settings.triggered.connect(self._open_view_theme_settings)
+        view_menu.addAction(act_view_theme_settings)
 
-        # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
+        # 订阅主题变化
         theme_host.theme_changed.connect(self._on_theme_changed)
+
+
 
         # 全局项目/计划筛选 — 菜单栏右侧（直接插入 QMenuBar 的布局，避免 setCornerWidget Windows 兼容问题）
         self._create_filter_bar_content(menubar)
@@ -370,11 +477,13 @@ class MainWindow(QMainWindow):
         QSettings().setValue("ReliaTrack/theme", name)
 
     def _on_theme_changed(self, name: str) -> None:
-        """外部主题切换时同步菜单 checkbox 状态（唯一 theme_changed 监听器）。"""
-        self._act_dark_theme.blockSignals(True)
-        self._act_dark_theme.setChecked(name == "dark")
-        self._act_dark_theme.blockSignals(False)
+        """外部主题切换回调。"""
+        if hasattr(self, "_act_dark_theme"):
+            self._act_dark_theme.blockSignals(True)
+            self._act_dark_theme.setChecked(name == "dark")
+            self._act_dark_theme.blockSignals(False)
         self._refresh_remaining_inline_styles()
+
 
     def _refresh_remaining_inline_styles(self) -> None:
         """主题切换后刷新仍有动态内联样式的控件。
@@ -863,9 +972,12 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(300, lambda tid=task_id: table.flash_row(tid))
 
     def toast(self, message: str, level: str = "success") -> None:
-        """显示 Toast 提示（替代 statusBar 的成功/警告消息）。"""
-        from src.styles.toast import ToastWidget
-        ToastWidget.show_toast(self, message, level)
+        """显示 Toast 提示（使用 ToastNotificationStack 浮动叠放）。"""
+        if not hasattr(self, '_toast_stack'):
+            from src.views.widgets.toast_stack import ToastNotificationStack
+            self._toast_stack = ToastNotificationStack(self)
+        self._toast_stack.show_toast(message, level)
+
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """处理窗口关闭事件 — 检查打开的 dialog 和未撤销操作。"""
@@ -964,13 +1076,20 @@ def main() -> int:
     apply_palette()
     app.setStyleSheet(get_stylesheet())
 
-    # 恢复主题偏好（QSettings，controller 初始化前即可用）
+    # 恢复主题偏好与强调色配置（QSettings，controller 初始化前即可用）
     _settings = QSettings()
+    _saved_accent = _settings.value("ReliaTrack/accent_color", None)
+    if _saved_accent and isinstance(_saved_accent, str):
+        from src.styles.theme import apply_accent_color
+        apply_accent_color(_saved_accent)
+
     _saved_theme = _settings.value("ReliaTrack/theme", "light")
-    if _saved_theme in ("light", "dark") and _saved_theme != "light":
+    if _saved_theme in ("light", "dark"):
         set_theme(_saved_theme)
-        apply_palette()
-        app.setStyleSheet(get_stylesheet())
+
+    apply_palette()
+    app.setStyleSheet(get_stylesheet())
+
 
     # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗
     _log = logging.getLogger("reliatrack")

@@ -42,10 +42,11 @@ class _GanttWidget(QWidget):
 
     # 拖拽移动任务后发射 (task_id, new_start_day)
     task_moved = Signal(int, int)
+    zoom_changed = Signal(float)   # (day_w)
 
-    _LABEL_W_DEFAULT = 260  # 左侧标签列初始宽度
+    _LABEL_W_DEFAULT = 220
     _LABEL_W_MIN = 120
-    _LABEL_W_MAX = 500
+    _LABEL_W_MAX = 400
     _DIVIDER_MARGIN = 4
     _MIN_DAY_W = 4
     _MAX_DAY_W = 150
@@ -384,11 +385,17 @@ class _GanttWidget(QWidget):
             self._drag_preview_offset = 0
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
+    def set_day_width(self, width: float) -> None:
+        """设置时间轴每日列宽 (列宽控制缩放比例)。"""
+        self._day_w = max(self._MIN_DAY_W, min(self._MAX_DAY_W, width))
+        self.update()
+        self.zoom_changed.emit(self._day_w)
+
     def wheelEvent(self, event: QWheelEvent) -> None:  # type: ignore[override]
         delta = event.angleDelta().y()
         factor = 1.1 if delta > 0 else 0.9
-        self._day_w = max(self._MIN_DAY_W, min(self._MAX_DAY_W, self._day_w * factor))
-        self.update()
+        self.set_day_width(self._day_w * factor)
+
 
     # ── 绘图核心 ──
 
