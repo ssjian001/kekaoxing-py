@@ -329,20 +329,15 @@ class MainWindow(QMainWindow):
         cmd_btn.setToolTip("快捷搜功能、指引、项目或 Issue (Ctrl+K)")
         cmd_btn.clicked.connect(self._open_command_palette)
 
-        report_btn = QPushButton("📊 简报导出", self)
-        report_btn.setProperty("class", "btn-secondary")
-        report_btn.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
-        report_btn.clicked.connect(self._open_report_bundle)
-
         filter_bar = QHBoxLayout()
         filter_bar.setContentsMargins(8, 0, 4, 0)
         filter_bar.setSpacing(6)
         filter_bar.addWidget(cmd_btn)
-        filter_bar.addWidget(report_btn)
         filter_bar.addWidget(filter_label)
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(plan_label)
         filter_bar.addWidget(self._plan_filter_combo)
+
 
 
         widget = QWidget(self)
