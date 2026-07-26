@@ -106,6 +106,7 @@ class TestPlanView(QWidget):
             self._search_edit.setText(saved)
 
         # 子 Tab: 测试项 / 甘特图
+        from PySide6.QtWidgets import QStackedWidget
         from src.views.widgets.segmented_widget import SegmentedWidget
         self._sub_stacked = QStackedWidget()
         self._sub_tabs = SegmentedWidget()
@@ -116,7 +117,13 @@ class TestPlanView(QWidget):
         tab_table_layout.setContentsMargins(0, 0, 0, 0)
         self._task_table = _TaskTable()
         tab_table_layout.addWidget(self._task_table)
+
+        # 挂载列显示控制按钮
+        self._filter_bar.attach_column_visibility_button(self._task_table, "task_table")
+
         self._sub_stacked.addWidget(tab_table)
+
+
         self._sub_tabs.addSegment("测试项", tab_table)
 
         # 浮动批量操作栏

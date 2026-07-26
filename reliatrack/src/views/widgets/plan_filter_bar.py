@@ -117,7 +117,11 @@ class PlanFilterBar(QWidget):
         self._btn_reset_filter.setProperty("class", "action")
         row.addWidget(self._btn_reset_filter)
 
+        # 延迟在 connect_table 时挂载列可见性按钮，或在外部获取
+        self._row_layout = row
+
         row.addStretch()
+
 
         # 统计面板
         self._summary_bar = QLabel("")
@@ -138,3 +142,9 @@ class PlanFilterBar(QWidget):
     def save_search_keyword(self, keyword: str) -> None:
         if hasattr(self, '_chips'):
             self._chips.save_keyword(keyword)
+
+    def attach_column_visibility_button(self, table: QTableWidget, key: str) -> None:
+        from src.views.widgets.column_visibility_menu import create_column_visibility_button
+        btn = create_column_visibility_button(table, key, self)
+        self._row_layout.insertWidget(self._row_layout.indexOf(self._btn_reset_filter) + 1, btn)
+
