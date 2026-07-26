@@ -115,9 +115,15 @@ class EquipmentView(QWidget):
 
         layout.addLayout(toolbar)
 
+        # 设备容量与负荷热力图
+        from src.views.widgets.equipment_heatmap_widget import EquipmentLoadHeatmapWidget
+        self._heatmap = EquipmentLoadHeatmapWidget(self)
+        layout.addWidget(self._heatmap)
+
         # 表格
         self._table = QTableWidget()
         apply_column_specs(self._table, _EQUIPMENT_SPECS, "equipment_table")
+
 
         # 默认隐藏低频列，减少 800px 窗口水平溢出
         # 列索引对应 _EQUIPMENT_SPECS: 5=制造商, 6=精度/不确定度, 9=间隔(月)
@@ -163,9 +169,12 @@ class EquipmentView(QWidget):
     # ── 数据加载 ────────────────────────────────────────────────
 
     def refresh(self, equipment_list: list[Equipment]) -> None:
-        """刷新设备表格。"""
+        """刷新设备表格 + 热力图。"""
         self._equip_list = equipment_list
+        if hasattr(self, '_heatmap'):
+            self._heatmap.refresh(equipment_list)
         self._populate_table(equipment_list)
+
 
     def _populate_table(self, items: list[Equipment]) -> None:
         """填充表格。"""
