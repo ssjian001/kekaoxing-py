@@ -79,7 +79,7 @@ class ProjectView(QWidget):
         self.status_filter = QComboBox()
         self.status_filter.setProperty("class", "filter-combo")
         self.status_filter.setFixedHeight(26)
-        self.status_filter.setFixedWidth(110)
+        self.status_filter.setMinimumWidth(90)
         self.status_filter.addItem("全部状态", None)
         self.status_filter.addItem("进行中", "active")
         self.status_filter.addItem("已暂停", "paused")
@@ -87,9 +87,15 @@ class ProjectView(QWidget):
         self.status_filter.currentIndexChanged.connect(lambda: self._on_search(self.search_input.text()))
         toolbar.addWidget(self.status_filter)
 
-
-
         toolbar.addStretch()
+
+        # 表格
+        self._table = QTableWidget()
+        apply_column_specs(self._table, _PROJECT_SPECS, "project_table")
+
+        from src.views.widgets.column_visibility_menu import create_column_visibility_button
+        btn_col_vis = create_column_visibility_button(self._table, "project_table", self)
+        toolbar.addWidget(btn_col_vis)
 
         self.btn_edit = QPushButton("编辑")
         self.btn_edit.setProperty("class", "action")
@@ -116,10 +122,8 @@ class ProjectView(QWidget):
 
         layout.addLayout(toolbar)
 
-        # 表格
-        self._table = QTableWidget()
-        apply_column_specs(self._table, _PROJECT_SPECS, "project_table")
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)

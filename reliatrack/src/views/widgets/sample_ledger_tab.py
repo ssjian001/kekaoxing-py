@@ -93,11 +93,23 @@ class _SampleLedgerTab(QWidget):
 
 
         self._table = _SampleTable(self.COLUMNS, _LEDGER_SPECS, "sample_ledger")
+
+        from src.views.widgets.column_visibility_menu import create_column_visibility_button
+        btn_col_vis = create_column_visibility_button(self._table, "sample_ledger", self)
+        toolbar.insertWidget(toolbar.indexOf(self._btn_edit), btn_col_vis)
+
+        # 搜索历史气泡行
+        from src.views.widgets.search_history_chips import SearchHistoryChips
+        self._chips = SearchHistoryChips("samples", self)
+        self._chips.chip_clicked.connect(lambda kw: self._search_input.setText(kw))
+        layout.addWidget(self._chips)
+
         # 启用多选
         self._table.setSelectionMode(
             QAbstractItemView.SelectionMode.ExtendedSelection
         )
         layout.addWidget(self._table)
+
 
         # 右键菜单
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)

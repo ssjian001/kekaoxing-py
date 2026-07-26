@@ -124,6 +124,11 @@ class EquipmentView(QWidget):
         self._table = QTableWidget()
         apply_column_specs(self._table, _EQUIPMENT_SPECS, "equipment_table")
 
+        from src.views.widgets.column_visibility_menu import create_column_visibility_button
+        btn_col_vis = create_column_visibility_button(self._table, "equipment_table", self)
+        toolbar.insertWidget(toolbar.indexOf(self.btn_edit), btn_col_vis)
+
+
 
         # 默认隐藏低频列，减少 800px 窗口水平溢出
         # 列索引对应 _EQUIPMENT_SPECS: 5=制造商, 6=精度/不确定度, 9=间隔(月)
