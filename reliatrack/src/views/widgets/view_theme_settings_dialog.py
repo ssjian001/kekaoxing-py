@@ -164,6 +164,7 @@ class ViewThemeSettingsDialog(QDialog):
             if theme_name != _theme.current_theme():
                 _theme.set_theme(theme_name)
                 _theme.apply_palette()
+                QSettings().setValue("ReliaTrack/theme", theme_name)
                 app = QApplication.instance()
                 if app:
                     app.setStyleSheet(_theme.get_stylesheet())
@@ -175,17 +176,15 @@ class ViewThemeSettingsDialog(QDialog):
 
     def _apply_accent(self, color_hex: str) -> None:
         try:
-            cur = _theme.current_theme()
-            _theme._PALETTES[cur]["ACCENT"] = color_hex
-            _theme._PALETTES[cur]["BLUE"] = color_hex
-            setattr(_theme, "ACCENT", color_hex)
-            setattr(_theme, "BLUE", color_hex)
+            _theme.apply_accent_color(color_hex)
             _theme.apply_palette()
+            QSettings().setValue("ReliaTrack/accent_color", color_hex)
             app = QApplication.instance()
             if app:
                 app.setStyleSheet(_theme.get_stylesheet())
         except Exception:
             pass
+
 
 
     def _reset_all_column_visibility(self) -> None:

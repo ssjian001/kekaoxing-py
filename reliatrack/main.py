@@ -1076,13 +1076,20 @@ def main() -> int:
     apply_palette()
     app.setStyleSheet(get_stylesheet())
 
-    # 恢复主题偏好（QSettings，controller 初始化前即可用）
+    # 恢复主题偏好与强调色配置（QSettings，controller 初始化前即可用）
     _settings = QSettings()
+    _saved_accent = _settings.value("ReliaTrack/accent_color", None)
+    if _saved_accent and isinstance(_saved_accent, str):
+        from src.styles.theme import apply_accent_color
+        apply_accent_color(_saved_accent)
+
     _saved_theme = _settings.value("ReliaTrack/theme", "light")
-    if _saved_theme in ("light", "dark") and _saved_theme != "light":
+    if _saved_theme in ("light", "dark"):
         set_theme(_saved_theme)
-        apply_palette()
-        app.setStyleSheet(get_stylesheet())
+
+    apply_palette()
+    app.setStyleSheet(get_stylesheet())
+
 
     # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗
     _log = logging.getLogger("reliatrack")

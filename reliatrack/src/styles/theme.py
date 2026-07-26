@@ -1110,6 +1110,17 @@ def current_theme() -> str:
     """返回当前主题名称。"""
     return _current_theme
 
+def apply_accent_color(color_hex: str) -> None:
+    """更新并重建全局品牌强调色。"""
+    global _COMPILED_STYLESHEET
+    for tname in _PALETTES:
+        _PALETTES[tname]["ACCENT"] = color_hex
+        _PALETTES[tname]["BLUE"] = color_hex
+    globals()["ACCENT"] = color_hex
+    globals()["BLUE"] = color_hex
+    _COMPILED_STYLESHEET = None
+
+
 def apply_palette() -> None:
     """同步 QPalette 到当前主题色板。
 
