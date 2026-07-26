@@ -82,7 +82,15 @@ class _SampleLedgerTab(QWidget):
         self._btn_batch_edit.setToolTip("批量编辑选中的多个样品")
         toolbar.addWidget(self._btn_batch_edit)
 
+        self._btn_lifecycle = QPushButton("📜 查看履历")
+        self._btn_lifecycle.setProperty("class", "action")
+        self._btn_lifecycle.setMinimumWidth(85)
+        self._btn_lifecycle.setToolTip("查看选中样品的全生命周期履历树")
+        self._btn_lifecycle.clicked.connect(self._open_lifecycle)
+        toolbar.addWidget(self._btn_lifecycle)
+
         layout.addLayout(toolbar)
+
 
         self._table = _SampleTable(self.COLUMNS, _LEDGER_SPECS, "sample_ledger")
         # 启用多选
@@ -171,7 +179,25 @@ class _SampleLedgerTab(QWidget):
         """批量编辑按钮。"""
         return self._btn_batch_edit
 
+    def _open_lifecycle(self) -> None:
+        """打开选中样品的全生命周期履历树弹窗。"""
+        selected_rows = self._table.selectionModel().selectedRows()
+        if not selected_rows:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "提示", "请先在列表中选中一个样品。")
+            return
+        row = selected_rows[0].row()
+        item = self._table.item(row, 0)
+        if item:
+            sid = item.data(Qt.ItemDataRole.UserRole)
+            sample = next((s for s in self._all_samples if s.id == sid), None)
+            if sample:
+                from src.views.widgets.sample_lifecycle_dialog import SampleLifecycleTimelineDialog
+                dlg = SampleLifecycleTimelineDialog(sample, self)
+                dlg.show_centered()
+
     @property
     def table(self) -> _SampleTable:
+
         """样品台账表格。"""
         return self._table
