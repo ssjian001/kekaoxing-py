@@ -407,9 +407,6 @@ class MainWindow(QMainWindow):
             self._tab_widget.setCurrentIndex(1)
         elif kind == "sample":
             self._tab_widget.setCurrentIndex(2)
-        elif kind == "issue":
-            self._tab_widget.setCurrentIndex(4)
-
 
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
@@ -440,12 +437,11 @@ class MainWindow(QMainWindow):
         act_refresh.triggered.connect(self._refresh_all)
         op_menu.addAction(act_refresh)
 
-        act_export = QAction("导出(&E)…", self)
-        act_export.setIcon(RI_EXPORT.icon())
-        act_export.setShortcut("Ctrl+E")
-        act_export.setToolTip("导出报告 (Ctrl+E)")
-        act_export.triggered.connect(self._export_handlers._on_export)
-        op_menu.addAction(act_export)
+
+        act_report_bundle = QAction("📊 导出全景总结简报(&B)…", self)
+        act_report_bundle.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
+        act_report_bundle.triggered.connect(self._open_report_bundle)
+        op_menu.addAction(act_report_bundle)
 
         op_menu.addSeparator()
 
@@ -455,7 +451,7 @@ class MainWindow(QMainWindow):
         act_backup.triggered.connect(self._backup_handlers._on_data_manage)
         op_menu.addAction(act_backup)
 
-        # 视图菜单
+        # 视图菜单 — 唯一精简入口
         view_menu = menubar.addMenu("视图(&V)")
 
         act_view_theme_settings = QAction("⚙️ 视图偏好与主题设置(&S)…", self)
@@ -464,25 +460,10 @@ class MainWindow(QMainWindow):
         act_view_theme_settings.triggered.connect(self._open_view_theme_settings)
         view_menu.addAction(act_view_theme_settings)
 
-        act_report_bundle = QAction("📊 导出全景测试简报(&E)…", self)
-        act_report_bundle.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
-        act_report_bundle.triggered.connect(self._open_report_bundle)
-        view_menu.addAction(act_report_bundle)
-
-        view_menu.addSeparator()
-
-        # 暗色主题 Toggle
-        self._act_dark_theme = QAction("暗色主题(&D)", self)
-        self._act_dark_theme.setIcon(RI_SETTINGS.icon())
-        self._act_dark_theme.setCheckable(True)
-        self._act_dark_theme.setChecked(current_theme() == "dark")
-        self._act_dark_theme.setToolTip("切换暗色/明亮主题")
-        self._act_dark_theme.toggled.connect(self._on_toggle_dark_theme)
-        view_menu.addAction(self._act_dark_theme)
-
-
-        # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
+        # 订阅主题变化
         theme_host.theme_changed.connect(self._on_theme_changed)
+
+
 
         # 全局项目/计划筛选 — 菜单栏右侧（直接插入 QMenuBar 的布局，避免 setCornerWidget Windows 兼容问题）
         self._create_filter_bar_content(menubar)
