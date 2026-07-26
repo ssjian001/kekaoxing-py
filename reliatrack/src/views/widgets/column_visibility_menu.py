@@ -79,11 +79,12 @@ def create_column_visibility_button(table: QTableWidget, persistence_key: str, p
     """快捷创建打开列显示控制菜单的齿轮按钮。"""
     btn = QPushButton("👁️ 自定义列", parent)
     btn.setProperty("class", "action")
-    btn.setFixedWidth(85)
+    btn.setMinimumWidth(92)
     btn.setFixedHeight(26)
     btn.setToolTip("显示/隐藏表格数据列")
 
     menu = ColumnVisibilityMenu(table, persistence_key, btn)
     btn.setMenu(menu)
     return btn
+
 

@@ -37,20 +37,24 @@ class PlanFilterBar(QWidget):
         row.addWidget(QLabel("计划:"))
         self._plan_combo = QComboBox()
         self._plan_combo.setProperty("class", "filter-combo")
-        self._plan_combo.setFixedWidth(135)
+        self._plan_combo.setMinimumWidth(110)
+        self._plan_combo.setMaximumWidth(150)
         self._plan_combo.setFixedHeight(26)
         row.addWidget(self._plan_combo)
 
         # 搜索框
         self._search_edit = SearchBox()
         self._search_edit.setPlaceholderText("搜索任务名…")
-        self._search_edit.setFixedSize(130, 26)
+        self._search_edit.setMinimumWidth(100)
+        self._search_edit.setMaximumWidth(140)
+        self._search_edit.setFixedHeight(26)
         row.addWidget(self._search_edit)
 
         # 技术员筛选
         self._tech_filter_combo = QComboBox()
         self._tech_filter_combo.setProperty("class", "filter-combo")
-        self._tech_filter_combo.setFixedWidth(90)
+        self._tech_filter_combo.setMinimumWidth(85)
+        self._tech_filter_combo.setMaximumWidth(105)
         self._tech_filter_combo.setFixedHeight(26)
         self._tech_filter_combo.addItem("全部技术员", None)
         row.addWidget(self._tech_filter_combo)
@@ -58,7 +62,8 @@ class PlanFilterBar(QWidget):
         # 状态筛选
         self._status_filter_combo = QComboBox()
         self._status_filter_combo.setProperty("class", "filter-combo")
-        self._status_filter_combo.setFixedWidth(85)
+        self._status_filter_combo.setMinimumWidth(80)
+        self._status_filter_combo.setMaximumWidth(95)
         self._status_filter_combo.setFixedHeight(26)
         self._status_filter_combo.addItem("全部状态", None)
         self._status_filter_combo.addItem("待开始", "pending")
@@ -70,7 +75,8 @@ class PlanFilterBar(QWidget):
         # 类别筛选
         self._category_filter_combo = QComboBox()
         self._category_filter_combo.setProperty("class", "filter-combo")
-        self._category_filter_combo.setFixedWidth(85)
+        self._category_filter_combo.setMinimumWidth(80)
+        self._category_filter_combo.setMaximumWidth(95)
         self._category_filter_combo.setFixedHeight(26)
         self._category_filter_combo.addItem("全部类别", None)
         self._category_filter_combo.addItem("环境试验", "环境试验")
@@ -95,7 +101,8 @@ class PlanFilterBar(QWidget):
         self._date_from.setDisplayFormat("yyyy-MM-dd")
         self._date_from.setSpecialValueText("不限")
         self._date_from.setDate(self._date_from.minimumDate())
-        self._date_from.setFixedWidth(100)
+        self._date_from.setMinimumWidth(95)
+        self._date_from.setMaximumWidth(110)
         self._date_from.setFixedHeight(26)
         row.addWidget(self._date_from)
 
@@ -108,7 +115,8 @@ class PlanFilterBar(QWidget):
         self._date_to.setDisplayFormat("yyyy-MM-dd")
         self._date_to.setSpecialValueText("不限")
         self._date_to.setDate(self._date_to.maximumDate())
-        self._date_to.setFixedWidth(100)
+        self._date_to.setMinimumWidth(95)
+        self._date_to.setMaximumWidth(110)
         self._date_to.setFixedHeight(26)
         row.addWidget(self._date_to)
 
@@ -116,6 +124,7 @@ class PlanFilterBar(QWidget):
         self._btn_reset_filter.setFixedHeight(26)
         self._btn_reset_filter.setProperty("class", "action")
         row.addWidget(self._btn_reset_filter)
+
 
         self._row_layout = row
 
