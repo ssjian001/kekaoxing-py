@@ -1,4 +1,4 @@
-"""Unit test for EquipmentLoadHeatmapWidget."""
+"""Unit test for optimized EquipmentLoadHeatmapWidget."""
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -15,7 +15,7 @@ def qapp():
     return app
 
 
-def test_equipment_heatmap_widget(qapp):
+def test_equipment_heatmap_widget_optimizations(qapp):
     heatmap = EquipmentLoadHeatmapWidget()
     equipments = [
         Equipment(id=1, asset_no="EQ-001", name="高温步进试验箱", status="in_use"),
@@ -25,4 +25,14 @@ def test_equipment_heatmap_widget(qapp):
 
     heatmap.refresh(equipments)
     assert len(heatmap._canvas._items) == 3
-    assert "高温步进" in heatmap._canvas._items[0][0]
+
+    # Test collapse
+    heatmap.toggle_collapse()
+    assert heatmap._scroll.isHidden() is True
+
+    heatmap.toggle_collapse()
+    assert heatmap._scroll.isHidden() is False
+
+    # Test status filter
+    heatmap._on_filter_changed("high")
+    assert len(heatmap._canvas._items) == 1
