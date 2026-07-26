@@ -482,11 +482,13 @@ class MainWindow(QMainWindow):
         QSettings().setValue("ReliaTrack/theme", name)
 
     def _on_theme_changed(self, name: str) -> None:
-        """外部主题切换时同步菜单 checkbox 状态（唯一 theme_changed 监听器）。"""
-        self._act_dark_theme.blockSignals(True)
-        self._act_dark_theme.setChecked(name == "dark")
-        self._act_dark_theme.blockSignals(False)
+        """外部主题切换回调。"""
+        if hasattr(self, "_act_dark_theme"):
+            self._act_dark_theme.blockSignals(True)
+            self._act_dark_theme.setChecked(name == "dark")
+            self._act_dark_theme.blockSignals(False)
         self._refresh_remaining_inline_styles()
+
 
     def _refresh_remaining_inline_styles(self) -> None:
         """主题切换后刷新仍有动态内联样式的控件。
