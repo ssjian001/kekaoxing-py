@@ -329,11 +329,6 @@ class MainWindow(QMainWindow):
         cmd_btn.setToolTip("快捷搜功能、指引、项目或 Issue (Ctrl+K)")
         cmd_btn.clicked.connect(self._open_command_palette)
 
-        theme_btn = QPushButton("⚙️ 视图与主题", self)
-        theme_btn.setProperty("class", "btn-secondary")
-        theme_btn.setToolTip("融合设置：实时切换主题风格、强调色与表格列偏好")
-        theme_btn.clicked.connect(self._open_view_theme_settings)
-
         report_btn = QPushButton("📊 简报导出", self)
         report_btn.setProperty("class", "btn-secondary")
         report_btn.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
@@ -343,12 +338,12 @@ class MainWindow(QMainWindow):
         filter_bar.setContentsMargins(8, 0, 4, 0)
         filter_bar.setSpacing(6)
         filter_bar.addWidget(cmd_btn)
-        filter_bar.addWidget(theme_btn)
         filter_bar.addWidget(report_btn)
         filter_bar.addWidget(filter_label)
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(plan_label)
         filter_bar.addWidget(self._plan_filter_combo)
+
 
         widget = QWidget(self)
         widget.setLayout(filter_bar)
@@ -463,6 +458,19 @@ class MainWindow(QMainWindow):
         # 视图菜单
         view_menu = menubar.addMenu("视图(&V)")
 
+        act_view_theme_settings = QAction("⚙️ 视图偏好与主题设置(&S)…", self)
+        act_view_theme_settings.setShortcut("Ctrl+Shift+T")
+        act_view_theme_settings.setToolTip("实时切换主题风格、强调色与表格列偏好 (Ctrl+Shift+T)")
+        act_view_theme_settings.triggered.connect(self._open_view_theme_settings)
+        view_menu.addAction(act_view_theme_settings)
+
+        act_report_bundle = QAction("📊 导出全景测试简报(&E)…", self)
+        act_report_bundle.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
+        act_report_bundle.triggered.connect(self._open_report_bundle)
+        view_menu.addAction(act_report_bundle)
+
+        view_menu.addSeparator()
+
         # 暗色主题 Toggle
         self._act_dark_theme = QAction("暗色主题(&D)", self)
         self._act_dark_theme.setIcon(RI_SETTINGS.icon())
@@ -471,6 +479,7 @@ class MainWindow(QMainWindow):
         self._act_dark_theme.setToolTip("切换暗色/明亮主题")
         self._act_dark_theme.toggled.connect(self._on_toggle_dark_theme)
         view_menu.addAction(self._act_dark_theme)
+
 
         # 订阅主题变化（外部调用 set_theme 时同步菜单状态）
         theme_host.theme_changed.connect(self._on_theme_changed)
