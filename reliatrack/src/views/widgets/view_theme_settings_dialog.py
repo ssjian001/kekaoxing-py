@@ -93,12 +93,13 @@ class ViewThemeSettingsDialog(QDialog):
         btn_dark = QPushButton("🌙 暗黑模式 (Dark)")
         btn_light = QPushButton("☀️ 极简明亮 (Light)")
 
-        cur_theme = _theme.get_current_theme()
+        cur_theme = _theme.current_theme()
         btn_dark.setChecked(cur_theme == "dark")
         btn_light.setChecked(cur_theme == "light")
 
         btn_dark.clicked.connect(lambda: self._switch_theme("dark"))
         btn_light.clicked.connect(lambda: self._switch_theme("light"))
+
 
         mode_row.addWidget(btn_dark)
         mode_row.addWidget(btn_light)
@@ -160,7 +161,7 @@ class ViewThemeSettingsDialog(QDialog):
 
     def _switch_theme(self, theme_name: str) -> None:
         try:
-            if theme_name != _theme.get_current_theme():
+            if theme_name != _theme.current_theme():
                 _theme.set_theme(theme_name)
                 _theme.apply_palette()
                 app = QApplication.instance()
@@ -174,17 +175,18 @@ class ViewThemeSettingsDialog(QDialog):
 
     def _apply_accent(self, color_hex: str) -> None:
         try:
-            cur = _theme.get_current_theme()
+            cur = _theme.current_theme()
             _theme._PALETTES[cur]["ACCENT"] = color_hex
             _theme._PALETTES[cur]["BLUE"] = color_hex
-            globals()["ACCENT"] = color_hex
-            globals()["BLUE"] = color_hex
+            setattr(_theme, "ACCENT", color_hex)
+            setattr(_theme, "BLUE", color_hex)
             _theme.apply_palette()
             app = QApplication.instance()
             if app:
                 app.setStyleSheet(_theme.get_stylesheet())
         except Exception:
             pass
+
 
     def _reset_all_column_visibility(self) -> None:
         settings = QSettings()
