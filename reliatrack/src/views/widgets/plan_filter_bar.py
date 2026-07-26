@@ -118,11 +118,23 @@ class PlanFilterBar(QWidget):
         row.addWidget(self._btn_reset_filter)
 
         row.addStretch()
+
+        # 统计面板
+        self._summary_bar = QLabel("")
+        self._summary_bar.setProperty("class", "summary-bar")
+        row.addWidget(self._summary_bar)
+
         layout.addLayout(row)
 
-        # 摘要信息栏
-        self._summary_bar = QLabel()
-        self._summary_bar.setProperty("class", "summary-bar")
-        self._summary_bar.setWordWrap(False)
-        self._summary_bar.setFixedHeight(26)
-        layout.addWidget(self._summary_bar)
+        # 搜索历史气泡行
+        from src.views.widgets.search_history_chips import SearchHistoryChips
+        self._chips = SearchHistoryChips("tasks", self)
+        self._chips.chip_clicked.connect(self._on_chip_clicked)
+        layout.addWidget(self._chips)
+
+    def _on_chip_clicked(self, keyword: str) -> None:
+        self._search_edit.setText(keyword)
+
+    def save_search_keyword(self, keyword: str) -> None:
+        if hasattr(self, '_chips'):
+            self._chips.save_keyword(keyword)

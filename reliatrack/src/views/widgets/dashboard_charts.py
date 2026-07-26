@@ -50,13 +50,37 @@ class _DonutChart(QWidget):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def mousePressEvent(self, event):  # noqa: N802
-        w = self.parent()
-        while w is not None:
-            if hasattr(w, "card_clicked"):
-                w.card_clicked.emit(3, {"task_status": None})
-                break
-            w = w.parent()
+        if event.button() == Qt.MouseButton.LeftButton:
+            w = self.parent()
+            while w is not None:
+                if hasattr(w, "card_clicked"):
+                    w.card_clicked.emit(3, {"task_status": None})
+                    break
+                w = w.parent()
         super().mousePressEvent(event)
+
+    def contextMenuEvent(self, event):  # noqa: N802
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        act_copy = menu.addAction("📋 复制图表到剪贴板")
+        act_save = menu.addAction("🖼️ 保存为 PNG 图片")
+        action = menu.exec(event.globalPos())
+        if action == act_copy:
+            self.copy_to_clipboard()
+        elif action == act_save:
+            self.export_image()
+
+    def copy_to_clipboard(self) -> None:
+        from PySide6.QtWidgets import QApplication
+        pixmap = self.grab()
+        QApplication.clipboard().setPixmap(pixmap)
+
+    def export_image(self) -> None:
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(self, "导出图表图片", "chart.png", "PNG Images (*.png)")
+        if path:
+            self.grab().save(path, "PNG")
+
 
 
     def setData(self, data: dict[str, int]) -> None:
