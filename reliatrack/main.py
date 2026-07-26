@@ -329,10 +329,22 @@ class MainWindow(QMainWindow):
         cmd_btn.setToolTip("快捷搜功能、指引、项目或 Issue (Ctrl+K)")
         cmd_btn.clicked.connect(self._open_command_palette)
 
+        theme_btn = QPushButton("🎨 主题", self)
+        theme_btn.setProperty("class", "btn-secondary")
+        theme_btn.setToolTip("实时自由切换主题模式与品牌强调色")
+        theme_btn.clicked.connect(self._open_theme_palette)
+
+        report_btn = QPushButton("📊 简报", self)
+        report_btn.setProperty("class", "btn-secondary")
+        report_btn.setToolTip("一键打包导出全景测试总结简报与 PDF")
+        report_btn.clicked.connect(self._open_report_bundle)
+
         filter_bar = QHBoxLayout()
         filter_bar.setContentsMargins(8, 0, 4, 0)
         filter_bar.setSpacing(6)
         filter_bar.addWidget(cmd_btn)
+        filter_bar.addWidget(theme_btn)
+        filter_bar.addWidget(report_btn)
         filter_bar.addWidget(filter_label)
         filter_bar.addWidget(self._project_filter_combo)
         filter_bar.addWidget(plan_label)
@@ -350,11 +362,24 @@ class MainWindow(QMainWindow):
         self._shortcut_help = QShortcut(QKeySequence("?"), self)
         self._shortcut_help.activated.connect(self._open_keyboard_shortcuts)
 
+    def _open_theme_palette(self) -> None:
+        """打开多主题与强调色选择弹窗。"""
+        from src.views.widgets.theme_palette_dialog import ThemePaletteDialog
+        dlg = ThemePaletteDialog(self)
+        dlg.show_centered()
+
+    def _open_report_bundle(self) -> None:
+        """打开测试全景简报打包导出中心。"""
+        from src.views.widgets.report_bundle_dialog import ReportBundleDialog
+        dlg = ReportBundleDialog(self)
+        dlg.show_centered()
+
     def _open_keyboard_shortcuts(self) -> None:
         """打开键盘快捷键地图弹窗。"""
         from src.views.widgets.keyboard_shortcuts_dialog import KeyboardShortcutsDialog
         dlg = KeyboardShortcutsDialog(self)
         dlg.show_centered()
+
 
     def _open_command_palette(self) -> None:
 
