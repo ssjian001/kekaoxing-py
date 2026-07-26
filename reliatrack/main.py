@@ -329,14 +329,14 @@ class MainWindow(QMainWindow):
         cmd_btn.setToolTip("快捷搜功能、指引、项目或 Issue (Ctrl+K)")
         cmd_btn.clicked.connect(self._open_command_palette)
 
-        theme_btn = QPushButton("🎨 主题", self)
+        theme_btn = QPushButton("⚙️ 视图与主题", self)
         theme_btn.setProperty("class", "btn-secondary")
-        theme_btn.setToolTip("实时自由切换主题模式与品牌强调色")
-        theme_btn.clicked.connect(self._open_theme_palette)
+        theme_btn.setToolTip("融合设置：实时切换主题风格、强调色与表格列偏好")
+        theme_btn.clicked.connect(self._open_view_theme_settings)
 
-        report_btn = QPushButton("📊 简报", self)
+        report_btn = QPushButton("📊 简报导出", self)
         report_btn.setProperty("class", "btn-secondary")
-        report_btn.setToolTip("一键打包导出全景测试总结简报与 PDF")
+        report_btn.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
         report_btn.clicked.connect(self._open_report_bundle)
 
         filter_bar = QHBoxLayout()
@@ -362,13 +362,14 @@ class MainWindow(QMainWindow):
         self._shortcut_help = QShortcut(QKeySequence("?"), self)
         self._shortcut_help.activated.connect(self._open_keyboard_shortcuts)
 
-    def _open_theme_palette(self) -> None:
-        """打开多主题与强调色选择弹窗。"""
-        from src.views.widgets.theme_palette_dialog import ThemePaletteDialog
-        dlg = ThemePaletteDialog(self)
+    def _open_view_theme_settings(self) -> None:
+        """打开视图偏好与主题融合设置中心。"""
+        from src.views.widgets.view_theme_settings_dialog import ViewThemeSettingsDialog
+        dlg = ViewThemeSettingsDialog(self)
         dlg.show_centered()
 
     def _open_report_bundle(self) -> None:
+
         """打开测试全景简报打包导出中心。"""
         from src.views.widgets.report_bundle_dialog import ReportBundleDialog
         dlg = ReportBundleDialog(self)
