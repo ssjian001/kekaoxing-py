@@ -1,14 +1,31 @@
 # ReliaTrack 当前进度
 
-**最后更新**: 2026-07-25
-**Schema 版本**: v27 (20 张表，含 todos)
-**测试**: 417 passed
+**最后更新**: 2026-07-26
+**Schema 版本**: v27 (20 张表)
+**测试**: 646 passed
+**Widgets**: 42 | **Dialogs**: 29
 
 ## 当前状态
 
-甘特图高级特性与 8D 报告可视化弹窗均已完成上线！
+UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23 commits，+2885 行）。
 
 ### 最近完成
+
+- **UI/UX 大改造 (2026-07-26, 23 commits merge)**:
+  - Ctrl+K 全局命令面板 (command_palette_dialog.py)
+  - 设备负载热力图 (equipment_heatmap_widget.py)
+  - 样品生命周期时间轴 (sample_lifecycle_dialog.py)
+  - 主题设置中心 + QSettings 持久化 (view_theme_settings_dialog.py + theme_palette_dialog.py)
+  - 报告打包导出 (report_bundle_dialog.py)
+  - 键盘快捷键说明 (keyboard_shortcuts_dialog.py, 按 ?)
+  - Toast 通知堆叠 (toast_stack.py)
+  - 批量操作浮层 (batch_action_bar.py)
+  - 搜索历史 chips (search_history_chips.py)
+  - 列显隐菜单+持久化 (column_visibility_menu.py)
+  - 灯箱图片预览 (lightbox_viewer_dialog.py)
+  - 甘特图缩放+日/周/月视图切换
+  - KPI 钻取+环形图点击跳转
+  - 亮暗双主题 QSettings 持久化
 
 - **8D 质量报告可视化预览弹窗 (EightDReportDialog)**:
   - 结构化渲染 D1~D8 8大卡片（团队/描述/围堵/根因/对策/验证/预防/结案）
@@ -19,6 +36,10 @@
   - **冲突实时检测与告警**: 自动判定设备同一时间窗口重叠与依赖倒退冲突，绘制 `⚠️ 冲突` 角标与红色告警框
   - **关键路径 (Critical Path) 计算**: 最长路径算法推算，突出高亮关键路径节点
   - **里程碑节点渲染**: 支持 0 工期 / 里程碑菱形节点渲染
+
+### 已知遗留
+
+- `constants.py` 的 `PROJECT_STATUS_LABELS` 含 `completed/archived` 但 `ProjectStatus` Enum 只有 `{active,paused,closed}`，历史不一致（非阻塞，model validate 只 warn）
 
 ### 未完成 / 待处理
 

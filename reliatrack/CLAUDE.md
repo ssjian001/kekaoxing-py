@@ -77,10 +77,15 @@ src/
       quick_create.py   # 快速创建弹窗（C键触发）
       resolve_dialog.py # 关闭流程（resolution强制选择）
       shortcuts.py      # 快捷键管理（C/Ctrl+N/Ctrl+K/←→）
-    dialogs/            # 对话框（26 编辑/配置/待办对话框）
-    widgets/            # 自定义控件
-      analysis_widget.py, gantt_widget.py,
-      result_matrix.py, task_table.py
+    dialogs/            # 对话框（29 编辑/配置/待办对话框）
+    widgets/            # 自定义控件（42 个）
+      # 核心：analysis_widget, gantt_widget, result_matrix, task_table
+      # UI 增强：command_palette_dialog, equipment_heatmap_widget, sample_lifecycle_dialog
+      #         keyboard_shortcuts_dialog, toast_stack, batch_action_bar
+      #         search_history_chips, column_visibility_menu, lightbox_viewer_dialog
+      #         report_bundle_dialog, view_theme_settings_dialog, theme_palette_dialog
+      # 拆分组件：kanban_card/column, todo_card/column, dashboard_charts/cards, plan_*
+      #         sample_ledger/pool/usage_tab, quadrant_card/cell, bug_table
 tests/                  # pytest 测试套件
 ```
 
