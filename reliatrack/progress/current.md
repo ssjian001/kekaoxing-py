@@ -1,6 +1,6 @@
 # ReliaTrack 当前进度
 
-**最后更新**: 2026-07-26
+**最后更新**: 2026-08-01
 **Schema 版本**: v27 (20 张表)
 **测试**: 646 passed
 **Widgets**: 42 | **Dialogs**: 29
@@ -10,6 +10,14 @@
 UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23 commits，+2885 行）。
 
 ### 最近完成
+
+- **流程打通审计修复 (2026-08-01, 6 个断点)**:
+  - P0: ReportBundleDialog 接入真实 ExportService 引擎（原输出硬编码假数据）
+  - P1.1: Ctrl+K 命令面板双重绑定冲突 — 删旧版统一到 widgets 版
+  - P1.2: 命令面板 Tab 跳转索引错位（设备/待办/技术员）
+  - P1.3: 矩阵就地编辑不更新任务状态 — 补齐 _auto_update_task_progress + notify
+  - P1.4: Issue 详情弹窗 CAPA/FA 面板死按钮 — 连接信号 + 添加编辑/删除回调
+  - P2: 仪表盘 Issue 卡片筛选属性名 _status_combo → _filter_status
 
 - **UI/UX 大改造 (2026-07-26, 23 commits merge)**:
   - Ctrl+K 全局命令面板 (command_palette_dialog.py)
