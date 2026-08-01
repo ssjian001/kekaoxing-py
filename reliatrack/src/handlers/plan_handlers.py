@@ -1009,6 +1009,11 @@ class PlanHandlers:
             test_date=date.today().isoformat(),
         )
         self._win.ctrl.notify_data_changed("result")
+        # 与 dialog 路径保持一致：自动更新任务进度/状态 + 通知 task/issue
+        self._auto_update_task_progress(ctrl, task_id)
+        self._win.ctrl.notify_data_changed("task")
+        if new_result == "fail":
+            self._win.ctrl.notify_data_changed("issue")
         # 触发计划数据重载（刷新表格+甘特图+矩阵）
         v = self._win.test_plan_view
         self._on_plan_changed(v._plan_combo.currentIndex())

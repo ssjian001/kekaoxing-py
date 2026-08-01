@@ -47,11 +47,13 @@ class IssueDetailDialog(QDialog):
         issue_service,
         parent: QWidget | None = None,
         technician_map: dict[int, str] | None = None,
-    ) -> None:
+        technician_list: list | None = None,
+    ):
         super().__init__(parent)
         self._issue = issue
         self._service = issue_service
         self._technician_map = technician_map or {}
+        self._technician_list = technician_list or []
 
         self.setWindowTitle(f"Issue #{issue.id} 详情")
         self.setFixedSize(640, 520)
@@ -293,6 +295,8 @@ class IssueDetailDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._fa_panel = _FAPanel()
+        self._fa_panel.fa_edit_requested.connect(self._on_edit_fa)
+        self._fa_panel.fa_delete_requested.connect(self._on_delete_fa)
         layout.addWidget(self._fa_panel)
 
         return page
@@ -306,6 +310,8 @@ class IssueDetailDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._capa_panel = _CAPAPanel()
+        self._capa_panel.capa_edit_requested.connect(self._on_edit_capa)
+        self._capa_panel.capa_delete_requested.connect(self._on_delete_capa)
         layout.addWidget(self._capa_panel)
 
         return page
@@ -551,6 +557,89 @@ class IssueDetailDialog(QDialog):
         except Exception:
             logger.exception("_on_delete_comment() failed")
             QMessageBox.warning(self, "删除失败", "评论删除失败，请重试。")
+
+    # ── FA/CAPA 操作回调 ────────────────────────────────────────────
+
+    def _on_edit_fa(self, fa_id: int) -> None:
+        """编辑 FA 记录 — 打开 FARecordDialog。"""
+        from src.views.dialogs.fa_record_dialog import FARecordDialog
+
+        records = self._service.get_fa_records(self._issue.id)
+        record = next((r for r in records if r.id == fa_id), None)
+        if record is None:
+            return
+        existing_nos = [r.step_no for r in records if r.id != fa_id and r.step_no is not None]
+        dlg = FARecordDialog(
+            existing_step_nos=existing_nos,
+            technician_list=self._technician_list,
+            edit_record=record,
+            parent=self,
+        )
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                self._service.update_fa_record(fa_id, **data)
+                self._load_fa_records()
+            except Exception:
+                logger.exception("_on_edit_fa() failed")
+                QMessageBox.warning(self, "保存失败", "FA 记录更新失败，请重试。")
+        dlg.deleteLater()
+
+    def _on_delete_fa(self, fa_id: int) -> None:
+        """删除 FA 记录 — 确认后删除。"""
+        reply = QMessageBox.question(
+            self, "确认删除", "确定要删除这条 FA 分析记录吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._service.delete_fa_record(fa_id)
+            self._load_fa_records()
+        except Exception:
+            logger.exception("_on_delete_fa() failed")
+            QMessageBox.warning(self, "删除失败", "FA 记录删除失败，请重试。")
+
+    def _on_edit_capa(self, record) -> None:
+        """编辑 CAPA 记录 — 打开 CAPADialog。"""
+        from src.views.bug_tracker.fa_capa_panels import CAPADialog
+
+        if record.id is None:
+            return
+        dlg = CAPADialog(
+            technician_list=self._technician_list,
+            capa_record=record,
+            parent=self,
+        )
+        if dlg.exec():
+            data = dlg.get_data()
+            try:
+                self._service.update_capa_record(record.id, **data)
+                self._load_capa_records()
+            except Exception:
+                logger.exception("_on_edit_capa() failed")
+                QMessageBox.warning(self, "保存失败", "CAPA 记录更新失败，请重试。")
+        dlg.deleteLater()
+
+    def _on_delete_capa(self, record) -> None:
+        """删除 CAPA 记录 — 确认后删除。"""
+        if record.id is None:
+            return
+        reply = QMessageBox.warning(
+            self, "确认删除",
+            "确定要删除该 CAPA 措施吗？\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._service.delete_capa_record(record.id)
+            self._load_capa_records()
+        except Exception:
+            logger.exception("_on_delete_capa() failed")
+            QMessageBox.warning(self, "删除失败", "CAPA 记录删除失败，请重试。")
 
     # ── 辅助 ────────────────────────────────────────────────────────
 

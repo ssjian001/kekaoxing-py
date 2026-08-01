@@ -1,7 +1,11 @@
 """测试全景简报与 8D 报告打包一键导出中心 (Enriched Report Bundle Generator)。"""
 from __future__ import annotations
 
+import logging
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -14,6 +18,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QComboBox,
     QCheckBox,
+    QMessageBox,
     QApplication,
     QWidget,
 )
@@ -21,12 +26,30 @@ from PySide6.QtWidgets import (
 import src.styles.theme as _theme
 from src.styles.constants import add_shadow, DASH_PRIMARY, DASH_SUCCESS
 
+if TYPE_CHECKING:
+    from src.controllers.app_controller import AppController
+
+logger = logging.getLogger(__name__)
+
 
 class ReportBundleDialog(QDialog):
-    """丰富多维度的可靠性测试全景简报打包导出中心。"""
+    """丰富多维度的可靠性测试全景简报打包导出中心。
 
-    def __init__(self, parent: QWidget | None = None):
+    接入真实 ExportService 引擎，根据用户勾选的章节和格式，
+    从数据库读取实际数据生成报告。
+    """
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        controller: "AppController | None" = None,
+        get_plan_id: Callable[[], int | None] | None = None,
+        get_project_id: Callable[[], int | None] | None = None,
+    ):
         super().__init__(parent)
+        self._ctrl = controller
+        self._get_plan_id = get_plan_id or (lambda: None)
+        self._get_project_id = get_project_id or (lambda: None)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -141,68 +164,145 @@ class ReportBundleDialog(QDialog):
         root.addWidget(container)
 
     def _do_export(self) -> None:
+        """接入真实 ExportService 引擎导出。
+
+        根据勾选的章节组合和格式，调用对应导出方法。
+        所有数据从数据库实时读取，不使用硬编码假数据。
+        """
+        if not self._ctrl:
+            QMessageBox.warning(self, "无法导出", "控制器未初始化，无法读取数据。")
+            return
+
         ext = self._fmt_combo.currentData()
         path, _ = QFileDialog.getSaveFileName(
             self,
             "保存全景测试报告",
             f"Reliability_Comprehensive_Report.{ext}",
-            f"Report Files (*.{ext})"
+            f"Report Files (*.{ext})",
         )
-        if path:
-            watermark = self._wm_edit.text().strip()
-            # 丰富多维度的全景报告模板写入
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(f"====================================================================\n")
-                f.write(f"           RELIATRACK 可靠性工程全景测试与质量总结报告\n")
-                f.write(f"====================================================================\n")
-                f.write(f"水印签名: {watermark}\n")
-                f.write(f"生成时间: 2026-07-26\n\n")
+        if not path:
+            return
 
-                if self._chk_kpi.isChecked():
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f"一、核心 KPI 与测试通过率/失效率度量\n")
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f" - 测试总任务数: 48 项 | 顺利完成: 42 项 | 进行中: 4 项 | Fail/异常: 2 项\n")
-                    f.write(f" - 样品综合测试通过率: 95.8%\n")
-                    f.write(f" - 试验设备平均占用负荷: 82.4% (高负荷运转)\n")
-                    f.write(f" - 缺陷闭环处置率 (8D/CAPA): 91.3%\n\n")
+        try:
+            result_path = self._dispatch_export(ext, path)
+        except ValueError as e:
+            QMessageBox.warning(self, "导出取消", str(e))
+            return
+        except Exception as e:
+            logger.exception("Report bundle export failed")
+            QMessageBox.critical(self, "导出失败", f"生成报告时出错：\n{e}")
+            return
 
-                if self._chk_tasks.isChecked():
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f"二、测试任务甘特排程与状态清单\n")
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f" ID | 任务名称           | 类别       | 技术员  | 试验设备     | 状态   \n")
-                    f.write(f" 01 | 双85高温高湿试验   | 环境试验   | 张工    | 温湿度箱A1   | 已完成 \n")
-                    f.write(f" 02 | 跌落冲击试验       | 机械试验   | 李工    | 跌落试验台02 | 进行中 \n")
-                    f.write(f" 03 | 盐雾腐蚀加速试验   | 表面处理   | 王工    | 盐雾试验箱S1 | 已跳过 \n\n")
+        # 成功反馈
+        mw = self.parent()
+        while mw is not None:
+            if hasattr(mw, "toast"):
+                mw.toast(f"📊 全景报告已导出至: {result_path}", "success")
+                break
+            mw = mw.parent()
+        self.accept()
 
-                if self._chk_samples.isChecked():
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f"三、样品全生命周期履历与累计测试小时数\n")
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f" 样品 SN       | 规格型号      | 累计测试小时 | 当前状态 | 存放位置\n")
-                    f.write(f" SN-202607-001 | Mod-A2 High  | 1000.0 hrs   | 已归档   | 仓库A-02\n")
-                    f.write(f" SN-202607-002 | Mod-A2 Normal| 480.5 hrs    | 在测试   | 实验室B3\n\n")
+    def _dispatch_export(self, ext: str, filepath: str) -> str:
+        """根据章节勾选 + 格式分派到 ExportService 方法。
 
-                if self._chk_capa.isChecked():
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f"四、8D 缺陷失效分析与 CAPA 纠正预防措施\n")
-                    f.write(f"--------------------------------------------------------------------\n")
-                    f.write(f" Issue ID | 失效现象           | 根本原因 (5-Why)         | 纠正预防措施 (CAPA)\n")
-                    f.write(f" ISS-001  | 高温下外壳烫变形   | 材质耐温等级选型偏差     | 变更树脂型号并二轮复测\n")
-                    f.write(f" ISS-002  | 振动试验后螺丝松脱 | 预紧力矩未按 SOP 标准施加| 增加扭矩扳手双人复核规程\n\n")
+        返回最终生成的文件路径。
+        抛 ValueError 表示用户数据不足（如未选计划），由调用方提示。
+        """
+        from src.services.export import ExportService
 
-                f.write(f"====================================================================\n")
-                f.write(f"               报告导出完毕 - ReliaTrack System\n")
-                f.write(f"====================================================================\n")
+        ctrl = self._ctrl
+        svc = ExportService(output_dir=os.path.dirname(filepath) or ".")
 
-            mw = self.parent()
-            while mw is not None:
-                if hasattr(mw, "toast"):
-                    mw.toast(f"🎉 丰富全景简报已成功打包导出至: {path}", "success")
-                    break
-                mw = mw.parent()
-            self.accept()
+        fmt_map = {"xlsx": "Excel", "html": "PDF", "csv": "Excel"}
+        fmt_label = fmt_map.get(ext, "Excel")
+
+        # 判断导出内容组合
+        want_kpi = self._chk_kpi.isChecked()
+        want_tasks = self._chk_tasks.isChecked()
+        want_samples = self._chk_samples.isChecked()
+        want_capa = self._chk_capa.isChecked()
+
+        # 综合报告（KPI+任务 或 多章节组合）→ 需要 plan
+        is_comprehensive = (want_kpi and want_tasks) or sum([want_kpi, want_tasks, want_samples, want_capa]) >= 3
+
+        if is_comprehensive:
+            return self._export_comprehensive(svc, ctrl, filepath, fmt_label, want_capa)
+
+        # 单一章节导出
+        if want_samples and not want_tasks and not want_capa:
+            return self._export_samples_only(svc, ctrl, filepath)
+        if want_capa and not want_tasks and not want_samples:
+            return self._export_issues_only(svc, ctrl, filepath)
+        if want_tasks and not want_samples and not want_capa:
+            return self._export_tasks_only(svc, ctrl, filepath)
+
+        # 兜底：综合
+        return self._export_comprehensive(svc, ctrl, filepath, fmt_label, want_capa)
+
+    # -- 单章节导出 ------------------------------------------------
+
+    @staticmethod
+    def _export_samples_only(svc, ctrl, filepath: str) -> str:
+        """仅导出样品台账 Excel。"""
+        samples = ctrl.sample_service.list_all() if ctrl.sample_service else []
+        if not samples:
+            raise ValueError("没有样品数据可导出")
+        return svc.export_samples_excel(samples, filepath=filepath)
+
+    @staticmethod
+    def _export_issues_only(svc, ctrl, filepath: str) -> str:
+        """仅导出 Issue（含 FA/CAPA）Excel。"""
+        issues = ctrl.issue_service.list_all() if ctrl.issue_service else []
+        if not issues:
+            raise ValueError("没有 Issue 数据可导出")
+        issue_ids = [i.id for i in issues if i.id is not None]
+        fa_map = ctrl.issue_service.get_fa_records_batch(issue_ids) if issue_ids else {}
+        capa_map = ctrl.issue_service.get_capa_records_batch(issue_ids) if issue_ids else {}
+        return svc.export_issues_excel(issues, fa_map=fa_map, capa_map=capa_map, filepath=filepath)
+
+    def _export_tasks_only(self, svc, ctrl, filepath: str) -> str:
+        """仅导出测试任务 Excel。"""
+        plan_id = self._get_plan_id()
+        if plan_id is None:
+            raise ValueError("请先在测试计划视图中选中一个计划")
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        if not plan or not tasks:
+            raise ValueError("当前计划没有任务数据")
+        task_ids = [t.id for t in tasks if t.id is not None]
+        results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
+        tech_names = {}
+        if ctrl.technicians:
+            for tech in ctrl.technicians.list_all():
+                if tech.id is not None:
+                    tech_names[tech.id] = tech.name
+        return svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names, filepath=filepath)
+
+    def _export_comprehensive(self, svc, ctrl, filepath: str, fmt_label: str, include_capa: bool) -> str:
+        """综合报告 — KPI + 任务 + 样品 + （可选）Issue。"""
+        plan_id = self._get_plan_id()
+        if plan_id is None:
+            raise ValueError("综合报告需要选中一个测试计划。\n请先在测试计划视图中选中计划，再导出。")
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        if not plan:
+            raise ValueError("未找到选中的测试计划")
+
+        task_ids = [t.id for t in tasks if t.id is not None]
+        results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
+
+        project_id = plan.project_id or self._get_project_id()
+        issues = ctrl.issue_service.get_by_project(project_id) if (include_capa and project_id) else []
+        if not issues and include_capa:
+            issues = ctrl.issue_service.list_all() if ctrl.issue_service else []
+        samples = ctrl.sample_service.get_by_project(project_id) if (project_id and ctrl.sample_service) else (
+            ctrl.sample_service.list_all() if ctrl.sample_service else []
+        )
+
+        if "Word" in fmt_label:
+            return svc.export_to_word(plan, tasks, issues, samples, filepath=filepath, results=results)
+        else:
+            return svc.export_report_pdf(plan, tasks, issues, samples, filepath=filepath, results=results)
 
     def show_centered(self) -> None:
         if self.parent():

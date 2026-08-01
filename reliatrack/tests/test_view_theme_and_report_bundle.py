@@ -31,20 +31,23 @@ def test_view_theme_settings_dialog_instantiation(qtbot) -> None:
 
 
 def test_report_bundle_dialog_export(qtbot, tmp_path) -> None:
-    """测试 ReportBundleDialog 的打包导出与水印写入逻辑。"""
+    """测试 ReportBundleDialog 构造与 controller 注入。
+
+    _do_export 接入真实 ExportService 引擎，需要 controller + QFileDialog，
+    此处只验证 dialog 可正确构造并接收 controller 参数。
+    真实导出路径由集成测试覆盖。
+    """
+    # 无 controller 时仍可构造（UI 层）
     dlg = ReportBundleDialog()
     qtbot.addWidget(dlg)
+    assert dlg is not None
+    assert dlg._ctrl is None
 
-    dlg._wm_edit.setText("TEST-CONFIDENTIAL")
-
-    out_file = str(tmp_path / "test_report.xlsx")
-
-    # 模拟直接写入报告逻辑
-    watermark = dlg._wm_edit.text().strip()
-    with open(out_file, "w", encoding="utf-8") as f:
-        f.write(f"Reliability Report\nWatermark: {watermark}\n")
-
-    assert os.path.exists(out_file)
-    with open(out_file, "r", encoding="utf-8") as f:
-        content = f.read()
-        assert "TEST-CONFIDENTIAL" in content
+    # 有 controller 时注入成功
+    class _FakeCtrl:
+        pass
+    fake_ctrl = _FakeCtrl()
+    dlg2 = ReportBundleDialog(controller=fake_ctrl, get_plan_id=lambda: 42)  # type: ignore[arg-type]
+    qtbot.addWidget(dlg2)
+    assert dlg2._ctrl is fake_ctrl
+    assert dlg2._get_plan_id() == 42

@@ -212,10 +212,9 @@ class CommandPaletteDialog(QDialog):
             CommandItem("页面跳转", "跳转到 样品台账 (Samples)", "查询样品 S/N、批次与流转状态", "📦", action=lambda: ("tab", 2)),
             CommandItem("页面跳转", "跳转到 测试计划与甘特图 (Test Plans)", "查看测试任务排程、关键路径与冲突", "🗓️", action=lambda: ("tab", 3)),
             CommandItem("页面跳转", "跳转到 Issue 与 Bug Tracker", "追踪缺陷闭环、CAPA 与超期预警", "🐛", action=lambda: ("tab", 4)),
-            CommandItem("页面跳转", "跳转到 试验设备管理 (Equipment)", "管理试验箱、温湿度箱及状态", "🔬", action=lambda: ("tab", 5)),
-            CommandItem("页面跳转", "跳转到 技术员与实验室 (Technicians)", "管理测试人员与排班角色", "👨‍🔬", action=lambda: ("tab", 6)),
+            CommandItem("页面跳转", "跳转到 个人待办清单 (Todos)", "查看与处理个人任务安排", "✅", action=lambda: ("tab", 5)),
+            CommandItem("页面跳转", "跳转到 试验设备管理 (Equipment)", "管理试验箱、温湿度箱及状态", "🔬", action=lambda: ("tab", 6)),
             CommandItem("页面跳转", "跳转到 知识库与规范 (Knowledge)", "检索试验标准与故障模式库", "📚", action=lambda: ("tab", 7)),
-            CommandItem("页面跳转", "跳转到 个人待办清单 (Todos)", "查看与处理个人任务安排", "✅", action=lambda: ("tab", 8)),
         ]
 
         # 动态从 Controller 填充项目与样品

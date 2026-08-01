@@ -208,8 +208,11 @@ class BugTrackerView(QWidget):
         if issue is None:
             ToastWidget.show(self, "Issue 不存在", duration=2)
             return
+        # 从列表视图获取 technician_list（FA/CAPA 编辑弹窗需要）
+        tech_list = getattr(self._list_view, "_technician_list", []) if self._list_view else []
         dlg = IssueDetailDialog(issue, self._svc, self,
-                                technician_map=self._technician_map)
+                                technician_map=self._technician_map,
+                                technician_list=tech_list)
         try:
             dlg.exec()
         finally:

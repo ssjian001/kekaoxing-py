@@ -296,10 +296,10 @@ class MainWindow(QMainWindow):
                 if "issue_status" in jump_data:
                     status = jump_data["issue_status"]
                     bug_list = getattr(self._bug_tracker_view, '_list_view', None)
-                    if bug_list and hasattr(bug_list, '_status_combo'):
-                        idx = bug_list._status_combo.findData(status)
+                    if bug_list and hasattr(bug_list, '_filter_status'):
+                        idx = bug_list._filter_status.findData(status)
                         if idx >= 0:
-                            bug_list._status_combo.setCurrentIndex(idx)
+                            bug_list._filter_status.setCurrentIndex(idx)
 
 
     def _create_filter_bar_content(self, parent: QWidget) -> None:
@@ -362,7 +362,24 @@ class MainWindow(QMainWindow):
 
         """打开测试全景简报打包导出中心。"""
         from src.views.widgets.report_bundle_dialog import ReportBundleDialog
-        dlg = ReportBundleDialog(self)
+
+        def _get_plan_id() -> int | None:
+            if hasattr(self, "test_plan_view"):
+                return self.test_plan_view.get_selected_plan_id()
+            return None
+
+        def _get_project_id() -> int | None:
+            combo = getattr(self, "_project_filter_combo", None)
+            if combo is not None:
+                return combo.currentData()
+            return None
+
+        dlg = ReportBundleDialog(
+            self,
+            controller=self._ctrl,
+            get_plan_id=_get_plan_id,
+            get_project_id=_get_project_id,
+        )
         dlg.show_centered()
 
     def _open_keyboard_shortcuts(self) -> None:
@@ -523,10 +540,6 @@ class MainWindow(QMainWindow):
         self._shortcut_find = QShortcut(QKeySequence("Ctrl+F"), self)
         self._shortcut_find.activated.connect(self._on_shortcut_find)
 
-        # Ctrl+K 命令面板
-        self._shortcut_palette = QShortcut(QKeySequence("Ctrl+K"), self)
-        self._shortcut_palette.activated.connect(self._on_command_palette)
-
         # 撤销 / 重做（隐藏快捷键，无 UI 按钮）
         self._shortcut_undo = QShortcut(QKeySequence("Ctrl+Z"), self)
         self._shortcut_undo.activated.connect(self._on_undo)
@@ -605,105 +618,6 @@ class MainWindow(QMainWindow):
             widget = getter()
             widget.setFocus()
             widget.selectAll()
-
-    def _on_command_palette(self) -> None:
-        """Ctrl+K: 打开全局命令与搜寻面板。"""
-        from typing import Any
-        from src.views.dialogs.command_palette_dialog import CommandPaletteDialog
-
-        def fetcher(query: str) -> list[dict[str, Any]]:
-            results = []
-            q = query.lower()
-
-            # 1. 项目
-            try:
-                for p in self._controller.project_repo.list_all():
-                    if not q or q in p.name.lower() or q in p.code.lower():
-                        results.append({
-                            "category": "项目",
-                            "category_key": "project",
-                            "id": p.id,
-                            "name": p.name,
-                            "detail": p.code,
-                        })
-            except Exception:
-                pass
-
-            # 2. 样品
-            try:
-                for s in self._controller.sample_repo.list_all():
-                    if not q or q in s.name.lower() or q in s.serial_number.lower():
-                        results.append({
-                            "category": "样品",
-                            "category_key": "sample",
-                            "id": s.id,
-                            "name": s.name,
-                            "detail": f"SN: {s.serial_number}",
-                        })
-            except Exception:
-                pass
-
-            # 3. 设备
-            try:
-                for e in self._controller.equipment_repo.list_all():
-                    if not q or q in e.name.lower() or q in e.model.lower():
-                        results.append({
-                            "category": "设备",
-                            "category_key": "equipment",
-                            "id": e.id,
-                            "name": e.name,
-                            "detail": f"型号: {e.model}",
-                        })
-            except Exception:
-                pass
-
-            # 4. 测试任务
-            try:
-                for t in self._controller.test_task_repo.list_all():
-                    if not q or q in t.name.lower() or q in t.test_standard.lower():
-                        results.append({
-                            "category": "任务",
-                            "category_key": "task",
-                            "id": t.id,
-                            "name": t.name,
-                            "detail": f"标准: {t.test_standard}",
-                        })
-            except Exception:
-                pass
-
-            # 5. Issue / Bug
-            try:
-                for issue in self._controller.issue_repo.list_all():
-                    if not q or q in issue.title.lower() or q in str(issue.issue_no).lower():
-                        results.append({
-                            "category": "Issue",
-                            "category_key": "issue",
-                            "id": issue.id,
-                            "name": issue.title,
-                            "detail": f"Issue #{issue.issue_no}",
-                        })
-            except Exception:
-                pass
-
-            return results[:30]
-
-        dialog = CommandPaletteDialog(fetcher=fetcher, parent=self)
-
-        def on_select(cat: str, item_id: Any):
-            tab_map = {
-                "project": 1,
-                "sample": 2,
-                "task": 3,
-                "issue": 4,
-                "todo": 5,
-                "equipment": 6,
-                "knowledge": 7,
-            }
-            if cat in tab_map:
-                self._tab_widget.setCurrentIndex(tab_map[cat])
-
-        dialog.item_selected.connect(on_select)
-        dialog.exec()
 
     # ── 刷新/撤销快捷入口（委托给 handler） ──
 
