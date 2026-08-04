@@ -423,17 +423,21 @@ class MainWindow(QMainWindow):
     def _check_todo_reminders(self) -> None:
         """检查到期待办提醒（30 秒定时器回调）。"""
         from datetime import datetime
+        import apsw
         ctrl = self._ctrl
         if not ctrl or not ctrl.todo_service:
             return
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        due = ctrl.todo_service.list_due_reminders(now)
-        for todo in due:
-            if todo.id is not None:
-                self.toast(f"⏰ 待办提醒：{todo.title}", "info")
-                ctrl.todo_service.mark_reminded(todo.id)
-        if due:
-            self.schedule_throttled_refresh("todo")
+        try:
+            due = ctrl.todo_service.list_due_reminders(now)
+            for todo in due:
+                if todo.id is not None:
+                    self.toast(f"⏰ 待办提醒：{todo.title}", "info")
+                    ctrl.todo_service.mark_reminded(todo.id)
+            if due:
+                self.schedule_throttled_refresh("todo")
+        except (apsw.ConnectionClosedError, AttributeError):
+            pass
 
     def _setup_menubar(self) -> None:
         """创建菜单栏。"""

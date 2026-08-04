@@ -1241,10 +1241,11 @@ class PlanHandlers:
     # ── 批量值粘贴 ──
 
     def _on_batch_value(self, task_ids: list[int], col: int, value: str) -> None:
-        """从表格 Ctrl+V 粘贴的值批量更新选中行。
+        """从表格 Ctrl+V 粘贴或就地编辑的值批量更新选中行。
 
         列映射:
-        6=进度, 7=优先级, 11=实际开始, 12=实际完成
+        1=名称, 2=类别, 3=天数, 6=进度, 7=优先级, 8=状态,
+        9=技术员, 11=实际开始, 12=实际完成
         """
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
@@ -1254,7 +1255,21 @@ class PlanHandlers:
         field: str | None = None
         parsed_value: object = value
 
-        if col == 6:   # 进度
+        if col == 1:   # 名稱
+            field = "name"
+            if not value.strip():
+                return
+            parsed_value = value.strip()
+        elif col == 2:  # 類別
+            field = "category"
+            parsed_value = value
+        elif col == 3:  # 天數
+            field = "duration"
+            try:
+                parsed_value = max(1, int(value))
+            except (ValueError, TypeError):
+                return
+        elif col == 6:   # 进度
             field = "progress"
             try:
                 parsed_value = float(value.replace("%", ""))
@@ -1266,17 +1281,24 @@ class PlanHandlers:
                 parsed_value = int(value)
             except (ValueError, TypeError):
                 return
+        elif col == 8:  # 狀態
+            field = "status"
+            parsed_value = value
         elif col == 11:  # 实际开始
             field = "actual_start_date"
         elif col == 12:  # 实际完成
             field = "actual_end_date"
         elif col == 9:  # 技术员（按名称查找 ID）
             field = "technician_id"
-            tech_list = ctrl.technicians.list_all() if ctrl.technicians else []
-            matched = [t.id for t in tech_list if t.name == value]
-            if not matched:
-                return
-            parsed_value = matched[0]
+            if not value.strip():
+                # 空值 → 清空指派
+                parsed_value = None
+            else:
+                tech_list = ctrl.technicians.list_all() if ctrl.technicians else []
+                matched = [t.id for t in tech_list if t.name == value]
+                if not matched:
+                    return
+                parsed_value = matched[0]
         else:
             return
 
