@@ -159,22 +159,29 @@ class _DonutChart(QWidget):
 
 
 class _StackedBar(QWidget):
-    """堆叠进度条: PASS(绿) + FAIL(红) + 进行中(黄) + 待开始(灰)。"""
+    """堆叠进度条: 已完成(绿) + 失败(红) + 进行中(黄) + 待开始(灰) + 跳过(蓝) + 暂停(紫)。"""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setFixedHeight(18)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._total = 0
-        self._pass = 0
-        self._fail = 0
-        self._progress = 0
+        self._completed = 0
+        self._failed = 0
+        self._in_progress = 0
+        self._pending = 0
+        self._skipped = 0
+        self._paused = 0
 
-    def set_data(self, total: int, pass_count: int, fail_count: int, in_progress: int) -> None:
+    def set_data(self, total: int, completed: int, failed: int,
+                 in_progress: int, pending: int, skipped: int = 0, paused: int = 0) -> None:
         self._total = max(total, 1)
-        self._pass = pass_count
-        self._fail = fail_count
-        self._progress = in_progress
+        self._completed = completed
+        self._failed = failed
+        self._in_progress = in_progress
+        self._pending = pending
+        self._skipped = skipped
+        self._paused = paused
         self.update()
 
     def paintEvent(self, event):  # noqa: N802
@@ -189,12 +196,17 @@ class _StackedBar(QWidget):
             p.end()
             return
 
-        x = 0
-        segments = [(self._pass, DASH_SUCCESS), (self._fail, DASH_DANGER), (self._progress, DASH_WARNING)]
-        pending = self._total - self._pass - self._fail - self._progress
-        if pending > 0:
-            segments.append((pending, _theme.SUBTEXT0))
+        # 按任务状态堆叠（全部分类显式覆盖，不靠减法）
+        segments = [
+            (self._completed, DASH_SUCCESS),
+            (self._failed, DASH_DANGER),
+            (self._in_progress, DASH_WARNING),
+            (self._skipped, _theme.SKY if hasattr(_theme, "SKY") else _theme.SUBTEXT0),
+            (self._paused, _theme.MAUVE if hasattr(_theme, "MAUVE") else _theme.SUBTEXT0),
+            (self._pending, _theme.SUBTEXT0),
+        ]
 
+        x = 0
         for count, color in segments:
             if count <= 0:
                 continue
@@ -210,11 +222,13 @@ class _StackedBar(QWidget):
             if sw0 > 0:
                 p.setBrush(QColor(segments[0][1]))
                 p.drawRoundedRect(0, 0, sw0, h, 4, 4)
-        if len(segments) > 1 and segments[-1][0] > 0:
-            sw_last = int(w * segments[-1][0] / self._total)
+        # 末尾圆角 — 取最后一个非零段
+        last_nonzero = next(((c, cl) for c, cl in reversed(segments) if c > 0), None)
+        if last_nonzero and last_nonzero[0] > 0:
+            sw_last = int(w * last_nonzero[0] / self._total)
             x_last = w - sw_last
             if sw_last > 0:
-                p.setBrush(QColor(segments[-1][1]))
+                p.setBrush(QColor(last_nonzero[1]))
                 p.drawRoundedRect(x_last, 0, sw_last, h, 4, 4)
 
         p.end()

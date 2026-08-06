@@ -56,6 +56,7 @@ class DashboardData:
     __slots__ = (
         # 测试状态
         "task_total", "task_completed", "task_in_progress", "task_pending",
+        "task_skipped", "task_paused",
         "pass_rate", "failure_rate", "task_status_data",
         # 质量与问题
         "issue_count", "issue_closed_count",
@@ -320,13 +321,16 @@ class DashboardView(QWidget):
             f"最后更新：{data.last_update}" if data.last_update else ""
         )
 
-        # 测试进度卡片
+        # 测试进度卡片 — 基于任务状态计数（不混结果数）
+        # 绿=已完成, 红=失败, 黄=进行中, 灰=待开始, 蓝=跳过, 紫=暂停
         self._health.refresh(
             total=data.task_total or 0,
             completed=data.task_completed or 0,
-            pass_count=data.pass_count or 0,
-            fail_count=data.failed_task_count or 0,
+            failed=data.failed_task_count or 0,
             in_progress=data.task_in_progress or 0,
+            pending=data.task_pending or 0,
+            skipped=data.task_skipped or 0,
+            paused=data.task_paused or 0,
             pass_rate=data.pass_rate,
             last_update=data.last_update,
         )

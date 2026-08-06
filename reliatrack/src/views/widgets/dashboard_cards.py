@@ -191,9 +191,9 @@ class _TestProgressCard(QFrame):
         card.setFixedHeight(56)
         return card
 
-    def refresh(self, total: int, completed: int, pass_count: int, fail_count: int,
-                in_progress: int, pass_rate: float | None,
-                last_update: str | None) -> None:
-        self._stacked.set_data(total, pass_count, fail_count, in_progress)
+    def refresh(self, total: int, completed: int, failed: int,
+                in_progress: int, pending: int, skipped: int, paused: int,
+                pass_rate: float | None, last_update: str | None) -> None:
+        self._stacked.set_data(total, completed, failed, in_progress, pending, skipped, paused)
         self._aux1.set_value(f"{pass_rate:.1f}%" if pass_rate is not None else "—%")
         self._aux2.set_value(last_update or "—")

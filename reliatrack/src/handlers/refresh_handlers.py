@@ -181,6 +181,8 @@ class RefreshHandlers:
         in_progress = task_status_data.get("in_progress", 0)
         pending_count = task_status_data.get("pending", 0)
         failed_task_count = task_status_data.get("failed", 0)
+        skipped_count = task_status_data.get("skipped", 0)
+        paused_count = task_status_data.get("paused", 0)
 
         # ── 任务列表（SQL 过滤） ──
         if filter_plan_id:
@@ -299,6 +301,8 @@ class RefreshHandlers:
             task_completed=completed,
             task_in_progress=in_progress,
             task_pending=pending_count,
+            task_skipped=skipped_count,
+            task_paused=paused_count,
             issue_count=issues,
             issue_closed_count=issue_closed_count,
             failed_task_count=failed_task_count,
