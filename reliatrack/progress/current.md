@@ -11,6 +11,8 @@ UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23
 
 ### 最近完成
 
+- **仪表盘进度条修复 (2026-08-06)**: 用户报告已完成任务被算进"待开始"。根因: 进度条混用结果数(pass_count)和任务数, completed 无 pass 结果的任务落入灰段; paused/skipped 无归属。修复: 进度条改用任务状态计数(6分类显式覆盖), 跳过=蓝/暂停=紫。
+
 - **就地编辑残留修复 (2026-08-06, task_table)**: 用户报告双击编辑名称/类别/状态/技术员后控件残留。
   根因: combo 用 currentIndexChanged(选当前值不触发) + editingFinished(部分焦点路径不触发)。
   修复: combo 改 activated 信号 + QLineEdit/QSpinBox 加 focusOut eventFilter + QTimer 延迟销毁。
