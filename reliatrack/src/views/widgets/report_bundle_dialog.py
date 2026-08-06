@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 from PySide6.QtCore import Qt
@@ -19,12 +18,11 @@ from PySide6.QtWidgets import (
     QComboBox,
     QCheckBox,
     QMessageBox,
-    QApplication,
     QWidget,
 )
 
 import src.styles.theme as _theme
-from src.styles.constants import add_shadow, DASH_PRIMARY, DASH_SUCCESS
+from src.styles.constants import add_shadow, DASH_PRIMARY
 
 if TYPE_CHECKING:
     from src.controllers.app_controller import AppController
@@ -133,9 +131,9 @@ class ReportBundleDialog(QDialog):
         self._fmt_combo = QComboBox()
         self._fmt_combo.setFixedHeight(28)
         self._fmt_combo.setProperty("class", "filter-combo")
-        self._fmt_combo.addItem("📊 Excel 多工作表全景总结 WorkBook (*.xlsx)", "xlsx")
-        self._fmt_combo.addItem("📑 8D 缺陷与全景报告 HTML/PDF 格式 (*.html)", "html")
-        self._fmt_combo.addItem("📋 样品履历与失效率汇总 CSV (*.csv)", "csv")
+        self._fmt_combo.addItem("📊 Excel 多工作表全景总结 Workbook (*.xlsx)", "xlsx")
+        self._fmt_combo.addItem("📄 Word 综合可靠性报告 Docx (*.docx)", "docx")
+        self._fmt_combo.addItem("📑 PDF 综合可靠性报告 (*.pdf)", "pdf")
         clay.addWidget(self._fmt_combo)
 
         clay.addStretch()
@@ -213,73 +211,28 @@ class ReportBundleDialog(QDialog):
         ctrl = self._ctrl
         svc = ExportService(output_dir=os.path.dirname(filepath) or ".")
 
-        fmt_map = {"xlsx": "Excel", "html": "PDF", "csv": "Excel"}
-        fmt_label = fmt_map.get(ext, "Excel")
-
         # 判断导出内容组合
+        # KPI 章节只在 Word/PDF 综合报告中有意义（由 exporter 内部生成），
+        # Excel 模式下无独立 KPI 导出引擎，KPI 勾选被忽略。
         want_kpi = self._chk_kpi.isChecked()
         want_tasks = self._chk_tasks.isChecked()
         want_samples = self._chk_samples.isChecked()
         want_capa = self._chk_capa.isChecked()
 
-        # 综合报告（KPI+任务 或 多章节组合）→ 需要 plan
-        is_comprehensive = (want_kpi and want_tasks) or sum([want_kpi, want_tasks, want_samples, want_capa]) >= 3
+        # Word / PDF 走综合报告引擎（综合报告内置 KPI，忽略单章节勾选）
+        if ext in ("docx", "pdf"):
+            return self._export_comprehensive(svc, ctrl, filepath, fmt=ext, include_capa=want_capa)
 
-        if is_comprehensive:
-            return self._export_comprehensive(svc, ctrl, filepath, fmt_label, want_capa)
+        # Excel: 按勾选章节分 sheet 导出
+        return self._export_excel_sections(svc, ctrl, filepath, want_tasks, want_samples, want_capa)
 
-        # 单一章节导出
-        if want_samples and not want_tasks and not want_capa:
-            return self._export_samples_only(svc, ctrl, filepath)
-        if want_capa and not want_tasks and not want_samples:
-            return self._export_issues_only(svc, ctrl, filepath)
-        if want_tasks and not want_samples and not want_capa:
-            return self._export_tasks_only(svc, ctrl, filepath)
+    # -- 综合报告（Word / PDF）--------------------------------------
 
-        # 兜底：综合
-        return self._export_comprehensive(svc, ctrl, filepath, fmt_label, want_capa)
+    def _export_comprehensive(self, svc, ctrl, filepath: str, fmt: str, include_capa: bool) -> str:
+        """综合报告 — KPI + 任务 + 样品 +（可选）Issue。
 
-    # -- 单章节导出 ------------------------------------------------
-
-    @staticmethod
-    def _export_samples_only(svc, ctrl, filepath: str) -> str:
-        """仅导出样品台账 Excel。"""
-        samples = ctrl.sample_service.list_all() if ctrl.sample_service else []
-        if not samples:
-            raise ValueError("没有样品数据可导出")
-        return svc.export_samples_excel(samples, filepath=filepath)
-
-    @staticmethod
-    def _export_issues_only(svc, ctrl, filepath: str) -> str:
-        """仅导出 Issue（含 FA/CAPA）Excel。"""
-        issues = ctrl.issue_service.list_all() if ctrl.issue_service else []
-        if not issues:
-            raise ValueError("没有 Issue 数据可导出")
-        issue_ids = [i.id for i in issues if i.id is not None]
-        fa_map = ctrl.issue_service.get_fa_records_batch(issue_ids) if issue_ids else {}
-        capa_map = ctrl.issue_service.get_capa_records_batch(issue_ids) if issue_ids else {}
-        return svc.export_issues_excel(issues, fa_map=fa_map, capa_map=capa_map, filepath=filepath)
-
-    def _export_tasks_only(self, svc, ctrl, filepath: str) -> str:
-        """仅导出测试任务 Excel。"""
-        plan_id = self._get_plan_id()
-        if plan_id is None:
-            raise ValueError("请先在测试计划视图中选中一个计划")
-        plan = ctrl.test_plan_service.get_plan(plan_id)
-        tasks = ctrl.test_plan_service.get_tasks(plan_id)
-        if not plan or not tasks:
-            raise ValueError("当前计划没有任务数据")
-        task_ids = [t.id for t in tasks if t.id is not None]
-        results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
-        tech_names = {}
-        if ctrl.technicians:
-            for tech in ctrl.technicians.list_all():
-                if tech.id is not None:
-                    tech_names[tech.id] = tech.name
-        return svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names, filepath=filepath)
-
-    def _export_comprehensive(self, svc, ctrl, filepath: str, fmt_label: str, include_capa: bool) -> str:
-        """综合报告 — KPI + 任务 + 样品 + （可选）Issue。"""
+        fmt: "docx" → export_to_word; "pdf" → export_report_pdf。
+        """
         plan_id = self._get_plan_id()
         if plan_id is None:
             raise ValueError("综合报告需要选中一个测试计划。\n请先在测试计划视图中选中计划，再导出。")
@@ -291,18 +244,66 @@ class ReportBundleDialog(QDialog):
         task_ids = [t.id for t in tasks if t.id is not None]
         results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
 
+        # Issue 按 project_id 精确筛选；无关联 Issue 则不导出而非 fallback 全库
         project_id = plan.project_id or self._get_project_id()
-        issues = ctrl.issue_service.get_by_project(project_id) if (include_capa and project_id) else []
-        if not issues and include_capa:
-            issues = ctrl.issue_service.list_all() if ctrl.issue_service else []
-        samples = ctrl.sample_service.get_by_project(project_id) if (project_id and ctrl.sample_service) else (
-            ctrl.sample_service.list_all() if ctrl.sample_service else []
-        )
+        issues: list = []
+        if include_capa and project_id:
+            issues = ctrl.issue_service.get_by_project(project_id) or []
 
-        if "Word" in fmt_label:
+        samples: list = []
+        if project_id and ctrl.sample_service:
+            samples = ctrl.sample_service.get_by_project(project_id) or []
+
+        if fmt == "docx":
             return svc.export_to_word(plan, tasks, issues, samples, filepath=filepath, results=results)
-        else:
-            return svc.export_report_pdf(plan, tasks, issues, samples, filepath=filepath, results=results)
+        return svc.export_report_pdf(plan, tasks, issues, samples, filepath=filepath, results=results)
+
+    # -- Excel 分章节导出 ------------------------------------------
+
+    def _export_excel_sections(self, svc, ctrl, filepath: str, want_tasks: bool, want_samples: bool, want_capa: bool) -> str:
+        """按勾选章节导出为单个 Excel 文件（多 sheet 由底层 exporter 处理）。
+
+        至少需要勾选一个章节，否则抛 ValueError。
+        优先级：tasks > samples > issues（单选时）；多选时 tasks 为主 sheet。
+        """
+        if not any([want_tasks, want_samples, want_capa]):
+            raise ValueError("请至少勾选一个导出章节")
+
+        if want_tasks:
+            # 以任务为主导（需要计划上下文），附加样品/issue 作为额外信息
+            # 简化处理：单 sheet 任务导出（ExportService 当前不支持多 sheet 合并）
+            plan_id = self._get_plan_id()
+            if plan_id and ctrl.test_plan_service:
+                plan = ctrl.test_plan_service.get_plan(plan_id)
+                tasks = ctrl.test_plan_service.get_tasks(plan_id)
+                if plan and tasks:
+                    task_ids = [t.id for t in tasks if t.id is not None]
+                    results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids) if task_ids else []
+                    tech_names = {}
+                    if ctrl.technicians:
+                        for tech in ctrl.technicians.list_all():
+                            if tech.id is not None:
+                                tech_names[tech.id] = tech.name
+                    return svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names, filepath=filepath)
+
+        # 无计划或未勾选任务 → 按样品/issue 单独导出
+        if want_samples and not want_capa:
+            samples = ctrl.sample_service.list_all() if ctrl.sample_service else []
+            if not samples:
+                raise ValueError("没有样品数据可导出")
+            return svc.export_samples_excel(samples, filepath=filepath)
+
+        if want_capa and not want_samples:
+            issues = ctrl.issue_service.list_all() if ctrl.issue_service else []
+            if not issues:
+                raise ValueError("没有 Issue 数据可导出")
+            issue_ids = [i.id for i in issues if i.id is not None]
+            fa_map = ctrl.issue_service.get_fa_records_batch(issue_ids) if issue_ids else {}
+            capa_map = ctrl.issue_service.get_capa_records_batch(issue_ids) if issue_ids else {}
+            return svc.export_issues_excel(issues, fa_map=fa_map, capa_map=capa_map, filepath=filepath)
+
+        # 多章节但无计划上下文 → 退化为 issue 导出（信息密度最高）
+        raise ValueError("Excel 分章导出需要选中测试计划（任务章节）。\n请选中计划，或只勾选样品/Issue 单章节。")
 
     def show_centered(self) -> None:
         if self.parent():
