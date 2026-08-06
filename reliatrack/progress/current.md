@@ -1,6 +1,6 @@
 # ReliaTrack 当前进度
 
-**最后更新**: 2026-08-01
+**最后更新**: 2026-08-06
 **Schema 版本**: v27 (20 张表)
 **测试**: 646 passed
 **Widgets**: 42 | **Dialogs**: 29
@@ -10,6 +10,15 @@
 UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23 commits，+2885 行）。
 
 ### 最近完成
+
+- **代码审查修复 (2026-08-06, branch-diff-review 8轮 + P1/P2/P3 修复)**:
+  - P1.1: theme.py 新增 cell-edit QSS 规则(就地编辑器暗色主题修复)
+  - P1.2: TASK_CATEGORIES 常量统一(3处去重 + plan_filter_bar 补齐3个缺失类别)
+  - P2.1: ReportBundleDialog issues fallback 从 list_all(全库) 改为按 project_id 精确筛选
+  - P2.2: fmt_combo 删掉无引擎支持的 csv/html 选项(原会生成损坏文件), 新增 docx/pdf
+  - P2.3: @staticmethod 改实例方法 + 删除混乱 fmt_map
+  - P3.1: 清理 4 文件未使用导入(main/export_handlers/plan_handlers/task_table)
+  - P3.2: 删除 _COL_BATCHABLE 死代码
 
 - **流程打通审计修复 (2026-08-01, 6 个断点)**:
   - P0: ReportBundleDialog 接入真实 ExportService 引擎（原输出硬编码假数据）
