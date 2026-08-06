@@ -11,11 +11,10 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Callable
 
 from PySide6.QtWidgets import QMessageBox, QProgressDialog
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import QApplication
 
 from src.views.dialogs.export_dialog import ExportDialog
 

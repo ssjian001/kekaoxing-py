@@ -60,8 +60,6 @@ class _TaskTable(QTableWidget):
         "record": Qt.Key.Key_R,
     }
 
-    _COL_BATCHABLE = {6: "progress", 7: "priority", 11: "actual_start_date", 12: "actual_end_date"}
-
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         apply_column_specs(self, _TASK_SPECS, "task_table")

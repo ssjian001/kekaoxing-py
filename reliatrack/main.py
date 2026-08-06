@@ -42,9 +42,9 @@ from PySide6.QtGui import (
 )
 
 from src.styles.animation import TranslateYAnimation
-from src.styles.icon import RI_REFRESH, RI_EXPORT, RI_BACKUP, RI_SETTINGS, RI_DASHBOARD
+from src.styles.icon import RI_REFRESH, RI_BACKUP
 import src.styles.theme as _t
-from src.styles.theme import get_stylesheet, set_theme, current_theme, theme_host, apply_palette
+from src.styles.theme import get_stylesheet, set_theme, theme_host, apply_palette
 from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
 from src.views.dashboard_view import DashboardView
@@ -71,17 +71,6 @@ from src.handlers import (
     ExportHandlers,
     RefreshHandlers,
     BackupHandlers,
-)
-
-from src.constants import (
-    TAB_DASHBOARD,
-    TAB_PROJECT,
-    TAB_SAMPLE,
-    TAB_TEST_PLAN,
-    TAB_EQUIPMENT,
-    TAB_KNOWLEDGE,
-    TAB_ISSUE,
-    TAB_TODO,
 )
 
 

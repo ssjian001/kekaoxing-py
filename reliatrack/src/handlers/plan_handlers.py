@@ -21,7 +21,7 @@ from src.views.dialogs.task_dialog import TaskEditDialog
 from src.views.dialogs.test_result_dialog import TestResultDialog
 from src.views.dialogs.batch_import_dialog import BatchImportDialog
 from src.handlers.crud_helpers import exec_crud
-from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand, UpdateFieldCommand
+from src.services.undo_manager import BatchScheduleCommand, MoveTaskCommand
 
 if TYPE_CHECKING:
     from main import MainWindow
@@ -1020,7 +1020,6 @@ class PlanHandlers:
 
     def _on_summary_report(self) -> None:
         """一键导出当前计划 Word 总结报告。"""
-        import os
         from pathlib import Path
         from PySide6.QtCore import Qt
         from PySide6.QtWidgets import QApplication
