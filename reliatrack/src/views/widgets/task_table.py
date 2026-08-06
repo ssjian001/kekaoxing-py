@@ -20,7 +20,7 @@ from PySide6.QtGui import QAction, QColor, QKeySequence
 
 import src.styles.theme as _t
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
-from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS
+from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS, TASK_CATEGORIES
 from src.styles.column_persistence import (
     save_column_widths_debounced, restore_column_widths,
     save_sort_state, restore_sort_state,
@@ -636,8 +636,7 @@ class _TaskTable(QTableWidget):
 
         combo = QComboBox()
         combo.setProperty("class", "filter-combo")
-        categories = ["环境试验", "机械试验", "表面处理", "工艺试验", "包装", "寿命试验", "EMC", "其他"]
-        combo.addItems(categories)
+        combo.addItems(TASK_CATEGORIES)
         idx = combo.findText(task.category) if task.category else 0
         combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.setCellWidget(row, 2, combo)

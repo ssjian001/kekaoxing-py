@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
 )
 
+from src.constants import TASK_CATEGORIES
 from src.views.widgets.search_box import SearchBox
 
 
@@ -79,11 +80,8 @@ class PlanFilterBar(QWidget):
         self._category_filter_combo.setMaximumWidth(95)
         self._category_filter_combo.setFixedHeight(26)
         self._category_filter_combo.addItem("全部类别", None)
-        self._category_filter_combo.addItem("环境试验", "环境试验")
-        self._category_filter_combo.addItem("机械试验", "机械试验")
-        self._category_filter_combo.addItem("表面处理", "表面处理")
-        self._category_filter_combo.addItem("包装", "包装")
-        self._category_filter_combo.addItem("其他", "其他")
+        for cat in TASK_CATEGORIES:
+            self._category_filter_combo.addItem(cat, cat)
         row.addWidget(self._category_filter_combo)
 
         # 分隔线

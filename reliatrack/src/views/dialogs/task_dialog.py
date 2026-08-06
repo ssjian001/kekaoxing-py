@@ -25,6 +25,7 @@ from PySide6.QtCore import Qt, QDate
 from src.models.sample import Sample
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
+from src.constants import TASK_CATEGORIES
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.configs.test_type_templates import get_template_names, get_template_by_name
 
@@ -44,7 +45,7 @@ class TaskEditDialog(_BaseDialog):
         当前项目下的样品列表（用于样品多选弹窗）。
     """
 
-    _CATEGORIES = ["环境试验", "机械试验", "表面处理", "工艺试验", "包装", "寿命试验", "EMC", "其他"]
+    _CATEGORIES = TASK_CATEGORIES
 
     def __init__(
         self,

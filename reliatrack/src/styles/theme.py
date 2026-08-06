@@ -602,6 +602,16 @@ QComboBox[class="filter-combo"] {{
     padding: 4px 8px; font-size: 12px; min-height: 26px;
 }}
 
+/* ── 表格就地编辑控件 ── */
+QLineEdit[class="cell-edit"], QSpinBox[class="cell-edit"], QComboBox[class="cell-edit"] {{
+    background-color: {BG_INPUT};
+    color: {TEXT};
+    border: 1px solid {ACCENT};
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13px;
+}}
+
 /* ── 面板标题（视图/卡片 header）── */
 QLabel[class="panel-header"] {{
     color: {FG_PRIMARY}; font-size: 13px; font-weight: bold;
