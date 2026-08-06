@@ -11,6 +11,10 @@ UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23
 
 ### 最近完成
 
+- **就地编辑残留修复 (2026-08-06, task_table)**: 用户报告双击编辑名称/类别/状态/技术员后控件残留。
+  根因: combo 用 currentIndexChanged(选当前值不触发) + editingFinished(部分焦点路径不触发)。
+  修复: combo 改 activated 信号 + QLineEdit/QSpinBox 加 focusOut eventFilter + QTimer 延迟销毁。
+
 - **代码审查修复 (2026-08-06, branch-diff-review 8轮 + P1/P2/P3 修复)**:
   - P1.1: theme.py 新增 cell-edit QSS 规则(就地编辑器暗色主题修复)
   - P1.2: TASK_CATEGORIES 常量统一(3处去重 + plan_filter_bar 补齐3个缺失类别)
