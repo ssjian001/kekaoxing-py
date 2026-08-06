@@ -28,6 +28,29 @@ from src.styles.column_persistence import (
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
+
+def _make_focus_out_filter(widget, on_focus_out):
+    """创建焦点离开事件过滤器 — 就地编辑器失去焦点时触发提交。
+
+    editingFinished 信号在部分焦点路径（如点击表格另一单元格）下不触发，
+    用 eventFilter 拦截 FocusOut 事件作为兜底。返回的 filter 挂在 widget 上。
+    """
+    from PySide6.QtCore import QObject, QEvent
+
+    class _FocusOutFilter(QObject):
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Type.FocusOut:
+                # 焦点转移到 combo popup 时不算真正离开
+                if hasattr(event, "reason") and event.reason() == Qt.FocusReason.PopupFocusReason:
+                    return False
+                on_focus_out()
+            return False
+
+    filt = _FocusOutFilter(widget)
+    widget.installEventFilter(filt)
+    return filt
+
+
 # 任务表列规格
 _TASK_SPECS = [
     ("序号", "interactive", 70),
@@ -608,9 +631,29 @@ class _TaskTable(QTableWidget):
 
         combo.currentIndexChanged.connect(_commit)
 
+    def _finish_inline_edit(self, widget, row: int, col: int, task_id: int | None,
+                            commit: Callable[[], None]) -> None:
+        """统一结束就地编辑：先提交数据，再延迟销毁控件。
+
+        用 QTimer.singleShot(0, ...) 把 removeCellWidget 推到下一轮事件循环，
+        避免在信号回调（currentIndexChanged/activated/editingFinished）中
+        同步销毁正在处理事件的控件导致 popup 残留或焦点异常。
+        commit 用闭包捕获各自逻辑，仅调用一次（防重入）。
+        """
+        if getattr(widget, "_inline_committed", False):
+            return  # 防重入：editingFinished + focusOut 可能同时触发
+        widget._inline_committed = True
+        try:
+            commit()
+        finally:
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self.removeCellWidget(row, col))
+            QTimer.singleShot(60, lambda: self.flash_row(task_id, 500) if task_id is not None else None)
+
     def _edit_inline_name(self, row: int, task: TestTask) -> None:
         """双击名称列 — 显示 QLineEdit 就地编辑。"""
         from PySide6.QtWidgets import QLineEdit
+        from PySide6.QtCore import QEvent
 
         edit = QLineEdit(task.name)
         edit.selectAll()
@@ -622,11 +665,11 @@ class _TaskTable(QTableWidget):
             new_val = edit.text().strip()
             if new_val and new_val != task.name and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 1, new_val)
-            self.removeCellWidget(row, 1)
-            if new_val:
-                self.flash_row(task.id, 500)
 
-        edit.editingFinished.connect(_commit)
+        edit.editingFinished.connect(lambda: self._finish_inline_edit(edit, row, 1, task.id, _commit))
+        edit.returnPressed.connect(lambda: self._finish_inline_edit(edit, row, 1, task.id, _commit))
+        # focusOut 保险：editingFinished 在某些焦点路径下不触发
+        edit.installEventFilter(_make_focus_out_filter(edit, lambda: self._finish_inline_edit(edit, row, 1, task.id, _commit)))
 
     def _edit_inline_category(self, row: int, task: TestTask) -> None:
         """双击类别列 — 显示下拉框就地编辑。"""
@@ -641,14 +684,13 @@ class _TaskTable(QTableWidget):
         combo.setFocus()
         combo.showPopup()
 
-        def _commit(idx_: int) -> None:
+        def _commit() -> None:
             new_cat = combo.currentText()
             if new_cat != task.category and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 2, new_cat)
-            self.removeCellWidget(row, 2)
-            self.flash_row(task.id, 500)
 
-        combo.currentIndexChanged.connect(_commit)
+        # activated 在用户选当前项时也触发（currentIndexChanged 不触发）
+        combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 2, task.id, _commit))
 
     def _edit_inline_duration(self, row: int, task: TestTask) -> None:
         """双击天数列 — 显示 QSpinBox 就地编辑。"""
@@ -666,10 +708,9 @@ class _TaskTable(QTableWidget):
             new_dur = spin.value()
             if new_dur != task.duration and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 3, str(new_dur))
-            self.removeCellWidget(row, 3)
-            self.flash_row(task.id, 500)
 
-        spin.editingFinished.connect(_commit)
+        spin.editingFinished.connect(lambda: self._finish_inline_edit(spin, row, 3, task.id, _commit))
+        spin.installEventFilter(_make_focus_out_filter(spin, lambda: self._finish_inline_edit(spin, row, 3, task.id, _commit)))
 
     def _edit_inline_status(self, row: int, task: TestTask) -> None:
         """双击状态列 — 显示下拉框就地编辑。"""
@@ -689,14 +730,12 @@ class _TaskTable(QTableWidget):
         combo.setFocus()
         combo.showPopup()
 
-        def _commit(idx_: int) -> None:
-            new_status = status_items[idx_][1]
+        def _commit() -> None:
+            new_status = status_items[combo.currentIndex()][1]
             if new_status != task.status and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 8, new_status)
-            self.removeCellWidget(row, 8)
-            self.flash_row(task.id, 500)
 
-        combo.currentIndexChanged.connect(_commit)
+        combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 8, task.id, _commit))
 
     def _edit_inline_technician(self, row: int, task: TestTask) -> None:
         """双击技术员列 — 显示下拉框就地编辑。"""
@@ -719,21 +758,18 @@ class _TaskTable(QTableWidget):
         combo.setFocus()
         combo.showPopup()
 
-        def _commit(idx_: int) -> None:
+        def _commit() -> None:
+            idx_ = combo.currentIndex()
             tech_id = combo.itemData(idx_)
-            # 傳技術員名稱（_on_batch_value col 9 按名稱查找 ID）
             if self._batch_value_callback and task.id is not None:
                 if tech_id is None:
-                    # 未指派 → 傳空字符串讓 handler 清空
                     self._batch_value_callback([task.id], 9, "")
                 else:
                     tech_name = combo.itemText(idx_)
                     if tech_name != "— 未指派 —":
                         self._batch_value_callback([task.id], 9, tech_name)
-            self.removeCellWidget(row, 9)
-            self.flash_row(task.id, 500)
 
-        combo.currentIndexChanged.connect(_commit)
+        combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 9, task.id, _commit))
 
     def keyPressEvent(self, event: object) -> None:
         """拦截 Ctrl+V 进行批量粘贴，其余走默认。"""
