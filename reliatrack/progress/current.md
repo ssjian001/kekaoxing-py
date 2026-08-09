@@ -2,12 +2,19 @@
 
 **最后更新**: 2026-08-09
 **Schema 版本**: v27 (20 张表)
-**测试**: 663 passed
+**测试**: 666 passed
 **Widgets**: 42 | **Dialogs**: 28
 
 ## 当前状态
 
 UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23 commits，+2885 行）。
+
+### 最近完成
+
+- **窗口几何记忆 (2026-08-09, fa34bd8)**: 重启恢复上次窗口大小/位置/工具栏状态。
+  - MainWindow 新增 _restore_window_geometry/_save_window_geometry（QSettings）
+  - __init__ 末尾恢复（toolbar 构建后），closeEvent 确认退出后保存
+  - 无记录回退默认 1100×700；新增 3 测试，666 passed
 
 ### 最近完成
 
