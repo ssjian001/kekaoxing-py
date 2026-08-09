@@ -2,12 +2,20 @@
 
 **最后更新**: 2026-08-09
 **Schema 版本**: v27 (20 张表)
-**测试**: 659 passed
+**测试**: 663 passed
 **Widgets**: 42 | **Dialogs**: 28
 
 ## 当前状态
 
 UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23 commits，+2885 行）。
+
+### 最近完成
+
+- **浮动批量操作栏死信号修复 (2026-08-09, 55892fe)**: UX 审计发现 BatchActionBar 3 个核心信号（批量改状态/指派技术员/导出）从未连接——UI 存在但功能静默失效。
+  - task_table 新增 get_selected_task_ids()（排序安全）
+  - plan_handlers 连接 status_selected/tech_selected/export_clicked 到新 handler
+  - 批量状态选项 fail→failed 统一
+  - 新增 4 行为测试，663 passed
 
 ### 最近完成
 
