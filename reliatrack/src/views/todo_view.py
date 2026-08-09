@@ -70,7 +70,6 @@ class TodoView(QWidget):
     todo_changed = Signal()
     toggle_requested = Signal(int)
     quadrant_changed = Signal(int, int)  # todo_id, new_quadrant
-    archive_requested = Signal(int)  # todo_id
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
