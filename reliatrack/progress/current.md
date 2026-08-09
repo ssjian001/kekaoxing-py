@@ -3,7 +3,7 @@
 **最后更新**: 2026-08-09
 **Schema 版本**: v27 (20 张表)
 **测试**: 653 passed
-**Widgets**: 42 | **Dialogs**: 29
+**Widgets**: 42 | **Dialogs**: 28
 
 ## 当前状态
 
