@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QAbstractItemView, QTableWidget, QTableWidgetItem, QWidget
+from PySide6.QtWidgets import QAbstractItemView, QLabel, QTableWidget, QTableWidgetItem, QWidget
 
 from src.models.sample import Sample
 from src.styles.constants import apply_column_specs
@@ -31,6 +31,23 @@ class _SampleTable(QTableWidget):
         self.cellEntered.connect(self._on_cell_entered)
         self.viewportEntered.connect(self._on_viewport_entered)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
+        self._init_empty_label()
+
+    def _init_empty_label(self) -> None:
+        """空状态提示标签（覆盖在表格上方，数据为空时显示）。"""
+        self._empty_label = QLabel("暂无样品数据")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setProperty("class", "empty-label")
+        self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._empty_label.setParent(self.viewport())
+        self._empty_label.hide()
+
+    def _update_empty_label(self) -> None:
+        self._empty_label.setVisible(self.rowCount() == 0)
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        self._empty_label.setGeometry(self.viewport().rect())
 
     def set_samples(self, samples: list[Sample]) -> None:
         from src.constants import SAMPLE_STATUS_LABELS
@@ -50,6 +67,7 @@ class _SampleTable(QTableWidget):
                     item.setData(Qt.ItemDataRole.UserRole, sample.id)
                 self.setItem(row_idx, col_idx, item)
         self.setSortingEnabled(True)
+        self._update_empty_label()
 
     def _on_cell_entered(self, row: int, column: int) -> None:
         self._delegate.hover_row = row

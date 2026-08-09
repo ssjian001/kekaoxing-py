@@ -232,3 +232,28 @@ class TestPlanToggleArchivedInMenu:
         from src.views.test_plan_view import TestPlanView
         v = TestPlanView()
         assert "歸檔" in v._act_toggle_archived.text() or "归档" in v._act_toggle_archived.text()
+
+
+# ── SampleTable 空状态提示 ──────────────────────────────────
+
+
+class TestSampleTableEmptyState:
+    """样品表格空状态提示（2026-08-09 新增）。"""
+
+    def test_empty_state_hidden_with_data(self, qapp):
+        from src.views.widgets.sample_table import _SampleTable
+        from src.models.sample import Sample
+
+        table = _SampleTable([("ID", "id"), ("SN", "sn")], [("id", "id", 60), ("sn", "sn", 200)])
+        table.set_samples([
+            Sample(id=1, sn="S1", project_id=1, status="in_stock"),
+        ])
+        assert table._empty_label.isHidden(), "有数据时空状态应隐藏"
+
+    def test_empty_state_shown_without_data(self, qapp):
+        from src.views.widgets.sample_table import _SampleTable
+
+        table = _SampleTable([("ID", "id"), ("名称", "name")], [("id", "id", 60), ("name", "name", 200)])
+        table.set_samples([])
+        assert not table._empty_label.isHidden(), "无数据时应显示空状态提示"
+        assert "暂无" in table._empty_label.text()
