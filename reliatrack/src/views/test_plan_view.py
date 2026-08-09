@@ -133,7 +133,7 @@ class TestPlanView(QWidget):
             ("已完成 (completed)", "completed"),
             ("进行中 (in_progress)", "in_progress"),
             ("待处理 (pending)", "pending"),
-            ("Fail (fail)", "fail"),
+            ("失败 (failed)", "failed"),
         ])
         self._batch_bar.clear_clicked.connect(self._task_table.clearSelection)
         self._task_table.itemSelectionChanged.connect(self._on_table_selection_changed)

@@ -583,6 +583,15 @@ class _TaskTable(QTableWidget):
             return self._tasks[row]
         return None
 
+    def get_selected_task_ids(self) -> list[int]:
+        """获取当前选中行的任务 ID 列表（排序安全）。"""
+        ids: list[int] = []
+        for idx in self.selectionModel().selectedRows():
+            t = self.get_task_at_row(idx.row())
+            if t and t.id is not None:
+                ids.append(t.id)
+        return ids
+
     # ── 批量编辑 ────────────────────────────────────────────
 
     def _edit_inline_progress(self, row: int, task: TestTask) -> None:

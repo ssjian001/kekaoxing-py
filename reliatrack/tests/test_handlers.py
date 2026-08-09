@@ -693,3 +693,84 @@ class TestActualDateEdit:
         handlers = PlanHandlers(mock_plan_win)
 
         handlers._on_actual_date_edit(1, "actual_start_date", "2026-03-15")
+
+# ══════════════════════════════════════════════════════════════
+#  PlanHandlers — 浮动批量操作栏信号（BatchActionBar 接线）
+# ══════════════════════════════════════════════════════════════
+
+
+class TestBatchActionBarWiring:
+    """批量操作栏 3 个核心信号必须连接（2026-08-09 修复：原为死信号）。"""
+
+    @pytest.fixture()
+    def batch_win(self, db_conn: apsw.Connection) -> MagicMock:
+        from src.db.repositories.test_task_repo import TestTaskRepository
+        from src.db.repositories.test_plan_repo import TestPlanRepository
+        from src.db.repositories.test_result_repo import TestResultRepository
+        from src.services.test_plan_service import TestPlanService
+        plan_repo = TestPlanRepository(db_conn)
+        task_repo = TestTaskRepository(db_conn)
+        result_repo = TestResultRepository(db_conn)
+        svc = TestPlanService(plan_repo, task_repo, result_repo)
+
+        db_conn.execute(
+            "INSERT INTO test_plans (id, project_id, name, status) VALUES (1, 1, 'P', 'active')"
+        )
+        db_conn.execute(
+            "INSERT INTO test_tasks (id, plan_id, name, duration, status) VALUES (1, 1, 'T1', 5, 'pending')"
+        )
+        db_conn.execute(
+            "INSERT INTO test_tasks (id, plan_id, name, duration, status) VALUES (2, 1, 'T2', 3, 'pending')"
+        )
+
+        win = MagicMock()
+        win.ctrl.test_plan_service = svc
+        win.ctrl.test_tasks = task_repo
+        win.toast = MagicMock()
+        # 模拟 task_table.get_selected_task_ids
+        task_table = MagicMock()
+        task_table.get_selected_task_ids.return_value = [1, 2]
+        win.test_plan_view._task_table = task_table
+        win.test_plan_view.get_selected_plan_id.return_value = 1
+        return win
+
+    def test_connect_signals_wires_batch_bar(self, batch_win: MagicMock) -> None:
+        """connect_signals 必须连接 status_selected / tech_selected / export_clicked。"""
+        import inspect
+        from src.handlers import plan_handlers
+        src = inspect.getsource(plan_handlers.PlanHandlers.connect_signals)
+        assert "_batch_bar.status_selected.connect" in src
+        assert "_batch_bar.tech_selected.connect" in src
+        assert "_batch_bar.export_clicked.connect" in src
+
+    def test_batch_status_updates_tasks(self, batch_win: MagicMock) -> None:
+        """批量改状态：_on_batch_status('completed') → 两个任务状态更新。"""
+        from src.handlers.plan_handlers import PlanHandlers
+        handlers = PlanHandlers(batch_win)
+        handlers._on_batch_status("completed")
+
+        t1 = batch_win.ctrl.test_plan_service.get_task(1)
+        t2 = batch_win.ctrl.test_plan_service.get_task(2)
+        assert t1 is not None and t1.status == "completed"
+        assert t2 is not None and t2.status == "completed"
+
+    def test_batch_status_no_selection_toast(self, batch_win: MagicMock) -> None:
+        """未选任务 → toast 提示且不崩溃。"""
+        batch_win.test_plan_view._task_table.get_selected_task_ids.return_value = []
+        from src.handlers.plan_handlers import PlanHandlers
+        handlers = PlanHandlers(batch_win)
+        handlers._on_batch_status("completed")
+        batch_win.toast.assert_called_once()
+
+    def test_batch_assign_technician(self, batch_win: MagicMock) -> None:
+        """批量指派技术员：tech_id → 名称 → 任务 technician_id 更新。"""
+        batch_win.ctrl.technicians = MagicMock()
+        batch_win.ctrl.technicians.list_all.return_value = [
+            type("Tech", (), {"id": 7, "name": "张三"})(),
+        ]
+        from src.handlers.plan_handlers import PlanHandlers
+        handlers = PlanHandlers(batch_win)
+        handlers._on_batch_assign_technician(7)
+
+        t1 = batch_win.ctrl.test_plan_service.get_task(1)
+        assert t1 is not None and t1.technician_id == 7

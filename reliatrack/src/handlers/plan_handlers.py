@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import (
@@ -58,6 +59,10 @@ class PlanHandlers:
         from src.handlers.crud_helpers import debounce_connect
         debounce_connect(v.btn_record_result, self._on_record_result)
         v.btn_quick_add.triggered.connect(self._on_task_quick_add)
+        # 浮动批量操作栏（批量改状态/指派技术员/导出）
+        v._batch_bar.status_selected.connect(self._on_batch_status)
+        v._batch_bar.tech_selected.connect(self._on_batch_assign_technician)
+        v._batch_bar.export_clicked.connect(self._on_batch_export)
         # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
@@ -1240,6 +1245,72 @@ class PlanHandlers:
         )
 
     # ── 批量值粘贴 ──
+
+    def _on_batch_status(self, status_code: str) -> None:
+        """浮动批量操作栏：批量变更选中任务状态。"""
+        v = self._win.test_plan_view
+        ids = v._task_table.get_selected_task_ids()
+        if not ids:
+            self._win.toast("请先选择任务", "warning")
+            return
+        self._on_batch_value(ids, 8, status_code)
+
+    def _on_batch_assign_technician(self, tech_id: int) -> None:
+        """浮动批量操作栏：批量指派技术员（tech_id → 名称 → 复用 col 9 路径）。"""
+        v = self._win.test_plan_view
+        ids = v._task_table.get_selected_task_ids()
+        if not ids:
+            self._win.toast("请先选择任务", "warning")
+            return
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.technicians:
+            return
+        matched = [t.name for t in ctrl.technicians.list_all() if t.id == tech_id]
+        if not matched:
+            self._win.toast("技术员不存在或已被删除", "error")
+            return
+        self._on_batch_value(ids, 9, matched[0])
+
+    def _on_batch_export(self) -> None:
+        """浮动批量操作栏：批量导出选中任务到 Excel。"""
+        v = self._win.test_plan_view
+        ids = v._task_table.get_selected_task_ids()
+        if not ids:
+            self._win.toast("请先选择任务", "warning")
+            return
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service:
+            return
+        # 找到选中任务所属计划（取第一个任务所在计划）
+        plan_id = v.get_selected_plan_id()
+        if plan_id is None:
+            self._win.toast("请先选择测试计划", "warning")
+            return
+        plan = ctrl.test_plan_service.get_plan(plan_id)
+        if not plan:
+            return
+        all_tasks = ctrl.test_plan_service.get_tasks(plan_id)
+        tasks = [t for t in all_tasks if t.id in ids]
+        if not tasks:
+            self._win.toast("没有可导出的任务", "warning")
+            return
+        try:
+            results = ctrl.test_plan_service.get_all_results_by_tasks(ids) if ids else []
+            tech_names = {}
+            if ctrl.technicians:
+                for tech in ctrl.technicians.list_all():
+                    if tech.id is not None:
+                        tech_names[tech.id] = tech.name
+            from src.services.export import ExportService
+            export_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "exports")
+            os.makedirs(export_dir, exist_ok=True)
+            svc = ExportService(output_dir=export_dir)
+            path = svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
+            self._win.toast(f"已导出 {len(tasks)} 个任务: {path}", "success")
+        except Exception as e:  # noqa: BLE001 — 导出异常统一提示
+            self._win.toast(f"批量导出失败: {e}", "error")
+            import logging
+            logging.getLogger(__name__).exception("Batch export failed")
 
     def _on_batch_value(self, task_ids: list[int], col: int, value: str) -> None:
         """从表格 Ctrl+V 粘贴或就地编辑的值批量更新选中行。
