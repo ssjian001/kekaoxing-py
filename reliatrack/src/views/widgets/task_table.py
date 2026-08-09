@@ -407,7 +407,9 @@ class _TaskTable(QTableWidget):
         self.setRowCount(len(tasks))
         for row, task in enumerate(tasks):
             # 列: #, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
-            status_text = self._STATUS_LABELS.get(task.status, task.status)
+            # 兼容历史数据 "fail" → 统一为 "failed"
+            _status_key = "failed" if task.status == "fail" else task.status
+            status_text = self._STATUS_LABELS.get(_status_key, task.status)
             priority_text = PRIORITY_LABELS.get(task.priority, str(task.priority))
             tech_name = tech_map.get(task.technician_id, "") if task.technician_id else ""
             pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
@@ -463,9 +465,10 @@ class _TaskTable(QTableWidget):
                             item.setToolTip(f"已超期 {overdue_days} 天（预计结束: {planned_end_str}）")
                             if planned_end_str != "—":
                                 item.setText(f"{planned_end_str}  超期{overdue_days}d")
-                # 状态颜色 (col 8)
+                # 状态颜色 (col 8) — 兼容历史 "fail"
                 if col == 8:
-                    item.setForeground(QColor(self._STATUS_COLORS.get(task.status, _t.TEXT)))
+                    _color_key = "failed" if task.status == "fail" else task.status
+                    item.setForeground(QColor(self._STATUS_COLORS.get(_color_key, _t.TEXT)))
                 # 优先级颜色 (col 7)
                 elif col == 7:
                     item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, _t.TEXT)))
@@ -548,7 +551,7 @@ class _TaskTable(QTableWidget):
         act_p = sub_status.addAction("进行中 (in_progress)")
         act_f = sub_status.addAction("已完成 (completed)")
         act_w = sub_status.addAction("待处理 (pending)")
-        act_fail = sub_status.addAction("Fail (fail)")
+        act_fail = sub_status.addAction("失败 (failed)")
 
         menu.addSeparator()
         act_del = menu.addAction("🗑️ 删除该任务")
@@ -559,7 +562,7 @@ class _TaskTable(QTableWidget):
         elif action == act_del and self._on_delete_callback:
             self._on_delete_callback(task)
         elif action in (act_p, act_f, act_w, act_fail):
-            status_map = {act_p: "in_progress", act_f: "completed", act_w: "pending", act_fail: "fail"}
+            status_map = {act_p: "in_progress", act_f: "completed", act_w: "pending", act_fail: "failed"}
             new_st = status_map[action]
             if self._on_status_advance_callback:
                 self._on_status_advance_callback(task, new_st)
@@ -596,20 +599,19 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 6, spin)
         spin.setFocus()
 
-        def _commit(val: float) -> None:
+        def _commit() -> None:
+            new_val = spin.value()
             # 用批量更新回調直接寫 DB（col=6 → progress），不要走 edit_callback 否則會彈完整編輯對話框
-            if self._batch_value_callback and task.id is not None:
-                self._batch_value_callback([task.id], 6, str(int(val)))
-            self.removeCellWidget(row, 6)
-            self.flash_row(task.id, 500)
+            if new_val != task.progress and self._batch_value_callback and task.id is not None:
+                self._batch_value_callback([task.id], 6, str(int(new_val)))
 
-        spin.editingFinished.connect(lambda sv=spin: _commit(sv.value()))
+        spin.editingFinished.connect(lambda: self._finish_inline_edit(spin, row, 6, task.id, _commit))
+        spin.installEventFilter(_make_focus_out_filter(spin, lambda: self._finish_inline_edit(spin, row, 6, task.id, _commit)))
         QTimer.singleShot(50, spin.selectAll)
 
     def _edit_inline_priority(self, row: int, task: TestTask) -> None:
         """双击优先级列 — 显示下拉框就地编辑。"""
         from PySide6.QtWidgets import QComboBox
-        from PySide6.QtCore import QTimer
         from src.constants import PRIORITY_LABELS
 
         combo = QComboBox()
@@ -621,15 +623,15 @@ class _TaskTable(QTableWidget):
         combo.setFocus()
         combo.showPopup()
 
-        def _commit(idx: int) -> None:
-            new_pri = items[idx][1]
+        def _commit() -> None:
+            new_pri = items[combo.currentIndex()][1]
             if new_pri != task.priority and self._batch_value_callback and task.id is not None:
                 # col=7 → priority，走批量更新回調直接寫 DB
                 self._batch_value_callback([task.id], 7, str(new_pri))
-            self.removeCellWidget(row, 7)
-            self.flash_row(task.id, 500)
 
-        combo.currentIndexChanged.connect(_commit)
+        # activated 在用户选当前项时也触发（currentIndexChanged 不触发）；focusOut 兜底放弃选择
+        combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 7, task.id, _commit))
+        combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 7, task.id, _commit)))
 
     def _finish_inline_edit(self, widget, row: int, col: int, task_id: int | None,
                             commit: Callable[[], None]) -> None:
@@ -683,14 +685,18 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 2, combo)
         combo.setFocus()
         combo.showPopup()
+        initial_idx = combo.currentIndex()
 
         def _commit() -> None:
+            if combo.currentIndex() == initial_idx:
+                return  # 用户未改动，仅关闭编辑器
             new_cat = combo.currentText()
             if new_cat != task.category and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 2, new_cat)
 
-        # activated 在用户选当前项时也触发（currentIndexChanged 不触发）
+        # activated 在用户选当前项时也触发（currentIndexChanged 不触发）；focusOut 兜底放弃选择
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 2, task.id, _commit))
+        combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 2, task.id, _commit)))
 
     def _edit_inline_duration(self, row: int, task: TestTask) -> None:
         """双击天数列 — 显示 QSpinBox 就地编辑。"""
@@ -721,21 +727,25 @@ class _TaskTable(QTableWidget):
         combo.setProperty("class", "filter-combo")
         status_items = [(label, key) for key, label in TASK_STATUS_LABELS.items()]
         combo.addItems([label for label, _ in status_items])
-        # 定位當前狀態
+        # 定位當前狀態（兼容历史数据 "fail" → 统一为 "failed"）
         for i, (_, key) in enumerate(status_items):
-            if key == task.status:
+            if key == task.status or (task.status == "fail" and key == "failed"):
                 combo.setCurrentIndex(i)
                 break
         self.setCellWidget(row, 8, combo)
         combo.setFocus()
         combo.showPopup()
+        initial_idx = combo.currentIndex()
 
         def _commit() -> None:
+            if combo.currentIndex() == initial_idx:
+                return  # 用户未改动，仅关闭编辑器
             new_status = status_items[combo.currentIndex()][1]
             if new_status != task.status and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 8, new_status)
 
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 8, task.id, _commit))
+        combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 8, task.id, _commit)))
 
     def _edit_inline_technician(self, row: int, task: TestTask) -> None:
         """双击技术员列 — 显示下拉框就地编辑。"""
@@ -757,8 +767,11 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 9, combo)
         combo.setFocus()
         combo.showPopup()
+        initial_idx = combo.currentIndex()
 
         def _commit() -> None:
+            if combo.currentIndex() == initial_idx:
+                return  # 用户未改动，仅关闭编辑器
             idx_ = combo.currentIndex()
             tech_id = combo.itemData(idx_)
             if self._batch_value_callback and task.id is not None:
@@ -770,6 +783,7 @@ class _TaskTable(QTableWidget):
                         self._batch_value_callback([task.id], 9, tech_name)
 
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 9, task.id, _commit))
+        combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 9, task.id, _commit)))
 
     def keyPressEvent(self, event: object) -> None:
         """拦截 Ctrl+V 进行批量粘贴，其余走默认。"""

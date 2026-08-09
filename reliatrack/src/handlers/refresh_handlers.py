@@ -180,7 +180,7 @@ class RefreshHandlers:
         completed = task_status_data.get("completed", 0)
         in_progress = task_status_data.get("in_progress", 0)
         pending_count = task_status_data.get("pending", 0)
-        failed_task_count = task_status_data.get("failed", 0)
+        failed_task_count = task_status_data.get("failed", 0) + task_status_data.get("fail", 0)
         skipped_count = task_status_data.get("skipped", 0)
         paused_count = task_status_data.get("paused", 0)
 

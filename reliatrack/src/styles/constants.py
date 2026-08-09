@@ -93,6 +93,7 @@ TASK_STATUS_COLORS: dict[str, str] = {
     "in_progress": STATUS_BLUE,
     "completed": STATUS_GREEN,
     "skipped": STATUS_SURFACE,
+    "failed": STATUS_RED,
 }
 
 # 测试结果

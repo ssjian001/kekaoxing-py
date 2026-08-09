@@ -15,6 +15,7 @@ TASK_STATUS_LABELS: dict[str, str] = {
     "in_progress": "进行中",
     "completed": "已完成",
     "skipped": "已跳过",
+    "failed": "失败",
 }
 
 # ═══════════════════════════════════════════════════════════════════

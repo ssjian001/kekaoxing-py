@@ -1208,7 +1208,9 @@ class PlanHandlers:
             updates["progress"] = 100.0
             status_label = "已完成"
         else:
-            status_label = new_status
+            # 失败等其它状态 — 用中文标签（TASK_STATUS_LABELS 已含 failed）
+            from src.constants import TASK_STATUS_LABELS as _TSL
+            status_label = _TSL.get(new_status, new_status)
 
         exec_crud(
             win=self._win,

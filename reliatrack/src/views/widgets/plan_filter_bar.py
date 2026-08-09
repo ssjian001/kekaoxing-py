@@ -71,6 +71,7 @@ class PlanFilterBar(QWidget):
         self._status_filter_combo.addItem("进行中", "in_progress")
         self._status_filter_combo.addItem("已完成", "completed")
         self._status_filter_combo.addItem("已跳过", "skipped")
+        self._status_filter_combo.addItem("失败", "failed")
         row.addWidget(self._status_filter_combo)
 
         # 类别筛选

@@ -237,6 +237,24 @@ class TestCountByStatus:
         result = task_repo.count_by_status()
         assert result.get("pending", 0) >= 1
 
+    def test_fail_and_failed_both_counted(self, task_repo, plan_svc, sample_project, db_conn):
+        """历史 "fail" 与标准 "failed" 状态都能被统计（dashboard 合并计数）。"""
+        pid = sample_project["id"]
+        plid = plan_svc.create_plan(pid, "计划1", start_date="2026-01-01")
+        db_conn.execute(
+            "INSERT INTO test_tasks (plan_id, name, duration, status) VALUES (?, ?, 5, 'failed')",
+            (plid, "T1"),
+        )
+        db_conn.execute(
+            "INSERT INTO test_tasks (plan_id, name, duration, status) VALUES (?, ?, 3, 'fail')",
+            (plid, "T2"),
+        )
+        result = task_repo.count_by_status(project_id=pid)
+        assert result.get("failed") == 1
+        assert result.get("fail") == 1
+        merged = result.get("failed", 0) + result.get("fail", 0)
+        assert merged == 2
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  6. EquipmentRepo.count_calibration_due()
