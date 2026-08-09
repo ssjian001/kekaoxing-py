@@ -2,7 +2,7 @@
 
 **最后更新**: 2026-08-09
 **Schema 版本**: v27 (20 张表)
-**测试**: 653 passed
+**测试**: 659 passed
 **Widgets**: 42 | **Dialogs**: 28
 
 ## 当前状态
@@ -16,7 +16,7 @@ UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23
   - P1-2: category/status/technician/priority 四个 combo 编辑器补 focusOut 兜底
   - P1-3: 右键菜单状态值 fail→failed 统一；TASK_STATUS_LABELS/COLORS 补 failed（红色）；dashboard 统计合并 fail+failed；筛选栏补失败选项；表格渲染/状态定位兼容历史 fail
   - P2: progress _commit 加值变化判断；状态定位 initial_idx 保护防误改
-  - 新增 7 测试（枚举完整性/合并计数/渲染兼容），653 passed
+  - 测试重构为行为测试（枚举/渲染/状态定位/提交路径），659 passed
 
 ### 最近完成
 
