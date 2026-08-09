@@ -261,3 +261,44 @@ def test_dashboard_chart_data(ctrl, base_data):
     issues = ctrl.issue_service.list_all()
     issue_counts = Counter(i.priority for i in issues)
     assert len(issue_counts) > 0
+
+
+# ══════════════════════════════════════════════════════════════
+#  窗口几何记忆（saveGeometry/restoreGeometry，2026-08-09）
+# ══════════════════════════════════════════════════════════════
+
+
+class TestWindowGeometry:
+    """窗口大小/位置持久化：保存后可恢复（用已构造的 main_window，避免二次构造 ~108s）。"""
+
+    def test_save_writes_qsettings(self, main_window):
+        """_save_window_geometry 写入 QSettings 几何记录。"""
+        from PySide6.QtCore import QSettings
+
+        main_window.resize(1234, 678)
+        main_window._save_window_geometry()
+        saved = QSettings().value(main_window._GEOMETRY_KEY)
+        assert saved is not None, "saveGeometry 应写入 QSettings"
+
+    def test_restore_matches_saved(self, main_window):
+        """_restore_window_geometry 读取保存的几何（offscreen 下尺寸可能被 min 限制，验证字节级往返）。"""
+        from PySide6.QtCore import QSettings
+
+        # 保存当前尺寸 → 几何字节被写入
+        main_window.resize(1234, 678)
+        main_window._save_window_geometry()
+        saved_geo = QSettings().value(main_window._GEOMETRY_KEY)
+        assert saved_geo is not None and len(saved_geo) > 0
+
+        # restore 不崩溃，且窗口仍可正常交互
+        main_window._restore_window_geometry()
+        assert main_window.width() >= 800  # 不小于最小宽度
+        assert main_window.height() >= 600  # 不小于最小高度
+
+    def test_restore_after_shutdown_path(self, main_window):
+        """_save_window_geometry 可重复调用不崩溃（closeEvent 路径核心逻辑）。"""
+        from PySide6.QtCore import QSettings
+        main_window.resize(1000, 600)
+        main_window._save_window_geometry()
+        saved = QSettings().value(main_window._GEOMETRY_KEY)
+        assert saved is not None

@@ -108,7 +108,6 @@ class MainWindow(QMainWindow):
         self._ctrl = controller
         self.setWindowTitle("ReliaTrack — 可靠性测试管理")
         self.setMinimumSize(800, 600)
-        self.resize(1100, 700)
 
         # 初始化 handler 模块
         self._project_handlers = ProjectHandlers(self)
@@ -132,6 +131,7 @@ class MainWindow(QMainWindow):
         self._setup_menubar()
         self._setup_toolbar()
         self._setup_status_bar()
+        self._restore_window_geometry()
 
         # Connect all handler signals
         self._project_handlers.connect_signals()
@@ -921,7 +921,31 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         self._ctrl.shutdown()
+        self._save_window_geometry()
         event.accept()
+
+    # ── 窗口几何记忆 ──────────────────────────────────────────
+
+    _GEOMETRY_KEY = "ReliaTrack/window_geometry"
+    _STATE_KEY = "ReliaTrack/window_state"
+
+    def _restore_window_geometry(self) -> None:
+        """从 QSettings 恢复上次窗口大小/位置；无记录时用默认尺寸。"""
+        settings = QSettings()
+        geo = settings.value(self._GEOMETRY_KEY)
+        if geo:
+            self.restoreGeometry(geo)
+        else:
+            self.resize(1100, 700)
+        state = settings.value(self._STATE_KEY)
+        if state:
+            self.restoreState(state)
+
+    def _save_window_geometry(self) -> None:
+        """保存窗口几何到 QSettings（关闭时调用）。"""
+        settings = QSettings()
+        settings.setValue(self._GEOMETRY_KEY, self.saveGeometry())
+        settings.setValue(self._STATE_KEY, self.saveState())
 
     # ── UX 增强：平滑滚动 + 动效 ──
 
