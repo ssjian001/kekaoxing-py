@@ -1375,14 +1375,31 @@ class PlanHandlers:
             return
 
         count = 0
+        changes: list[tuple[int, object, object]] = []  # (task_id, old_value, new_value)
         for tid in task_ids:
-            exec_crud(
-                win=self._win,
-                action=ctrl.test_plan_service.update_task,
-                action_args=(tid,),
-                action_kwargs={field: parsed_value},
-                toast_msg=f"已批量更新 {count + 1}/{len(task_ids)} 个任务",
-                entity="task",
-                error_title="批量更新失败",
-            )
+            task = ctrl.test_plan_service.get_task(tid)
+            if task is None:
+                continue
+            old_value = getattr(task, field, None)
+            changes.append((tid, old_value, parsed_value))
             count += 1
+
+        if count == 0:
+            return
+
+        # 批量操作走 undo：MacroCommand 包裹 N 个 UpdateFieldCommand，一次入栈
+        from src.services.undo_manager import MacroCommand, UpdateFieldCommand
+        task_repo = ctrl.test_plan_service._task_repo
+        commands = [
+            UpdateFieldCommand(task_repo, tid, field, old_value, new_value, "任务")
+            for tid, old_value, new_value in changes
+        ]
+        macro = MacroCommand(commands, f"批量更新 {count} 个任务{field}")
+        try:
+            ctrl.undo_manager.execute(macro)
+        except Exception:
+            logger.exception("批量更新失败: field=%s count=%d", field, count)
+            QMessageBox.critical(self._win, "批量更新失败", "批量更新任务失败，请查看日志")
+            return
+        self._win.toast(f"已批量更新 {count} 个任务", "success")
+        self._win.ctrl.notify_data_changed("task")

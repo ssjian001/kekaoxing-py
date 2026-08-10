@@ -368,3 +368,91 @@ class TestServiceTransaction:
         except RuntimeError:
             pass
         assert tech_svc.get(tid) is None
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  8. UndoManager 异常安全 + MacroCommand 批量 undo（2026-08-10 审计修复）
+# ═══════════════════════════════════════════════════════════════════
+
+
+class _ExplodingCommand:
+    """undo() 抛异常的命令，用于验证 undo 栈不丢命令。"""
+
+    def __init__(self):
+        self.description = "exploding"
+        self.do_called = 0
+        self.undo_called = 0
+
+    def do(self):
+        self.do_called += 1
+
+    def undo(self):
+        self.undo_called += 1
+        raise RuntimeError("undo boom")
+
+
+class TestUndoManagerExceptionSafety:
+    def test_undo_failure_keeps_command_on_stack(self):
+        """undo() 抛异常时命令不丢失（压回 undo 栈，可重试）。"""
+        um = UndoManager()
+        cmd = _ExplodingCommand()
+        um.execute(cmd)
+        with pytest.raises(RuntimeError):
+            um.undo()
+        # 命令仍在 undo 栈（未压入 redo），redo 栈空
+        assert um.can_undo() is True
+        assert um.can_redo() is False
+
+    def test_redo_failure_keeps_command_on_redo_stack(self):
+        """redo() 抛异常时命令不丢失（压回 redo 栈）。"""
+        um = UndoManager()
+
+        class _RedoBoom:
+            description = "redo boom"
+
+            def do(self):
+                pass
+
+            def undo(self):
+                pass
+
+            def redo(self):
+                raise RuntimeError("redo boom")
+
+        cmd = _RedoBoom()
+        um.execute(cmd)
+        um.undo()  # 正常撤销 → 进 redo 栈
+        assert um.can_redo() is True
+        with pytest.raises(RuntimeError):
+            um.redo()
+        assert um.can_redo() is True
+        assert um.can_undo() is False
+
+    def test_macro_command_batch_undo(self, db_conn, plan_svc, sample_project):
+        """MacroCommand 包裹多个 UpdateFieldCommand 可一次撤销整个批量操作。"""
+        from src.services.undo_manager import MacroCommand, UpdateFieldCommand
+        repo = plan_svc._task_repo
+        # 建真实 plan 再建 2 个任务（FK: test_tasks.plan_id → test_plans.id）
+        plid = plan_svc.create_plan(sample_project["id"], "批量测试计划", start_date="2026-01-01")
+        t1 = repo.insert(plan_id=plid, name="批量A", category="", duration=1,
+                         status="pending", progress=0.0, priority=1)
+        t2 = repo.insert(plan_id=plid, name="批量B", category="", duration=1,
+                         status="pending", progress=0.0, priority=1)
+        um = UndoManager()
+        macro = MacroCommand([
+            UpdateFieldCommand(repo, t1, "status", "pending", "completed", "任务"),
+            UpdateFieldCommand(repo, t2, "status", "pending", "completed", "任务"),
+        ], "批量更新 2 个任务status")
+        um.execute(macro)
+        # 批量后 status 都是 completed
+        assert repo.get_by_id(t1).status == "completed"
+        assert repo.get_by_id(t2).status == "completed"
+        # 一次 undo 全部回滚
+        desc = um.undo()
+        assert desc == "批量更新 2 个任务status"
+        assert repo.get_by_id(t1).status == "pending"
+        assert repo.get_by_id(t2).status == "pending"
+        # redo 恢复
+        um.redo()
+        assert repo.get_by_id(t1).status == "completed"
+        assert repo.get_by_id(t2).status == "completed"

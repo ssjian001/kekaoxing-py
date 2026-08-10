@@ -339,7 +339,10 @@ class UndoManager:
         self._max_history = max_history
 
     def execute(self, command: Command) -> None:
-        """执行命令并压入撤销栈。"""
+        """执行命令并压入撤销栈。
+
+        若 do() 抛异常，命令不入栈（保持栈一致性），异常向上传播由调用方处理。
+        """
         command.do()
         self._undo_stack.append(command)
         self._redo_stack.clear()
@@ -358,19 +361,35 @@ class UndoManager:
             self._undo_stack.pop(0)
 
     def undo(self) -> str | None:
-        """撤销最近一次操作，返回操作描述或 None。"""
+        """撤销最近一次操作，返回操作描述或 None。
+
+        undo() 失败时命令压回 undo 栈（不丢失、可重试），异常向上传播。
+        """
         if self._undo_stack:
-            cmd = self._undo_stack.pop()
-            cmd.undo()
+            cmd = self._undo_stack[-1]
+            try:
+                cmd.undo()
+            except Exception:
+                logger.exception("Undo failed for command: %s", getattr(cmd, "description", cmd))
+                raise
+            self._undo_stack.pop()
             self._redo_stack.append(cmd)
             return cmd.description
         return None
 
     def redo(self) -> str | None:
-        """重做最近一次撤销，返回操作描述或 None。"""
+        """重做最近一次撤销，返回操作描述或 None。
+
+        redo() 失败时命令压回 redo 栈（不丢失、可重试），异常向上传播。
+        """
         if self._redo_stack:
-            cmd = self._redo_stack.pop()
-            cmd.redo()
+            cmd = self._redo_stack[-1]
+            try:
+                cmd.redo()
+            except Exception:
+                logger.exception("Redo failed for command: %s", getattr(cmd, "description", cmd))
+                raise
+            self._redo_stack.pop()
             self._undo_stack.append(cmd)
             return cmd.description
         return None
