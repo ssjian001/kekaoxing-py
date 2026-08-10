@@ -144,14 +144,23 @@ class TodoView(QWidget):
 
         return widget
 
-    def _toggle_empty_state(self, count: int) -> None:
-        """空状态提示显隐：count==0 时显示提示并隐藏看板列。"""
+    def _toggle_empty_state(self, count: int, total: int | None = None) -> None:
+        """空状态提示显隐：无可见卡片时显示提示并隐藏看板列。
+
+        count=筛选后可见卡片数；total=筛选前全量数（区分"真空"与"被筛选隐藏"）。
+        """
         if not hasattr(self, "_empty_label"):
             return
-        self._empty_label.setVisible(count == 0)
-        self._kanban_board.setEnabled(count > 0)
+        show_empty = count == 0
+        self._empty_label.setVisible(show_empty)
+        self._kanban_board.setEnabled(not show_empty)
         for col in self._columns.values():
-            col.setVisible(count > 0)
+            col.setVisible(not show_empty)
+        if show_empty:
+            if total and total > 0:
+                self._empty_label.setText("当前筛选条件下无待办，可调整筛选或搜索")
+            else:
+                self._empty_label.setText("暂无待办事项，可在上方快速添加或点击「新增」")
 
     def _build_filter_row(self, parent_layout: QVBoxLayout) -> None:
         """筛选行：项目选择 + 搜索 + 显示归档。"""
@@ -327,9 +336,9 @@ class TodoView(QWidget):
         for status, col in self._columns.items():
             col.set_cards(groups.get(status, []))
 
-        # 空状态：检查全部列
+        # 空状态：检查全部列（in_view=筛选后可见数，total=全量数区分"真空"vs"被筛选"）
         in_view = sum(len(col._cards) for col in self._columns.values())
-        self._toggle_empty_state(in_view)
+        self._toggle_empty_state(in_view, len(filtered))
 
     def _on_card_selected(self, todo_id: int) -> None:
         """卡片单击选中 — 取消旧选中，标记新选中。"""

@@ -410,7 +410,8 @@ class SchedulePreviewDialog(QDialog):
                 )
                 for d in days:
                     usage = timeline.get(d, {}).get(eq_id, 0)
-                    if usage >= eq_cap:
+                    # usage 含当前任务自身 → 严格大于容量才算超（>1 等价原默认行为）
+                    if usage > eq_cap:
                         has_eq_conflict = True
                         break
 

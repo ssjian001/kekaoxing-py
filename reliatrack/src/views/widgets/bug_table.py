@@ -165,15 +165,6 @@ class _BugTable(QTableWidget):
                     self.setCurrentCell(row, 0)
                     break
 
-    def _get_aging_days(self, issue_id: int) -> int:
-        if self._issue_service is not None:
-            try:
-                return self._issue_service.get_aging_days(issue_id)
-            except Exception:
-                logger.exception("_get_aging_days() failed")
-                return 0
-        return 0
-
     def _get_issue_id_at_row(self, row: int) -> Optional[int]:
         if 0 <= row < self.rowCount():
             item = self.item(row, 0)

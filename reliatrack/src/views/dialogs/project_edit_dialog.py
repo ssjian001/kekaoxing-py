@@ -85,8 +85,14 @@ class ProjectEditDialog(_BaseDialog):
             "product": self._product_edit.text().strip(),
             "customer": self._customer_edit.text().strip(),
             "description": self._desc_edit.toPlainText().strip(),
-            "status": self._STATUS_MAP.get(status_label, "active"),
         }
+        if status_label in self._STATUS_MAP:
+            data["status"] = self._STATUS_MAP[status_label]
+        elif self._project is not None and self._project.status:
+            # 历史状态（completed/archived 等）不在当前 3 态映射——保持原值不误改
+            data["status"] = self._project.status
+        else:
+            data["status"] = "active"
         if self._project is not None and self._project.id is not None:
             data["id"] = self._project.id
         return data
