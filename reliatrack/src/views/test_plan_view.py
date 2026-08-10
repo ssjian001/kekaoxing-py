@@ -205,6 +205,9 @@ class TestPlanView(QWidget):
         text = self._search_edit.text().strip().lower()
         from PySide6.QtCore import QSettings as _QSettings
         _QSettings().setValue("ReliaTrack/task_search", text)
+        # 接线搜索历史 chips（P1-16）：关键词非空且足够长才存，避免逐键刷屏
+        if len(text) >= 2 and hasattr(self, '_filter_bar'):
+            self._filter_bar.save_search_keyword(text)
         filtered = self._all_tasks_for_filter
 
         # 关键词过滤
