@@ -64,6 +64,12 @@ class SampleService:
             issue_count = self._issue_repo.count_by_sample(sample_id)
             if issue_count > 0:
                 reasons.append(f"{issue_count} 个 Issue")
+            # 软删 Issue 仍持有 sample_id 外键，删除样品会触发
+            # FK ON DELETE CASCADE 物理清除它们（含 FA/CAPA/评论）。
+            # 必须阻止，软删 Issue 是保底可恢复数据。
+            soft_deleted = self._issue_repo.count_by_sample_all(sample_id) - issue_count
+            if soft_deleted > 0:
+                reasons.append(f"{soft_deleted} 个已删除 Issue（需先恢复或解除关联）")
 
         if reasons:
             detail = "、".join(reasons)

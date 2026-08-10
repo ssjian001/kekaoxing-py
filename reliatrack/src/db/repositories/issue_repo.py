@@ -104,6 +104,19 @@ class IssueRepository(BaseRepository):
         """统计指定样品的 Issue 数量。"""
         return self.count(sample_id=sample_id)
 
+    def count_by_sample_all(self, sample_id: int) -> int:
+        """统计指定样品的 Issue 数量（含已软删除）。
+
+        用于删除前的引用保护：软删 Issue 仍持有 sample_id 外键，
+        若只按 is_deleted=0 计数，删除样品会触发 FK ON DELETE CASCADE
+        物理清除软删 Issue 及其 FA/CAPA/评论（绕过硬删除保底）。
+        """
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM [issues] WHERE sample_id = ?",
+            (sample_id,),
+        ).fetchone()
+        return row[0] if row else 0
+
     def count_by_analyst(self, analyst_id: int) -> int:
         """统计 fa_records 中指定分析人的记录数量。"""
         row = self._conn.execute(
@@ -484,7 +497,11 @@ class IssueRepository(BaseRepository):
                 (project_id,),
             ).fetchone()
         else:
-            row = self._conn.execute("SELECT COUNT(*) FROM [capa_records]").fetchone()
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM [capa_records] cr "
+                "JOIN [issues] i ON cr.issue_id = i.id "
+                "WHERE i.is_deleted = 0"
+            ).fetchone()
         return row[0] if row else 0
 
     def count_capa_done(self, project_id: int | None = None) -> int:
@@ -501,7 +518,9 @@ class IssueRepository(BaseRepository):
             ).fetchone()
         else:
             row = self._conn.execute(
-                "SELECT COUNT(*) FROM [capa_records] WHERE status IN ('completed', 'verified')"
+                "SELECT COUNT(*) FROM [capa_records] cr "
+                "JOIN [issues] i ON cr.issue_id = i.id "
+                "WHERE cr.status IN ('completed', 'verified') AND i.is_deleted = 0"
             ).fetchone()
         return row[0] if row else 0
 

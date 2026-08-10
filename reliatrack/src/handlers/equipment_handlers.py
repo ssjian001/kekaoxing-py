@@ -97,7 +97,12 @@ class EquipmentHandlers:
         if eq.id is None:
             QMessageBox.warning(self._win, "删除失败", "Equipment id is None")
             return
-        cmd = ctrl.equipment_service.create_delete_command(eq.id)
+        try:
+            cmd = ctrl.equipment_service.create_delete_command(eq.id)
+        except ValueError as e:
+            # 被引用时 create_delete_command 抛 ValueError，必须捕获并提示
+            QMessageBox.warning(self._win, "删除失败", str(e))
+            return
         exec_crud(
             win=self._win,
             action=ctrl.equipment_service.delete,

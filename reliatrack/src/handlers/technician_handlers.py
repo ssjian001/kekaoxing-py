@@ -99,7 +99,12 @@ class TechnicianHandlers:
         if tech.id is None:
             QMessageBox.warning(self._win, "删除失败", "技术员 ID 不能为空")
             return
-        cmd = ctrl.technician_service.create_delete_command(tech.id)
+        try:
+            cmd = ctrl.technician_service.create_delete_command(tech.id)
+        except ValueError as e:
+            # 被引用时 create_delete_command 抛 ValueError，必须捕获并提示
+            QMessageBox.warning(self._win, "删除失败", str(e))
+            return
         exec_crud(
             win=self._win,
             action=ctrl.technician_service.delete,

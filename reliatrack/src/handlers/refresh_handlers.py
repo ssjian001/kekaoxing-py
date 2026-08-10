@@ -502,7 +502,12 @@ class RefreshHandlers:
         if not ctrl or not ctrl.equipment_service:
             return
         all_equipment = ctrl.equipment_service.list_all()
-        self._win.equipment_view.refresh(all_equipment)
+        # 计算设备 → 任务引用数（热力图真实负载数据源）
+        task_ref_counts: dict[int, int] = {}
+        for eq in all_equipment:
+            if eq.id is not None:
+                task_ref_counts[eq.id] = ctrl.equipment_service._repo.count_task_references(eq.id)
+        self._win.equipment_view.refresh(all_equipment, task_ref_counts)
 
     def _refresh_technicians(self) -> None:
         """刷新技术员管理视图 + 同步 Bug Tracker 的 technician_map。"""

@@ -32,6 +32,7 @@ class EquipmentLoadHeatmapWidget(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._equipments: list[Equipment] = []
+        self._task_ref_counts: dict[int, int] = {}
         self._filter_status: str = "all"
         self._is_collapsed: bool = False
 
@@ -130,26 +131,46 @@ class EquipmentLoadHeatmapWidget(QFrame):
 
         filtered = self._equipments
         if self._filter_status == "high":
-            filtered = [e for e in self._equipments if e.status in ("maintenance", "fault", "busy", "calibrating")]
+            # 高负载/维护：维护中、离线，或被任务引用 >= 2 的设备
+            filtered = [
+                e for e in self._equipments
+                if e.status in ("maintenance", "offline")
+                or self._task_ref_counts.get(e.id, 0) >= 2
+            ]
         elif self._filter_status == "run":
-            filtered = [e for e in self._equipments if e.status in ("in_use", "busy")]
+            # 运行中：被任务引用的设备（真实枚举里没有 in_use/busy 状态值）
+            filtered = [
+                e for e in self._equipments
+                if self._task_ref_counts.get(e.id, 0) > 0
+            ]
         elif self._filter_status == "idle":
-            filtered = [e for e in self._equipments if e.status in ("normal", "available")]
+            # 空闲：available 且无任务引用
+            filtered = [
+                e for e in self._equipments
+                if e.status == "available"
+                and self._task_ref_counts.get(e.id, 0) == 0
+            ]
 
-        self._canvas.set_data(filtered)
+        self._canvas.set_data(filtered, self._task_ref_counts)
 
-    def refresh(self, equipments: list[Equipment]) -> None:
-        """刷新热力图设备数据。"""
+    def refresh(self, equipments: list[Equipment], task_ref_counts: dict[int, int] | None = None) -> None:
+        """刷新热力图设备数据。
+
+        Args:
+            equipments: 设备列表。
+            task_ref_counts: 设备 id → 被测试任务引用数（真实负载数据源）。
+                为 None 时按 0 处理（无任务引用）。
+        """
         self._equipments = equipments
-        idle_cnt = sum(1 for e in equipments if e.status in ("normal", "available"))
-        use_cnt = sum(1 for e in equipments if e.status in ("in_use", "busy"))
-        maint_cnt = sum(1 for e in equipments if e.status in ("maintenance", "fault", "calibrating"))
+        self._task_ref_counts = task_ref_counts or {}
+        running = sum(1 for e in equipments if self._task_ref_counts.get(e.id, 0) > 0)
+        maint_cnt = sum(1 for e in equipments if e.status in ("maintenance", "offline"))
 
         total = max(len(equipments), 1)
-        use_pct = int((use_cnt / total) * 100)
+        use_pct = int((running / total) * 100)
 
         self._summary_label.setText(
-            f"🟢 空闲: {idle_cnt}  |  🟡 运行中: {use_cnt}  |  🔴 维护: {maint_cnt}  (均负载 {use_pct}%)"
+            f"🟢 空闲: {total - running - maint_cnt}  |  🟡 运行中: {running}  |  🔴 维护: {maint_cnt}  (使用率 {use_pct}%)"
         )
         self._apply_filter()
 
@@ -161,19 +182,15 @@ class _HeatmapCanvas(QWidget):
         super().__init__(parent)
         self._items: list[tuple[str, str, float]] = []
 
-    def set_data(self, equipments: list[Equipment]) -> None:
-        import random
-        random.seed(42)
+    def set_data(self, equipments: list[Equipment], task_ref_counts: dict[int, int] | None = None) -> None:
+        task_ref_counts = task_ref_counts or {}
 
         items = []
         for eq in equipments:
-            status = eq.status or "normal"
-            if status in ("in_use", "busy"):
-                load = random.uniform(65, 95)
-            elif status in ("normal", "available"):
-                load = random.uniform(10, 55)
-            else:
-                load = 0.0
+            status = eq.status or "available"
+            ref_count = task_ref_counts.get(eq.id or -1, 0)
+            # 真实负载：被任务引用数 → 负载百分比（1 个任务约 60%，2+ 满载）
+            load = min(ref_count * 60, 100.0) if ref_count > 0 else 0.0
             items.append((eq.name or eq.asset_no or "未知设备", status, load))
 
         self._items = items
@@ -217,7 +234,7 @@ class _HeatmapCanvas(QWidget):
 
             rect = QRectF(x, y, card_w, card_h)
 
-            if status in ("maintenance", "fault", "calibrating"):
+            if status in ("maintenance", "offline"):
                 color = QColor(DASH_DANGER)
                 bg_color = QColor(DASH_DANGER)
                 bg_color.setAlpha(25)
@@ -256,7 +273,7 @@ class _HeatmapCanvas(QWidget):
             p.drawText(
                 QRectF(x + 6, y + 3, card_w - 12, 16),
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                f"{load:.0f}%" if status not in ("maintenance", "fault") else "维修"
+                f"{load:.0f}%" if status not in ("maintenance", "offline") else "维修"
             )
 
         p.end()

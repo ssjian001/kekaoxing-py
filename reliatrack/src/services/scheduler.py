@@ -270,11 +270,16 @@ def find_earliest_slot(
     max_scan: int = 365,
     starts: dict[int, int] | None = None,
     tech_timeline: dict[int, dict[int, int]] | None = None,
-) -> int:
+) -> int | None:
     """Scan forward from *from_day* and return first valid placement day.
-    
+
     Skips non-working days (weekends/holidays when configured) so that
     ``task.start_day`` always falls on a working day.
+
+    Returns ``None`` when no valid slot is found within ``max_scan`` days —
+    callers must treat this as "cannot schedule" instead of placing the task
+    on an invalid day (weekend/holiday/over-capacity), which would silently
+    violate resource constraints.
     """
     for day in range(from_day, from_day + max_scan):
         if _is_non_working(day, config.start_date,
@@ -284,11 +289,10 @@ def find_earliest_slot(
         if can_place_at(task, day, timeline, config, starts, tech_timeline):
             return day
     logger.warning(
-        "find_earliest_slot: task=%s exceeded max_scan=%d days, "
-        "placed at fallback day %d",
-        getattr(task, 'name', task.id), max_scan, from_day + max_scan,
+        "find_earliest_slot: task=%s no valid slot within max_scan=%d days (from day %d)",
+        getattr(task, 'name', task.id), max_scan, from_day,
     )
-    return from_day + max_scan
+    return None
 
 
 def place_task(
@@ -403,6 +407,9 @@ def compress_schedule(
 
         # Find & place at earliest valid slot
         new_start = find_earliest_slot(task, earliest, timeline, config, starts=starts, tech_timeline=tech_timeline)
+        if new_start is None:
+            # 找不到合法槽位：跳过（保留原 start_day），不静默放到非法日期
+            continue
         task.start_day = new_start
         place_task(task, new_start, timeline, config, starts, tech_timeline=tech_timeline)
 
@@ -527,6 +534,9 @@ def run_auto_schedule(
             config.skip_holidays, config.holidays,
         )
         slot = find_earliest_slot(task, earliest, timeline, config, starts=starts, tech_timeline=tech_timeline)
+        if slot is None:
+            # 找不到合法槽位：跳过该任务，不静默违反约束
+            continue
         task.start_day = slot
         place_task(task, slot, timeline, config, starts, tech_timeline)
 

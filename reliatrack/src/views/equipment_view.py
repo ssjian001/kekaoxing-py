@@ -173,11 +173,16 @@ class EquipmentView(QWidget):
 
     # ── 数据加载 ────────────────────────────────────────────────
 
-    def refresh(self, equipment_list: list[Equipment]) -> None:
-        """刷新设备表格 + 热力图。"""
+    def refresh(self, equipment_list: list[Equipment], task_ref_counts: dict[int, int] | None = None) -> None:
+        """刷新设备表格 + 热力图。
+
+        Args:
+            equipment_list: 设备列表。
+            task_ref_counts: 设备 id → 被测试任务引用数（真实负载数据源）。
+        """
         self._equip_list = equipment_list
         if hasattr(self, '_heatmap'):
-            self._heatmap.refresh(equipment_list)
+            self._heatmap.refresh(equipment_list, task_ref_counts)
         self._populate_table(equipment_list)
 
 
