@@ -1,10 +1,18 @@
-"""Issue 详情弹窗 — 5个 Tab（详情/评论/活动/FA/CAPA）。"""
+"""Issue 详情弹窗 — 6个 Tab（详情/评论/活动/FA/CAPA/关联）。"""
 
 from __future__ import annotations
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+# 关联类型中文标签（IssueLinkType → 显示名）
+_LINK_TYPE_LABELS = {
+    "relates_to": "相关",
+    "blocks": "阻塞",
+    "duplicates": "重复",
+    "child_of": "子任务",
+}
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -137,6 +145,7 @@ class IssueDetailDialog(QDialog):
             ("活动", self._build_activity_tab),
             ("FA", self._build_fa_tab),
             ("CAPA", self._build_capa_tab),
+            ("关联", self._build_link_tab),
         ]:
             page = builder()
             stack.addWidget(page)
@@ -316,6 +325,36 @@ class IssueDetailDialog(QDialog):
 
         return page
 
+    # ── Tab 6: 关联 ────────────────────────────────────────────────
+
+    def _build_link_tab(self) -> QWidget:
+        """Tab6 关联 — 双向 Issue 关联列表 + 添加/删除。"""
+        from PySide6.QtWidgets import QListWidget, QPushButton
+
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        self._link_list = QListWidget()
+        self._link_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        layout.addWidget(self._link_list, stretch=1)
+
+        btn_row = QHBoxLayout()
+        self._btn_add_link = QPushButton("添加关联")
+        self._btn_add_link.setProperty("class", "pill-primary")
+        self._btn_add_link.clicked.connect(self._on_add_link)
+        btn_row.addWidget(self._btn_add_link)
+
+        self._btn_del_link = QPushButton("删除选中")
+        self._btn_del_link.setProperty("class", "action")
+        self._btn_del_link.clicked.connect(self._on_delete_link)
+        btn_row.addWidget(self._btn_del_link)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        return page
+
     # ── 数据加载 ────────────────────────────────────────────────────
 
     def _load_data(self) -> None:
@@ -325,6 +364,112 @@ class IssueDetailDialog(QDialog):
         self._load_activity()
         self._load_fa_records()
         self._load_capa_records()
+        self._load_links()
+
+    def _load_links(self) -> None:
+        """加载关联列表（双向）。"""
+        from PySide6.QtWidgets import QListWidgetItem
+
+        try:
+            links = self._service.get_links(self._issue.id) if self._issue.id else []
+        except Exception:
+            logger.exception("_load_links() failed")
+            links = []
+        self._link_list.clear()
+        if not links:
+            item = QListWidgetItem("（暂无关联 — 点击「添加关联」关联其他 Issue）")
+            item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self._link_list.addItem(item)
+            return
+        for link in links:
+            other_id = link.target_id if link.source_id == self._issue.id else link.source_id
+            other = None
+            try:
+                other = self._service.get_by_id(other_id) if other_id else None
+            except Exception:
+                other = None
+            title = other.title if other else f"#{other_id}（已删除）"
+            type_label = _LINK_TYPE_LABELS.get(link.link_type, link.link_type)
+            direction = "→" if link.source_id == self._issue.id else "←"
+            item = QListWidgetItem(f"{direction} {type_label}  #{other_id}  {title}")
+            item.setData(Qt.ItemDataRole.UserRole, link.id)
+            self._link_list.addItem(item)
+
+    def _on_add_link(self) -> None:
+        """打开添加关联对话框。"""
+        from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QMessageBox
+
+        issue_id = self._issue.id
+        if not issue_id:
+            return
+        try:
+            candidates = [i for i in self._service.list_all() if i.id != issue_id and not i.is_deleted]
+        except Exception:
+            logger.exception("_on_add_link: list_all failed")
+            return
+        if not candidates:
+            QMessageBox.information(self, "添加关联", "当前没有可关联的 Issue（已排除自身）。")
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("添加关联")
+        dlg.setMinimumWidth(420)
+        form = QFormLayout(dlg)
+        type_combo = QComboBox()
+        for val, label in _LINK_TYPE_LABELS.items():
+            type_combo.addItem(label, val)
+        form.addRow("关联类型", type_combo)
+        target_combo = QComboBox()
+        for i in candidates:
+            target_combo.addItem(f"#{i.id}  {i.title}", i.id)
+        form.addRow("目标 Issue", target_combo)
+        btns = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            dlg.deleteLater()
+            return
+        dlg.deleteLater()
+        target_id = target_combo.currentData()
+        link_type = type_combo.currentData()
+        try:
+            self._service.add_link(issue_id, target_id, link_type)
+        except Exception as exc:
+            logger.exception("_on_add_link: add_link failed")
+            QMessageBox.warning(self, "添加失败", f"无法添加关联：{exc}")
+            return
+        self._load_links()
+
+    def _on_delete_link(self) -> None:
+        """删除选中的关联。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        item = self._link_list.currentItem()
+        if item is None:
+            self._link_list.setCurrentRow(0)
+            item = self._link_list.currentItem()
+        if item is None or not (item.flags() & Qt.ItemFlag.ItemIsSelectable):
+            return
+        link_id = item.data(Qt.ItemDataRole.UserRole)
+        if link_id is None:
+            return
+        reply = QMessageBox.question(
+            self, "确认删除", "确定删除该关联？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._service.delete_link(link_id)
+        except Exception:
+            logger.exception("_on_delete_link failed")
+            return
+        self._load_links()
 
     def _load_attachments(self) -> None:
         """加载附件列表。"""

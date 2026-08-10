@@ -158,6 +158,12 @@ class MainWindow(QMainWindow):
         # UX 增强：平滑滚动 + 动效
         self._install_ux_enhancements()
 
+        # 待办提醒检查（启动 + 60s 轮询）
+        self._start_reminder_check()
+
+        # 设备校准到期提醒（启动检查一次）
+        QTimer.singleShot(3000, self._check_calibration_reminders)
+
     def _setup_central_widget(self) -> None:
         """创建中央 Tab Widget。"""
         central = QWidget()
@@ -957,6 +963,59 @@ class MainWindow(QMainWindow):
             from src.views.widgets.toast_stack import ToastNotificationStack
             self._toast_stack = ToastNotificationStack(self)
         self._toast_stack.show_toast(message, level)
+
+    def _start_reminder_check(self) -> None:
+        """待办提醒检查 — 启动 1.5s 后首次检查 + 每 60s 轮询。"""
+        self._reminder_timer = QTimer(self)
+        self._reminder_timer.setInterval(60_000)
+        self._reminder_timer.timeout.connect(self._check_due_reminders)
+        self._reminder_timer.start()
+        QTimer.singleShot(1500, self._check_due_reminders)
+
+    def _check_due_reminders(self) -> None:
+        """检查到期待办并 toast 提醒（一次性标记 reminded 防重复）。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.todo_service:
+            return
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        try:
+            due = ctrl.todo_service.list_due_reminders(now)
+        except Exception:
+            return
+        for todo in due:
+            if todo.id is None:
+                continue
+            try:
+                ctrl.todo_service.mark_reminded(todo.id)
+            except Exception:
+                continue
+            title = todo.title or "(无标题)"
+            self.toast(f"待办提醒：{title}", "warning")
+
+    def _check_calibration_reminders(self) -> None:
+        """检查 30 天内到期/已过期的设备校准并提示。"""
+        ctrl = self._ctrl
+        if not ctrl or not ctrl.equipment_service:
+            return
+        try:
+            expiring = ctrl.equipment_service.get_expiring_calibrations(30)
+        except Exception:
+            return
+        if not expiring:
+            return
+        overdue = [e for e, d in expiring if d < 0]
+        due_soon = [e for e, d in expiring if d >= 0]
+        parts = []
+        if overdue:
+            parts.append(f"{len(overdue)} 台已过期")
+        if due_soon:
+            parts.append(f"{len(due_soon)} 台 30 天内到期")
+        if not parts:
+            return
+        names = "、".join(e.name for e, _d in expiring[:3])
+        more = f" 等 {len(expiring)} 台" if len(expiring) > 3 else ""
+        self.toast(f"校准提醒：{names}{more}（{ '，'.join(parts) }）", "warning")
 
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
