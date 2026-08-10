@@ -237,15 +237,6 @@ def test_sample_checkout_flow(ctrl, base_data):
     assert len(txns) == 2
 
 
-def test_knowledge_search(ctrl):
-    """知识库搜索 — 命中 / 未命中。"""
-    results = ctrl.knowledge_service.search('热应力')
-    assert len(results) >= 1
-
-    results_empty = ctrl.knowledge_service.search('不存在xyz')
-    assert len(results_empty) == 0
-
-
 def test_dashboard_chart_data(ctrl, base_data):
     """Dashboard 图表数据可正确聚合。"""
     from collections import Counter

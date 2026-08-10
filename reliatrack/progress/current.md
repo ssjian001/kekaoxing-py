@@ -29,10 +29,11 @@
 
 ### 待办
 
-- [ ] 全量回归确认（后台 proc_b933df03b9f3）
-- [ ] git push 所有 commits（8 个未推送）
-- [ ] 剩余 P2：看板统计标签不反映筛选/快捷键嵌套 Tab 错配/逐键 N 次 DB 查询/
-      列显隐重置按钮 key 错误/日期筛选静默失效/排序状态重放等约 30 项
+- [ ] 全量回归确认（后台 proc_7e244e0ecb59）
+- [ ] git push 所有 commits（d592bc8/8b82021/5a81c7f 未推送）
+- [ ] P2 剩余低优先：kanban/FilterPanel 键名埋雷(已删 FilterPanel 死代码,
+      键名不一致点已随删除消失)、debounce timer 引用已删除表格风险、
+      restore_sort_state 刷新重放、批量导入非原子、漏技术员冲突检测
 
 ### 最近完成
 
