@@ -339,18 +339,19 @@ class SchedulePreviewDialog(QDialog):
         # 构建 timeline（简化：只检测设备重叠）
         # day_index → {eq_id: count}
         timeline: dict[int, dict[int, int]] = {}
+        # day_index → {tech_id: count}（技术员并行冲突检测，与 scheduler technician_capacity 对齐）
+        tech_timeline: dict[int, dict[int, int]] = {}
         _holidays: set[str] = self._config.get("holidays", set())
         _skip_holidays: bool = self._config.get("skip_holidays", True)
         _skip_weekends: bool = self._config.get("skip_weekends", True)
         _daily_limit: int = self._config.get("daily_start_limit", 0)
+        _tech_caps: dict = self._config.get("technician_capacity", {})
         # 构建 starts 计数（用于 daily_start_limit 检查）
         starts: dict[int, int] = {}
         for task in self._tasks:
             if task.status == "completed" or task.start_day <= 0:
                 continue
             starts[task.start_day] = starts.get(task.start_day, 0) + 1
-            if task.equipment_id is None:
-                continue
             days = _iterate_work_days(
                 task.start_day, task.duration,
                 _skip_weekends,
@@ -359,10 +360,16 @@ class SchedulePreviewDialog(QDialog):
                 _holidays,
             )
             for d in days:
-                if d not in timeline:
-                    timeline[d] = {}
-                eq_id = task.equipment_id
-                timeline[d][eq_id] = timeline[d].get(eq_id, 0) + 1
+                if task.equipment_id is not None:
+                    if d not in timeline:
+                        timeline[d] = {}
+                    eq_id = task.equipment_id
+                    timeline[d][eq_id] = timeline[d].get(eq_id, 0) + 1
+                if task.technician_id is not None:
+                    if d not in tech_timeline:
+                        tech_timeline[d] = {}
+                    tech_id = task.technician_id
+                    tech_timeline[d][tech_id] = tech_timeline[d].get(tech_id, 0) + 1
 
         for row, task in enumerate(self._tasks):
             if task.status == "completed" or task.start_day <= 0:
@@ -372,6 +379,7 @@ class SchedulePreviewDialog(QDialog):
             has_eq_conflict = False
             has_non_working = False
             has_start_limit = False
+            has_tech_conflict = False
 
             # 检查非工作日
             if _is_non_working(task.start_day, self._start_date,
@@ -381,6 +389,24 @@ class SchedulePreviewDialog(QDialog):
             # 检查每日启动上限
             if _daily_limit > 0 and starts.get(task.start_day, 0) > _daily_limit:
                 has_start_limit = True
+
+            # 检查技术员并行冲突（容量来自配置：technician_capacity，默认 1）
+            if task.technician_id is not None:
+                tech_id = task.technician_id
+                tech_cap = _tech_caps.get(tech_id, 1)
+                tech_days = _iterate_work_days(
+                    task.start_day, task.duration,
+                    _skip_weekends,
+                    self._start_date,
+                    _skip_holidays,
+                    _holidays,
+                )
+                for d in tech_days:
+                    t_usage = tech_timeline.get(d, {}).get(tech_id, 0)
+                    # usage 含当前任务自身 → 严格大于容量才算超
+                    if t_usage > tech_cap:
+                        has_tech_conflict = True
+                        break
 
             # 检查依赖冲突
             for dep_id in dep_map.get(task.id or 0, []):
@@ -430,10 +456,13 @@ class SchedulePreviewDialog(QDialog):
                 elif has_start_limit:
                     conflict_item.setText("! 启动数超限")
                     conflict_item.setForeground(QColor(_t.YELLOW))
+                elif has_tech_conflict:
+                    conflict_item.setText("! 技术员冲突")
+                    conflict_item.setForeground(QColor(_t.YELLOW))
                 else:
                     conflict_item.setText("无冲突")
                     conflict_item.setForeground(QColor(_t.GREEN))
-                if has_dep_conflict or has_eq_conflict or has_non_working or has_start_limit:
+                if has_dep_conflict or has_eq_conflict or has_non_working or has_start_limit or has_tech_conflict:
                     self._has_conflicts = True
 
     # ── 用户交互 ──

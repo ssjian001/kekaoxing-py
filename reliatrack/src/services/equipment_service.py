@@ -22,12 +22,6 @@ class EquipmentService:
     def get(self, equipment_id: int) -> Equipment | None:
         return self._repo.get_by_id(equipment_id)
 
-    def get_available(self) -> list[Equipment]:
-        return self._repo.get_available()
-
-    def get_by_type(self, type: str) -> list[Equipment]:
-        return self._repo.get_by_type(type)
-
     def update(self, equipment_id: int, **kwargs: object) -> None:
         self._repo.update(equipment_id, **kwargs)
 

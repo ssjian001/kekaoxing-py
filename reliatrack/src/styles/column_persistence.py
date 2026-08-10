@@ -12,6 +12,19 @@ _SETTINGS_KEY_PREFIX = "ReliaTrack/column_widths/"
 _debounce_timers: dict[str, tuple[QTimer, QTableWidget, str]] = {}
 
 
+def _discard_debounce(key: str) -> None:
+    """移除 debounce 条目并停止 timer（表格销毁时调用，防止访问已删 C++ 对象）。"""
+    entry = _debounce_timers.pop(key, None)
+    if entry:
+        timer, _, _ = entry
+        try:
+            timer.stop()
+            timer.deleteLater()
+        except RuntimeError:
+            # timer 已被 Qt 事件循环销毁（destroyed 链式触发时）——忽略
+            pass
+
+
 def save_column_widths(table: QTableWidget, key: str) -> None:
     """保存表格列宽到 QSettings。在 closeEvent 或 timer 中调用。
 
@@ -38,12 +51,32 @@ def save_column_widths_debounced(table: QTableWidget, key: str) -> None:
         timer = QTimer()
         timer.setSingleShot(True)
         _debounce_timers[key] = (timer, table, key)
-        timer.timeout.connect(
-            lambda: save_column_widths(_debounce_timers[key][1], key)
-        )
+        # 表格销毁时移除条目，避免 timer 触发访问已删 C++ 对象
+        try:
+            table.destroyed.connect(lambda _obj=None, k=key: _discard_debounce(k))
+        except RuntimeError:
+            pass
+        timer.timeout.connect(lambda k=key: _save_debounced(k))
     # 更新 table 引用（表格可能被重建）
     _debounce_timers[key] = (timer, table, key)
     timer.start(300)
+
+
+def _save_debounced(key: str) -> None:
+    """debounce timer 触发时安全保存（条目可能已被 destroyed 清理）。"""
+    entry = _debounce_timers.get(key)
+    if entry is None:
+        return
+    table = entry[1]
+    try:
+        # shiboken 有效性检查：表格已销毁则跳过（双保险，避免 RuntimeError）
+        import shiboken6
+        if not shiboken6.isValid(table):
+            _discard_debounce(key)
+            return
+        save_column_widths(table, key)
+    except (RuntimeError, ImportError):
+        _discard_debounce(key)
 
 
 def restore_column_widths(table: QTableWidget, key: str) -> None:

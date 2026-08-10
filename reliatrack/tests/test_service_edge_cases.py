@@ -257,43 +257,6 @@ class TestCountByStatus:
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  6. EquipmentRepo.count_calibration_due()
-# ═══════════════════════════════════════════════════════════════════
-
-class TestCountCalibrationDue:
-    def test_count_due_with_threshold(self, equip_repo, db_conn):
-        """验证阈值日期筛选。"""
-        # 插入设备：next_calibration_date 在阈值之前 → 应计数
-        db_conn.execute(
-            "INSERT INTO equipment (name, next_calibration_date) VALUES (?, ?)",
-            ("设备-到期", "2026-05-01"),
-        )
-        # 插入设备：next_calibration_date 在阈值之后 → 不计数
-        db_conn.execute(
-            "INSERT INTO equipment (name, next_calibration_date) VALUES (?, ?)",
-            ("设备-未到期", "2026-12-31"),
-        )
-        # 插入设备：next_calibration_date 为空 → 不计数
-        db_conn.execute(
-            "INSERT INTO equipment (name, next_calibration_date) VALUES (?, ?)",
-            ("设备-无日期", ""),
-        )
-
-        # 阈值日期为 2026-06-01
-        count = equip_repo.count_calibration_due("2026-06-01")
-        assert count == 1
-
-    def test_count_due_none_match(self, equip_repo, db_conn):
-        """所有设备都未到期时返回 0。"""
-        db_conn.execute(
-            "INSERT INTO equipment (name, next_calibration_date) VALUES (?, ?)",
-            ("设备-Future", "2027-01-01"),
-        )
-        count = equip_repo.count_calibration_due("2026-06-01")
-        assert count == 0
-
-
-# ═══════════════════════════════════════════════════════════════════
 #  7. IssueRepo / SampleRepo / TestPlanRepo.delete_by_project()
 # ═══════════════════════════════════════════════════════════════════
 

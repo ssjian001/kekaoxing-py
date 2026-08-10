@@ -196,13 +196,6 @@ class TestEquipmentService:
         with pytest.raises(ValueError, match="引用"):
             equip_svc.delete(eid)
 
-    def test_get_available(self, equip_svc):
-        equip_svc.create("设备A", status="available")
-        equip_svc.create("设备B", status="in_use")
-        avail = equip_svc.get_available()
-        assert len(avail) == 1
-        assert avail[0].name == "设备A"
-
 
 # ═══════════════════════════════════════════════════════════════════
 #  IssueService

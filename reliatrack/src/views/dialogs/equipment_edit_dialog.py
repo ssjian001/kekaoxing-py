@@ -80,6 +80,11 @@ class EquipmentEditDialog(_BaseDialog):
             default=equipment.accuracy if equipment else "",
             placeholder="精度/不确定度",
         )
+        self._location_edit = self._add_text_field(
+            "存放位置",
+            default=equipment.location if equipment else "",
+            placeholder="如：实验室 A-01",
+        )
 
         self._add_separator()
 
@@ -146,6 +151,7 @@ class EquipmentEditDialog(_BaseDialog):
             "asset_no": self._asset_no_edit.text().strip(),
             "manufacturer": self._manufacturer_edit.text().strip(),
             "accuracy": self._accuracy_edit.text().strip(),
+            "location": self._location_edit.text().strip(),
             "calibration_date": cal_date,
             "next_calibration_date": next_cal_date,
             "calibration_interval_months": interval,

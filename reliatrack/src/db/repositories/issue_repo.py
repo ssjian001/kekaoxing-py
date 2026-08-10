@@ -69,7 +69,7 @@ class IssueRepository(BaseRepository):
         )
 
     def get_by_ids(self, issue_ids: list[int]) -> list[Issue]:
-        """批量获取多个 Issue（含软删过滤=0）。
+        """批量获取多个 Issue（含软删，与 get_by_id 语义一致）。
 
         一次 IN 查询替代 N 次 get_by_id（get_aging_days_map 批量回退路径）。
         """
@@ -79,8 +79,7 @@ class IssueRepository(BaseRepository):
         cols_list = self._columns()
         placeholders = ",".join("?" * len(issue_ids))
         rows = self._conn.execute(
-            f"SELECT {cols_sql} FROM [issues] "
-            f"WHERE is_deleted = 0 AND id IN ({placeholders})",
+            f"SELECT {cols_sql} FROM [issues] WHERE id IN ({placeholders})",
             issue_ids,
         ).fetchall()
         return self._rows_to_models(rows, cols=cols_list)

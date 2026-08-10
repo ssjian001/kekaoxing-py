@@ -335,9 +335,7 @@ class PlanHandlers:
                     task_name = data.get("name", "?")
                     logger.exception("Failed to import task name=%s: data=%s", task_name, data)
                     skip += 1
-                    self._win.toast(
-                        f"导入任务「{task_name!r}」失败，已跳过", "warning"
-                    )
+                    # 汇总显示在 BatchImportDialog 结果区，不逐条弹 toast（批量失败防刷屏）
             return success, skip
 
         task_field_map = [
