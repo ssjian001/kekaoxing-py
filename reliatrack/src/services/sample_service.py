@@ -89,10 +89,6 @@ class SampleService:
 
     def list_all(self) -> list[Sample]:
         return self._repo.list_all()
-
-    def get_transactions(self, sample_id: int) -> list[SampleTransaction]:
-        return self._repo.get_transactions(sample_id)
-
     def add_transaction(self, sample_id: int, txn_type: str, **kwargs: object) -> int:
         """添加出入库记录，并自动联动样品状态。
 
@@ -111,11 +107,6 @@ class SampleService:
             self._repo.update_status(sample_id, new_status)
 
         return txn_id
-
-    def delete_transactions(self, sample_id: int) -> None:
-        """删除样品的所有出入库记录（级联删除子表）。"""
-        return self._repo.delete_transactions(sample_id)
-
     def list_transactions(
         self, filter_sn: str = "", filter_type: str = ""
     ) -> list[dict]:

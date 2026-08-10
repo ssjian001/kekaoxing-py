@@ -85,12 +85,6 @@ class TestProjectService:
         proj_svc.create("项目A")
         proj_svc.create("项目B")
         assert len(proj_svc.list_all()) == 2
-
-    def test_get_by_name(self, proj_svc):
-        proj_svc.create("唯一项目")
-        p = proj_svc.get_by_name("唯一项目")
-        assert p is not None
-
     def test_get_nonexistent(self, proj_svc):
         assert proj_svc.get(9999) is None
 
@@ -152,15 +146,6 @@ class TestSampleService:
         sample_svc.add_transaction(sid, "checkout", operator_id=sample_technician["id"])
         sample_svc.delete(sid)
         assert sample_svc.get(sid) is None
-
-    def test_add_and_get_transactions(self, sample_svc, sample_project, sample_technician):
-        sid = sample_svc.create("SN-001", project_id=sample_project["id"])
-        sample_svc.add_transaction(sid, "checkin", operator_id=sample_technician["id"])
-        txns = sample_svc.get_transactions(sid)
-        assert len(txns) == 1
-        assert txns[0].type == "checkin"
-
-
 # ═══════════════════════════════════════════════════════════════════
 #  EquipmentService
 # ═══════════════════════════════════════════════════════════════════
@@ -266,33 +251,12 @@ class TestPlanSvc:
         plan_svc.create_task(plid, "任务2", duration=3)
         tasks = plan_svc.get_tasks(plid)
         assert len(tasks) == 2
-
-    def test_update_task_progress(self, plan_svc, sample_project):
-        plid = plan_svc.create_plan(sample_project["id"], "计划1", start_date="2026-01-01")
-        tid = plan_svc.create_task(plid, "任务1", duration=5)
-
-        plan_svc.update_task_progress(tid, 50.0)
-        assert plan_svc.get_task(tid).status == "in_progress"
-
-        plan_svc.update_task_progress(tid, 100.0)
-        assert plan_svc.get_task(tid).status == "completed"
-
-        plan_svc.update_task_progress(tid, 0.0)
-        assert plan_svc.get_task(tid).status == "pending"
-
     def test_delete_task(self, plan_svc, sample_project):
         plid = plan_svc.create_plan(sample_project["id"], "计划1", start_date="2026-01-01")
         tid = plan_svc.create_task(plid, "任务1", duration=5)
         plan_svc.delete_task(tid)
         assert plan_svc.get_task(tid) is None
         assert len(plan_svc.get_tasks(plid)) == 0
-
-    def test_delete_plan_cascade(self, plan_svc, sample_project):
-        plid = plan_svc.create_plan(sample_project["id"], "计划1", start_date="2026-01-01")
-        plan_svc.create_task(plid, "任务1", duration=5)
-        plan_svc.delete_plan(plid)
-        assert plan_svc.get_plan(plid) is None
-
     def test_task_count(self, plan_svc, sample_project):
         plid = plan_svc.create_plan(sample_project["id"], "计划1", start_date="2026-01-01")
         plan_svc.create_task(plid, "T1", duration=5)

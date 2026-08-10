@@ -20,18 +20,3 @@ class SettingsService:
 
     def set(self, key: str, value: str) -> None:
         self._repo.set(key, value)
-
-    def get_bool(self, key: str, default: bool = False) -> bool:
-        val = self._repo.get(key)
-        if val is None:
-            return default
-        return val.lower() in ("true", "1", "yes")
-
-    def get_int(self, key: str, default: int = 0) -> int:
-        val = self._repo.get(key)
-        if val is None:
-            return default
-        try:
-            return int(val)
-        except ValueError:
-            return default

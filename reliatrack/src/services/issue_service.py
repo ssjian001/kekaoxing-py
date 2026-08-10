@@ -273,7 +273,6 @@ class IssueService:
         self._comment_repo.soft_delete(comment_id)
 
     # ── 活动日志（v23 新增）──
-
     def get_activity_log(self, issue_id: int) -> list[IssueActivityLog]:
         """获取某 Issue 的活动日志（按时间升序）。"""
         return self._activity_repo.get_by_issue(issue_id)
@@ -468,10 +467,3 @@ class IssueService:
         from src.services.undo_manager import DeleteEntityCommand
         capa_repo = CAPARecordRepository(self._conn)
         return DeleteEntityCommand(capa_repo, capa_id, "CAPA 措施")
-
-    def create_status_change_command(self, issue_id: int, old_status: str, new_status: str):
-        """创建状态变更命令（可撤销 — 看板拖拽用）。"""
-        from src.services.undo_manager import UpdateFieldCommand
-        return UpdateFieldCommand(
-            self._repo, issue_id, "status", old_status, new_status, "Issue 状态",
-        )

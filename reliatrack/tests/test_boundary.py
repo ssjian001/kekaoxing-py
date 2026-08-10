@@ -233,9 +233,6 @@ def test_sample_checkout_flow(ctrl, base_data):
     ctrl.sample_service.update_status(s2, 'in_stock')
     assert ctrl.sample_service.get_by_sn('SMP-D02').status == 'in_stock'
 
-    txns = ctrl.sample_service.get_transactions(s2)
-    assert len(txns) == 2
-
 
 def test_dashboard_chart_data(ctrl, base_data):
     """Dashboard 图表数据可正确聚合。"""

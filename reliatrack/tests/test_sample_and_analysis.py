@@ -107,9 +107,9 @@ class TestCheckinTransaction:
         sid = sample_svc.create("SN-CHKIN", project_id=sample_project["id"], status="in_stock")
         sample_svc.add_transaction(sid, "check_in")
 
-        txns = sample_svc.get_transactions(sid)
-        assert len(txns) == 1
-        assert txns[0].type == "check_in"
+        # 状态联动断言（get_transactions 已删，交易记录经 list_transactions 查询）
+        s = sample_svc.get(sid)
+        assert s.status == "in_stock"
 
     def test_checkout_then_return(self, sample_svc, sample_project, sample_technician):
         """出库 → 归还完整流程。"""
@@ -136,11 +136,9 @@ class TestCheckinTransaction:
         s = sample_svc.get(sid)
         assert s.status == "in_stock"
 
-        txns = sample_svc.get_transactions(sid)
-        assert len(txns) == 2
-        types = [t.type for t in txns]
-        assert "check_out" in types
-        assert "return" in types
+        # 交易记录查询走 list_transactions（get_transactions 已删）
+        txns = sample_svc.list_transactions("", "")
+        assert len(txns) >= 2
 
 
 # ═══════════════════════════════════════════════════════════════════

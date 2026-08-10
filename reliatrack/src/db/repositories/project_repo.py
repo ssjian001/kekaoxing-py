@@ -15,15 +15,3 @@ class ProjectRepository(BaseRepository):
 
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "projects", Project)
-
-    def get_active(self) -> list[Project]:
-        """获取所有活跃项目。"""
-        return self.list_all(status="active")
-
-    def get_by_name(self, name: str) -> Optional[Project]:
-        """按名称查找项目。"""
-        _COLS = ["id", "name", "product", "customer", "description", "status", "created_at", "updated_at"]
-        rows = self._conn.execute(
-            f"SELECT {', '.join(_COLS)} FROM [projects] WHERE name = ?", (name,)
-        ).fetchall()
-        return self._rows_to_models(rows, cols=_COLS)[0] if rows else None

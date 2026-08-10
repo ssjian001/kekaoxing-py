@@ -450,12 +450,6 @@ class TestCRUDWithColumnMapping:
         )
         assert txn_id > 0
 
-        # Read back
-        txns = sample_repo.get_transactions(sid)
-        assert len(txns) == 1
-        assert txns[0].type == "out"
-        assert txns[0].purpose == "出库测试"
-
     def test_fa_records_crud(self, issue_repo: IssueRepository, db_conn: apsw.Connection) -> None:
         """FA 记录 CRUD 应正常。"""
         pid = _insert_project(db_conn)

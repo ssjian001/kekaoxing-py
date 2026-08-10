@@ -35,13 +35,6 @@ class ProjectService:
 
     def get(self, project_id: int) -> Project | None:
         return self._repo.get_by_id(project_id)
-
-    def get_active(self) -> list[Project]:
-        return self._repo.get_active()
-
-    def get_by_name(self, name: str) -> Project | None:
-        return self._repo.get_by_name(name)
-
     def update(self, project_id: int, **kwargs: object) -> None:
         self._repo.update(project_id, **kwargs)
 

@@ -223,30 +223,6 @@ class TestIssueCreateDeleteCommand:
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  5. TestPlanService.create_task_delete_command
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestPlanCreateTaskDeleteCommand:
-    def test_creates_command(self, plan_svc, sample_project):
-        """无校验，正常创建 DeleteEntityCommand。"""
-        plid = plan_svc.create_plan(sample_project["id"], "计划", start_date="2026-01-01")
-        tid = plan_svc.create_task(plid, "待删任务", duration=5)
-        cmd = plan_svc.create_task_delete_command(tid)
-        assert isinstance(cmd, DeleteEntityCommand)
-        assert cmd.description == "删除任务"
-
-    def test_execute_deletes_task(self, plan_svc, undo_mgr, sample_project):
-        """执行后任务被删除。"""
-        plid = plan_svc.create_plan(sample_project["id"], "计划", start_date="2026-01-01")
-        tid = plan_svc.create_task(plid, "待删任务", duration=5)
-        cmd = plan_svc.create_task_delete_command(tid)
-        undo_mgr.execute(cmd)
-
-        assert plan_svc.get_task(tid) is None
-
-
-# ═══════════════════════════════════════════════════════════════════
 #  6. exec_crud undo_command 路径
 # ═══════════════════════════════════════════════════════════════════
 

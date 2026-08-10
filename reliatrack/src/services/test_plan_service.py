@@ -39,28 +39,8 @@ class TestPlanService:
     def get_active_plans_by_project(self, project_id: int) -> list[TestPlan]:
         """获取项目下非归档的计划（SQL 层过滤，不含 archived）。"""
         return self._plan_repo.get_active_by_project(project_id)
-
-    def get_archived_plans_by_project(self, project_id: int) -> list[TestPlan]:
-        """获取项目下已归档的计划。"""
-        return [p for p in self._plan_repo.get_by_project(project_id)
-                if p.status == "archived"]
-
     def update_plan(self, plan_id: int, **kwargs: object) -> None:
         self._plan_repo.update(plan_id, **kwargs)
-
-    def delete_plan(self, plan_id: int) -> None:
-        """删除计划及其所有关联数据。
-
-        利用 FK CASCADE：test_tasks → test_results / issues → 子表。
-        仅需手动清理磁盘附件文件。
-        """
-        with self._plan_repo.transaction():
-            # delete_by_plan 清理附件 + 删除 tasks（CASCADE 自动清理子表）
-            self._task_repo.delete_by_plan(plan_id)
-            # 清理直接引用 plan_id 但无 task_id 的孤立 issue
-            self._plan_repo.delete_orphan_issues_by_plan(plan_id)
-            self._plan_repo.delete(plan_id)
-
     def list_all_plans(self) -> list[TestPlan]:
         return self._plan_repo.list_all()
 
@@ -96,17 +76,8 @@ class TestPlanService:
             if archived_plan_ids:
                 tasks = [t for t in tasks if t.plan_id not in archived_plan_ids]
         return tasks
-
-    def get_task_dependencies(self, task_id: int) -> list[TestTask]:
-        return self._task_repo.get_dependencies(task_id)
-
     def update_task(self, task_id: int, **kwargs: object) -> None:
         self._task_repo.update(task_id, **kwargs)
-
-    def update_task_progress(self, task_id: int, progress: float) -> None:
-        status = "completed" if progress >= 100.0 else ("in_progress" if progress > 0 else "pending")
-        self._task_repo.update(task_id, progress=progress, status=status)
-
     def delete_task(self, task_id: int) -> None:
         with self._task_repo.transaction():
             # 先删子表: test_results
@@ -161,12 +132,6 @@ class TestPlanService:
     def delete_result(self, result_id: int) -> None:
         """删除测试结果。"""
         self._result_repo.delete(result_id)
-
-    def create_task_delete_command(self, task_id: int):
-        """创建任务删除命令（可撤销）。"""
-        from src.services.undo_manager import DeleteEntityCommand
-        return DeleteEntityCommand(self._task_repo, task_id, "任务", _cascade_children=True)
-
     def import_tasks_from_plan(self, target_plan_id: int, source_tasks: list[TestTask]) -> int:
         """从其他计划复制任务到目标计划。只复制任务模板字段，不复制运行时数据。
 

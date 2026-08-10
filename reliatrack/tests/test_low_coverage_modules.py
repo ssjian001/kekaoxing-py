@@ -158,37 +158,6 @@ class TestSettingsService:
 
     def test_get_missing_returns_none(self, svc):
         assert svc.get("nonexistent") is None
-
-    def test_get_bool_true(self, svc):
-        svc.set("flag1", "true")
-        svc.set("flag2", "1")
-        svc.set("flag3", "yes")
-        svc.set("flag4", "TRUE")
-        assert svc.get_bool("flag1") is True
-        assert svc.get_bool("flag2") is True
-        assert svc.get_bool("flag3") is True
-        assert svc.get_bool("flag4") is True
-
-    def test_get_bool_false(self, svc):
-        svc.set("flag", "false")
-        assert svc.get_bool("flag") is False
-
-    def test_get_bool_default_when_missing(self, svc):
-        assert svc.get_bool("missing", default=True) is True
-        assert svc.get_bool("missing") is False
-
-    def test_get_int_valid(self, svc):
-        svc.set("count", "42")
-        assert svc.get_int("count") == 42
-
-    def test_get_int_default_when_missing(self, svc):
-        assert svc.get_int("missing", default=10) == 10
-        assert svc.get_int("missing") == 0
-
-    def test_get_int_invalid_fallback(self, svc):
-        svc.set("bad", "not_a_number")
-        assert svc.get_int("bad", default=5) == 5
-
     def test_overwrite(self, svc):
         svc.set("key", "v1")
         svc.set("key", "v2")

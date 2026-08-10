@@ -199,25 +199,6 @@ def test_test_result_repo_uses_explicit_cols(fresh_db: apsw.Connection):
     assert results[0].task_id == task_id
     assert results[0].result == "pass"
 
-
-def test_project_repo_get_by_name_uses_explicit_cols(fresh_db: apsw.Connection):
-    """验证 ProjectRepository.get_by_name 传入显式列名列表。"""
-    fresh_db.execute(
-        "INSERT INTO projects (name, product, customer, status) VALUES (?, ?, ?, ?)",
-        ("Alpha项目", "产品X", "客户A", "active")
-    )
-
-    from src.db.repositories import ProjectRepository
-    repo = ProjectRepository(fresh_db)
-    proj = repo.get_by_name("Alpha项目")
-
-    assert proj is not None
-    assert proj.name == "Alpha项目"
-    assert proj.product == "产品X"
-    assert proj.customer == "客户A"
-    assert proj.status == "active"
-
-
 def test_sample_repo_get_by_sn_uses_explicit_cols(fresh_db: apsw.Connection):
     """验证 SampleRepository.get_by_sn 传入显式列名列表。"""
     fresh_db.execute(
