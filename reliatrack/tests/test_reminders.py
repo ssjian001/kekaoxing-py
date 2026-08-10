@@ -149,6 +149,113 @@ class TestIssueLinkDialogTab:
         with pytest.raises(Exception):
             issue_svc.add_link(iid, iid, "relates_to")
 
+    def test_load_links_soft_deleted_shows_title(self, issue_svc):
+        """对方软删后仍显示标题（get 不过滤软删，提供上下文）。"""
+        id_a = _make_issue(issue_svc, "存活")
+        id_b = _make_issue(issue_svc, "已软删")
+        issue_svc.add_link(id_a, id_b, "relates_to")
+        issue_svc.soft_delete(id_b)
+
+        dlg = self._make_dialog(issue_svc, issue_svc.get(id_a))
+        dlg._load_links()
+        assert dlg._link_list.count() == 1
+        assert "已软删" in dlg._link_list.item(0).text()
+        dlg.deleteLater()
+
+    def test_load_links_service_error_returns_empty(self, issue_svc):
+        """service.get_links 抛异常 → 空列表占位不崩溃。"""
+        iid = _make_issue(issue_svc, "异常测试")
+        dlg = self._make_dialog(issue_svc, issue_svc.get(iid))
+        dlg._service.get_links = MagicMock(side_effect=RuntimeError("db down"))
+        dlg._load_links()
+        assert dlg._link_list.count() == 1
+        assert "暂无关联" in dlg._link_list.item(0).text()
+        dlg.deleteLater()
+
+    def test_on_add_link_dialog_accepted_calls_service(self, issue_svc):
+        """添加关联对话框确认后调用 service.add_link 并刷新列表。"""
+        from PySide6.QtWidgets import QDialog
+
+        id_a = _make_issue(issue_svc, "源")
+        _make_issue(issue_svc, "候选目标")
+        dlg = self._make_dialog(issue_svc, issue_svc.get(id_a))
+
+        with patch.object(QDialog, "exec", return_value=QDialog.DialogCode.Accepted):
+            dlg._on_add_link()
+
+        # 添加成功 → 列表出现 1 条关联
+        assert dlg._link_list.count() == 1
+        assert "候选目标" in dlg._link_list.item(0).text()
+        dlg.deleteLater()
+
+    def test_on_add_link_cancel_no_change(self, issue_svc):
+        """取消添加关联 → 不产生关联。"""
+        from PySide6.QtWidgets import QDialog
+
+        id_a = _make_issue(issue_svc, "源")
+        _make_issue(issue_svc, "候选")
+        dlg = self._make_dialog(issue_svc, issue_svc.get(id_a))
+
+        with patch.object(QDialog, "exec", return_value=QDialog.DialogCode.Rejected):
+            dlg._on_add_link()
+
+        assert dlg._link_list.count() == 1  # 空占位
+        assert "暂无关联" in dlg._link_list.item(0).text()
+        dlg.deleteLater()
+
+    def test_on_add_link_service_error_warns(self, issue_svc):
+        """add_link 抛异常 → QMessageBox.warning 提示，列表不变。"""
+        from PySide6.QtWidgets import QDialog, QMessageBox
+
+        id_a = _make_issue(issue_svc, "源")
+        _make_issue(issue_svc, "候选")
+        dlg = self._make_dialog(issue_svc, issue_svc.get(id_a))
+
+        real_add = issue_svc.add_link
+        issue_svc.add_link = MagicMock(side_effect=Exception("duplicate"))
+        with patch.object(QDialog, "exec", return_value=QDialog.DialogCode.Accepted), \
+             patch.object(QMessageBox, "warning") as mock_warn:
+            dlg._on_add_link()
+        mock_warn.assert_called_once()
+        assert "添加失败" in str(mock_warn.call_args[0][2]) or "无法添加关联" in str(mock_warn.call_args[0][2])
+        issue_svc.add_link = real_add
+        assert dlg._link_list.count() == 1
+        dlg.deleteLater()
+
+    def test_on_delete_link_confirmed_calls_service(self, issue_svc):
+        """删除确认后调用 service.delete_link 并刷新列表。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        id_a = _make_issue(issue_svc, "源")
+        id_b = _make_issue(issue_svc, "目标")
+        link_id = issue_svc.add_link(id_a, id_b, "blocks")
+        dlg = self._make_dialog(issue_svc, issue_svc.get(id_a))
+        dlg._load_links()
+        assert dlg._link_list.count() == 1
+        dlg._link_list.setCurrentRow(0)
+
+        with patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes):
+            dlg._on_delete_link()
+
+        assert issue_svc.get_links(id_a) == []
+        assert dlg._link_list.count() == 1
+        assert "暂无关联" in dlg._link_list.item(0).text()
+        dlg.deleteLater()
+
+    def test_on_delete_link_placeholder_not_deletable(self, issue_svc):
+        """空占位 item 不可删除（NoItemFlags 无 ItemIsSelectable）。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        iid = _make_issue(issue_svc, "无关联")
+        dlg = self._make_dialog(issue_svc, issue_svc.get(iid))
+        dlg._load_links()
+        dlg._link_list.setCurrentRow(0)
+
+        with patch.object(QMessageBox, "question") as mock_q:
+            dlg._on_delete_link()
+        mock_q.assert_not_called()
+        dlg.deleteLater()
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  2. 待办提醒
@@ -198,6 +305,29 @@ class TestTodoReminderMainWindow:
         win.toast = MagicMock()
         win.statusBar = MagicMock()
         return win
+
+    def test_multiple_due_triggers_multiple_toasts(self, todo_svc):
+        """多个待办同时到期 → 每个都弹 toast + statusBar。"""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        todo_svc.create(project_id=None, title="到期1", remind_at=now)
+        todo_svc.create(project_id=None, title="到期2", remind_at=now)
+
+        win = self._make_win(todo_svc)
+        win._check_due_reminders()
+
+        assert win.toast.call_count == 2
+        titles = [c[0][0] for c in win.toast.call_args_list]
+        assert any("到期1" in t for t in titles)
+        assert any("到期2" in t for t in titles)
+        assert win.statusBar().showMessage.call_count == 2
+
+    def test_service_error_swallowed(self, todo_svc):
+        """list_due_reminders 抛异常 → 静默返回不崩溃。"""
+        win = self._make_win(todo_svc)
+        win._ctrl.todo_service = MagicMock()
+        win._ctrl.todo_service.list_due_reminders.side_effect = RuntimeError("db down")
+        win._check_due_reminders()  # 不抛异常
+        win.toast.assert_not_called()
 
     def test_due_reminder_toasts_and_marks(self, todo_svc):
         """到期待办 → toast + statusBar 提示 + 标记 reminded。"""
@@ -279,6 +409,17 @@ class TestCalibrationReminderService:
         assert days == sorted(days)
         assert expiring[0][0].name == "C-逾期"
 
+    def test_days_zero_only_overdue_today(self, equip_svc):
+        """days=0 只返回已过期和今天的设备。"""
+        today = datetime.now().date()
+        self._add_equip(equip_svc, "昨天", (today - timedelta(days=1)).isoformat())
+        self._add_equip(equip_svc, "今天", today.isoformat())
+        self._add_equip(equip_svc, "明天", (today + timedelta(days=1)).isoformat())
+
+        expiring = equip_svc.get_expiring_calibrations(0)
+        names = {e.name for e, _d in expiring}
+        assert names == {"昨天", "今天"}
+
 
 class TestCalibrationReminderMainWindow:
     """MainWindow._check_calibration_reminders 触发逻辑（mock 方式）。"""
@@ -324,6 +465,26 @@ class TestCalibrationReminderMainWindow:
 
         win.toast.assert_not_called()
         mock_settings.setValue.assert_not_called()
+
+    def test_toast_text_classification_and_truncation(self, equip_svc):
+        """toast 文案：已过期/30天内分类 + 超过 3 台截断。"""
+        today = datetime.now().date()
+        equip_svc.create(name="压机-过期", next_calibration_date=(today - timedelta(days=5)).isoformat())
+        equip_svc.create(name="恒温箱-到期", next_calibration_date=(today + timedelta(days=10)).isoformat())
+        equip_svc.create(name="振动机-3", next_calibration_date=(today + timedelta(days=15)).isoformat())
+        equip_svc.create(name="盐雾箱-4", next_calibration_date=(today + timedelta(days=20)).isoformat())
+
+        win = self._make_win(equip_svc)
+        with patch("PySide6.QtCore.QSettings") as mock_cls:
+            mock_settings = MagicMock()
+            mock_settings.value.return_value = None
+            mock_cls.return_value = mock_settings
+            win._check_calibration_reminders()
+
+        msg = win.toast.call_args[0][0]
+        assert "1 台已过期" in msg
+        assert "3 台 30 天内到期" in msg
+        assert "等 4 台" in msg  # 4 台截断显示前 3
 
     def test_no_expiring_no_toast(self, equip_svc):
         """无到期设备不提示。"""
