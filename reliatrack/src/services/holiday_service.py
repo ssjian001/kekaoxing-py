@@ -121,3 +121,20 @@ class HolidayService:
         if row and row[0] > 0:
             return 0  # 已有数据，不覆盖
         return self.import_holidays([(d, n, "builtin") for d, n in records])
+
+    def has_year_data(self, year: int) -> bool:
+        """指定年份是否已有节假日数据（供启动检测/排程提示）。"""
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM [holidays] WHERE date >= ? AND date < ?",
+            (f"{year}-01-01", f"{year + 1}-01-01"),
+        ).fetchone()
+        return bool(row and row[0] > 0)
+
+    def ensure_current_year_seeded(self) -> bool:
+        """启动时检查当年+下一年节假日数据是否齐全。
+
+        Returns:
+            True 数据齐全；False 当年/下一年缺失（调用方应提示用户手动维护）。
+        """
+        today_year = date.today().year
+        return self.has_year_data(today_year) and self.has_year_data(today_year + 1)

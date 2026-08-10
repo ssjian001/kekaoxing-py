@@ -331,6 +331,7 @@ class SchedulePreviewDialog(QDialog):
 
     def _detect_conflicts(self) -> None:
         """检查所有任务的依赖、设备、非工作日和启动上限冲突，更新冲突列。"""
+        self._has_conflicts = False
         # 构建依赖图
         dep_map = build_dependency_map(self._tasks)
         id_to_task = {t.id: t for t in self._tasks if t.id is not None}
@@ -396,9 +397,10 @@ class SchedulePreviewDialog(QDialog):
                         has_dep_conflict = True
                         break
 
-            # 检查设备冲突
+            # 检查设备冲突（容量来自配置：equipment_capacity，默认 1）
             if task.equipment_id is not None:
                 eq_id = task.equipment_id
+                eq_cap = self._config.get("equipment_capacity", {}).get(eq_id, 1) if self._config else 1
                 days = _iterate_work_days(
                     task.start_day, task.duration,
                     _skip_weekends,
@@ -408,7 +410,7 @@ class SchedulePreviewDialog(QDialog):
                 )
                 for d in days:
                     usage = timeline.get(d, {}).get(eq_id, 0)
-                    if usage > 1:
+                    if usage >= eq_cap:
                         has_eq_conflict = True
                         break
 
@@ -430,6 +432,8 @@ class SchedulePreviewDialog(QDialog):
                 else:
                     conflict_item.setText("无冲突")
                     conflict_item.setForeground(QColor(_t.GREEN))
+                if has_dep_conflict or has_eq_conflict or has_non_working or has_start_limit:
+                    self._has_conflicts = True
 
     # ── 用户交互 ──
 
@@ -495,8 +499,21 @@ class SchedulePreviewDialog(QDialog):
         return changes
 
     def _on_apply(self) -> None:
-        """确认应用：发出变更信号并关闭。"""
+        """确认应用：发出变更信号并关闭。
+
+        存在依赖/设备/非工作日/启动上限冲突时弹二次确认，防止一键应用违规排程。
+        """
         changes = self.get_changes()
+        if getattr(self, "_has_conflicts", False):
+            reply = QMessageBox.question(
+                self,
+                "存在排程冲突",
+                "当前排程存在冲突（依赖/设备容量/非工作日/启动上限）。\n仍要应用吗？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
         self.accepted_changes.emit(changes)
         self.accept()
 

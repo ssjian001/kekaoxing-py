@@ -99,8 +99,11 @@ def _work_day_end(
     iterations = 0
     while remaining > 0:
         iterations += 1
-        if iterations > 3650:
-            logger.warning("_work_day_end exceeded 3650 iterations, breaking")
+        if iterations > 7300:
+            logger.warning(
+                "_work_day_end exceeded 7300 iterations (duration=%d), "
+                "task 工期截断 — 请检查任务 duration 是否异常", duration,
+            )
             break
         if _is_non_working(day, start_date_str, skip_weekends, skip_holidays, _holidays):
             day += 1
@@ -123,8 +126,11 @@ def _iterate_work_days(
     iterations = 0
     while placed < duration:
         iterations += 1
-        if iterations > 3650:
-            logger.warning("_iterate_work_days exceeded 3650 iterations, breaking")
+        if iterations > 7300:
+            logger.warning(
+                "_iterate_work_days exceeded 7300 iterations (duration=%d), "
+                "task 工期截断 — 请检查任务 duration 是否异常", duration,
+            )
             break
         if _is_non_working(day, start_date_str, skip_weekends, skip_holidays, _holidays):
             day += 1
