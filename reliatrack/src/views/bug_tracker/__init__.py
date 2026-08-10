@@ -109,6 +109,9 @@ class BugTrackerView(QWidget):
         self._more_menu.addAction(self._act_attachments)
         self._act_export_8d = self._more_menu.addAction("导出 8D 报告")
         self._act_export_8d.setToolTip("将选中的 Issue 导出为 8D 报告")
+        self._more_menu.addSeparator()
+        self._act_recycle_bin = self._more_menu.addAction("回收站")
+        self._act_recycle_bin.setToolTip("查看/恢复已删除的 Issue")
 
         self._btn_more = QToolButton()
         self._btn_more.setText("更多")
@@ -178,6 +181,7 @@ class BugTrackerView(QWidget):
         self._act_new_issue.triggered.connect(self._list_view.open_create_issue_dialog)
         self._act_edit_issue.triggered.connect(self._list_view.open_edit_issue_dialog)
         self._act_export_8d.triggered.connect(self._on_export_8d)
+        self._act_recycle_bin.triggered.connect(self._on_open_recycle_bin)
 
         # 首次加载数据（统一走 _refresh_all 注入筛选后数据）
         self._refresh_all()
@@ -277,6 +281,15 @@ class BugTrackerView(QWidget):
             ToastWidget.show(self, "请先选中一个 Issue", duration=2)
             return
         self.export_8d_requested.emit(issue_id)
+
+    def _on_open_recycle_bin(self) -> None:
+        """打开 Issue 回收站对话框。"""
+        from src.views.bug_tracker.recycle_bin_dialog import RecycleBinDialog
+
+        dlg = RecycleBinDialog(self._svc, self)
+        dlg.exec()
+        # 回收站操作（恢复/彻底删除）后刷新视图
+        self._refresh_all()
 
     def refresh_theme(self):
         """主题切换后刷新。"""

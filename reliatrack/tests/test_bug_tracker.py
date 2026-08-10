@@ -46,8 +46,8 @@ def _make_service(db_conn) -> IssueService:
 class TestSchemaV27:
     """验证 schema 版本和 v27 新增字段。"""
 
-    def test_schema_version_is_27(self):
-        assert SCHEMA_VERSION == 27
+    def test_schema_version_is_28(self):
+        assert SCHEMA_VERSION == 28
 
     def test_fresh_db_has_v27(self, db_conn):
         row = db_conn.execute(
