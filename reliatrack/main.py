@@ -992,9 +992,12 @@ class MainWindow(QMainWindow):
                 continue
             title = todo.title or "(无标题)"
             self.toast(f"待办提醒：{title}", "warning")
+            # statusBar 持久提示（toast 瞬时，防错过）
+            self.statusBar().showMessage(f"待办提醒：{title}", 10_000)
 
     def _check_calibration_reminders(self) -> None:
-        """检查 30 天内到期/已过期的设备校准并提示。"""
+        """检查 30 天内到期/已过期的设备校准并提示（同一天只提醒一次）。"""
+        from PySide6.QtCore import QSettings
         ctrl = self._ctrl
         if not ctrl or not ctrl.equipment_service:
             return
@@ -1004,6 +1007,13 @@ class MainWindow(QMainWindow):
             return
         if not expiring:
             return
+        # 一天只提醒一次（QSettings 记录上次提醒日期）
+        from datetime import datetime
+        settings = QSettings()
+        today = datetime.now().strftime("%Y-%m-%d")
+        if settings.value("ReliaTrack/last_cal_remind_date") == today:
+            return
+        settings.setValue("ReliaTrack/last_cal_remind_date", today)
         overdue = [e for e, d in expiring if d < 0]
         due_soon = [e for e, d in expiring if d >= 0]
         parts = []
@@ -1016,6 +1026,7 @@ class MainWindow(QMainWindow):
         names = "、".join(e.name for e, _d in expiring[:3])
         more = f" 等 {len(expiring)} 台" if len(expiring) > 3 else ""
         self.toast(f"校准提醒：{names}{more}（{ '，'.join(parts) }）", "warning")
+        self.statusBar().showMessage(f"校准提醒：{len(expiring)} 台设备校准到期/即将到期，请前往设备管理处理。", 15_000)
 
 
     def closeEvent(self, event) -> None:  # type: ignore[override]

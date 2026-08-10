@@ -397,7 +397,7 @@ class IssueDetailDialog(QDialog):
 
     def _on_add_link(self) -> None:
         """打开添加关联对话框。"""
-        from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QMessageBox
+        from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QMessageBox
 
         issue_id = self._issue.id
         if not issue_id:
@@ -413,15 +413,33 @@ class IssueDetailDialog(QDialog):
 
         dlg = QDialog(self)
         dlg.setWindowTitle("添加关联")
-        dlg.setMinimumWidth(420)
+        dlg.setMinimumWidth(440)
         form = QFormLayout(dlg)
         type_combo = QComboBox()
         for val, label in _LINK_TYPE_LABELS.items():
             type_combo.addItem(label, val)
         form.addRow("关联类型", type_combo)
+
+        # 搜索框 + 结果下拉（issue 多时下拉直接全量会卡）
+        search_edit = QLineEdit()
+        search_edit.setPlaceholderText("输入关键词过滤（标题/编号）…")
+        form.addRow("搜索", search_edit)
         target_combo = QComboBox()
-        for i in candidates:
-            target_combo.addItem(f"#{i.id}  {i.title}", i.id)
+        target_combo.setMaxVisibleItems(15)
+
+        def _reload_options() -> None:
+            keyword = search_edit.text().strip().lower()
+            target_combo.clear()
+            for i in candidates:
+                hay = f"#{i.id} {i.title}".lower()
+                if keyword and keyword not in hay:
+                    continue
+                target_combo.addItem(f"#{i.id}  {i.title}", i.id)
+            if target_combo.count() == 0:
+                target_combo.addItem("（无匹配）", None)
+
+        _reload_options()
+        search_edit.textChanged.connect(_reload_options)
         form.addRow("目标 Issue", target_combo)
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -435,6 +453,8 @@ class IssueDetailDialog(QDialog):
             return
         dlg.deleteLater()
         target_id = target_combo.currentData()
+        if target_id is None:
+            return
         link_type = type_combo.currentData()
         try:
             self._service.add_link(issue_id, target_id, link_type)
