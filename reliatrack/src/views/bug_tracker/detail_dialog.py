@@ -385,7 +385,7 @@ class IssueDetailDialog(QDialog):
             other_id = link.target_id if link.source_id == self._issue.id else link.source_id
             other = None
             try:
-                other = self._service.get_by_id(other_id) if other_id else None
+                other = self._service.get(other_id) if other_id else None
             except Exception:
                 other = None
             title = other.title if other else f"#{other_id}（已删除）"
