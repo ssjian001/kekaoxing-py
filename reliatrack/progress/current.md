@@ -29,16 +29,10 @@
 
 ### 待办
 
-- [ ] (可选) 校准到期提醒接线: equipment_service.get_expiring_calibrations 保留
-      但未接 UI/调度器 — 设备校准到期是 DQE 核心需求, 需要时做提醒功能
-- [ ] (可选) 待办提醒接线: todo_service.list_due_reminders/mark_reminded 保留
-      但未接定时器/UI — TodoItem 有 remind_at/reminded 字段, 需要时做提醒
-- [ ] (可选) Issue 关联接线: IssueLink 表+repo+service 完整但无 UI —
-      详情弹窗加"关联 Issue" Tab 即可用
 - [ ] (可选) restore_sort_state 刷新重放 — 幂等冗余保留(改动风险>收益)
 - [ ] (可选) 批量导入非原子 — best-effort 设计保留, 汇总已显示
-- [ ] 已接线: 技术员容量配置(ScheduleConfigDialog) + 预览技术员冲突检测
-      + equipment location 列显示 + 编辑弹窗字段
+- [x] 已接线: Issue 关联 UI(detail_dialog 6 Tab) + 待办提醒(60s 轮询)
+      + 校准提醒(启动检查) + 技术员容量配置 + equipment location 列
 
 ### 最近完成
 
