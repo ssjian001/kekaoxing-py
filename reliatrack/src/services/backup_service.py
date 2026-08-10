@@ -117,8 +117,33 @@ class BackupService:
             conn = apsw.Connection(str(backup_path))
             try:
                 version = _get_current_version(conn)
+                # 完整性校验：损坏/截断的 SQLite 会在 integrity_check 返回非 'ok'
+                integrity = conn.execute("PRAGMA integrity_check").fetchone()
+                if integrity is None or integrity[0] != "ok":
+                    raise ValueError(f"备份文件完整性检查失败: {integrity}")
+                # 核心表存在性校验：防止异源/部分 SQLite 带版本表但缺业务表
+                core_tables = [
+                    "projects", "equipment", "technicians", "samples",
+                    "test_plans", "test_tasks", "test_results", "issues",
+                    "fa_records", "capa_records", "issue_comments",
+                    "issue_activity_log", "issue_links",
+                    "knowledge_entries", "settings", "holidays", "todos",
+                ]
+                existing = {
+                    r[0] for r in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'"
+                    ).fetchall()
+                }
+                missing = [t for t in core_tables if t not in existing]
+                if missing:
+                    raise ValueError(
+                        "备份文件不是有效的 ReliaTrack 数据库"
+                        f"（缺少核心表: {', '.join(missing[:5])}）"
+                    )
             finally:
                 conn.close()
+        except ValueError:
+            raise
         except Exception as exc:
             logger.exception("Error in backup_service")
             raise ValueError(f"无法读取备份文件: {exc}") from exc
@@ -161,13 +186,19 @@ class BackupService:
         safety_backup: Path | None = None
         if current_db.exists():
             DEFAULT_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             safety_backup = DEFAULT_BACKUPS_DIR / f"reliatrack_pre_restore_{ts}.db"
             try:
                 self.create_backup(safety_backup)
                 logger.info("恢复前安全备份: %s", safety_backup)
             except Exception:
-                logger.warning("恢复前安全备份失败，继续恢复")
+                # 安全备份失败 = 无回滚源。继续恢复若中途失败会把生产库写坏且无法回滚。
+                # 宁可中止恢复，让用户先解决备份目录问题。
+                logger.exception("恢复前安全备份失败，中止恢复")
+                raise RuntimeError(
+                    "恢复前自动备份失败，已中止恢复以保护当前数据库。"
+                    f"请检查备份目录 {DEFAULT_BACKUPS_DIR} 是否可写后重试。"
+                ) from None
 
         # 3. 关闭当前连接（先 checkpoint 确保 WAL 写回主库）
         try:
