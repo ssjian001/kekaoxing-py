@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QFrame,
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
 from src.models.knowledge import KnowledgeEntry
@@ -37,8 +37,6 @@ _KNOWLEDGE_SPECS = [
 
 class KnowledgeView(QWidget):
     """知识库视图 — 顶部搜索栏 + 表格。"""
-
-    knowledge_changed = Signal()  # 增删改后发射
 
     # 表格列：(显示名, 对应 KnowledgeEntry 属性)
     _COLUMNS = [
@@ -242,12 +240,6 @@ class KnowledgeView(QWidget):
     def _on_ctx_delete(self) -> None:
         """右键删除 → 触发工具栏删除按钮。"""
         self.btn_delete.click()
-
-    # ── 公开方法 ────────────────────────────────────────────────
-
-    def emit_knowledge_changed(self) -> None:
-        """通知外部数据已变更。"""
-        self.knowledge_changed.emit()
 
     # ── 空状态 ────────────────────────────────────────────────
 

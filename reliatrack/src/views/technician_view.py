@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QFrame,
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt
 
 from src.models.common import Technician
 import src.styles.theme as _theme
@@ -37,8 +37,6 @@ _TECHNICIAN_SPECS = [
 
 class TechnicianView(QWidget):
     """技术员管理视图 — 顶部工具栏 + 表格。"""
-
-    technician_changed = Signal()  # 增删改后发射
 
     # 表格列：(显示名, 对应 Technician 属性)
     _COLUMNS = [
@@ -237,12 +235,6 @@ class TechnicianView(QWidget):
     def _on_ctx_delete(self) -> None:
         """右键删除 → 触发工具栏删除按钮。"""
         self.btn_delete.click()
-
-    # ── 公开方法 ────────────────────────────────────────────────
-
-    def emit_technician_changed(self) -> None:
-        """通知外部数据已变更。"""
-        self.technician_changed.emit()
 
     # ── 空状态 ────────────────────────────────────────────────
 

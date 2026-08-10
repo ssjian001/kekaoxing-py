@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QFrame,
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
 from src.models.common import Equipment
@@ -43,8 +43,6 @@ _EQUIPMENT_SPECS = [
 
 class EquipmentView(QWidget):
     """设备管理视图 — 顶部工具栏 + 表格。"""
-
-    equipment_changed = Signal()  # 增删改后发射
 
     # 表格列：(显示名, 对应 Equipment 属性)
     _COLUMNS = [
@@ -295,12 +293,6 @@ class EquipmentView(QWidget):
     def _on_ctx_delete(self) -> None:
         """右键删除 → 触发工具栏删除按钮。"""
         self.btn_delete.click()
-
-    # ── 公开方法 ────────────────────────────────────────────────
-
-    def emit_equipment_changed(self) -> None:
-        """通知外部数据已变更。"""
-        self.equipment_changed.emit()
 
     # ── 空状态 ────────────────────────────────────────────────
 

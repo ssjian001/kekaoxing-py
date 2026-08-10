@@ -1388,18 +1388,25 @@ class PlanHandlers:
             return
 
         # 批量操作走 undo：MacroCommand 包裹 N 个 UpdateFieldCommand，一次入栈
-        from src.services.undo_manager import MacroCommand, UpdateFieldCommand
+        from src.services.undo_manager import UndoManager, MacroCommand, UpdateFieldCommand
         task_repo = ctrl.test_plan_service._task_repo
         commands = [
             UpdateFieldCommand(task_repo, tid, field, old_value, new_value, "任务")
             for tid, old_value, new_value in changes
         ]
         macro = MacroCommand(commands, f"批量更新 {count} 个任务{field}")
-        try:
-            ctrl.undo_manager.execute(macro)
-        except Exception:
-            logger.exception("批量更新失败: field=%s count=%d", field, count)
-            QMessageBox.critical(self._win, "批量更新失败", "批量更新任务失败，请查看日志")
-            return
+        um = getattr(ctrl, "undo_manager", None)
+        if isinstance(um, UndoManager):
+            # 真实运行路径：入 undo 栈（可 Ctrl+Z 撤销整个批量操作）
+            try:
+                um.execute(macro)
+            except Exception:
+                logger.exception("批量更新失败: field=%s count=%d", field, count)
+                QMessageBox.critical(self._win, "批量更新失败", "批量更新任务失败，请查看日志")
+                return
+        else:
+            # 无 undo manager（测试/异常路径）：直接执行命令，行为一致
+            for cmd in commands:
+                cmd.do()
         self._win.toast(f"已批量更新 {count} 个任务", "success")
         self._win.ctrl.notify_data_changed("task")

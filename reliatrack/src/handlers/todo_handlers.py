@@ -28,7 +28,6 @@ class TodoHandlers:
         v.btn_edit.clicked.connect(self._on_todo_edit)
         v.btn_delete.clicked.connect(self._on_todo_delete)
         v.btn_archive.clicked.connect(self._on_todo_archive)
-        v.toggle_requested.connect(self._on_todo_toggle)
         v.quick_add_created.connect(self._on_todo_quick_add)
         v._direct_status_change.connect(self._on_todo_status_change)
         v.quadrant_changed.connect(self._on_todo_quadrant_changed)
@@ -159,19 +158,6 @@ class TodoHandlers:
             ctrl.todo_service.archive(todo.id)
             self._win.toast(f"待办「{todo.title}」已归档", "success")
         self._win.schedule_throttled_refresh("todo")
-
-    def _on_todo_toggle(self, todo_id: int) -> None:
-        """切换待办状态。"""
-        ctrl = self._win.ctrl
-        if not ctrl or not ctrl.todo_service:
-            return
-        new_status = ctrl.todo_service.toggle_status(todo_id)
-        if new_status:
-            status_label = {
-                "pending": "待处理", "in_progress": "进行中", "done": "已完成",
-            }.get(new_status, new_status)
-            self._win.toast(f"状态已切换为 {status_label}", "success")
-            self._win.schedule_throttled_refresh("todo")
 
     def _on_todo_status_change(self, todo_id: int, new_status: str) -> None:
         """看板拖拽后直接设置状态（非 toggle 循环）。"""

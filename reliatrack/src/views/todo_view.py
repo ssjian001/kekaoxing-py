@@ -68,7 +68,6 @@ class TodoView(QWidget):
     """待办视图 — 看板 + 四象限子 Tab + 工具栏搜索。"""
 
     todo_changed = Signal()
-    toggle_requested = Signal(int)
     quadrant_changed = Signal(int, int)  # todo_id, new_quadrant
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -345,11 +344,6 @@ class TodoView(QWidget):
     def _on_quadrant_changed(self, todo_id: int, new_quadrant: int) -> None:
         """四象限拖拽变更 → 转发信号给 handler。"""
         self.quadrant_changed.emit(todo_id, new_quadrant)
-
-    # ── 兼容旧 handler ─────────────────────────────────────────
-
-    def emit_todo_changed(self) -> None:
-        self.todo_changed.emit()
 
     # ── 主题刷新 ────────────────────────────────────────────────
 
