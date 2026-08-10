@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import logging
 logger = logging.getLogger("views.bug_tracker.list_view")
@@ -343,6 +343,7 @@ class BugListView(QWidget):
         self._filter_severity.setCurrentIndex(0)
         self._filter_priority.setCurrentIndex(0)
         self._filter_dri.setEditText("")
+        self._search_input.clear()
 
     # ── 数据 ──────────────────────────────────────────────────
 
@@ -362,7 +363,28 @@ class BugListView(QWidget):
         self._table.set_technician_map(tech_map)
 
     def set_filters(self, filters: dict) -> None:
-        """外部设置筛选条件（跨视图同步）。"""
+        """外部设置筛选条件（跨视图同步，看板→列表方向）。
+
+        应用入参到控件后刷新；不修改入参中未提供的控件（保留当前值）。
+        """
+        if not filters:
+            return
+        if "status" in filters and filters["status"]:
+            idx = self._filter_status.findData(filters["status"])
+            if idx >= 0:
+                self._filter_status.setCurrentIndex(idx)
+        if "severity" in filters and filters["severity"]:
+            idx = self._filter_severity.findData(filters["severity"])
+            if idx >= 0:
+                self._filter_severity.setCurrentIndex(idx)
+        if "priority" in filters and filters["priority"] is not None:
+            idx = self._filter_priority.findData(str(filters["priority"]))
+            if idx >= 0:
+                self._filter_priority.setCurrentIndex(idx)
+        if "dri_name" in filters:
+            self._filter_dri.setEditText(str(filters.get("dri_name", "")))
+        if "keyword" in filters:
+            self._search_input.setText(str(filters.get("keyword", "")))
         self._apply_filters()
 
     def _apply_filters(self) -> None:
@@ -402,6 +424,18 @@ class BugListView(QWidget):
         parent = self.parent()
         if parent and hasattr(parent, '_update_stats'):
             parent._update_stats()
+        # 广播当前筛选条件，供看板等视图同步（列表→看板方向）
+        self.filter_changed.emit(self._collect_filters())
+
+    def _collect_filters(self) -> dict[str, Any]:
+        """收集当前筛选控件状态（供跨视图同步）。"""
+        return {
+            "status": self._filter_status.currentData() or "",
+            "severity": self._filter_severity.currentData() or "",
+            "priority": self._filter_priority.currentData(),
+            "dri_name": self._filter_dri.currentText().strip(),
+            "keyword": self._search_input.text().strip(),
+        }
 
         # 空状态提示
         self._empty_label.setVisible(len(filtered) == 0)
