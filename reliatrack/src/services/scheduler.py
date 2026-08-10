@@ -515,9 +515,11 @@ def run_auto_schedule(
 
     # 1c. Sort schedulable tasks: topo order → priority → duration
     topo_index = {t.id: idx for idx, t in enumerate(topo) if t.id is not None}
+    # 排除循环依赖任务（与报告一致：cycle_task_ids 任务不排入、不占资源）
     schedulable = [
         t for t in valid_tasks
         if t.status != "completed" and t.id not in locked_ids
+        and t.id not in cycle_task_ids
     ]
     # 排序策略：拓扑序 → 优先级 → 短任务优先（与 topological_order 一致）
     schedulable.sort(key=lambda t: (

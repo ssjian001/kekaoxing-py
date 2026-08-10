@@ -164,6 +164,7 @@ class BugTrackerView(QWidget):
         self._list_view.card_double_clicked.connect(self._on_open_detail)
         self._list_view.refresh_requested.connect(self._refresh_all)
         self._list_view.filter_changed.connect(self._on_filter_changed)
+        self._list_view.stats_updated.connect(self._on_stats_updated)
 
         # 门面信号桥接: _list_view → BugTrackerView
         self._list_view.issue_saved.connect(self.issue_saved)
@@ -228,6 +229,10 @@ class BugTrackerView(QWidget):
         # 同步筛选条件到看板视图
         if self._kanban_view:
             self._kanban_view.set_filters(filters)
+
+    def _on_stats_updated(self, total: int, open_count: int) -> None:
+        """列表筛选后的统计更新（真实反映当前筛选结果）。"""
+        self._stats_label.setText(f"共 {total} 个 Issue · 待处理 {open_count}")
 
     def _get_filtered_issues(self) -> list:
         """获取按项目筛选的 Issue 列表（与 Issue 视图逻辑一致）。"""

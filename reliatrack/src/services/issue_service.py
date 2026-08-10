@@ -375,6 +375,47 @@ class IssueService:
         except (ValueError, TypeError):
             return 0
 
+    def get_aging_days_map(self, issue_ids: list[int]) -> dict[int, int]:
+        """批量获取多个 Issue 的停留天数（一次查询全部活动日志，避免逐行 DB 查询）。
+
+        与 get_aging_days 语义一致：从最后一次 status 变更算起；
+        无 status 变更时用 updated_at/created_at。
+        """
+        from datetime import datetime
+
+        if not issue_ids:
+            return {}
+        result: dict[int, int] = {}
+        try:
+            logs = self._activity_repo.get_by_issues(issue_ids)
+        except Exception:
+            logger.exception("get_aging_days_map: batch activity query failed")
+            logs = []
+        # 每个 issue 的 status 变更时间（升序，取最后一条）
+        status_changes: dict[int, str] = {}
+        for log in logs:
+            if getattr(log, "field", None) == "status" and log.issue_id is not None:
+                status_changes[log.issue_id] = log.created_at or ""
+
+        # 无 status 变更的 issue：回退查 issue 记录
+        fallback_ids = [i for i in issue_ids if i not in status_changes]
+        issues = self._repo.get_by_ids(fallback_ids) if fallback_ids else []
+        fallback_time = {i.id: (i.updated_at or i.created_at or "") for i in issues if i.id is not None}
+
+        fmt = "%Y-%m-%d %H:%M:%S"
+        now = datetime.now()
+        for issue_id in issue_ids:
+            last_change = status_changes.get(issue_id, "") or fallback_time.get(issue_id, "")
+            if not last_change:
+                result[issue_id] = 0
+                continue
+            try:
+                start = datetime.strptime(last_change[:19], fmt)
+                result[issue_id] = (now - start).days
+            except (ValueError, TypeError):
+                result[issue_id] = 0
+        return result
+
     # ── 附件完整性扫描 ──
 
     def scan_attachment_integrity(self) -> dict[str, list[str]]:

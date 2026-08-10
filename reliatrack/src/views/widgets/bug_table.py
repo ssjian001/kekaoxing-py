@@ -97,6 +97,17 @@ class _BugTable(QTableWidget):
         self.setSortingEnabled(False)
         self.setRowCount(len(issues))
 
+        # 批量预取 aging 天数（一次 DB 查询替代逐行 get_aging_days）
+        aging_cache: dict[int, int] = {}
+        if self._issue_service is not None:
+            ids = [i.id for i in issues if i.id is not None]
+            if ids:
+                try:
+                    aging_cache = self._issue_service.get_aging_days_map(ids)
+                except Exception:
+                    logger.exception("set_issues: batch aging fetch failed")
+                    aging_cache = {}
+
         for row, issue in enumerate(issues):
             chk_item = QTableWidgetItem()
             chk_item.setFlags(
@@ -135,7 +146,7 @@ class _BugTable(QTableWidget):
                     item.setForeground(QColor(PRIORITY_COLORS.get(issue.priority, _t.TEXT)))
                 self.setItem(row, col, item)
 
-            aging_days = self._get_aging_days(issue.id)
+            aging_days = aging_cache.get(issue.id, 0) if issue.id is not None else 0
             aging_text = f"{aging_days}天" if aging_days >= 0 else "-"
             aging_item = QTableWidgetItem(aging_text)
             aging_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)

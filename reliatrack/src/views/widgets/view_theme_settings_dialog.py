@@ -189,8 +189,9 @@ class ViewThemeSettingsDialog(QDialog):
 
     def _reset_all_column_visibility(self) -> None:
         settings = QSettings()
-        for key in ["task_table", "project_table", "equipment_table", "sample_ledger", "bug_table"]:
-            settings.remove(key)
+        # key 必须带 ReliaTrack/column_visibility_ 前缀（与 column_visibility_menu 一致）
+        for key in ["task_table", "project_table", "equipment_table", "sample_ledger"]:
+            settings.remove(f"ReliaTrack/column_visibility_{key}")
         mw = self.parent()
         if hasattr(mw, "toast"):
             mw.toast("已成功恢复所有表格列默认显示状态！", "success")

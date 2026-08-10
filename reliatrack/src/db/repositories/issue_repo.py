@@ -68,6 +68,23 @@ class IssueRepository(BaseRepository):
             (issue_id,),
         )
 
+    def get_by_ids(self, issue_ids: list[int]) -> list[Issue]:
+        """批量获取多个 Issue（含软删过滤=0）。
+
+        一次 IN 查询替代 N 次 get_by_id（get_aging_days_map 批量回退路径）。
+        """
+        if not issue_ids:
+            return []
+        cols_sql = self._columns_sql()
+        cols_list = self._columns()
+        placeholders = ",".join("?" * len(issue_ids))
+        rows = self._conn.execute(
+            f"SELECT {cols_sql} FROM [issues] "
+            f"WHERE is_deleted = 0 AND id IN ({placeholders})",
+            issue_ids,
+        ).fetchall()
+        return self._rows_to_models(rows, cols=cols_list)
+
     def list_deleted(self) -> list[Issue]:
         """查询所有已软删除的 Issue。"""
         cols_sql = self._columns_sql()
@@ -614,6 +631,22 @@ class IssueActivityLogRepository(BaseRepository):
         rows = self._conn.execute(
             "SELECT * FROM [issue_activity_log] WHERE issue_id = ? ORDER BY created_at ASC",
             (issue_id,),
+        ).fetchall()
+        cols = [d[1] for d in self._conn.execute("PRAGMA table_info([issue_activity_log])").fetchall()]
+        return [IssueActivityLog(**dict(zip(cols, row))) for row in rows]
+
+    def get_by_issues(self, issue_ids: list[int]) -> list[IssueActivityLog]:
+        """批量获取多个 Issue 的活动日志（按 issue_id, created_at 升序）。
+
+        一次 IN 查询替代 N 次单行查询（列表渲染 aging 列时避免逐行 DB 访问）。
+        """
+        if not issue_ids:
+            return []
+        placeholders = ",".join("?" * len(issue_ids))
+        rows = self._conn.execute(
+            f"SELECT * FROM [issue_activity_log] WHERE issue_id IN ({placeholders}) "
+            "ORDER BY issue_id ASC, created_at ASC",
+            issue_ids,
         ).fetchall()
         cols = [d[1] for d in self._conn.execute("PRAGMA table_info([issue_activity_log])").fetchall()]
         return [IssueActivityLog(**dict(zip(cols, row))) for row in rows]

@@ -132,12 +132,10 @@ PROJECT_STATUS_LABELS: dict[str, str] = {
     "archived": "已归档",
     "closed": "已关闭",
 }
-PROJECT_STATUS_OPTIONS = ["进行中", "暂停", "已完成", "已归档", "已关闭"]
+PROJECT_STATUS_OPTIONS = ["进行中", "暂停", "已关闭"]
 PROJECT_STATUS_MAP: dict[str, str] = {
     "进行中": "active",
     "暂停": "paused",
-    "已完成": "completed",
-    "已归档": "archived",
     "已关闭": "closed",
 }
 PROJECT_STATUS_REVERSE: dict[str, str] = {v: k for k, v in PROJECT_STATUS_MAP.items()}

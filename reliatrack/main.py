@@ -560,7 +560,11 @@ class MainWindow(QMainWindow):
         elif idx == 5:
             self._todo_handlers._on_todo_add()
         elif idx == 6:
-            self._equipment_handlers._on_equipment_add()
+            # 设备管理外层 Tab 内含 设备/技术员 两个子 Tab
+            if self._equip_tech_tabs.currentIndex() == 1:
+                self._technician_handlers._on_technician_add()
+            else:
+                self._equipment_handlers._on_equipment_add()
         elif idx == 7:
             self._knowledge_handlers._on_knowledge_add()
 
@@ -576,7 +580,10 @@ class MainWindow(QMainWindow):
         elif idx == 5:
             self._todo_handlers._on_todo_delete()
         elif idx == 6:
-            self._equipment_handlers._on_equipment_delete()
+            if self._equip_tech_tabs.currentIndex() == 1:
+                self._technician_handlers._on_technician_delete()
+            else:
+                self._equipment_handlers._on_equipment_delete()
         elif idx == 7:
             self._knowledge_handlers._on_knowledge_delete()
 
@@ -590,7 +597,10 @@ class MainWindow(QMainWindow):
         elif idx == 5:
             self._todo_handlers._on_todo_edit()
         elif idx == 6:
-            self._equipment_handlers._on_equipment_edit()
+            if self._equip_tech_tabs.currentIndex() == 1:
+                self._technician_handlers._on_technician_edit()
+            else:
+                self._equipment_handlers._on_equipment_edit()
         elif idx == 7:
             self._knowledge_handlers._on_knowledge_edit()
 
@@ -606,7 +616,11 @@ class MainWindow(QMainWindow):
             7: lambda: self._knowledge_view._search_edit,
         }
         idx = self._tab_widget.currentIndex()
-        getter = search_map.get(idx)
+        if idx == 6 and self._equip_tech_tabs.currentIndex() == 1:
+            # 技术员子 Tab：聚焦技术员搜索框
+            getter = lambda: self._technician_view._search_edit  # noqa: E731
+        else:
+            getter = search_map.get(idx)
         if getter:
             widget = getter()
             widget.setFocus()

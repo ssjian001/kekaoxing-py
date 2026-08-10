@@ -78,6 +78,7 @@ class BugListView(QWidget):
     card_double_clicked = Signal(int)     # Issue ID
     refresh_requested = Signal()          # 父视图刷新
     filter_changed = Signal(dict)         # 与其他视图共享筛选
+    stats_updated = Signal(int, int)      # 筛选后 (total, open) 供父视图统计栏
     issue_saved = Signal(dict)            # Issue 保存/更新
     issue_deleted = Signal(int)           # Issue 删除
     issue_selected = Signal(object)       # Issue 选中 (int | None)
@@ -362,6 +363,11 @@ class BugListView(QWidget):
         self._technician_map = tech_map
         self._table.set_technician_map(tech_map)
 
+    def focus_search(self) -> None:
+        """/ 快捷键 — 聚焦搜索框。"""
+        self._search_input.setFocus()
+        self._search_input.selectAll()
+
     def set_filters(self, filters: dict) -> None:
         """外部设置筛选条件（跨视图同步，看板→列表方向）。
 
@@ -426,6 +432,8 @@ class BugListView(QWidget):
             parent._update_stats()
         # 广播当前筛选条件，供看板等视图同步（列表→看板方向）
         self.filter_changed.emit(self._collect_filters())
+        # 广播筛选后统计（顶部统计栏真实反映当前筛选结果）
+        self.stats_updated.emit(len(filtered), sum(1 for i in filtered if i.status == "open"))
 
     def _collect_filters(self) -> dict[str, Any]:
         """收集当前筛选控件状态（供跨视图同步）。"""
