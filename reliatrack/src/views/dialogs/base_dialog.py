@@ -167,6 +167,11 @@ class _BaseDialog(QDialog):
             idx = combo.findText(default)
             if idx >= 0:
                 combo.setCurrentIndex(idx)
+            else:
+                # 兜底：默认值不在候选列表中时保留原值，避免静默改写为 index 0
+                # （实测：编辑旧类别数据时 findText 失败会静默取 index 0，保存后数据被改）
+                combo.addItem(default)
+                combo.setCurrentIndex(combo.count() - 1)
         self._form.addRow(label, combo)
         return combo
 

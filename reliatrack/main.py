@@ -815,6 +815,63 @@ class MainWindow(QMainWindow):
         except RuntimeError:
             pass
 
+    def _entity_types_for_command(self, cmd: object) -> set[str]:
+        """根据 undo/redo 命令推断需要刷新的实体类型。
+
+        undo/redo 后必须按命令实际影响的实体刷新视图，否则
+        撤销设备/知识/技术员/待办删除后对应视图停留在旧状态。
+        """
+        from src.services.undo_manager import (
+            BatchEditSamplesCommand,
+            BatchScheduleCommand,
+            MacroCommand,
+            SoftDeleteCommand,
+            TransitionIssueStatusCommand,
+            UpdateFieldCommand,
+        )
+        if cmd is None:
+            return {"issue"}
+        # MacroCommand: 合并所有子命令的实体类型
+        if isinstance(cmd, MacroCommand):
+            entities: set[str] = set()
+            for sub in getattr(cmd, "_commands", []) or []:
+                entities |= self._entity_types_for_command(sub)
+            return entities or {"all"}
+        # 明确类型的命令 → 固定实体
+        if isinstance(cmd, BatchEditSamplesCommand):
+            return {"sample"}
+        if isinstance(cmd, (BatchScheduleCommand, UpdateFieldCommand)):
+            # UpdateFieldCommand 子类: MoveTask/UpdateProgress/UpdateTaskStatus → task
+            return {"task"}
+        if isinstance(cmd, (SoftDeleteCommand, TransitionIssueStatusCommand)):
+            return {"issue"}
+        # 通用: 从 repo._table 推断
+        repo = getattr(cmd, "_repo", None)
+        table = getattr(repo, "_table", "")
+        table_to_entity = {
+            "issues": "issue",
+            "test_tasks": "task",
+            "test_plans": "plan",
+            "samples": "sample",
+            "equipment": "equipment",
+            "technicians": "technician",
+            "knowledge_entries": "knowledge",
+            "todos": "todo",
+        }
+        entity = table_to_entity.get(table)
+        if entity:
+            return {entity}
+        entity_name = getattr(cmd, "_entity_name", "")
+        name_to_entity = {
+            "设备": "equipment", "技术员": "technician", "知识": "knowledge",
+            "知识库": "knowledge", "待办": "todo", "任务": "task",
+            "样品": "sample", "项目": "project", "Issue": "issue",
+        }
+        mapped = name_to_entity.get(entity_name)
+        if mapped:
+            return {mapped}
+        return {"all"}
+
     def _on_undo(self) -> None:
         um = self._ctrl.undo_manager
         if not um:
@@ -823,7 +880,8 @@ class MainWindow(QMainWindow):
         desc = um.undo()
         if desc:
             self.statusBar().showMessage(f"已撤销: {desc}", 3000)
-            self._ctrl.notify_data_changed("issue")
+            for entity in self._entity_types_for_command(cmd):
+                self._ctrl.notify_data_changed(entity)
             self._replay_sync_after_undo_redo(cmd)
             self._flash_undo_affected_row(cmd)
 
@@ -835,7 +893,8 @@ class MainWindow(QMainWindow):
         desc = um.redo()
         if desc:
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
-            self._ctrl.notify_data_changed("issue")
+            for entity in self._entity_types_for_command(cmd):
+                self._ctrl.notify_data_changed(entity)
             self._replay_sync_after_undo_redo(cmd)
             self._flash_undo_affected_row(cmd)
 

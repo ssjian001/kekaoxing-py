@@ -12,7 +12,7 @@ import apsw
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 27
+SCHEMA_VERSION = 28
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -1160,6 +1160,30 @@ def _migrate_v27(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (27)")
 
 
+def _migrate_v28(conn: apsw.Connection) -> None:
+    """v27→v28: test_tasks.category 旧值统一到 TASK_CATEGORIES 新值域。
+
+    2026-08-10 审计发现: TASK_CATEGORIES 常量已统一为 8 项新值
+    (环境试验/机械试验/表面处理/工艺试验/包装/寿命试验/EMC/其他)，
+    但存量数据仍是旧值 (环境/力学/电测)，导致类别筛选永远空表、
+    编辑任务时 combo findText 失败静默改写类别。
+
+    映射: 环境→环境试验, 力学→机械试验, 电测→其他 (无精确对应, 归"其他")。
+    """
+    mapping = {
+        "环境": "环境试验",
+        "力学": "机械试验",
+        "电测": "其他",
+    }
+    for old_val, new_val in mapping.items():
+        conn.execute(
+            "UPDATE test_tasks SET category = ?, updated_at = datetime('now','localtime') "
+            "WHERE category = ?",
+            (new_val, old_val),
+        )
+    conn.execute("INSERT INTO schema_version (version) VALUES (28)")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -1188,6 +1212,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (25, _migrate_v25),
     (26, _migrate_v26),
     (27, _migrate_v27),
+    (28, _migrate_v28),
 ]
 
 
@@ -1440,6 +1465,17 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v27 failed")
+            raise
+
+    # v28: test_tasks.category 旧值统一到 TASK_CATEGORIES 新值域
+    if current < 28:
+        conn.execute("BEGIN")
+        try:
+            _migrate_v28(conn)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            logger.exception("Schema migration v28 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）
