@@ -29,11 +29,10 @@
 
 ### 待办
 
-- [ ] 全量回归确认（后台 proc_7e244e0ecb59）
-- [ ] git push 所有 commits（d592bc8/8b82021/5a81c7f 未推送）
-- [ ] P2 剩余低优先：kanban/FilterPanel 键名埋雷(已删 FilterPanel 死代码,
-      键名不一致点已随删除消失)、debounce timer 引用已删除表格风险、
-      restore_sort_state 刷新重放、批量导入非原子、漏技术员冲突检测
+- [ ] (可选) 校准到期提醒接线: equipment_service.get_expiring_calibrations 保留
+      但未接 UI/调度器 — 设备校准到期是 DQE 核心需求, 需要时做提醒功能
+- [ ] (可选) restore_sort_state 刷新重放 — 幂等冗余保留(改动风险>收益)
+- [ ] (可选) 批量导入非原子 — best-effort 设计保留, 汇总已显示
 
 ### 最近完成
 
