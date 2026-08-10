@@ -1,184 +1,275 @@
 {
-  "_meta": {
-    "last_updated": "2026-08-09",
-    "schema_version": 27,
-    "tests": "659 passed (2026-08-09: 任务失败状态统一 + 就地编辑残留修复补完 + 行为测试重构)"
+ "_meta": {
+  "last_updated": "2026-08-10",
+  "schema_version": 28,
+  "tests": "684 passed (2026-08-10: 死代码清理第三批 + 三个功能接线 + 45 新测试 + popup/rate-class 修复)"
+ },
+ "features": [
+  {
+   "id": "F001",
+   "name": "项目管理",
+   "description": "项目 CRUD、状态管理",
+   "status": "done",
+   "modules": [
+    "project_view.py",
+    "project_handlers.py",
+    "project_service.py",
+    "project_repo.py"
+   ]
   },
-  "features": [
-    {
-      "id": "F001",
-      "name": "项目管理",
-      "description": "项目 CRUD、状态管理",
-      "status": "done",
-      "modules": ["project_view.py", "project_handlers.py", "project_service.py", "project_repo.py"]
-    },
-    {
-      "id": "F002",
-      "name": "测试计划管理",
-      "description": "测试计划 CRUD、任务分配、依赖关系、计划归档/只读保护",
-      "status": "done",
-      "modules": ["test_plan_view.py", "plan_handlers.py", "test_plan_service.py", "test_plan_repo.py", "test_task_repo.py", "refresh_handlers.py", "sample_handlers.py"]
-    },
-    {
-      "id": "F003",
-      "name": "样品管理",
-      "description": "样品登记、出入库、归还、查询",
-      "status": "done",
-      "modules": ["sample_view.py", "sample_handlers.py", "sample_service.py", "sample_repo.py"]
-    },
-    {
-      "id": "F004",
-      "name": "设备管理",
-      "description": "设备台账、校准管理",
-      "status": "done",
-      "modules": ["equipment_view.py", "equipment_handlers.py", "equipment_service.py", "equipment_repo.py"]
-    },
-    {
-      "id": "F005",
-      "name": "技术人员管理",
-      "description": "技术人员信息维护",
-      "status": "done",
-      "modules": ["technician_view.py", "technician_handlers.py", "technician_service.py", "technician_repo.py"]
-    },
-    {
-      "id": "F006",
-      "name": "测试结果记录",
-      "description": "测试结果录入、判定、矩阵展示",
-      "status": "done",
-      "modules": ["test_result_dialog.py", "result_matrix.py", "test_result_repo.py"]
-    },
-    {
-      "id": "F007",
-      "name": "甘特图 / 排程",
-      "description": "自动排程、甘特图可视化、设备冲突检测",
-      "status": "done",
-      "modules": ["gantt_widget.py", "scheduler.py", "scheduler_service.py", "schedule_config_dialog.py", "schedule_preview_dialog.py", "schedule_report_dialog.py"]
-    },
-    {
-      "id": "F008",
-      "name": "问题管理 (CAPA)",
-      "description": "问题追踪、CAPA/PDCA 流程",
-      "status": "done",
-      "modules": ["issue_view.py", "issue_handlers.py", "issue_service.py", "issue_repo.py", "issue_dialog.py"]
-    },
-    {
-      "id": "F009",
-      "name": "知识库",
-      "description": "知识条目管理、分类检索",
-      "status": "done",
-      "modules": ["knowledge_view.py", "knowledge_handlers.py", "knowledge_service.py", "knowledge_repo.py", "knowledge_edit_dialog.py"]
-    },
-    {
-      "id": "F010",
-      "name": "数据导出",
-      "description": "PDF/Word/Excel 报告导出，零 Qt 依赖",
-      "status": "done",
-      "modules": ["export_service.py", "export/", "export_handlers.py", "export_dialog.py"]
-    },
-    {
-      "id": "F011",
-      "name": "批量导入",
-      "description": "Excel 批量导入测试任务",
-      "status": "done",
-      "modules": ["import_service.py", "batch_import_dialog.py"]
-    },
-    {
-      "id": "F012",
-      "name": "仪表盘",
-      "description": "项目概览、统计图表",
-      "status": "done",
-      "modules": ["dashboard_view.py"]
-    },
-    {
-      "id": "F013",
-      "name": "数据分析",
-      "description": "测试结果统计分析",
-      "status": "done",
-      "modules": ["analysis_widget.py"]
-    },
-    {
-      "id": "F014",
-      "name": "假期管理",
-      "description": "自定义非工作日（节假日）",
-      "status": "done",
-      "modules": ["holiday_service.py", "holiday_manage_dialog.py"]
-    },
-    {
-      "id": "F015",
-      "name": "备份与恢复",
-      "description": "数据库备份、恢复",
-      "status": "done",
-      "modules": ["backup_service.py", "backup_handlers.py", "backup_dialog.py"]
-    },
-    {
-      "id": "F016",
-      "name": "撤销/重做",
-      "description": "操作历史回退",
-      "status": "done",
-      "modules": ["undo_manager.py"]
-    },
-    {
-      "id": "F017",
-      "name": "主题系统",
-      "description": "Catppuccin 双色调主题、46+ QSS 类选择器",
-      "status": "done",
-      "modules": ["theme.py", "styles/constants.py"]
-    },
-    {
-      "id": "F018",
-      "name": "国际化 (i18n)",
-      "description": "中英文双语支持 — 已取消：项目为纯中文单语言应用，UI 文字硬编码中文，无 i18n 需求",
-      "status": "cancelled",
-      "modules": []
-    },
-    {
-      "id": "F019",
-      "name": "附件管理",
-      "description": "文件附件上传与查看",
-      "status": "done",
-      "modules": ["attachment_dialog.py"]
-    },
-    {
-      "id": "F020",
-      "name": "任务表格",
-      "description": "可编辑任务表格控件",
-      "status": "done",
-      "modules": ["task_table.py"]
-    },
-    {
-      "id": "F021",
-      "name": "列宽持久化",
-      "description": "表格列宽保存与恢复",
-      "status": "done",
-      "modules": ["column_persistence.py"]
-    },
-    {
-      "id": "F022",
-      "name": "软删除",
-      "description": "数据软删除而非物理删除",
-      "status": "done",
-      "modules": []
-    },
-    {
-      "id": "F023",
-      "name": "Toast 通知",
-      "description": "非阻塞式操作反馈",
-      "status": "done",
-      "modules": ["toast.py"]
-    },
-    {
-      "id": "F024",
-      "name": "跨计划任务导入",
-      "description": "从其他测试计划导入任务",
-      "status": "done",
-      "modules": ["import_tasks_from_plan_dialog.py"]
-    },
-    {
-      "id": "F025",
-      "name": "待办事项 (Todo)",
-      "description": "轻量待办管理，按项目筛选，状态切换（待处理/进行中/已完成），优先级标记",
-      "status": "done",
-      "modules": ["todo_view.py", "todo_handlers.py", "todo_service.py", "todo_repo.py", "todo_edit_dialog.py"]
-    }
-  ]
+  {
+   "id": "F002",
+   "name": "测试计划管理",
+   "description": "测试计划 CRUD、任务分配、依赖关系、计划归档/只读保护",
+   "status": "done",
+   "modules": [
+    "test_plan_view.py",
+    "plan_handlers.py",
+    "test_plan_service.py",
+    "test_plan_repo.py",
+    "test_task_repo.py",
+    "refresh_handlers.py",
+    "sample_handlers.py"
+   ]
+  },
+  {
+   "id": "F003",
+   "name": "样品管理",
+   "description": "样品登记、出入库、归还、查询",
+   "status": "done",
+   "modules": [
+    "sample_view.py",
+    "sample_handlers.py",
+    "sample_service.py",
+    "sample_repo.py"
+   ]
+  },
+  {
+   "id": "F004",
+   "name": "设备管理",
+   "description": "设备台账、校准管理",
+   "status": "done",
+   "modules": [
+    "equipment_view.py",
+    "equipment_handlers.py",
+    "equipment_service.py",
+    "equipment_repo.py"
+   ]
+  },
+  {
+   "id": "F005",
+   "name": "技术人员管理",
+   "description": "技术人员信息维护",
+   "status": "done",
+   "modules": [
+    "technician_view.py",
+    "technician_handlers.py",
+    "technician_service.py",
+    "technician_repo.py"
+   ]
+  },
+  {
+   "id": "F006",
+   "name": "测试结果记录",
+   "description": "测试结果录入、判定、矩阵展示",
+   "status": "done",
+   "modules": [
+    "test_result_dialog.py",
+    "result_matrix.py",
+    "test_result_repo.py"
+   ]
+  },
+  {
+   "id": "F007",
+   "name": "甘特图 / 排程",
+   "description": "自动排程、甘特图可视化、设备冲突检测",
+   "status": "done",
+   "modules": [
+    "gantt_widget.py",
+    "scheduler.py",
+    "scheduler_service.py",
+    "schedule_config_dialog.py",
+    "schedule_preview_dialog.py",
+    "schedule_report_dialog.py"
+   ]
+  },
+  {
+   "id": "F008",
+   "name": "问题管理 (CAPA)",
+   "description": "问题追踪、CAPA/PDCA 流程",
+   "status": "done",
+   "modules": [
+    "issue_view.py",
+    "issue_handlers.py",
+    "issue_service.py",
+    "issue_repo.py",
+    "issue_dialog.py"
+   ]
+  },
+  {
+   "id": "F009",
+   "name": "知识库",
+   "description": "知识条目管理、分类检索",
+   "status": "done",
+   "modules": [
+    "knowledge_view.py",
+    "knowledge_handlers.py",
+    "knowledge_service.py",
+    "knowledge_repo.py",
+    "knowledge_edit_dialog.py"
+   ]
+  },
+  {
+   "id": "F010",
+   "name": "数据导出",
+   "description": "PDF/Word/Excel 报告导出，零 Qt 依赖",
+   "status": "done",
+   "modules": [
+    "export_service.py",
+    "export/",
+    "export_handlers.py",
+    "export_dialog.py"
+   ]
+  },
+  {
+   "id": "F011",
+   "name": "批量导入",
+   "description": "Excel 批量导入测试任务",
+   "status": "done",
+   "modules": [
+    "import_service.py",
+    "batch_import_dialog.py"
+   ]
+  },
+  {
+   "id": "F012",
+   "name": "仪表盘",
+   "description": "项目概览、统计图表",
+   "status": "done",
+   "modules": [
+    "dashboard_view.py"
+   ]
+  },
+  {
+   "id": "F013",
+   "name": "数据分析",
+   "description": "测试结果统计分析",
+   "status": "done",
+   "modules": [
+    "analysis_widget.py"
+   ]
+  },
+  {
+   "id": "F014",
+   "name": "假期管理",
+   "description": "自定义非工作日（节假日）",
+   "status": "done",
+   "modules": [
+    "holiday_service.py",
+    "holiday_manage_dialog.py"
+   ]
+  },
+  {
+   "id": "F015",
+   "name": "备份与恢复",
+   "description": "数据库备份、恢复",
+   "status": "done",
+   "modules": [
+    "backup_service.py",
+    "backup_handlers.py",
+    "backup_dialog.py"
+   ]
+  },
+  {
+   "id": "F016",
+   "name": "撤销/重做",
+   "description": "操作历史回退",
+   "status": "done",
+   "modules": [
+    "undo_manager.py"
+   ]
+  },
+  {
+   "id": "F017",
+   "name": "主题系统",
+   "description": "Catppuccin 双色调主题、46+ QSS 类选择器",
+   "status": "done",
+   "modules": [
+    "theme.py",
+    "styles/constants.py"
+   ]
+  },
+  {
+   "id": "F018",
+   "name": "国际化 (i18n)",
+   "description": "中英文双语支持 — 已取消：项目为纯中文单语言应用，UI 文字硬编码中文，无 i18n 需求",
+   "status": "cancelled",
+   "modules": []
+  },
+  {
+   "id": "F019",
+   "name": "附件管理",
+   "description": "文件附件上传与查看",
+   "status": "done",
+   "modules": [
+    "attachment_dialog.py"
+   ]
+  },
+  {
+   "id": "F020",
+   "name": "任务表格",
+   "description": "可编辑任务表格控件",
+   "status": "done",
+   "modules": [
+    "task_table.py"
+   ]
+  },
+  {
+   "id": "F021",
+   "name": "列宽持久化",
+   "description": "表格列宽保存与恢复",
+   "status": "done",
+   "modules": [
+    "column_persistence.py"
+   ]
+  },
+  {
+   "id": "F022",
+   "name": "软删除",
+   "description": "数据软删除而非物理删除",
+   "status": "done",
+   "modules": []
+  },
+  {
+   "id": "F023",
+   "name": "Toast 通知",
+   "description": "非阻塞式操作反馈",
+   "status": "done",
+   "modules": [
+    "toast.py"
+   ]
+  },
+  {
+   "id": "F024",
+   "name": "跨计划任务导入",
+   "description": "从其他测试计划导入任务",
+   "status": "done",
+   "modules": [
+    "import_tasks_from_plan_dialog.py"
+   ]
+  },
+  {
+   "id": "F025",
+   "name": "待办事项 (Todo)",
+   "description": "轻量待办管理，按项目筛选，状态切换（待处理/进行中/已完成），优先级标记",
+   "status": "done",
+   "modules": [
+    "todo_view.py",
+    "todo_handlers.py",
+    "todo_service.py",
+    "todo_repo.py",
+    "todo_edit_dialog.py"
+   ]
+  }
+ ]
 }

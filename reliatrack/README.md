@@ -47,7 +47,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   └── schema.py        # SQLite schema（v25，20张表含todos）
+│   └── schema.py        # SQLite schema（v28，20张表含todos）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
