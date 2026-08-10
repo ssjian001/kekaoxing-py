@@ -1,13 +1,38 @@
 # ReliaTrack 当前进度
 
-**最后更新**: 2026-08-09
-**Schema 版本**: v27 (20 张表)
-**测试**: 668 passed
+**最后更新**: 2026-08-10
+**Schema 版本**: v28 (20 张表)
+**测试**: 668+（全量回归待确认）
 **Widgets**: 42 | **Dialogs**: 28
 
 ## 当前状态
 
-UI/UX 大改造已完成 merge 到 main（feature/ui-ux-enhancements 分支，23 commits，+2885 行）。
+2026-08-10 六维度全量审计修复完成（P0×2 + P1×14 全部处理，R3-P2 死代码清理中）。
+
+### 最近完成（2026-08-10 审计修复批次，8 commits 待 push）
+
+- **P0 类别值域统一 (ca9d8ce)**: schema v28 迁移（环境→环境试验/力学→机械试验/电测→其他），
+  实测 12 条任务转换；combo findText 失败保留原值不再静默改写；undo/redo 按命令实体分发刷新
+- **P1 修复批次 (b0386b8)**: 设备/技术员删除静默失败弹窗提示；样品删除阻止物理级联清除软删
+  Issue（count_by_sample_all）；CAPA 全局 KPI 过滤 is_deleted；热力图去掉 random 假数据改
+  接真实任务引用数；排程 max_scan 超限返回 None 不再静默违反约束
+- **undo 异常安全 (498ab96)**: undo/redo 失败命令不丢失压回原栈；批量操作改走
+  MacroCommand+UpdateFieldCommand 一次入栈整体撤销；+3 行为测试
+- **Issue 回收站 UI (8f11d6a)**: 更多菜单→回收站，list_deleted/restore/delete 接线，
+  软删 Issue 不再永久不可见
+- **备份恢复加固 (6b4ba8c)**: validate_backup 加 integrity_check + 17 核心表校验；
+  恢复前安全备份失败改为中止恢复（保护生产库）；安全备份文件名加毫秒防碰撞
+- **看板↔列表筛选双向同步 (835682e)**: set_filters 真正应用入参 + filter_changed emit
+- **搜索历史 chips 接线 (131fb4c)**: save_search_keyword 接入 _on_task_search
+- **R3-P2 死代码清理 (dc77b59)**: 4 视图死信号 + todo toggle 死链路删除；
+  _on_batch_value 对非真实 UndoManager 直接执行（修 test_handlers 回归）
+
+### 待办
+
+- [ ] 全量回归确认（后台 proc_b933df03b9f3）
+- [ ] git push 所有 commits（8 个未推送）
+- [ ] 剩余 P2：看板统计标签不反映筛选/快捷键嵌套 Tab 错配/逐键 N 次 DB 查询/
+      列显隐重置按钮 key 错误/日期筛选静默失效/排序状态重放等约 30 项
 
 ### 最近完成
 
