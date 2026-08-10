@@ -36,6 +36,10 @@
 
 ### 最近完成
 
+- **测试升级 (2026-08-10, 2deed84)**: tests/test_reminders.py 27 个测试覆盖
+  Issue 关联 UI(交互/异常/软删/自引用) + 待办提醒(触发/去重/异常)
+  + 校准提醒(边界/排序/一天一次/文案截断)。全量 666 passed。
+  顺带修复 detail_dialog._load_links 用错 API(get_by_id→get, 真实运行时 bug)。
 - **样品表格空状态提示 (2026-08-09, c961c94)**: 无数据时居中显示"暂无样品数据"（empty-label class），覆盖样品池/台账两 tab，+2 测试
 - **todo_view 死信号清理 (2026-08-09, c6c4235)**: 删除从未 emit/connect 的 archive_requested（归档功能走 btn_archive.clicked，不受影响）
 - **窗口几何记忆 (2026-08-09, fa34bd8)**: 重启恢复上次窗口大小/位置/工具栏状态（QSettings），+3 测试
