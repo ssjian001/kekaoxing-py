@@ -34,6 +34,11 @@ def _make_focus_out_filter(widget, on_focus_out):
 
     editingFinished 信号在部分焦点路径（如点击表格另一单元格）下不触发，
     用 eventFilter 拦截 FocusOut 事件作为兜底。返回的 filter 挂在 widget 上。
+
+    注意 PopupFocusReason：combo popup 打开时焦点会临时转移到 popup，
+    此时失焦不算真正离开，必须跳过；但用户点击 popup 外部后 popup 已关闭，
+    此时失焦（reason 仍可能是 PopupFocusReason）必须正常清理——
+    否则编辑器残留，要再点一下才消失。
     """
     from PySide6.QtCore import QObject, QEvent
 
@@ -42,7 +47,15 @@ def _make_focus_out_filter(widget, on_focus_out):
             if event.type() == QEvent.Type.FocusOut:
                 # 焦点转移到 combo popup 时不算真正离开
                 if hasattr(event, "reason") and event.reason() == Qt.FocusReason.PopupFocusReason:
-                    return False
+                    # 仅当 popup 仍可见时跳过（popup 已关闭 → 正常清理）
+                    view = getattr(widget, "view", None)
+                    if callable(view):
+                        try:
+                            popup_win = view().window()
+                        except RuntimeError:
+                            popup_win = None
+                        if popup_win is not None and popup_win.isVisible():
+                            return False
                 on_focus_out()
             return False
 

@@ -181,3 +181,52 @@ class TestInlineStatusFailCompat:
         combo.setCurrentIndex(0)
         combo.activated.emit(0)
         assert calls == [([1], 7, "1")]
+
+
+class TestInlineEditorFocusCleanup:
+    """就地编辑器 PopupFocusReason 失焦清理（2026-08-10 修复）。
+
+    用户点击 combo popup 外部后编辑器必须立即清理，
+    不能残留到下一次点击（PopupFocusReason 无条件跳过导致）。
+    """
+
+    def _make_table(self, qapp):
+        from src.views.widgets.task_table import _TaskTable
+        from src.models.test_plan import TestTask
+        t = _TaskTable()
+        t.set_tasks([TestTask(id=1, plan_id=1, name="T", duration=3,
+                              start_day=0, status="pending")])
+        return t
+
+    def test_popup_visible_focusout_keeps_editor(self, qapp):
+        """popup 仍可见时失焦（焦点临时去 popup）→ 编辑器保留。"""
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QFocusEvent
+        t = self._make_table(qapp)
+        t._edit_inline_status(0, t.get_task_at_row(0))
+        combo = t.cellWidget(0, 8)
+        assert combo is not None
+        # 模拟焦点转移去 popup（popup 打开中）
+        ev = QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.PopupFocusReason)
+        t.cellWidget(0, 8)  # noqa
+        # 直接对 combo 发事件（popup 仍打开）
+        from PySide6.QtWidgets import QApplication
+        QApplication.sendEvent(combo, ev)
+        assert t.cellWidget(0, 8) is not None
+
+    def test_popup_closed_focusout_cleans_up(self, qapp):
+        """popup 已关闭后失焦（用户点击外部）→ 编辑器立即清理。"""
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QFocusEvent
+        from PySide6.QtWidgets import QApplication
+        t = self._make_table(qapp)
+        t._edit_inline_status(0, t.get_task_at_row(0))
+        combo = t.cellWidget(0, 8)
+        assert combo is not None
+        # 用户点击 popup 外部 → popup 关闭
+        combo.hidePopup()
+        # popup 已关闭后的失焦，reason 仍可能是 PopupFocusReason → 必须清理
+        ev = QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.PopupFocusReason)
+        QApplication.sendEvent(combo, ev)
+        QApplication.processEvents()
+        assert t.cellWidget(0, 8) is None
