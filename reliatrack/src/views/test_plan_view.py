@@ -289,10 +289,10 @@ class TestPlanView(QWidget):
         shown = getattr(self, hint_key, False)
         if not shown:
             setattr(self, hint_key, True)
-            ToastWidget.show(
+            ToastWidget.show_toast(
                 self,
                 "当前计划未设置开始日期，日期筛选不生效",
-                duration=3,
+                ToastWidget.WARNING,
             )
 
     def _reset_filters(self) -> None:

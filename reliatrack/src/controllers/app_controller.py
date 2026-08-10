@@ -128,6 +128,12 @@ class AppController:
         self.issue_service = IssueService(self.issues, conn=self._conn)
         self.settings_service = SettingsService(self.settings)
         self.holiday_service = HolidayService(self._conn)
+        # 节假日种子只内置到 2026，当年/下一年缺失时显式警告（不造假数据）
+        if not self.holiday_service.ensure_current_year_seeded():
+            logger.warning(
+                "法定节假日数据缺少当年/下一年度 — 排程勾选'跳过法定节假日'将不生效，"
+                "请在系统设置中手动维护节假日"
+            )
         self.scheduler_service = SchedulerService(
             self.test_tasks, self.equipment, self.test_plans,
             holiday_service=self.holiday_service,
