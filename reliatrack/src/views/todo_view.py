@@ -117,7 +117,11 @@ class TodoView(QWidget):
     def _build_kanban_view(self) -> QWidget:
         """构建看板 3 列内容，返回 QWidget。"""
         widget = QWidget()
-        self._kanban_board = QHBoxLayout(widget)
+        board_lay = QVBoxLayout(widget)
+        board_lay.setContentsMargins(0, 0, 0, 0)
+        board_lay.setSpacing(0)
+
+        self._kanban_board = QHBoxLayout()
         self._kanban_board.setContentsMargins(8, 4, 8, 8)
         self._kanban_board.setSpacing(8)
 
@@ -129,11 +133,25 @@ class TodoView(QWidget):
             self._columns[status] = col
             self._kanban_board.addWidget(col, stretch=1)
 
+        # 空状态提示（count==0 时居中显示，覆盖看板列）
+        self._empty_label = QLabel("暂无待办事项，可在上方快速添加或点击「新增」")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_label.setStyleSheet("color: #808080; font-size: 13px;")
+        self._empty_label.hide()
+
+        board_lay.addWidget(self._empty_label, stretch=1)
+        board_lay.addLayout(self._kanban_board, stretch=1)
+
         return widget
 
     def _toggle_empty_state(self, count: int) -> None:
-        """空状态提示显隐。"""
-        # 由子类 call 暂不实现，后续可加 UI 提示
+        """空状态提示显隐：count==0 时显示提示并隐藏看板列。"""
+        if not hasattr(self, "_empty_label"):
+            return
+        self._empty_label.setVisible(count == 0)
+        self._kanban_board.setEnabled(count > 0)
+        for col in self._columns.values():
+            col.setVisible(count > 0)
 
     def _build_filter_row(self, parent_layout: QVBoxLayout) -> None:
         """筛选行：项目选择 + 搜索 + 显示归档。"""
@@ -184,6 +202,12 @@ class TodoView(QWidget):
         self._btn_quick_add.setFixedHeight(26)
         self._btn_quick_add.clicked.connect(self._on_quick_add)
         row.addWidget(self._btn_quick_add)
+
+        # 完整新增入口（TodoEditDialog：项目/优先级/象限/提醒），原先仅 Ctrl+N 可达
+        self.btn_add = QPushButton("新增")
+        self.btn_add.setProperty("class", "pill-outline")
+        self.btn_add.setFixedHeight(26)
+        row.addWidget(self.btn_add)
 
         row.addStretch()
 

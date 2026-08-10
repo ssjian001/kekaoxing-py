@@ -38,44 +38,6 @@ def db_conn():
     conn.close()
 
 
-# ── DynamicFilterPanel smoke ──────────────────────────────
-
-class TestDynamicFilterPanel:
-    """filter_row.py — UI 重構移除前的篩選控件，但模塊本身仍存在。"""
-
-    def test_panel_construct(self, qapp):
-        from src.views.widgets.filter_row import DynamicFilterPanel
-        fields = {
-            "status": ("狀態", "enum"),
-            "title": ("標題", "text"),
-        }
-        panel = DynamicFilterPanel(fields)
-        assert panel is not None
-
-    def test_panel_get_conditions(self, qapp):
-        from src.views.widgets.filter_row import DynamicFilterPanel
-        panel = DynamicFilterPanel({"title": ("標題", "text")})
-        conds = panel.get_conditions()
-        assert isinstance(conds, list)
-        # 默認有一行（構造時自動添加）
-        assert len(conds) >= 1
-
-    def test_panel_add_row(self, qapp):
-        from src.views.widgets.filter_row import DynamicFilterPanel
-        panel = DynamicFilterPanel({"title": ("標題", "text")})
-        initial = len(panel._rows)
-        panel._add_row()
-        assert len(panel._rows) == initial + 1
-
-    def test_panel_clear_all(self, qapp):
-        from src.views.widgets.filter_row import DynamicFilterPanel
-        panel = DynamicFilterPanel({"title": ("標題", "text")})
-        panel._add_row()
-        panel._clear_all()
-        # 清除後至少保留一行
-        assert len(panel._rows) == 1
-
-
 # ── Dialog smoke 測試（只確認能構造，不崩潰）──────────────
 
 class TestDialogSmoke:

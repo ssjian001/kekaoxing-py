@@ -261,6 +261,10 @@ class TestPlanView(QWidget):
                         continue
                     date_filtered.append(t)
                 filtered = date_filtered
+            else:
+                # 计划无 start_date（或格式非法）时日期筛选无法计算，必须提示而非静默失效
+                # 节流：每次搜索都会走到这，只在用户确实选了日期时提示一次/状态变化时提示
+                self._show_date_filter_hint()
 
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
@@ -276,6 +280,20 @@ class TestPlanView(QWidget):
 
         self._update_summary_bar()
         self._update_stats(filtered)
+
+    def _show_date_filter_hint(self) -> None:
+        """日期筛选因计划无开始日期而不生效时的提示（防刷屏：去重）。"""
+        from src.styles.toast import ToastWidget
+
+        hint_key = "_last_date_hint_shown"
+        shown = getattr(self, hint_key, False)
+        if not shown:
+            setattr(self, hint_key, True)
+            ToastWidget.show(
+                self,
+                "当前计划未设置开始日期，日期筛选不生效",
+                duration=3,
+            )
 
     def _reset_filters(self) -> None:
         """重置所有筛选条件到默认值。"""

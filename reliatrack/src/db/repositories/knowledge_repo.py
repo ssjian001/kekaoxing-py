@@ -39,16 +39,3 @@ class KnowledgeRepository(BaseRepository):
             sql += " WHERE " + " AND ".join(clauses)
         rows = self._conn.execute(sql + " ORDER BY id DESC", params).fetchall()
         return self._rows_to_models(rows, cols=cols_list)
-
-    def search(self, keyword: str, columns: list[str] | None = None) -> list[KnowledgeEntry]:
-        """按关键词在 category、failure_mode、cause_analysis、improvement 字段上模糊搜索。"""
-        if columns is None:
-            cols = self._columns()
-        else:
-            cols = columns
-        search_columns = [c for c in ("category", "failure_mode", "cause_analysis", "improvement") if c in cols]
-        if not search_columns:
-            search_columns = cols
-        cols_sql = self._columns_sql()
-        cols_list = self._columns()
-        return super().search(keyword, columns=search_columns)  # type: ignore[return-value]

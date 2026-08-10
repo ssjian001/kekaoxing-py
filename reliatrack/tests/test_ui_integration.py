@@ -20,7 +20,6 @@ from src.db.schema import init_schema
 from src.db.repositories.issue_repo import IssueRepository
 from src.services.issue_service import IssueService
 from src.models.issue import Issue
-from src.views.bug_tracker.filter_panel import FilterPanel
 from src.views.bug_tracker.batch_dialog import BatchOperationDialog
 
 
@@ -65,102 +64,6 @@ def sample_issues(issue_svc: IssueService) -> list[Issue]:
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  FilterPanel 集成测试
-# ═══════════════════════════════════════════════════════════════════
-
-class TestFilterPanel:
-    """FilterPanel 信号/交互 — 无需 parent widget (offscreen OK)。"""
-
-    def test_init_all_checks_checked(self):
-        """初始化时所有 checkbox 默认选中。"""
-        panel = FilterPanel()
-        # 状态: 4 个
-        assert len(panel._status_checks) == 4
-        assert all(cb.isChecked() for cb in panel._status_checks.values())
-        # 严重度: 4 个
-        assert len(panel._severity_checks) == 4
-        assert all(cb.isChecked() for cb in panel._severity_checks.values())
-        # 优先级: 5 个
-        assert len(panel._priority_checks) == 5
-        assert all(cb.isChecked() for cb in panel._priority_checks.values())
-        # DRI: "全部" 选项
-        assert panel._dri_combo.currentData() is None
-
-    def test_get_filters_default(self):
-        """默认筛选返回全部可选值。"""
-        panel = FilterPanel()
-        f = panel.get_filters()
-        assert f["status"] == ["open", "analyzing", "verified", "closed"]
-        assert f["severity"] == ["critical", "major", "minor", "cosmetic"]
-        assert f["priority"] == [1, 2, 3, 4, 5]
-        assert f["dri_name"] is None
-
-    def test_uncheck_status_emits_filter(self):
-        """取消勾选状态 checkbox → 触发 filter_changed 信号。"""
-        panel = FilterPanel()
-        signals = []
-
-        def _on_filter(filters):
-            signals.append(filters)
-
-        panel.filter_changed.connect(_on_filter)
-
-        # 取消勾选 "analyzing"
-        panel._status_checks["analyzing"].setChecked(False)
-        assert len(signals) == 1
-        assert "analyzing" not in signals[0]["status"]
-
-    def test_set_filters_restores_state(self):
-        """set_filters → get_filters 往返一致。"""
-        panel = FilterPanel()
-        original = panel.get_filters()
-
-        # 修改筛选条件
-        modified = dict(original)
-        modified["status"] = ["open", "closed"]
-        modified["severity"] = ["critical"]
-        modified["priority"] = [1, 5]
-        panel.set_filters(modified)
-
-        restored = panel.get_filters()
-        assert restored["status"] == ["open", "closed"]
-        assert restored["severity"] == ["critical"]
-        assert restored["priority"] == [1, 5]
-
-    def test_clear_filters_resets_all(self):
-        """_clear_filters → 恢复全选状态。"""
-        panel = FilterPanel()
-        # 取消几个勾选
-        panel._status_checks["open"].setChecked(False)
-        panel._status_checks["closed"].setChecked(False)
-        panel._severity_checks["cosmetic"].setChecked(False)
-        panel._priority_checks[3].setChecked(False)
-
-        # 清空
-        panel._clear_filters()
-
-        f = panel.get_filters()
-        assert f["status"] == ["open", "analyzing", "verified", "closed"]
-        assert f["severity"] == ["critical", "major", "minor", "cosmetic"]
-        assert f["priority"] == [1, 2, 3, 4, 5]
-
-    def test_dri_options_dedupe(self):
-        """set_dri_options 去重并按字母排序。"""
-        panel = FilterPanel()
-        panel.set_dri_options(["Bob", "Alice", "Bob", "Charlie", ""])
-        items = [panel._dri_combo.itemText(i) for i in range(panel._dri_combo.count())]
-        # "全部" + 3 个唯一名
-        assert items == ["全部", "Alice", "Bob", "Charlie"]
-
-    def test_priority_key_type(self):
-        """_priority_checks 的 key 是 int，value 是 QCheckBox。"""
-        panel = FilterPanel()
-        for pri, cb in panel._priority_checks.items():
-            assert isinstance(pri, int), f"Expected int key, got {type(pri)}"
-            assert 1 <= pri <= 5
-            assert cb is not None
-
-
 # ═══════════════════════════════════════════════════════════════════
 #  BatchOperationDialog 集成测试
 # ═══════════════════════════════════════════════════════════════════

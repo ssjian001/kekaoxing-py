@@ -26,6 +26,7 @@ class TodoHandlers:
         win = self._win
         v = win.todo_view
         v.btn_edit.clicked.connect(self._on_todo_edit)
+        v.btn_add.clicked.connect(self._on_todo_add)
         v.btn_delete.clicked.connect(self._on_todo_delete)
         v.btn_archive.clicked.connect(self._on_todo_archive)
         v.quick_add_created.connect(self._on_todo_quick_add)
