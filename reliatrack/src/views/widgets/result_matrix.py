@@ -357,14 +357,23 @@ class _ResultMatrixWidget(QWidget):
             )
             cls = "good" if rate >= 80 else "warn" if rate >= 50 else "bad"
             self._summary_label.setProperty("rate-class", cls)
+            # 动态属性变化后 QSS 选择器不自动重算，必须 unpolish/polish
+            self._summary_label.style().unpolish(self._summary_label)
+            self._summary_label.style().polish(self._summary_label)
         elif sample_ids:
             self._summary_label.setText(
                 f"共 {len(tasks)} 项任务 × {len(sample_ids)} 个样品 — 暂无录入结果"
             )
             self._summary_label.setProperty("class", "subtext")
+            self._summary_label.setProperty("rate-class", "")  # 清除旧通过率颜色
+            self._summary_label.style().unpolish(self._summary_label)
+            self._summary_label.style().polish(self._summary_label)
         else:
             self._summary_label.setText("暂无测试结果数据")
             self._summary_label.setProperty("class", "subtext")
+            self._summary_label.setProperty("rate-class", "")  # 清除旧通过率颜色
+            self._summary_label.style().unpolish(self._summary_label)
+            self._summary_label.style().polish(self._summary_label)
 
     def refresh_theme(self) -> None:
         """主题切换回调 — 刷新模式按钮和表格内联样式。"""
