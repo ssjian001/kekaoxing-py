@@ -211,7 +211,7 @@ class BugTrackerView(QWidget):
         """双击打开详情弹窗。"""
         issue = self._svc.get(issue_id)
         if issue is None:
-            ToastWidget.show(self, "Issue 不存在", duration=2)
+            ToastWidget.show_toast(self, "Issue 不存在", ToastWidget.WARNING)
             return
         # 从列表视图获取 technician_list（FA/CAPA 编辑弹窗需要）
         tech_list = getattr(self._list_view, "_technician_list", []) if self._list_view else []
@@ -283,7 +283,7 @@ class BugTrackerView(QWidget):
         """导出 8D 报告。"""
         issue_id = self.get_selected_issue_id()
         if issue_id is None:
-            ToastWidget.show(self, "请先选中一个 Issue", duration=2)
+            ToastWidget.show_toast(self, "请先选中一个 Issue", ToastWidget.WARNING)
             return
         self.export_8d_requested.emit(issue_id)
 
@@ -335,15 +335,15 @@ class BugTrackerView(QWidget):
             if data:
                 try:
                     iid = self._svc.create(**data)
-                    ToastWidget.show(
+                    ToastWidget.show_toast(
                         self,
                         f"已创建 Issue #{iid}: {data['title'][:30]}{'…' if len(data['title']) > 30 else ''}",
-                        duration=3,
+                        ToastWidget.SUCCESS,
                     )
                     self._refresh_all()
                 except Exception as exc:
                     logger.exception("_on_quick_create() failed")
-                    ToastWidget.show(self, f"创建失败: {exc}", duration=3)
+                    ToastWidget.show_toast(self, f"创建失败: {exc}", ToastWidget.ERROR)
 
     def _on_quick_search(self) -> None:
         """Ctrl+K — 快捷搜索。"""
