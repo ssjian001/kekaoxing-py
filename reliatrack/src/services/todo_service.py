@@ -36,10 +36,6 @@ class TodoService:
         """查询所有待办。"""
         return self._repo.list_all()
 
-    def list_by_project(self, project_id: int) -> list[TodoItem]:
-        """按项目查询待办。"""
-        return self._repo.list_by_project(project_id)
-
     def list_due_reminders(self, now: str) -> list[TodoItem]:
         """查询到期待办提醒。"""
         return self._repo.list_due_reminders(now)
@@ -55,16 +51,6 @@ class TodoService:
     def unarchive(self, todo_id: int) -> None:
         """取消归档。"""
         self._repo.unarchive(todo_id)
-
-    def toggle_status(self, todo_id: int) -> str | None:
-        """切换状态：pending→in_progress→done→pending。返回新状态，失败返回 None。"""
-        item = self._repo.get(todo_id)
-        if item is None:
-            return None
-        status_cycle = {"pending": "in_progress", "in_progress": "done", "done": "pending"}
-        new_status = status_cycle.get(item.status, "pending")
-        self._repo.update(todo_id, status=new_status)
-        return new_status
 
     def create_delete_command(self, todo_id: int):
         """创建删除命令。"""

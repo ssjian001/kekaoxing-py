@@ -46,10 +46,6 @@ class TodoRepository(BaseRepository):
         rows = self._conn.execute(sql + " ORDER BY id DESC", params).fetchall()
         return self._rows_to_models(rows, cols=cols_list)
 
-    def list_by_project(self, project_id: int) -> list[TodoItem]:
-        """按项目查询待办事项。"""
-        return self.list_all(project_id=project_id)
-
     def list_due_reminders(self, now: str) -> list[TodoItem]:
         """查询 remind_at <= now AND reminded=0 AND archived=0 的待办。"""
         cols_sql = self._columns_sql()

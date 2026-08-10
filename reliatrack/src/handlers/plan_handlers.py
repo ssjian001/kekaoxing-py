@@ -107,8 +107,14 @@ class PlanHandlers:
             if ctrl.equipment_service
             else []
         )
+        technician_list = (
+            ctrl.technician_service.list_all()
+            if ctrl.technician_service
+            else []
+        )
         dlg = ScheduleConfigDialog(
             equipment_list=equipment_list,
+            technician_list=technician_list,
             parent=self._win,
         )
         if ctrl.holiday_service:
@@ -140,6 +146,7 @@ class PlanHandlers:
                     equipment_capacity=config["equipment_capacity"],
                     user_locked_days=user_locked_days or None,
                     daily_start_limit=config.get("daily_start_limit", 0),
+                    technician_capacity=config.get("technician_capacity", {}),
                 )
             except Exception as e:
                 logger.exception("排程失败")

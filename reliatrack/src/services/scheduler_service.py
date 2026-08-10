@@ -48,6 +48,7 @@ class SchedulerService:
         equipment_capacity: dict[int, int] | None = None,
         user_locked_days: dict[int, int] | None = None,
         daily_start_limit: int = 0,
+        technician_capacity: dict[int, int] | None = None,
     ) -> dict:
         """执行排程但不写回 DB，返回预览数据。
 
@@ -100,6 +101,7 @@ class SchedulerService:
             equipment_capacity=equipment_capacity or {},
             holidays=holidays,
             daily_start_limit=daily_start_limit,
+            technician_capacity=technician_capacity or {},
         )
 
         # 记录原始 start_day
@@ -166,6 +168,7 @@ class SchedulerService:
         deadline: str = "",
         equipment_capacity: dict[int, int] | None = None,
         daily_start_limit: int = 0,
+        technician_capacity: dict[int, int] | None = None,
     ) -> dict:
         """对指定测试计划执行自动排程并直接写回 DB（向后兼容）。
 
@@ -194,6 +197,7 @@ class SchedulerService:
             equipment_capacity=equipment_capacity or {},
             holidays=holidays,
             daily_start_limit=daily_start_limit,
+            technician_capacity=technician_capacity or {},
         )
 
         # 记录排程前的 start_day 用于对比

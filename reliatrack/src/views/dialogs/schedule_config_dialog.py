@@ -67,6 +67,48 @@ class _EquipmentRow(QWidget):
         return self._spin.value()
 
 
+class _TechnicianRow(QWidget):
+    """单行技术员容量配置 (技术员名 + 并行数)。"""
+
+    def __init__(
+        self,
+        technician_id: int,
+        technician_name: str,
+        capacity: int = 1,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(parent)
+
+        self._technician_id = technician_id
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        name_label = QLabel(technician_name)
+        name_label.setMinimumWidth(120)
+        name_label.setMaximumWidth(200)
+        name_label.setProperty("class", "text-bold")
+        layout.addWidget(name_label)
+
+        # 并行数
+        self._spin = QSpinBox()
+        self._spin.setRange(1, 20)
+        self._spin.setValue(capacity)
+        self._spin.setMinimumWidth(60)
+        layout.addWidget(self._spin)
+
+        layout.addStretch()
+
+    @property
+    def technician_id(self) -> int:
+        return self._technician_id
+
+    @property
+    def capacity(self) -> int:
+        return self._spin.value()
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,11 +127,13 @@ class ScheduleConfigDialog(_BaseDialog):
     def __init__(
         self,
         equipment_list: list | None = None,
+        technician_list: list | None = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__("排程参数配置", parent=parent, width=480)
 
         self._equipment_rows: list[_EquipmentRow] = []
+        self._technician_rows: list[_TechnicianRow] = []
 
         # -- skip_weekends --
         self._chk_skip_weekends = QCheckBox("跳过周末")
@@ -146,6 +190,9 @@ class ScheduleConfigDialog(_BaseDialog):
         # -- equipment_capacity --
         self._setup_equipment_section(equipment_list or [])
 
+        # -- technician_capacity --
+        self._setup_technician_section(technician_list or [])
+
     # -- private helpers --
 
     def _setup_equipment_section(self, equipment_list: list) -> None:
@@ -166,6 +213,26 @@ class ScheduleConfigDialog(_BaseDialog):
                 continue
             row = _EquipmentRow(eq_id, eq_name, asset_no=getattr(eq, "asset_no", ""), capacity=1)
             self._equipment_rows.append(row)
+            self._form.addRow(row)
+
+    def _setup_technician_section(self, technician_list: list) -> None:
+        """构建技术员容量配置区域。"""
+        if not technician_list:
+            return
+
+        self._add_separator()
+
+        header = QLabel("技术员并行数上限")
+        header.setProperty("class", "step-label")
+        self._form.addRow(header)
+
+        for tech in technician_list:
+            tech_id = getattr(tech, "id", None)
+            tech_name = getattr(tech, "name", str(tech_id))
+            if tech_id is None:
+                continue
+            row = _TechnicianRow(tech_id, tech_name, capacity=1)
+            self._technician_rows.append(row)
             self._form.addRow(row)
 
     # -- public API --
@@ -201,6 +268,10 @@ class ScheduleConfigDialog(_BaseDialog):
         for row in self._equipment_rows:
             equipment_capacity[row.equipment_id] = row.capacity
 
+        technician_capacity: dict[int, int] = {}
+        for row in self._technician_rows:
+            technician_capacity[row.technician_id] = row.capacity
+
         return {
             "skip_weekends": self._chk_skip_weekends.isChecked(),
             "skip_holidays": self._chk_skip_holidays.isChecked(),
@@ -208,6 +279,7 @@ class ScheduleConfigDialog(_BaseDialog):
             "daily_start_limit": self._spin_daily_limit.value(),
             "deadline": self._deadline_edit.text().strip(),
             "equipment_capacity": equipment_capacity,
+            "technician_capacity": technician_capacity,
         }
 
     def accept(self) -> None:

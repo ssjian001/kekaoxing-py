@@ -279,26 +279,6 @@ class TestTodoRepository:
         assert high[0].title == "高优先级"
 
 
-class TestTodoRepositoryListByProject:
-    """TodoRepository.list_by_project 项目筛选。"""
-
-    def test_list_by_project(self, repo):
-        """返回指定项目的待办事项。"""
-        p1 = ProjectRepository(repo.conn).insert(name="P1")
-        p2 = ProjectRepository(repo.conn).insert(name="P2")
-        t1 = repo.create({"project_id": p1, "title": "P1事项"})
-        repo.create({"project_id": p2, "title": "P2事项"})
-
-        p1_todos = repo.list_by_project(p1)
-        assert len(p1_todos) == 1
-        assert p1_todos[0].id == t1
-
-    def test_list_by_project_empty(self, repo):
-        """无待办的项目返回空列表。"""
-        p = ProjectRepository(repo.conn).insert(name="空项目")
-        assert repo.list_by_project(p) == []
-
-
 # ═══════════════════════════════════════════════════════════════════
 #  3a. TodoRepository — 归档
 # ═══════════════════════════════════════════════════════════════════
@@ -390,28 +370,8 @@ class TestTodoService:
         p2 = ProjectRepository(svc._repo.conn).insert(name="P2")
         svc.create(project_id=p1, title="P1待办")
         svc.create(project_id=p2, title="P2待办")
-        assert len(svc.list_by_project(p1)) == 1
-        assert len(svc.list_by_project(p2)) == 1
-
-    def test_toggle_status_cycle(self, svc, project):
-        """toggle_status 走完整周期 pending→in_progress→done→pending。"""
-        tid = svc.create(project_id=project, title="循环测试", status="pending")
-
-        # pending → in_progress
-        assert svc.toggle_status(tid) == "in_progress"
-        assert svc.get(tid).status == "in_progress"
-
-        # in_progress → done
-        assert svc.toggle_status(tid) == "done"
-        assert svc.get(tid).status == "done"
-
-        # done → pending
-        assert svc.toggle_status(tid) == "pending"
-        assert svc.get(tid).status == "pending"
-
-    def test_toggle_status_nonexistent(self, svc):
-        """不存在的待办返回 None。"""
-        assert svc.toggle_status(99999) is None
+        # 项目筛选是客户端过滤（_filter_todos），service 层不再提供 list_by_project
+        assert len(svc.list_all()) == 2
 
 
 # ═══════════════════════════════════════════════════════════════════
