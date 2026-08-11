@@ -621,11 +621,13 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 6, spin)
         spin.setFocus()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             new_val = spin.value()
             # 用批量更新回調直接寫 DB（col=6 → progress），不要走 edit_callback 否則會彈完整編輯對話框
             if new_val != task.progress and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 6, str(int(new_val)))
+                return True
+            return False
 
         spin.editingFinished.connect(lambda: self._finish_inline_edit(spin, row, 6, task.id, _commit))
         spin.installEventFilter(_make_focus_out_filter(spin, lambda: self._finish_inline_edit(spin, row, 6, task.id, _commit)))
@@ -645,34 +647,40 @@ class _TaskTable(QTableWidget):
         combo.setFocus()
         combo.showPopup()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             new_pri = items[combo.currentIndex()][1]
             if new_pri != task.priority and self._batch_value_callback and task.id is not None:
                 # col=7 → priority，走批量更新回調直接寫 DB
                 self._batch_value_callback([task.id], 7, str(new_pri))
+                return True
+            return False
 
         # activated 在用户选当前项时也触发（currentIndexChanged 不触发）；focusOut 兜底放弃选择
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 7, task.id, _commit))
         combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 7, task.id, _commit)))
 
     def _finish_inline_edit(self, widget, row: int, col: int, task_id: int | None,
-                            commit: Callable[[], None]) -> None:
+                            commit: Callable[[], bool]) -> None:
         """统一结束就地编辑：先提交数据，再延迟销毁控件。
 
         用 QTimer.singleShot(0, ...) 把 removeCellWidget 推到下一轮事件循环，
         避免在信号回调（currentIndexChanged/activated/editingFinished）中
         同步销毁正在处理事件的控件导致 popup 残留或焦点异常。
-        commit 用闭包捕获各自逻辑，仅调用一次（防重入）。
+        防重入仅在 commit 真正提交时生效（commit 返回 True）——
+        QComboBox 场景中 focusOut（popup 关闭瞬间）可能先于 activated 触发，
+        此时 currentIndex 未变不算提交，不能吃掉后续 activated 的提交。
         """
-        if getattr(widget, "_inline_committed", False):
-            return  # 防重入：editingFinished + focusOut 可能同时触发
-        widget._inline_committed = True
         try:
-            commit()
-        finally:
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, lambda: self.removeCellWidget(row, col))
-            QTimer.singleShot(60, lambda: self.flash_row(task_id, 500) if task_id is not None else None)
+            if getattr(widget, "_inline_committed", False):
+                return  # 防重入：editingFinished + focusOut 可能同时触发
+        except RuntimeError:
+            return  # widget 已被 Qt 删除（removeCellWidget 后事件迟到）
+        committed = bool(commit())
+        if committed:
+            widget._inline_committed = True
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, lambda: self.removeCellWidget(row, col))
+        QTimer.singleShot(60, lambda: self.flash_row(task_id, 500) if task_id is not None else None)
 
     def _edit_inline_name(self, row: int, task: TestTask) -> None:
         """双击名称列 — 显示 QLineEdit 就地编辑。"""
@@ -685,10 +693,12 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 1, edit)
         edit.setFocus()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             new_val = edit.text().strip()
             if new_val and new_val != task.name and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 1, new_val)
+                return True
+            return False
 
         edit.editingFinished.connect(lambda: self._finish_inline_edit(edit, row, 1, task.id, _commit))
         edit.returnPressed.connect(lambda: self._finish_inline_edit(edit, row, 1, task.id, _commit))
@@ -709,12 +719,14 @@ class _TaskTable(QTableWidget):
         combo.showPopup()
         initial_idx = combo.currentIndex()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             if combo.currentIndex() == initial_idx:
-                return  # 用户未改动，仅关闭编辑器
+                return False  # 用户未改动，仅关闭编辑器
             new_cat = combo.currentText()
             if new_cat != task.category and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 2, new_cat)
+                return True
+            return False
 
         # activated 在用户选当前项时也触发（currentIndexChanged 不触发）；focusOut 兜底放弃选择
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 2, task.id, _commit))
@@ -732,10 +744,12 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 3, spin)
         spin.setFocus()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             new_dur = spin.value()
             if new_dur != task.duration and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 3, str(new_dur))
+                return True
+            return False
 
         spin.editingFinished.connect(lambda: self._finish_inline_edit(spin, row, 3, task.id, _commit))
         spin.installEventFilter(_make_focus_out_filter(spin, lambda: self._finish_inline_edit(spin, row, 3, task.id, _commit)))
@@ -759,12 +773,14 @@ class _TaskTable(QTableWidget):
         combo.showPopup()
         initial_idx = combo.currentIndex()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             if combo.currentIndex() == initial_idx:
-                return  # 用户未改动，仅关闭编辑器
+                return False  # 用户未改动，仅关闭编辑器
             new_status = status_items[combo.currentIndex()][1]
             if new_status != task.status and self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 8, new_status)
+                return True
+            return False
 
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 8, task.id, _commit))
         combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 8, task.id, _commit)))
@@ -791,9 +807,9 @@ class _TaskTable(QTableWidget):
         combo.showPopup()
         initial_idx = combo.currentIndex()
 
-        def _commit() -> None:
+        def _commit() -> bool:
             if combo.currentIndex() == initial_idx:
-                return  # 用户未改动，仅关闭编辑器
+                return False  # 用户未改动，仅关闭编辑器
             idx_ = combo.currentIndex()
             tech_id = combo.itemData(idx_)
             if self._batch_value_callback and task.id is not None:
@@ -803,6 +819,9 @@ class _TaskTable(QTableWidget):
                     tech_name = combo.itemText(idx_)
                     if tech_name != "— 未指派 —":
                         self._batch_value_callback([task.id], 9, tech_name)
+                        return True
+                return True
+            return False
 
         combo.activated.connect(lambda _: self._finish_inline_edit(combo, row, 9, task.id, _commit))
         combo.installEventFilter(_make_focus_out_filter(combo, lambda: self._finish_inline_edit(combo, row, 9, task.id, _commit)))

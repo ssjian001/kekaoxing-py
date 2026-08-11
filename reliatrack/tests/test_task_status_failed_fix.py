@@ -230,3 +230,78 @@ class TestInlineEditorFocusCleanup:
         QApplication.sendEvent(combo, ev)
         QApplication.processEvents()
         assert t.cellWidget(0, 8) is None
+
+
+class TestInlineEditPopupFocusRace:
+    """就地编辑 popup 关闭竞态（2026-08-10 修复）。
+
+    用户点击 combo popup 选项时，focusOut（PopupFocusReason，popup 已关闭）
+    可能先于 activated 触发。旧逻辑在 focusOut 时无条件设置防重入标记，
+    导致 activated 的提交被吃掉 → 双击修改技术员/状态/类别无效。
+    修复: _commit 返回是否真提交，只有真提交才设 _inline_committed。
+    """
+
+    def _make_tech_table(self, qapp):
+        from src.views.widgets.task_table import _TaskTable
+        from src.models.test_plan import TestTask
+        from src.models.common import Technician
+        t = _TaskTable()
+        t.set_tasks([TestTask(id=1, plan_id=1, name="T", duration=3,
+                              start_day=0, status="pending", technician_id=None)])
+        t.set_reference_data([], [Technician(id=1, name="张工"), Technician(id=2, name="李工")])
+        calls = []
+        t.set_callbacks(on_batch_value=lambda ids, col, val: calls.append((ids, col, val)))
+        return t, calls
+
+    def test_focusout_then_activated_still_commits(self, qapp):
+        """focusOut(popup 关闭) 先触发 → activated 后触发仍提交（修复前被吃）。"""
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QFocusEvent
+        from PySide6.QtWidgets import QApplication
+        t, calls = self._make_tech_table(qapp)
+        t._edit_inline_technician(0, t.get_task_at_row(0))
+        combo = t.cellWidget(0, 9)
+        combo.hidePopup()  # 模拟 popup 关闭
+        ev = QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.PopupFocusReason)
+        QApplication.sendEvent(combo, ev)  # focusOut 先触发
+        # 用户此时已选择张工 → activated
+        idx = combo.findText("张工")
+        combo.setCurrentIndex(idx)
+        combo.activated.emit(idx)
+        QApplication.processEvents()
+        assert calls == [([1], 9, "张工")]
+
+    def test_focusout_no_change_no_commit(self, qapp):
+        """focusOut 触发但用户未选 → 不提交。"""
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QFocusEvent
+        from PySide6.QtWidgets import QApplication
+        t, calls = self._make_tech_table(qapp)
+        t._edit_inline_technician(0, t.get_task_at_row(0))
+        combo = t.cellWidget(0, 9)
+        combo.hidePopup()
+        ev = QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.PopupFocusReason)
+        QApplication.sendEvent(combo, ev)
+        QApplication.processEvents()
+        assert calls == []
+
+    def test_activated_once_only(self, qapp):
+        """activated 提交后重复触发不重复提交（防重入仍生效）。"""
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QFocusEvent
+        from PySide6.QtWidgets import QApplication
+        t, calls = self._make_tech_table(qapp)
+        t._edit_inline_technician(0, t.get_task_at_row(0))
+        combo = t.cellWidget(0, 9)
+        idx = combo.findText("张工")
+        combo.setCurrentIndex(idx)
+        combo.activated.emit(idx)
+        QApplication.processEvents()
+        # 焦点事件迟到（widget 已删，防御不崩）
+        ev = QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.OtherFocusReason)
+        try:
+            QApplication.sendEvent(combo, ev)
+        except RuntimeError:
+            pass  # 已删 widget：Qt 真实环境不会派发，防御性忽略
+        QApplication.processEvents()
+        assert calls == [([1], 9, "张工")]
