@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "last_updated": "2026-08-10",
+  "last_updated": "2026-08-11",
   "schema_version": 28,
-  "tests": "684 passed (2026-08-10: 死代码清理第三批 + 三个功能接线 + 45 新测试 + popup/rate-class 修复)"
+  "tests": "687 passed (2026-08-11: 死代码清理 + 三功能接线 + 45 新测试 + popup 竞态/rate-class 修复)"
  },
  "features": [
   {
