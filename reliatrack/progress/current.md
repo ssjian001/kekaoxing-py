@@ -1,14 +1,27 @@
 # ReliaTrack 当前进度
 
-**最后更新**: 2026-08-11
+**最后更新**: 2026-08-12
 **Schema 版本**: v28 (20 张表)
-**测试**: 687 passed (2026-08-11)
+**测试**: 687 passed (2026-08-12)
 **Widgets**: 41 | **Dialogs**: 28
 
 ## 当前状态
 
 2026-08-10 六维度全量审计 + 死代码清理 + 三个待接线功能补齐 + 测试升级。
 2026-08-11 提交链全部推送（远端 main = cfa9759）。
+2026-08-12 日历弹窗日期裁剪修复 + 总结报告弹窗提示（远端 main = 5a32186）。
+
+### 最近完成（2026-08-12）
+
+- **日历弹窗最后一行日期裁剪 (aa44c64)**: 测试计划编辑弹窗预计开始/结束日期 QDateEdit
+  日历 popup 最后一行(月末~下月初)日期残缺 — 全局 QSS `QTableWidget::item {padding:6px 10px}`
+  命中 QCalendarWidget 内部 QTableView, 行高 21→22px, 7行总高 152>viewport 145。
+  修复: theme.py 加 QCalendarWidget 后代选择器覆盖 padding(2px 4px), 行高回 21px。
+  双主题验证 light/dark PASS, 687 tests 全过。
+- **总结报告未选计划弹窗提示 (5a32186)**: "全部计划"/"计划无任务"分支从 toast 改
+  QMessageBox 模态提示(toast 3秒消失易漏看)。顺带修复改弹窗时暴露的
+  UnboundLocalError — 函数内 except 分支局部 import QMessageBox 遮蔽模块级 import。
+  三分支验证: 无计划→弹窗 / 有计划有任务→导出 / 计划无任务→弹窗, 全过。
 
 ### 最近完成（2026-08-10 审计修复批次，已全部 push）
 
