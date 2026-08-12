@@ -35,39 +35,21 @@ if TYPE_CHECKING:
 
 
 def _generate_qr_matrix(text: str) -> list[list[bool]]:
-    """生成确定性 QR 码点阵矩阵 (21x21 标准 1 型伪矩阵，无需第三方库)。"""
-    size = 21
-    matrix = [[False] * size for _ in range(size)]
+    """生成真实可扫描的标准 QR 码点阵（segno 库，ISO/IEC 18004）。
 
-    # 1. 绘制 3 个角上的 Position Detection Pattern (7x7)
-    def draw_finder(top_row: int, left_col: int):
-        for r in range(7):
-            for c in range(7):
-                if r in (0, 6) or c in (0, 6) or (2 <= r <= 4 and 2 <= c <= 4):
-                    matrix[top_row + r][left_col + c] = True
+    编码内容为结构化文本 `RELIATRACK-SAMPLE:SN=<sn>&ID=<id>`，
+    扫码可还原样品唯一标识。返回 bool 矩阵供 QPainter 绘制。
+    """
+    import segno
 
-    draw_finder(0, 0)
-    draw_finder(0, size - 7)
-    draw_finder(size - 7, 0)
+    qr = segno.make(text, error="m")
+    return [[bool(v) for v in row] for row in qr.matrix]
 
-    # 2. 绘制同步线 (Timing patterns)
-    for i in range(7, size - 7):
-        matrix[6][i] = (i % 2 == 0)
-        matrix[i][6] = (i % 2 == 0)
 
-    # 3. 填充基于字符串哈希的随机点阵
-    seed = sum(ord(ch) * (idx + 1) for idx, ch in enumerate(text))
-    for r in range(size):
-        for c in range(size):
-            # 避开 finder 区域和 timing pattern
-            if (r < 8 and c < 8) or (r < 8 and c >= size - 8) or (r >= size - 8 and c < 8):
-                continue
-            if r == 6 or c == 6:
-                continue
-            v = (seed * 1103515245 + r * 31 + c * 17) & 0x7FFFFFFF
-            matrix[r][c] = (v % 3 == 0)
-
-    return matrix
+def _qr_payload(sample: Sample) -> str:
+    """二维码编码内容 — 结构化文本，扫码可还原样品标识。"""
+    sn = (sample.sn or "").strip()
+    return f"RELIATRACK-SAMPLE:SN={sn}&ID={sample.id or 0}"
 
 
 def render_sample_tag_pixmap(sample: Sample, scale: float = 2.0) -> QPixmap:
@@ -99,10 +81,10 @@ def render_sample_tag_pixmap(sample: Sample, scale: float = 2.0) -> QPixmap:
         "Reliability Sample Tag / 可靠性测试样品标签",
     )
 
-    # 左侧 QR 码
+    # 左侧 QR 码 — 真实可扫描（编码样品 SN+ID）
     qr_size = int(120 * scale)
     qr_x, qr_y = int(18 * scale), int(60 * scale)
-    matrix = _generate_qr_matrix(sample.sn or str(sample.id or "0"))
+    matrix = _generate_qr_matrix(_qr_payload(sample))
 
     grid_n = len(matrix)
     cell_w = qr_size / grid_n
