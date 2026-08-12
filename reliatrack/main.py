@@ -42,7 +42,7 @@ from PySide6.QtGui import (
 )
 
 from src.styles.animation import TranslateYAnimation
-from src.styles.icon import RI_REFRESH, RI_BACKUP
+from src.styles.icon import RI_REFRESH, RI_BACKUP, RI_EXPORT
 import src.styles.theme as _t
 from src.styles.theme import get_stylesheet, set_theme, theme_host, apply_palette
 from src.styles.smooth_scroll import SmoothScroll
@@ -448,11 +448,21 @@ class MainWindow(QMainWindow):
         act_refresh.triggered.connect(self._refresh_all)
         op_menu.addAction(act_refresh)
 
+        # 导出子菜单 — 归拢所有导出入口，避免平铺混乱
+        export_menu = op_menu.addMenu("导出(&E)")
+        export_menu.setIcon(RI_EXPORT.icon())
+
+        act_export = QAction("通用导出(&E)…", self)
+        act_export.setIcon(RI_EXPORT.icon())
+        act_export.setShortcut("Ctrl+E")
+        act_export.setToolTip("导出任务/Issue/样品/综合报告 (Ctrl+E)")
+        act_export.triggered.connect(self._export_handlers._on_export)
+        export_menu.addAction(act_export)
 
         act_report_bundle = QAction("📊 导出全景总结简报(&B)…", self)
         act_report_bundle.setToolTip("一键打包导出多维测试总结简报与 8D 报告")
         act_report_bundle.triggered.connect(self._open_report_bundle)
-        op_menu.addAction(act_report_bundle)
+        export_menu.addAction(act_report_bundle)
 
         op_menu.addSeparator()
 
