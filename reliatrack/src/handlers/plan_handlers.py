@@ -1039,12 +1039,12 @@ class PlanHandlers:
             return
         plan_id = self._win.test_plan_view.get_selected_plan_id()
         if plan_id is None:
-            self._win.toast("请先选择测试计划", "info")
+            QMessageBox.information(self._win, "导出总结报告", "请先在顶部筛选栏选择要导出的测试计划。")
             return
         plan = ctrl.test_plan_service.get_plan(plan_id)
         tasks = ctrl.test_plan_service.get_tasks(plan_id)
         if not plan or not tasks:
-            self._win.toast("当前计划无任务", "info")
+            QMessageBox.information(self._win, "导出总结报告", "当前计划没有测试任务，无法生成总结报告。")
             return
 
         try:
@@ -1076,7 +1076,6 @@ class PlanHandlers:
             self._win.toast(f"总结报告已导出: {path}", "success")
         except Exception as e:
             logger.exception("Summary report export failed")
-            from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self._win, "导出失败", f"总结报告导出出错:\n{e}")
         finally:
             QApplication.restoreOverrideCursor()
