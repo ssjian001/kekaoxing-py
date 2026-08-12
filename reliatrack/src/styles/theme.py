@@ -1074,6 +1074,31 @@ QLabel[class="activity-change"] {{
 QSplitter::handle[class="list-splitter"] {{
     background: {SURFACE1}; width: 4px; border-radius: 2px;
 }}
+/* ── QCalendarWidget 日历弹窗 ──
+   全局 QTableWidget::item padding 会命中日历内部 QTableView（行高 21→22px，
+   7 行总高 152px > viewport 145px → 最后一行日期被裁剪显示不出来）。
+   用后代选择器覆盖，行高回到 21px。 */
+QCalendarWidget QTableView {{
+    border: none;
+    gridline-color: transparent;
+    selection-background-color: {SELECTION_BG};
+}}
+QCalendarWidget QTableView::item {{
+    padding: 2px 4px;
+}}
+QCalendarWidget QToolButton {{
+    background: transparent; border: none; border-radius: 4px;
+    color: {FG_PRIMARY}; padding: 2px;
+}}
+QCalendarWidget QToolButton:hover {{
+    background: {BG_HOVER};
+}}
+QCalendarWidget QAbstractItemView {{
+    background-color: {BG_CARD};
+    color: {FG_PRIMARY};
+    selection-background-color: {SELECTION_BG};
+    selection-color: {FG_PRIMARY};
+}}
 """
 
 
