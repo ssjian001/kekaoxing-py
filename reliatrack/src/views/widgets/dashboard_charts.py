@@ -65,6 +65,7 @@ class _DonutChart(QWidget):
         act_copy = menu.addAction("📋 复制图表到剪贴板")
         act_save = menu.addAction("🖼️ 保存为 PNG 图片")
         action = menu.exec(event.globalPos())
+        menu.deleteLater()
         if action == act_copy:
             self.copy_to_clipboard()
         elif action == act_save:

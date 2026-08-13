@@ -222,7 +222,7 @@ class MacroCommand(Command):
 
     def redo(self) -> None:
         for cmd in self._commands:
-            cmd.redo() if hasattr(cmd, 'redo') else cmd.do()
+            cmd.redo()
 
 
 class BatchEditSamplesCommand(Command):

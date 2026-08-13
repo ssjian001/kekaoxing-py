@@ -1,6 +1,8 @@
 """全局 Ctrl+K 命令面板 — Spotlight 样式毛玻璃快捷搜索与指令触发器。"""
 from __future__ import annotations
 
+import logging
+
 from typing import Callable, Any
 from PySide6.QtCore import Qt, Signal, QEvent, QRectF
 from PySide6.QtGui import QColor, QFont, QKeySequence, QShortcut, QPainter, QPen, QBrush
@@ -27,6 +29,8 @@ from src.styles.constants import (
     DASH_DANGER,
     add_shadow,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CommandItem:
@@ -236,7 +240,7 @@ class CommandPaletteDialog(QDialog):
                             CommandItem("Issue", f"Issue #{iss.id}: {iss.title}", f"严重度: {iss.severity} | 状态: {iss.status}", "⚠️", action=lambda iid=iss.id: ("issue", iid))
                         )
             except Exception:
-                pass
+                logger.exception("命令面板动态项加载失败")
 
         self._render_items(self._items)
 

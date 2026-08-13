@@ -1,6 +1,8 @@
 """视图与主题融合设置中心 (Unified View & Theme Settings Dialog)。"""
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtWidgets import (
     QDialog,
@@ -17,6 +19,8 @@ from PySide6.QtWidgets import (
 
 import src.styles.theme as _theme
 from src.styles.constants import add_shadow, DASH_PRIMARY, DASH_SUCCESS
+
+logger = logging.getLogger(__name__)
 
 
 class ViewThemeSettingsDialog(QDialog):
@@ -172,7 +176,7 @@ class ViewThemeSettingsDialog(QDialog):
                 if hasattr(mw, "refresh_theme"):
                     mw.refresh_theme()
         except Exception:
-            pass
+            logger.exception("主题切换失败: theme=%s", theme_name)
 
     def _apply_accent(self, color_hex: str) -> None:
         try:
@@ -183,7 +187,7 @@ class ViewThemeSettingsDialog(QDialog):
             if app:
                 app.setStyleSheet(_theme.get_stylesheet())
         except Exception:
-            pass
+            logger.exception("强调色应用失败: color=%s", color_hex)
 
 
 
