@@ -117,7 +117,7 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。704 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。703 个 pytest 测试全通过。
 
 ## CI/CD
 
