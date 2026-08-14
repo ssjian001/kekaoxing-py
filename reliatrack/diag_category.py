@@ -2,9 +2,11 @@
 """诊断:双击类别列就地编辑在哪一环断掉(分层 + 定时器间隔等待)。
 用法: cd reliatrack 目录后,用启动 main.py 的同一个 python 运行本文件:
     python diag_category.py
-所有结果打印到控制台,跑完自动退出,把完整输出发回。
+结果打印到控制台,跑完自动退出,把完整输出发回。
+DB 路径与 main.py 完全一致(dev 优先 data/reliatrack.db,否则 ~/.reliatrack/reliatrack.db)。
 """
 import os, sys, sqlite3, traceback
+from pathlib import Path
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
@@ -25,7 +27,7 @@ try:
                           capture_output=True, text=True, timeout=10).stdout.strip()
     print("Git HEAD:", head or "(unknown)")
 except Exception:
-    print("Git HEAD: 无 .git(zip 解压版) → 无法自动确认版本,请对照代码!")
+    print("Git HEAD: 无 .git(zip 解压版)")
 print("=" * 60, flush=True)
 
 app = QApplication(sys.argv)
@@ -33,8 +35,18 @@ from src.styles.theme import apply_palette, get_stylesheet, set_theme
 set_theme('light'); apply_palette(); app.setStyleSheet(get_stylesheet())
 
 from src.controllers import AppController
-controller = AppController('data/reliatrack.db')
+
+# ── 复刻 main.py 的 DB 路径逻辑 ──
+_db_path = ""
+if not getattr(sys, 'frozen', False):
+    _local_db = Path(__file__).parent / "data" / "reliatrack.db"
+    if _local_db.exists():
+        _db_path = str(_local_db)
+
+controller = AppController(_db_path)
 controller.initialize()
+print("实际 DB 路径:", controller._db_path, flush=True)
+
 from main import MainWindow
 window = MainWindow(controller)
 window.resize(1280, 800)
@@ -65,14 +77,36 @@ def find_ph():
 
 
 def step_a():
-    """A: handler 层直接写"""
+    """A: handler 层直接写(先定位一个有任务的行)"""
     try:
-        conn = state["conn"] = sqlite3.connect('data/reliatrack.db')
+        conn = state["conn"] = sqlite3.connect(controller._db_path)
         window._tab_widget.setCurrentIndex(3)
         app.processEvents()
+
+        # 诊断数据分布
+        n_tasks = conn.execute("SELECT COUNT(*) FROM test_tasks").fetchone()[0]
+        n_plans = conn.execute("SELECT COUNT(*) FROM test_plans").fetchone()[0]
+        print(f"数据概况: test_tasks={n_tasks} 条, test_plans={n_plans} 条", flush=True)
+
+        # 定位第一个有任务的行;若当前计划无任务则切到有任务的计划
         task = tb.get_task_at_row(0)
+        if (not task or task.id is None) and n_tasks > 0:
+            # 找第一个有任务的 plan
+            plans_with_tasks = conn.execute(
+                "SELECT DISTINCT plan_id FROM test_tasks WHERE plan_id IS NOT NULL").fetchall()
+            if plans_with_tasks:
+                pid = plans_with_tasks[0][0]
+                print(f"当前计划无任务,切换到 plan_id={pid}", flush=True)
+                tv.select_plan_by_id(pid)
+                app.processEvents()
+                QTest.qWait(300)
+                app.processEvents()
+                task = tb.get_task_at_row(0)
+
         if not task or task.id is None:
-            print("!! 表格无任务,无法诊断"); app.quit(); return
+            print(f"!! 仍然无任务(表格空)。test_tasks={n_tasks} 但当前视图无任务行,"
+                  f"可能是计划筛选/归档过滤导致。请告知你平时看到任务时选的是哪个计划。", flush=True)
+            finish(); return
         state["tid"] = task.id
         state["orig"] = db_cat()
         print(f"目标 id={task.id} {task.name!r} category={state['orig']!r}")
@@ -89,7 +123,6 @@ def step_a():
 
 
 def step_b():
-    """B: 就地编辑器 + activated.emit(程序级,验证编辑器信号/commit)"""
     try:
         print("\n[B] _edit_inline_category + 选值 + activated.emit", flush=True)
         conn = state["conn"]
@@ -97,6 +130,7 @@ def step_b():
         conn.commit()
         controller.notify_data_changed('task')
         app.processEvents()
+        QTest.qWait(200)
         task = tb.get_task_at_row(0)
         tb._edit_inline_category(0, task)
         app.processEvents()
@@ -112,11 +146,10 @@ def step_b():
             print(f"    目标={tgt!r} DB={v!r} → {'✅B通过' if v == tgt else '❌B断:编辑器commit失败'}", flush=True)
     except Exception:
         print("    ❌B异常:"); traceback.print_exc()
-    QTimer.singleShot(600, step_d)   # 等 100ms 防抖刷新走完
+    QTimer.singleShot(600, step_d)
 
 
 def step_d():
-    """D: 显示层 — B 之后 DB vs 表格文本"""
     try:
         v = db_cat()
         shown = cell_text()
@@ -129,7 +162,6 @@ def step_d():
 
 
 def step_e():
-    """E: 真实双击分派(press→dblclick)→ combo 是否创建"""
     try:
         print("\n[E] 真实鼠标双击类别单元格", flush=True)
         if tb.cellWidget(0, 2) is not None:
@@ -149,7 +181,7 @@ def step_e():
         print(f"    cellDoubleClicked={hits or '未触发'} combo={'已创建' if combo else '未创建'}", flush=True)
         if hits and combo is not None:
             print("    ✅E通过", flush=True)
-            QTimer.singleShot(300, step_f)  # 等 popup 稳定
+            QTimer.singleShot(300, step_f)
         else:
             print("    ❌E断: 双击分派失败", flush=True)
             QTimer.singleShot(200, finish)
@@ -159,7 +191,6 @@ def step_e():
 
 
 def step_f():
-    """F: 真实点击 popup 选项(最接近用户操作)→ 等 800ms → DB + 显示"""
     try:
         print("\n[F] QTest 点击 popup 选项(模拟用户选值)", flush=True)
         combo = tb.cellWidget(0, 2)
@@ -199,5 +230,5 @@ def finish():
 
 
 QTimer.singleShot(1500, step_a)
-QTimer.singleShot(90000, app.quit)  # 90s 兜底
+QTimer.singleShot(90000, app.quit)
 app.exec()
