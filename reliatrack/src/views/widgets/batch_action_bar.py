@@ -151,7 +151,7 @@ class BatchActionBar(QFrame):
             anim.finished.connect(self.hide)
         anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
-    def update_position() -> None:
+    def update_position(self) -> None:
         """跟随父窗口 resize 重新居中定位。"""
         if self.parent() and not self.isHidden():
             pw, ph = self.parent().width(), self.parent().height()

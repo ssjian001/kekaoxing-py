@@ -63,6 +63,12 @@ class PlanHandlers:
         v._batch_bar.status_selected.connect(self._on_batch_status)
         v._batch_bar.tech_selected.connect(self._on_batch_assign_technician)
         v._batch_bar.export_clicked.connect(self._on_batch_export)
+        # 填充批量指派技术员菜单（此前从未调用 → 按钮点开为空）
+        _ctrl = self._win.ctrl
+        _techs = _ctrl.technicians.list_all() if _ctrl and _ctrl.technicians else []
+        v._batch_bar.set_technician_options(
+            [(t.name, t.id) for t in _techs if t.id is not None]
+        )
         # ── 总结报告 ──
         v.btn_summary_report.triggered.connect(self._on_summary_report)
         # 表格回调（右键/双击）
