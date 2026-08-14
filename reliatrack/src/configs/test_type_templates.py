@@ -50,7 +50,7 @@ TEMPLATES: list[TestTypeTemplate] = [
     ),
     TestTypeTemplate(
         name="高温寿命 (HTOL)",
-        category="环境试验",
+        category="寿命试验",
         test_standard="JESD22-A108 / MIL-STD-883 1005",
         duration=60,
         temperature="125°C / 150°C",
@@ -226,7 +226,7 @@ TEMPLATES: list[TestTypeTemplate] = [
 
     TestTypeTemplate(
         name="加速寿命试验 (ALT)",
-        category="环境试验",
+        category="寿命试验",
         test_standard="IEC 62506 / JESD74A",
         duration=60,
         temperature="按 Arrhenius 模型设定",
@@ -284,7 +284,7 @@ TEMPLATES: list[TestTypeTemplate] = [
 
     TestTypeTemplate(
         name="静电放电 (ESD)",
-        category="环境试验",
+        category="EMC",
         test_standard="IEC 61000-4-2 / GB/T 17626.2",
         duration=1,
         temperature="",
@@ -296,7 +296,7 @@ TEMPLATES: list[TestTypeTemplate] = [
     ),
     TestTypeTemplate(
         name="辐射抗扰度 (RS)",
-        category="环境试验",
+        category="EMC",
         test_standard="IEC 61000-4-3 / GB/T 17626.3",
         duration=1,
         temperature="",
@@ -308,7 +308,7 @@ TEMPLATES: list[TestTypeTemplate] = [
     ),
     TestTypeTemplate(
         name="浪涌 (Surge)",
-        category="环境试验",
+        category="EMC",
         test_standard="IEC 61000-4-5 / GB/T 17626.5",
         duration=1,
         temperature="",

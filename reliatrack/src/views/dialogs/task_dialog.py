@@ -283,7 +283,6 @@ class TaskEditDialog(_BaseDialog):
             default=task.accept_criteria if task else "",
             placeholder="如: C=0 (全部通过) / 5收0拒 / 自定义",
         )
-        self._test_type_combo.currentTextChanged.connect(self._on_test_type_criteria)
 
         # ── 测试日志 ──
         self._add_log_file_field(task)
@@ -347,14 +346,6 @@ class TaskEditDialog(_BaseDialog):
 
         # 判定准则字段
         if tpl.accept_criteria and not self._criteria_edit.text().strip():
-            self._criteria_edit.setText(tpl.accept_criteria)
-
-    def _on_test_type_criteria(self, text: str) -> None:
-        """测试类型变化时更新判定准则（仅当准则为空时）。"""
-        if text == "（自定义）":
-            return
-        tpl = get_template_by_name(text)
-        if tpl and tpl.accept_criteria and not self._criteria_edit.text().strip():
             self._criteria_edit.setText(tpl.accept_criteria)
 
     # ── 环境参数分组框 ─────────────────────────────────────────
