@@ -77,8 +77,8 @@ src/
       quick_create.py   # 快速创建弹窗（C键触发）
       resolve_dialog.py # 关闭流程（resolution强制选择）
       shortcuts.py      # 快捷键管理（C/Ctrl+N/Ctrl+K/←→）
-    dialogs/            # 对话框（29 编辑/配置/待办对话框）
-    widgets/            # 自定义控件（42 个，含命令面板/热力图/主题设置等）
+    dialogs/            # 对话框（28 编辑/配置/待办对话框）
+    widgets/            # 自定义控件（41 个，含命令面板/热力图/主题设置等）
 tests/                  # pytest 测试套件
 ```
 
