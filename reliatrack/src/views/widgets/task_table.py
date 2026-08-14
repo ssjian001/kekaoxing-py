@@ -692,13 +692,14 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 2, combo)
         combo.setFocus()
         combo.showPopup()
-        initial_idx = combo.currentIndex()
 
         def _commit() -> bool:
-            if combo.currentIndex() == initial_idx:
-                return False  # 用户未改动，仅关闭编辑器
+            # 值未变才跳过（而非 index 未变）——旧值/非法 category 经 findText 失败
+            # fallback 到 index 0 时，用户选回 fallback 项 index 未变但值确实变了（旧值→合法值），必须提交规范化
             new_cat = combo.currentText()
-            if new_cat != task.category and self._batch_value_callback and task.id is not None:
+            if new_cat == task.category:
+                return False
+            if self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 2, new_cat)
                 return True
             return False
@@ -746,13 +747,14 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 8, combo)
         combo.setFocus()
         combo.showPopup()
-        initial_idx = combo.currentIndex()
 
         def _commit() -> bool:
-            if combo.currentIndex() == initial_idx:
-                return False  # 用户未改动，仅关闭编辑器
+            # 值未变才跳过（而非 index 未变）——task.status 旧值 "fail" 经兼容映射定位到 "failed" 时，
+            # 用户选回 "failed" index 未变但值确实变了（"fail"→"failed"），必须提交规范化
             new_status = status_items[combo.currentIndex()][1]
-            if new_status != task.status and self._batch_value_callback and task.id is not None:
+            if new_status == task.status:
+                return False
+            if self._batch_value_callback and task.id is not None:
                 self._batch_value_callback([task.id], 8, new_status)
                 return True
             return False
@@ -780,21 +782,19 @@ class _TaskTable(QTableWidget):
         self.setCellWidget(row, 9, combo)
         combo.setFocus()
         combo.showPopup()
-        initial_idx = combo.currentIndex()
 
         def _commit() -> bool:
-            if combo.currentIndex() == initial_idx:
-                return False  # 用户未改动，仅关闭编辑器
+            # 值未变才跳过（而非 index 未变）——技术员被删后 fallback 到「未指派」时，
+            # 用户选回「未指派」index 未变但值确实变了（某 ID→清空），必须提交清空
             idx_ = combo.currentIndex()
             tech_id = combo.itemData(idx_)
+            if tech_id == task.technician_id:
+                return False
             if self._batch_value_callback and task.id is not None:
                 if tech_id is None:
                     self._batch_value_callback([task.id], 9, "")
                 else:
-                    tech_name = combo.itemText(idx_)
-                    if tech_name != "— 未指派 —":
-                        self._batch_value_callback([task.id], 9, tech_name)
-                        return True
+                    self._batch_value_callback([task.id], 9, combo.itemText(idx_))
                 return True
             return False
 
