@@ -670,12 +670,16 @@ class _TaskTable(QTableWidget):
         QComboBox 场景中 focusOut（popup 关闭瞬间）可能先于 activated 触发，
         此时 currentIndex 未变不算提交，不能吃掉后续 activated 的提交。
         """
+        import shiboken6
         try:
-            if getattr(widget, "_inline_committed", False):
-                return  # 防重入：editingFinished + focusOut 可能同时触发
+            if not shiboken6.isValid(widget) or getattr(widget, "_inline_committed", False):
+                return  # widget 已销毁（removeCellWidget/刷新后事件迟到）或已提交（防重入）
         except RuntimeError:
             return  # widget 已被 Qt 删除（removeCellWidget 后事件迟到）
-        committed = bool(commit())
+        try:
+            committed = bool(commit())
+        except RuntimeError:
+            return  # commit 回调访问已删 C++ 对象（焦点事件迟到竞态）
         if committed:
             widget._inline_committed = True
         from PySide6.QtCore import QTimer

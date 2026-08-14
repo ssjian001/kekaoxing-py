@@ -305,3 +305,49 @@ class TestInlineEditPopupFocusRace:
             pass  # 已删 widget：Qt 真实环境不会派发，防御性忽略
         QApplication.processEvents()
         assert calls == [([1], 9, "张工")]
+
+
+class TestInlineEditDeletedWidgetGuard:
+    """就地编辑器 widget 已删后事件迟到 → _finish_inline_edit 静默 return（2026-08-14 修复）。
+
+    用户提交后 commit 触发刷新（set_tasks→setRowCount）删除 combo，
+    或纯 Python 引用循环被 GC 删除 C++ 对象后，迟到的 FocusOut 事件仍会
+    经 eventFilter → _finish_inline_edit 进入；commit 返回 False 时
+    _inline_committed 未置位，旧代码会继续调 commit() → combo.currentIndex()
+    访问已删 C++ 对象 → RuntimeError: already deleted。
+    """
+
+    def test_finish_inline_edit_ignores_deleted_widget(self, qapp):
+        import shiboken6
+        from PySide6.QtWidgets import QComboBox
+        from src.views.widgets.task_table import _TaskTable
+
+        t = _TaskTable()
+        combo = QComboBox()
+        combo.addItems(["待开始", "失败"])
+        shiboken6.delete(combo)  # 强制删 C++ 对象，Python wrapper 仍活
+        assert not shiboken6.isValid(combo)
+
+        # 修复前 RuntimeError 从 commit() 抛出；修复后静默 return，不抛异常
+        t._finish_inline_edit(combo, 0, 8, 1, lambda: combo.currentIndex() >= 0)
+
+    def test_finish_inline_edit_commits_live_widget(self, qapp):
+        """回归保护：widget 仍有效时正常提交（shiboken 守卫不能误伤正常路径）。"""
+        from PySide6.QtWidgets import QComboBox
+        from src.views.widgets.task_table import _TaskTable
+
+        t = _TaskTable()
+        calls: list = []
+        t._batch_value_callback = lambda ids, col, val: calls.append((ids, col, val))
+        combo = QComboBox()
+        combo.addItems(["待开始", "失败"])
+        combo.setCurrentIndex(1)
+
+        def commit() -> bool:
+            if combo.currentIndex() == 0:
+                return False
+            t._batch_value_callback([1], 8, combo.currentText())
+            return True
+
+        t._finish_inline_edit(combo, 0, 8, 1, commit)
+        assert calls == [([1], 8, "失败")]
