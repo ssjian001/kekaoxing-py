@@ -25,7 +25,7 @@ python3 -m venv .venv
 - **知识库** — 失效模式经验沉淀
 - **待办事项** — 看板视图（3列拖拽切换状态+快速添加+双击编辑+优先级筛选+项目筛选）
 
-## 9 个 Tab
+## 8 个 Tab
 
 | 索引 | Tab | 核心功能 |
 |-----|-----|---------|
@@ -33,10 +33,10 @@ python3 -m venv .venv
 | 1 | 项目管理 | 项目 CRUD + 搜索 |
 | 2 | 样品管理 | 样品池 + 出入库 + 批量导入 |
 | 3 | 测试计划 | 任务 CRUD + 自动排程 + 甘特图（序号标签+预计/实际切换）+ 结果矩阵（3种模式+Tooltip）+ 失效分析Tab + 今日摘要 + 一键总结报告 + 依赖弹出选择 |
-| 4 | 设备管理 | 设备 + 校准 + 技术员（子 Tab） |
-| 5 | 知识库 | 失效模式 CRUD |
-| 6 | Issue 管理 | 看板(4列拖拽+aging+closed折叠) / 列表(横筛选+批量+FA/CAPA面板) Tab 切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建(C键) |
-| 7 | 待办事项 | 看板(3列拖拽切换状态+快速添加+双击编辑+优先级/项目筛选) |
+| 4 | Issue 管理 | 看板(4列拖拽+aging+closed折叠) / 列表(横筛选+批量+FA/CAPA面板) Tab 切换 + 详情弹窗(评论+活动日志+FA+CAPA) + 快速创建(C键) |
+| 5 | 待办事项 | 看板(3列拖拽切换状态+快速添加+双击编辑+优先级/项目筛选) |
+| 6 | 设备管理 | 设备 + 校准 + 技术员（子 Tab） |
+| 7 | 知识库 | 失效模式 CRUD |
 
 ## 架构
 
@@ -74,7 +74,7 @@ src/
 │   └── todo_handlers.py
 ├── models/          # 数据模型
 ├── services/        # 业务逻辑层
-│   ├── scheduler.py          # 3阶段排程引擎（611行）
+│   ├── scheduler.py          # 3阶段排程引擎（687行）
 │   ├── scheduler_service.py  # 排程服务（DB 读写）
 │   ├── export_service.py     # 8D/计划导出（reportlab + python-docx）
 │   ├── import_service.py     # Excel 批量导入
@@ -93,7 +93,7 @@ src/
     ├── equipment_view.py      # 设备 + 技术员子Tab
     ├── knowledge_view.py
     ├── todo_view.py             # 待办看板（3列拖拽+快速添加+双击编辑）
-    ├── bug_tracker/           # Issue 管理系统（看板/列表/FA/CAPA 面板，v24合并重构）
+    ├── bug_tracker/           # Issue 管理系统（看板/列表/FA/CAPA 面板，v23合并重构）
     │   ├── kanban_view.py     # 4列拖拽看板（aging色块+closed折叠）
     │   ├── list_view.py       # 增强列表（筛选面板+批量操作）
     │   ├── detail_dialog.py   # 详情弹窗（5Tab: 详情/评论/活动/FA/CAPA）
@@ -117,7 +117,7 @@ src/
 .venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。703 个 pytest 测试全通过。
+E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/test_e2e_full.py`。708 个 pytest 测试全通过。
 
 ## CI/CD
 
@@ -128,7 +128,7 @@ E2E 测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tes
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v25：新增 todos 表（待办事项模块）；v24：活动日志加 project_id 列 + 索引，仪表盘 weekly_closed 按项目筛选；v23：Issue 管理系统（issue_comments/issue_activity_log/issue_links 3张表 + 看板/列表/FA/CAPA面板 + 状态机 + aging + 与 Issue 追踪合并重构）；v22 归档视图完善；v21 Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
+- Schema v28：test_tasks.category 旧值统一到 TASK_CATEGORIES；v27：todos 加 archived；v26：todos 加提醒+四象限；v25：新增 todos 表（待办事项模块）；v24：活动日志加 project_id 列 + 索引，仪表盘 weekly_closed 按项目筛选；v23：Issue 管理系统（issue_comments/issue_activity_log/issue_links 3张表 + 看板/列表/FA/CAPA面板 + 状态机 + aging + 与 Issue 追踪合并重构）；v22 归档视图完善；v21 Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可
