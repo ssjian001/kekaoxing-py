@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -84,9 +84,6 @@ class SchedulePreviewDialog(QDialog):
     parent : QWidget
         父窗口。
     """
-
-    # 信号：用户确认后的变更列表 [(task_id, new_start_day), ...]
-    accepted_changes = Signal(list)
 
     # 表格列定义
     _COL_NAME = 0
@@ -529,11 +526,10 @@ class SchedulePreviewDialog(QDialog):
         return changes
 
     def _on_apply(self) -> None:
-        """确认应用：发出变更信号并关闭。
+        """确认应用：关闭对话框。
 
         存在依赖/设备/非工作日/启动上限冲突时弹二次确认，防止一键应用违规排程。
         """
-        changes = self.get_changes()
         if getattr(self, "_has_conflicts", False):
             reply = QMessageBox.question(
                 self,
@@ -544,7 +540,6 @@ class SchedulePreviewDialog(QDialog):
             )
             if reply != QMessageBox.StandardButton.Yes:
                 return
-        self.accepted_changes.emit(changes)
         self.accept()
 
 

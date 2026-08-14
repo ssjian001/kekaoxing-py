@@ -60,7 +60,6 @@ class _KanbanCard(QFrame):
 
     clicked = Signal(int)
     double_clicked = Signal(int)
-    drag_started = Signal(int)
 
     CARD_WIDTH = 180
     CARD_HEIGHT = 68
@@ -187,7 +186,6 @@ class _KanbanCard(QFrame):
             return
 
         self._drag_started = True
-        self.drag_started.emit(self.issue_id)
 
         drag = QDrag(self)
         mime = QMimeData()
