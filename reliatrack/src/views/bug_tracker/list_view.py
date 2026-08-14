@@ -205,7 +205,6 @@ class BugListView(QWidget):
         self._empty_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._empty_label.setParent(self._table)
         self._empty_label.hide()
-        self._table.installEventFilter(self)
 
     def _build_filter_toolbar(self) -> QHBoxLayout:
         """筛选栏 + 工具栏合并为一行。
