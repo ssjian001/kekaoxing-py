@@ -292,6 +292,16 @@ class _TaskTable(QTableWidget):
             act_delete = QAction("删除\tDel", self)
             act_delete.triggered.connect(lambda: self._on_delete_callback(task) if self._on_delete_callback else None)
 
+            # 快速修改状态子菜单（合并自 d13dfb3a 新版右键菜单，避免重复定义覆盖丢失）
+            sub_status = QMenu("快速修改状态", self)
+            for _label, _code in (("进行中", "in_progress"), ("已完成", "completed"),
+                                   ("待处理", "pending"), ("失败", "failed")):
+                _act = sub_status.addAction(_label)
+                _act.triggered.connect(
+                    lambda _checked=False, c=_code: self._on_status_advance_callback(task, c)
+                    if self._on_status_advance_callback else None
+                )
+
             act_start: QAction | None = None
             act_complete: QAction | None = None
             act_record: QAction | None = None
@@ -316,6 +326,7 @@ class _TaskTable(QTableWidget):
 
             menu.addAction(act_edit)
             menu.addAction(act_delete)
+            menu.addMenu(sub_status)
             if act_start or act_complete or act_record:
                 menu.addSeparator()
             if act_start:
@@ -539,46 +550,6 @@ class _TaskTable(QTableWidget):
             if self._empty_label.isVisible():
                 self._empty_label.setGeometry(self.viewport().rect())
         return super().eventFilter(obj, event)
-
-    def _show_context_menu(self, pos: QPoint) -> None:
-        """表格右键上下文菜单。"""
-        from PySide6.QtWidgets import QMenu
-        from PySide6.QtGui import QAction
-
-        item = self.itemAt(pos)
-        if not item:
-            return
-
-        row = item.row()
-        task = self.get_task_at_row(row)
-        if not task:
-            return
-
-        menu = QMenu(self)
-        
-        act_edit = menu.addAction("✏️ 编辑任务信息")
-        
-        menu.addSeparator()
-
-        sub_status = menu.addMenu("🏷️ 快速修改状态")
-        act_p = sub_status.addAction("进行中 (in_progress)")
-        act_f = sub_status.addAction("已完成 (completed)")
-        act_w = sub_status.addAction("待处理 (pending)")
-        act_fail = sub_status.addAction("失败 (failed)")
-
-        menu.addSeparator()
-        act_del = menu.addAction("🗑️ 删除该任务")
-
-        action = menu.exec(self.viewport().mapToGlobal(pos))
-        if action == act_edit and self._on_edit_callback:
-            self._on_edit_callback(task)
-        elif action == act_del and self._on_delete_callback:
-            self._on_delete_callback(task)
-        elif action in (act_p, act_f, act_w, act_fail):
-            status_map = {act_p: "in_progress", act_f: "completed", act_w: "pending", act_fail: "failed"}
-            new_st = status_map[action]
-            if self._on_status_advance_callback:
-                self._on_status_advance_callback(task, new_st)
 
     def get_task_at_row(self, row: int) -> Optional[TestTask]:
 

@@ -44,6 +44,18 @@ def test_batch_action_bar_technician_options_populate_menu(qapp):
     assert bar._tech_menu.actions()[0].text() == "陈工"
 
 
+def test_show_context_menu_not_duplicated():
+    """回归防护：_TaskTable._show_context_menu 不能重复定义。
+
+    d13dfb3a (2026-07-25) 引入新版右键菜单时未删除旧版，Python 后定义覆盖
+    先定义 → 含批量操作的旧版被覆盖 → 多选批量操作全部失效（"批量功能被删"）。
+    """
+    import inspect
+    from src.views.widgets.task_table import _TaskTable
+    src = inspect.getsource(_TaskTable)
+    assert src.count("def _show_context_menu") == 1
+
+
 def test_lightbox_viewer_init(qapp, tmp_path):
     img_file = tmp_path / "test.png"
     img_file.write_bytes(b"dummy")
