@@ -63,8 +63,6 @@ STATUS_SURFACE = "#acb0be"  # 跳过/离线/最低
 PROJECT_STATUS_COLORS: dict[str, str] = {
     "active": STATUS_GREEN,
     "paused": STATUS_YELLOW,
-    "completed": STATUS_GREEN,
-    "archived": STATUS_OVERLAY,
     "closed": STATUS_OVERLAY,
 }
 

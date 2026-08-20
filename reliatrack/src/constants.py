@@ -128,8 +128,6 @@ SAMPLE_STATUS_REVERSE: dict[str, str] = {v: k for k, v in SAMPLE_STATUS_MAP.item
 PROJECT_STATUS_LABELS: dict[str, str] = {
     "active": "进行中",
     "paused": "暂停",
-    "completed": "已完成",
-    "archived": "已归档",
     "closed": "已关闭",
 }
 PROJECT_STATUS_OPTIONS = ["进行中", "暂停", "已关闭"]
