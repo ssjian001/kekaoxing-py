@@ -540,6 +540,28 @@ class IssueRepository(BaseRepository):
             ).fetchone()
         return row[0] if row else 0
 
+    def detach_references_of_project(self, project_id: int) -> int:
+        """解关联"外项目 Issue 对本项目样品/任务"的引用（置 NULL），返回行数。
+
+        项目级联删除前调用：这些 Issue 本体属于其他项目（或无项目），
+        若不解关联，删除本项目样品/任务时 FK ON DELETE CASCADE 会物理
+        清除它们——包括已软删的，绕过软删保护（2026-08-21 审计 #7）。
+        """
+        cursor = self._conn.execute(
+            "UPDATE [issues] SET sample_id = NULL "
+            "WHERE sample_id IN (SELECT id FROM [samples] WHERE project_id = ?) "
+            "AND (project_id IS NULL OR project_id != ?)",
+            (project_id, project_id),
+        )
+        cursor2 = self._conn.execute(
+            "UPDATE [issues] SET task_id = NULL "
+            "WHERE task_id IN (SELECT t.id FROM [test_tasks] t "
+            "JOIN [test_plans] p ON t.plan_id = p.id WHERE p.project_id = ?) "
+            "AND (project_id IS NULL OR project_id != ?)",
+            (project_id, project_id),
+        )
+        return 0
+
     def delete_by_project(self, project_id: int) -> int:
         """删除项目关联的所有 issue（含附件磁盘清理），返回删除行数。
 

@@ -201,6 +201,19 @@ class _BaseDialog(QDialog):
         self._form.addRow(label, lbl)
         return lbl
 
+    def _add_checkbox_field(
+        self,
+        label: str,
+        checked: bool = False,
+    ):
+        """添加一行复选框并返回控件。"""
+        from PySide6.QtWidgets import QCheckBox
+
+        chk = QCheckBox()
+        chk.setChecked(checked)
+        self._form.addRow(label, chk)
+        return chk
+
     def _add_separator(self) -> None:
         """在表单中添加水平分隔。"""
         line = QLabel()

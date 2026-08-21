@@ -89,6 +89,12 @@ class EquipmentEditDialog(_BaseDialog):
         self._add_separator()
 
         # ── 校准信息 ──
+        # 「未校准」开关（审计 #6）：QDateEdit 无法表达"空"，默认今天会被
+        # get_data 当成真实校准日期写库（自动伪造）。勾选 = 显式无校准数据。
+        self._never_calibrated_chk = self._add_checkbox_field(
+            "未校准（无校准记录）",
+            checked=not (equipment and equipment.calibration_date),
+        )
         self._calibration_edit = self._add_date_field("校准日期")
         if equipment and equipment.calibration_date:
             d = QDate.fromString(equipment.calibration_date, "yyyy-MM-dd")
@@ -111,6 +117,9 @@ class EquipmentEditDialog(_BaseDialog):
             max_val=60,
             default=equipment.calibration_interval_months if equipment else 12,
         )
+        # 初始联动 + 勾选切换时禁用/启用日期与间隔输入
+        self._on_never_calibrated_toggled(self._never_calibrated_chk.isChecked())
+        self._never_calibrated_chk.toggled.connect(self._on_never_calibrated_toggled)
 
         self._add_separator()
 
@@ -126,8 +135,30 @@ class EquipmentEditDialog(_BaseDialog):
 
     # ── 公开 API ───────────────────────────────────────────────
 
+    def _on_never_calibrated_toggled(self, checked: bool) -> None:
+        """勾选「未校准」时禁用校准日期相关输入，语义显式化。"""
+        self._calibration_edit.setEnabled(not checked)
+        self._next_calibration_edit.setEnabled(not checked)
+        self._interval_spin.setEnabled(not checked)
+
     def get_data(self) -> dict:
         """返回表单数据字典。"""
+        # 未校准 = 显式空数据，不伪造日期（审计 #6）
+        if self._never_calibrated_chk.isChecked():
+            return {
+                "name": self._name_edit.text().strip(),
+                "model": self._model_edit.text().strip(),
+                "type": self._type_combo.currentText(),
+                "asset_no": self._asset_no_edit.text().strip(),
+                "manufacturer": self._manufacturer_edit.text().strip(),
+                "accuracy": self._accuracy_edit.text().strip(),
+                "location": self._location_edit.text().strip(),
+                "calibration_date": "",
+                "next_calibration_date": "",
+                "calibration_interval_months": 12,
+                "status": self._STATUS_MAP.get(self._status_combo.currentText(), "available"),
+            }
+
         cal_date = ""
         if self._calibration_edit.date().isValid():
             cal_date = self._calibration_edit.date().toString("yyyy-MM-dd")

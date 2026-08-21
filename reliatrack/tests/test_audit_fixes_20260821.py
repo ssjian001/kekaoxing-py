@@ -266,6 +266,139 @@ class TestInlineEditorGuard:
         assert combo.currentText() == "环境试验"
 
 
+# ── #6 设备校准日期「未校准」开关 ─────────────────────────────
+
+class TestNeverCalibratedSwitch:
+    def _make_dialog(self, qapp, equipment=None):
+        from src.views.dialogs.equipment_edit_dialog import EquipmentEditDialog
+        return EquipmentEditDialog(equipment=equipment)
+
+    def test_new_equipment_defaults_to_never_calibrated(self, qapp):
+        """新建设备默认勾选未校准 → get_data 返回空校准数据（不伪造今天）。"""
+        dlg = self._make_dialog(qapp)
+        assert dlg._never_calibrated_chk.isChecked()
+        data = dlg.get_data()
+        assert data["calibration_date"] == ""
+        assert data["next_calibration_date"] == ""
+
+    def test_unchecked_keeps_date_semantics(self, qapp):
+        """取消勾选后日期字段启用，get_data 走原逻辑。"""
+        dlg = self._make_dialog(qapp)
+        dlg._never_calibrated_chk.setChecked(False)
+        assert dlg._calibration_edit.isEnabled()
+        data = dlg.get_data()
+        assert data["calibration_date"] != ""  # QDateEdit 默认今天，显式选择保留
+
+    def test_edit_with_cal_date_starts_unchecked(self, qapp):
+        """编辑已有校准日期的设备 → 默认不勾选，数据预填。"""
+        from src.models.common import Equipment
+        eq = Equipment(
+            id=1, name="温度箱", model="TH-001", type="温度箱",
+            calibration_date="2026-01-15",
+            next_calibration_date="2027-01-15",
+            calibration_interval_months=12,
+        )
+        dlg = self._make_dialog(qapp, eq)
+        assert not dlg._never_calibrated_chk.isChecked()
+        data = dlg.get_data()
+        assert data["calibration_date"] == "2026-01-15"
+
+    def test_toggle_disables_inputs(self, qapp):
+        """勾选切换联动禁用/启用输入控件。"""
+        dlg = self._make_dialog(qapp)
+        dlg._never_calibrated_chk.setChecked(False)
+        assert dlg._calibration_edit.isEnabled()
+        assert dlg._interval_spin.isEnabled()
+        dlg._never_calibrated_chk.setChecked(True)
+        assert not dlg._calibration_edit.isEnabled()
+        assert not dlg._interval_spin.isEnabled()
+
+
+# ── #7 项目级联删除解关联跨项目引用 ───────────────────────────
+
+class TestProjectDeleteDetachesCrossRefs:
+    def _setup(self, db_conn):
+        from src.db.repositories.project_repo import ProjectRepository
+        from src.db.repositories.sample_repo import SampleRepository
+        from src.db.repositories.issue_repo import IssueRepository
+        from src.db.repositories.test_plan_repo import TestPlanRepository
+        from src.db.repositories.test_task_repo import TestTaskRepository
+        from src.services.project_service import ProjectService
+
+        project_repo = ProjectRepository(db_conn)
+        sample_repo = SampleRepository(db_conn)
+        issue_repo = IssueRepository(db_conn)
+        svc = ProjectService(
+            project_repo,
+            plan_repo=TestPlanRepository(db_conn),
+            task_repo=TestTaskRepository(db_conn),
+            sample_repo=sample_repo,
+            issue_repo=issue_repo,
+        )
+        return svc, project_repo, sample_repo, issue_repo
+
+    def test_soft_deleted_cross_project_issue_survives(self, qapp, db_conn):
+        """外项目软删 Issue 引用本项目样品 → 删项目后 Issue 本体存活、引用置空。"""
+        from src.models.issue import Issue
+        from src.models.sample import Sample
+
+        svc, project_repo, sample_repo, issue_repo = self._setup(db_conn)
+        pid_a = project_repo.insert(name="项目A")
+        pid_b = project_repo.insert(name="项目B")
+        sid = sample_repo.insert(sn="X-REF-001", project_id=pid_a, status="in_stock")
+
+        # 项目B 的 Issue 引用项目A 的样品，然后软删
+        iid = issue_repo.insert(
+            title="跨项目引用", project_id=pid_b, sample_id=sid, severity="major",
+        )
+        issue_repo.soft_delete(iid)
+
+        # 删除项目A
+        svc.delete(pid_a)
+
+        # 软删 Issue 必须存活且引用被置空
+        survivor = issue_repo.get_by_id(iid)
+        assert survivor is not None, "外项目软删 Issue 被 CASCADE 物理清除——软删保护仍被绕过"
+        assert survivor.sample_id is None, "引用未被解关联"
+        assert survivor.is_deleted == 1
+
+    def test_active_cross_project_issue_survives(self, qapp, db_conn):
+        """外项目活跃 Issue 引用本项目任务 → 删项目后存活。"""
+        from src.models.issue import Issue
+
+        svc, project_repo, sample_repo, issue_repo = self._setup(db_conn)
+        pid_a = project_repo.insert(name="项目A")
+        pid_b = project_repo.insert(name="项目B")
+        from src.db.repositories.test_plan_repo import TestPlanRepository
+        from src.db.repositories.test_task_repo import TestTaskRepository
+        plan_id = TestPlanRepository(db_conn).insert(name="PA计划", project_id=pid_a)
+        task_id = TestTaskRepository(db_conn).insert(plan_id=plan_id, name="T1")
+
+        iid = issue_repo.insert(
+            title="跨项目任务引用", project_id=pid_b, task_id=task_id, severity="major",
+        )
+
+        svc.delete(pid_a)
+
+        survivor = issue_repo.get_by_id(iid)
+        assert survivor is not None, "外项目活跃 Issue 被物理清除"
+        assert survivor.task_id is None
+
+    def test_same_project_issue_still_deleted(self, qapp, db_conn):
+        """本项目自己的 Issue 照常级联删除（解关联不影响正常路径）。"""
+        from src.models.issue import Issue
+
+        svc, project_repo, sample_repo, issue_repo = self._setup(db_conn)
+        pid_a = project_repo.insert(name="项目A")
+        sid = sample_repo.insert(sn="OWN-001", project_id=pid_a, status="in_stock")
+        iid = issue_repo.insert(
+            title="本项目Issue", project_id=pid_a, sample_id=sid, severity="major",
+        )
+
+        svc.delete(pid_a)
+        assert issue_repo.get_by_id(iid) is None, "本项目 Issue 应随项目删除"
+
+
 # ── S1 compress 放回时间线 ────────────────────────────────────
 
 class TestCompressRestoresOnFailure:

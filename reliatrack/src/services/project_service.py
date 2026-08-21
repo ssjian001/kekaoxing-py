@@ -41,6 +41,10 @@ class ProjectService:
     def delete(self, project_id: int) -> None:
         """删除项目及所有关联数据（批量 SQL，无 N+1）。"""
         with self._repo.transaction():
+            # 0. 解关联跨项目引用（审计 #7）：其他项目的 Issue 若引用本项目
+            #    样品/任务，直接删样品会经 FK CASCADE 物理清除它们（绕过软删
+            #    保护）。先置 NULL 保留这些 Issue 本体。
+            self._issue_repo.detach_references_of_project(project_id)
             # 1. 批量删除 issues（含 fa_records / attachments / capa_records）
             self._issue_repo.delete_by_project(project_id)
             # 2. 批量删除 samples（含 transactions）
