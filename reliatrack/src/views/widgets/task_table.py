@@ -615,16 +615,25 @@ class _TaskTable(QTableWidget):
         combo.setProperty("class", "filter-combo")
         items = [(PRIORITY_LABELS.get(i, str(i)), i) for i in range(1, 6)]
         combo.addItems([label for label, _ in items])
-        # 越界防御：priority ∉ 1..5 时 setCurrentIndex 落 -1，commit 会取 items[-1] 误写 5
-        combo.setCurrentIndex(task.priority - 1 if 1 <= task.priority <= 5 else 0)
+        # 越界 priority（∉1..5）：追加占位项保持原值，被动关闭不再静默改写
+        current_item_idx: int | None = None
+        if 1 <= task.priority <= 5:
+            combo.setCurrentIndex(task.priority - 1)
+        else:
+            combo.addItem(f"{task.priority}（当前）")
+            current_item_idx = combo.count() - 1
+            combo.setCurrentIndex(current_item_idx)
         self.setCellWidget(row, 7, combo)
         combo.setFocus()
         combo.showPopup()
 
         def _commit() -> bool:
             cur = combo.currentIndex()
+            # 占位项 = 保持原值；无有效选中（被动关闭）也不提交
+            if current_item_idx is not None and cur == current_item_idx:
+                return False
             if not (0 <= cur < len(items)):
-                return False  # 无有效选中（被动关闭），不提交
+                return False
             new_pri = items[cur][1]
             if new_pri != task.priority and self._batch_value_callback and task.id is not None:
                 # col=7 → priority，走批量更新回調直接寫 DB

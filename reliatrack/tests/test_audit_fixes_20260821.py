@@ -241,6 +241,18 @@ class TestInlineEditorGuard:
         assert "已删除" in combo.currentText()
         assert combo.currentData() == 42
 
+    def test_out_of_range_priority_gets_placeholder(self, qapp):
+        """越界 priority（∉1..5，模拟绕过模型校验的脏数据）→ 占位项保持原值。"""
+        from src.models.test_plan import TestTask
+        table = self._make_table(qapp)
+        task = TestTask(id=11, name="T")
+        task.priority = 9  # 直接改属性绕过 __post_init__ 校验，模拟历史脏数据
+        self._seed_row(table, task)
+        table._edit_inline_priority(0, task)
+        combo = table.cellWidget(0, 7)
+        assert combo is not None
+        assert "9（当前）" in combo.currentText()
+
     def test_valid_category_no_placeholder(self, qapp):
         """合法 category 不应出现占位项（回归保护）。"""
         from src.models.test_plan import TestTask
