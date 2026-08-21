@@ -202,5 +202,9 @@ class SampleTagDialog(QDialog):
             self, "保存样品标签", default_name, "PNG 图片 (*.png);;所有文件 (*)"
         )
         if path:
-            self._pixmap.save(path, "PNG")
-            QMessageBox.information(self, "成功", f"标签已保存至:\n{path}")
+            # 审计 #31：save() 返回值被丢弃——目录只读/磁盘满时仍弹"成功"
+            ok = self._pixmap.save(path, "PNG")
+            if ok:
+                QMessageBox.information(self, "成功", f"标签已保存至:\n{path}")
+            else:
+                QMessageBox.critical(self, "保存失败", f"无法写入文件:\n{path}\n请检查目录权限或磁盘空间。")

@@ -22,13 +22,6 @@ from src.views.widgets.todo_globals import _global_signals
 _MIME_TODO_ID = "application/x-todo-id"
 
 
-def _priority_color(priority: int) -> str:
-    if priority >= 4:
-        return _t.RED
-    if priority >= 2:
-        return _t.YELLOW
-    return _t.GREEN
-
 
 _FONT_CARD_TITLE = QFont()
 _FONT_CARD_META = QFont()

@@ -34,7 +34,9 @@ class ProjectService:
         return self._repo.insert(name=name, **kwargs)
 
     def get(self, project_id: int) -> Project | None:
+        """按 ID 查询。"""
         return self._repo.get_by_id(project_id)
+
     def update(self, project_id: int, **kwargs: object) -> None:
         self._repo.update(project_id, **kwargs)
 

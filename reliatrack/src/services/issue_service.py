@@ -166,9 +166,6 @@ class IssueService:
                             issue_id, field, str(old_val), str(new_val), operator,
                         )
 
-    def update_status(self, issue_id: int, status: str) -> None:
-        self._repo.update_status(issue_id, status)
-
     def delete(self, issue_id: int) -> None:
         with self._repo.transaction():
             # 先删子表，再删 Issue（父表）
@@ -190,7 +187,11 @@ class IssueService:
         self._repo.restore(issue_id)
 
     def purge_old(self, days: int = 30) -> int:
-        """彻底删除已软删除超过 N 天的 Issue，返回删除行数。"""
+        """彻底删除已软删除超过 N 天的 Issue，返回删除行数。
+
+        注意：repo 层已修复附件磁盘清理（审计 #33）。
+        当前生产无调用方（回收站"彻底删除"走 delete()），保留供未来接线。
+        """
         return self._repo.purge_old(days)
 
     def list_all(self) -> list[Issue]:

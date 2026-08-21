@@ -21,7 +21,7 @@ class KnowledgeService:
         return self._repo.create(dict(kwargs))
 
     def get(self, entry_id: int) -> KnowledgeEntry | None:
-        """按 ID 查询。"""
+        """按 ID 查询（含已删除，供 undo 恢复验证等场景）。"""
         return self._repo.get(entry_id)
 
     def update(self, entry_id: int, **kwargs: object) -> None:

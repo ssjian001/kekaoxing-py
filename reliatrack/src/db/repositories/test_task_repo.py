@@ -172,4 +172,5 @@ class TestTaskRepository(BaseRepository):
         # DB 删除成功后，清理磁盘附件文件（best-effort）
         for (fp,) in attachment_paths:
             IssueRepository._remove_disk_file(fp)
-        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0
+        row = self._conn.execute("SELECT changes()").fetchone()
+        return row[0] if row else 0

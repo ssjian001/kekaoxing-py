@@ -205,8 +205,10 @@ def test_3_issue_and_attachment(tr: TestResult, conn, pid, plan_id, t1, issue_re
     assert len(atts) == 1 and atts[0].file_path == "/tmp/test_image.png"
     tr.record("PASS", "Issue Attachment", f"创建+查询附件 id={att_id}")
 
-    # 更新状态
-    issue_svc.update_status(iid, "closed")
+    # 更新状态（走 transition_status；closed 需先补 resolution）
+    issue_svc.update(iid, resolution="已修复并验证")
+    ok, reason = issue_svc.transition_status(iid, "closed")
+    assert ok, f"transition_status 失败: {reason}"
     issue = issue_svc.get(iid)
     assert issue is not None and issue.status == "closed"
     tr.record("PASS", "Issue 状态更新", "状态已更新为 closed")

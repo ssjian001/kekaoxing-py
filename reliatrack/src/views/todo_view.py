@@ -34,7 +34,7 @@ from src.styles.animation import DropShadowAnimation, BackgroundAnimation
 from src.styles.constants import VIEW_MARGINS
 from src.views.quadrant_view import QuadrantView
 
-from src.views.widgets.todo_card import TodoCard, _priority_color
+from src.views.widgets.todo_card import TodoCard
 from src.views.widgets.todo_column import KanbanColumn
 from src.views.widgets.todo_globals import _global_signals
 

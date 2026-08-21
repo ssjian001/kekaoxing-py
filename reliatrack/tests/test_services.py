@@ -204,8 +204,15 @@ class TestIssueService:
         assert issue_svc.get(iid).title == "新标题"
 
     def test_update_status(self, issue_svc, sample_project):
+        """状态变更走 transition_status（带校验+活动日志）——原 update_status
+        死方法绕过状态机已删除（2026-08-21 审计）。closed 需 resolution。"""
         iid = issue_svc.create("待关闭", project_id=sample_project["id"], status="open")
-        issue_svc.update_status(iid, "closed")
+        # 无 resolution 时状态机正确拒绝（这正是被删死方法绕过的校验）
+        ok, reason = issue_svc.transition_status(iid, "closed")
+        assert not ok and "resolution" in reason.lower() or "处理结果" in reason
+        issue_svc.update(iid, resolution="已修复并验证")
+        ok, _ = issue_svc.transition_status(iid, "closed")
+        assert ok
         assert issue_svc.get(iid).status == "closed"
 
     def test_fa_records(self, issue_svc, sample_project):

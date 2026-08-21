@@ -42,7 +42,11 @@ class SampleService:
         return sample_id
 
     def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
-        """按状态分组计数（委托给 repo）。"""
+        """按状态分组计数（委托给 repo）。
+
+        注意：生产走 ctrl.test_tasks.count_by_status（refresh_handlers），
+        此方法为样品侧对称 API，暂无调用方。
+        """
         return self._repo.count_by_status(project_id=project_id)
 
 
@@ -54,9 +58,6 @@ class SampleService:
 
     def get_by_project(self, project_id: int) -> list[Sample]:
         return self._repo.get_by_project(project_id)
-
-    def get_by_status(self, status: str) -> list[Sample]:
-        return self._repo.get_by_status(status)
 
     def update(self, sample_id: int, **kwargs: object) -> None:
         self._repo.update(sample_id, **kwargs)

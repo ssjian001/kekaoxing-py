@@ -56,16 +56,6 @@ class TestPlanRepository(BaseRepository):
         ).fetchone()
         return row[0] if row else 0
 
-    def delete_orphan_issues_by_plan(self, plan_id: int) -> None:
-        """删除直接引用 plan_id 但无 task_id 的孤立 issue。
-
-        ON DELETE CASCADE 会自动清理 fa_records 和 issue_attachments。
-        """
-        self._conn.execute(
-            "DELETE FROM [issues] WHERE plan_id = ? AND task_id IS NULL",
-            (plan_id,),
-        )
-
     def delete_by_project(self, project_id: int) -> int:
         """删除项目关联的所有测试计划，CASCADE 自动清理下游数据。
 
@@ -79,4 +69,5 @@ class TestPlanRepository(BaseRepository):
         cursor = self._conn.execute(
             "DELETE FROM [test_plans] WHERE project_id = ?", (project_id,)
         )
-        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0
+        row = self._conn.execute("SELECT changes()").fetchone()
+        return row[0] if row else 0

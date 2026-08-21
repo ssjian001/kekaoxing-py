@@ -103,7 +103,20 @@ class IssueRepository(BaseRepository):
         )
 
     def purge_old(self, days: int = 30) -> int:
-        """彻底删除已软删除超过 N 天的 Issue，返回删除行数。"""
+        """彻底删除已软删除超过 N 天的 Issue，返回删除行数。
+
+        审计修复：删除前先清理附件磁盘文件（与 delete() 一致），
+        否则 DB 行级联删除后附件变孤儿文件。
+        """
+        attachment_paths = self._conn.execute(
+            "SELECT ia.file_path FROM [issue_attachments] ia "
+            "JOIN [issues] i ON ia.issue_id = i.id "
+            "WHERE i.is_deleted = 1 "
+            "AND i.deleted_at < datetime('now','localtime', ?)",
+            (f"-{days} days",),
+        ).fetchall()
+        for (fp,) in attachment_paths:
+            self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issues] WHERE is_deleted = 1 "
             "AND deleted_at < datetime('now','localtime', ?)",
@@ -581,7 +594,8 @@ class IssueRepository(BaseRepository):
         cursor = self._conn.execute(
             "DELETE FROM [issues] WHERE project_id = ?", (project_id,),
         )
-        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0
+        row = self._conn.execute("SELECT changes()").fetchone()
+        return row[0] if row else 0
 
 
 class FARecordRepository(BaseRepository):

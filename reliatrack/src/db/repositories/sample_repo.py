@@ -153,7 +153,8 @@ class SampleRepository(BaseRepository):
         cursor = self._conn.execute(
             "DELETE FROM [samples] WHERE project_id = ?", (project_id,)
         )
-        return cursor.getrowcount() if hasattr(cursor, "getrowcount") else 0
+        row = self._conn.execute("SELECT changes()").fetchone()
+        return row[0] if row else 0
 
     def bulk_update_field(self, sample_ids: list[int], **fields: Any) -> None:
         """批量更新多个样品的指定字段。
