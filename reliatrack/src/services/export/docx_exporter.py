@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.services.export.export_utils import (
-    CATEGORY_MAP, STATUS_MAP, _validate_output_path, logger,
+    CATEGORY_MAP, STATUS_MAP, _validate_output_path, _sanitize_filename, logger,
     excel_styles, excel_save, excel_write_headers, excel_write_row,
     _judge_conclusion, get_cjk_font,
 )
@@ -62,9 +62,15 @@ def _fill_cell(ct_tc, text, bold=False, size=9, color=None, shade=None, align=No
     etree_SubElement(rPr, "w:sz").set(qn("w:val"), str(size * 2))
     from docx.oxml.ns import nsdecls
     ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    t = etree_SubElement(r, "w:t")
-    t.text = str(text) if text else ""
-    t.set(f"{{{ns}}}space", "preserve")
+    # 审计 #14：\n 塞进单个 w:t 在 Word 中折叠为一行（签字栏挤成单行）。
+    # 按 \n 切分成多个 w:r/w:br，换行真正渲染。
+    parts = str(text).split("\n") if text else [""]
+    for i, part in enumerate(parts):
+        if i > 0:
+            etree_SubElement(r, "w:br")
+        t = etree_SubElement(r, "w:t")
+        t.text = part
+        t.set(f"{{{ns}}}space", "preserve")
     if shade:
         tcPr = ct_tc.get_or_add_tcPr()
         shd = etree_SubElement(tcPr, "w:shd")
@@ -298,12 +304,17 @@ def export_to_word(
             ], center_cols={0})
 
     # ── 保存 ──
-    out = filepath or str(output_dir / f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx")
+    out = filepath or str(output_dir / _sanitize_filename(f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"))
     _validate_output_path(out, output_dir)
     try:
         doc.save(out)
     except (OSError, PermissionError) as e:
         logger.error("Word save failed: %s → %s", out, e)
+        # 审计 #13：失败时清理半成品文件
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
         raise
     return os.path.abspath(out)
 
@@ -621,12 +632,17 @@ def export_dvpr_docx(
     run.font.size = Pt(8)
     run.font.color.rgb = _GRAY
 
-    out = filepath or str(output_dir / f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx")
+    out = filepath or str(output_dir / _sanitize_filename(f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"))
     _validate_output_path(out, output_dir)
     try:
         doc.save(out)
     except (OSError, PermissionError) as e:
         logger.error("Word save failed: %s → %s", out, e)
+        # 审计 #13：失败时清理半成品文件
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
         raise
     return os.path.abspath(out)
 
@@ -710,7 +726,7 @@ def export_8d_docx(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     out = filepath or str(
-        output_dir / f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.docx"
+        output_dir / _sanitize_filename(f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.docx")
     )
 
     doc = Document()
@@ -944,5 +960,10 @@ def export_8d_docx(
         doc.save(out)
     except (OSError, PermissionError) as e:
         logger.error("Word save failed: %s → %s", out, e)
+        # 审计 #13：失败时清理半成品文件
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
         raise
     return os.path.abspath(out)

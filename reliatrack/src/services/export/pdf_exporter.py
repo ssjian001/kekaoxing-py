@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 from src.services.export.export_utils import (
     CATEGORY_MAP, STATUS_MAP, get_cjk_font, _judge_conclusion,
-    _validate_output_path, logger,
+    _validate_output_path, _sanitize_filename, logger,
 )
 from src.constants import RESOLUTION_LABELS
 
@@ -212,7 +212,7 @@ def export_report_pdf(
                                  textColor=_DARK, alignment=TA_CENTER)
 
     out = filepath or str(
-        output_dir / f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf"
+        output_dir / _sanitize_filename(f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf")
     )
     doc_obj = SimpleDocTemplate(
         out, pagesize=A4,
@@ -523,7 +523,7 @@ def export_dvpr_pdf(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     out = filepath or str(
-        output_dir / f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf"
+        output_dir / _sanitize_filename(f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.pdf")
     )
     doc = SimpleDocTemplate(
         out, pagesize=landscape(A4),
@@ -640,7 +640,12 @@ def export_dvpr_pdf(
     n_samples = len(sample_ids)
     page_w = landscape(A4)[0] - 24 * mm
     fixed_cols = 18 + 80 + 65 + 60 + 35  # # + name + criteria + SN + conclusion
-    sample_col_w = max(35, (page_w - fixed_cols) / max(n_samples, 1))
+    # 审计 #15：原 max(35, ...) 在 n≥15 时总宽超页宽，右列被切出页外。
+    # 样品列按剩余空间均分（不设下限），仅空列表时用占位宽度。
+    if n_samples > 0:
+        sample_col_w = max(12.0, (page_w - fixed_cols) / n_samples)
+    else:
+        sample_col_w = 35.0
     dvpr_widths = [18, 80, 65, 60] + [sample_col_w] * n_samples + [35]
 
     dvpr_table = Table(dvpr_data, colWidths=dvpr_widths)
@@ -730,8 +735,13 @@ def export_dvpr_pdf(
     _validate_output_path(out, output_dir)
     try:
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
-    except (OSError, PermissionError) as e:
+    except Exception as e:
         logger.error("PDF build failed: %s → %s", out, e)
+        # 审计 #13：失败时清理半成品文件（实测 ValueError 也会残留 16KB 坏文件）
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
         raise
     return os.path.abspath(out)
 
@@ -878,7 +888,7 @@ def export_8d_pdf(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     out = filepath or str(
-        output_dir / f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.pdf"
+        output_dir / _sanitize_filename(f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.pdf")
     )
     doc = SimpleDocTemplate(
         out, pagesize=A4,
@@ -1077,7 +1087,12 @@ def export_8d_pdf(
     _validate_output_path(out, output_dir)
     try:
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
-    except (OSError, PermissionError) as e:
+    except Exception as e:
         logger.error("PDF build failed: %s → %s", out, e)
+        # 审计 #13：失败时清理半成品文件（实测 ValueError 也会残留 16KB 坏文件）
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
         raise
     return os.path.abspath(out)
