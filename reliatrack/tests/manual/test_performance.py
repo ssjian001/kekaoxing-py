@@ -49,7 +49,7 @@ def bulk_create_samples(n):
 sample_ids = bench("创建 1000 个样品", bulk_create_samples, 1000)
 bench("list_all 样品", ctrl.sample_service.list_all)
 bench("get_by_sn (SMP-0500)", lambda: ctrl.sample_service.get_by_sn('SMP-0500'))
-bench("get_by_status (in_stock)", lambda: ctrl.sample_service.get_by_status('in_stock'))
+bench("list_all 过滤 in_stock", lambda: [s for s in ctrl.sample_service.list_all() if s.status == "in_stock"])
 bench("get_by_project (project_id=1)", lambda: ctrl.sample_service.get_by_project(1))
 
 # ---- 2. 批量创建测试计划 + 任务 ----
