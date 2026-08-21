@@ -1217,9 +1217,8 @@ def main() -> int:
     if not _lock.tryLock(100):
         from PySide6.QtWidgets import QMessageBox as _MB
         _MB.critical(None, "已运行", "ReliaTrack 已在运行中，请勿重复启动。")
-        _lock.unlock()
-        _lock_path = _P(str(DEFAULT_BACKUPS_DIR.parent / ".reliatrack.lock"))
-        _lock_path.unlink(missing_ok=True)
+        # 抢锁失败说明另一实例正持有锁——绝不能 unlock/unlink，
+        # 否则会拆掉对方的互斥保护，制造双实例窗口（2026-08-21 审计 #1）
         return 1
 
     # 数据库路径：开发模式优先用项目下 data/reliatrack.db

@@ -615,13 +615,17 @@ class _TaskTable(QTableWidget):
         combo.setProperty("class", "filter-combo")
         items = [(PRIORITY_LABELS.get(i, str(i)), i) for i in range(1, 6)]
         combo.addItems([label for label, _ in items])
-        combo.setCurrentIndex(task.priority - 1)
+        # 越界防御：priority ∉ 1..5 时 setCurrentIndex 落 -1，commit 会取 items[-1] 误写 5
+        combo.setCurrentIndex(task.priority - 1 if 1 <= task.priority <= 5 else 0)
         self.setCellWidget(row, 7, combo)
         combo.setFocus()
         combo.showPopup()
 
         def _commit() -> bool:
-            new_pri = items[combo.currentIndex()][1]
+            cur = combo.currentIndex()
+            if not (0 <= cur < len(items)):
+                return False  # 无有效选中（被动关闭），不提交
+            new_pri = items[cur][1]
             if new_pri != task.priority and self._batch_value_callback and task.id is not None:
                 # col=7 → priority，走批量更新回調直接寫 DB
                 self._batch_value_callback([task.id], 7, str(new_pri))
@@ -689,15 +693,25 @@ class _TaskTable(QTableWidget):
         combo = QComboBox()
         combo.setProperty("class", "filter-combo")
         combo.addItems(TASK_CATEGORIES)
-        idx = combo.findText(task.category) if task.category else 0
-        combo.setCurrentIndex(idx if idx >= 0 else 0)
+        idx = combo.findText(task.category) if task.category else -1
+        current_item_idx: int | None = None
+        if idx >= 0:
+            combo.setCurrentIndex(idx)
+        else:
+            # 原值不在固定列表（空 category 是 TestTask 默认值，必现路径）：
+            # 追加「当前值」占位项并选中——被动关闭保持原值，
+            # 不再误写第一项"环境试验"（2026-08-21 审计 #5）
+            combo.addItem(f"{task.category or '（未设置）'}（当前）")
+            current_item_idx = combo.count() - 1
+            combo.setCurrentIndex(current_item_idx)
         self.setCellWidget(row, 2, combo)
         combo.setFocus()
         combo.showPopup()
 
         def _commit() -> bool:
-            # 值未变才跳过（而非 index 未变）——旧值/非法 category 经 findText 失败
-            # fallback 到 index 0 时，用户选回 fallback 项 index 未变但值确实变了（旧值→合法值），必须提交规范化
+            # 占位项 = 保持原值，不提交；用户主动选真实项仍走下方规范化提交
+            if current_item_idx is not None and combo.currentIndex() == current_item_idx:
+                return False
             new_cat = combo.currentText()
             if new_cat == task.category:
                 return False
@@ -742,17 +756,27 @@ class _TaskTable(QTableWidget):
         status_items = [(label, key) for key, label in TASK_STATUS_LABELS.items()]
         combo.addItems([label for label, _ in status_items])
         # 定位當前狀態（兼容历史数据 "fail" → 统一为 "failed"）
+        found_status = False
         for i, (_, key) in enumerate(status_items):
             if key == task.status or (task.status == "fail" and key == "failed"):
                 combo.setCurrentIndex(i)
+                found_status = True
                 break
+        current_item_idx: int | None = None
+        if not found_status:
+            # 历史值（如 "done"）不在枚举内：追加占位项保持原值，
+            # 被动关闭不再误写 "pending"（2026-08-21 审计 #5）
+            combo.addItem(f"{task.status or '未知'}（当前）")
+            current_item_idx = combo.count() - 1
+            combo.setCurrentIndex(current_item_idx)
         self.setCellWidget(row, 8, combo)
         combo.setFocus()
         combo.showPopup()
 
         def _commit() -> bool:
-            # 值未变才跳过（而非 index 未变）——task.status 旧值 "fail" 经兼容映射定位到 "failed" 时，
-            # 用户选回 "failed" index 未变但值确实变了（"fail"→"failed"），必须提交规范化
+            # 占位项 = 保持原值，不提交；用户主动选真实状态仍走规范化提交
+            if current_item_idx is not None and combo.currentIndex() == current_item_idx:
+                return False
             new_status = status_items[combo.currentIndex()][1]
             if new_status == task.status:
                 return False
@@ -776,20 +800,30 @@ class _TaskTable(QTableWidget):
             combo.addItem(tech.name if hasattr(tech, "name") else str(tech),
                           tech.id if hasattr(tech, "id") else None)
         # 定位當前
+        found_tech = False
         if task.technician_id:
             for i in range(combo.count()):
                 if combo.itemData(i) == task.technician_id:
                     combo.setCurrentIndex(i)
+                    found_tech = True
                     break
+        current_item_idx: int | None = None
+        if not found_tech and task.technician_id:
+            # 指向已删除技术员：追加占位项保持原指派，
+            # 被动关闭不再静默清空（2026-08-21 审计 #5）
+            combo.addItem(f"#{task.technician_id}（已删除，当前）", task.technician_id)
+            current_item_idx = combo.count() - 1
+            combo.setCurrentIndex(current_item_idx)
         self.setCellWidget(row, 9, combo)
         combo.setFocus()
         combo.showPopup()
 
         def _commit() -> bool:
-            # 值未变才跳过（而非 index 未变）——技术员被删后 fallback 到「未指派」时，
-            # 用户选回「未指派」index 未变但值确实变了（某 ID→清空），必须提交清空
             idx_ = combo.currentIndex()
             tech_id = combo.itemData(idx_)
+            # 占位项 = 保持原值，不提交；用户主动选「未指派」仍走下方清空提交
+            if current_item_idx is not None and idx_ == current_item_idx:
+                return False
             if tech_id == task.technician_id:
                 return False
             if self._batch_value_callback and task.id is not None:

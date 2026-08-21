@@ -1010,14 +1010,8 @@ class PlanHandlers:
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
-        existing = ctrl.test_plan_service.get_task_results(task_id)
-        existing_id = None
-        for r in existing:
-            if r.sample_id == sample_id:
-                existing_id = r.id
-                break
-        if existing_id:
-            ctrl.test_plan_service.delete_result(existing_id)
+        # save_result 内部是 upsert（单事务），无需先 delete 再 save——
+        # 旧写法在 save 抛异常时会永久丢失原结果（2026-08-21 审计 #3）
         ctrl.test_plan_service.save_result(
             task_id=task_id,
             sample_id=sample_id,

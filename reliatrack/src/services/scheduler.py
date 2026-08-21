@@ -414,7 +414,11 @@ def compress_schedule(
         # Find & place at earliest valid slot
         new_start = find_earliest_slot(task, earliest, timeline, config, starts=starts, tech_timeline=tech_timeline)
         if new_start is None:
-            # 找不到合法槽位：跳过（保留原 start_day），不静默放到非法日期
+            # 找不到合法槽位：把任务放回原位（资源占用已在上面的 remove 中释放，
+            # 不放回会让后续任务看不到它的占用，导致同设备超容冲突）
+            place_task(
+                task, task.start_day, timeline, config, starts, tech_timeline,
+            )
             continue
         task.start_day = new_start
         place_task(task, new_start, timeline, config, starts, tech_timeline=tech_timeline)

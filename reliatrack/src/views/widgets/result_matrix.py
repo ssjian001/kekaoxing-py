@@ -104,6 +104,9 @@ class _ResultMatrixWidget(QWidget):
         self._last_tasks: list[TestTask] = []
         self._last_results: list = []
         self._last_sample_map: dict[int, str] = {}
+        # (task_id, sample_id) → result 真值缓存：双击循环切换时从缓存取当前值，
+        # 不依赖单元格显示文本（实测值/日期模式下文本不是结果标签，反推必失败）
+        self._result_lookup: dict[tuple[int, int], str] = {}
 
     def _make_stat_item(self, text: str, fg: str, bg_alpha: int = 30) -> QTableWidgetItem:
         """创建统计单元格。"""
@@ -157,16 +160,13 @@ class _ResultMatrixWidget(QWidget):
             return
         task_id, sample_id = data
 
-        # 从单元格当前文本推断当前结果
-        current_label = item.text()
-        current_result = None
-        for k, v in self._RESULT_LABELS.items():
-            if v == current_label:
-                current_result = k
-                break
-
+        # 从内部缓存取当前结果真值——不依赖单元格显示文本：
+        # 实测值/日期模式下文本不是结果标签，文本反推必失败（审计 #4）
+        current_result = self._result_lookup.get((task_id, sample_id))
         idx = self._RESULT_CYCLE.index(current_result) if current_result in self._RESULT_CYCLE else -1
         next_result = self._RESULT_CYCLE[(idx + 1) % len(self._RESULT_CYCLE)]
+        # 乐观更新缓存：连续双击同一单元格时循环推进，不等刷新回写
+        self._result_lookup[(task_id, sample_id)] = next_result
 
         if self._on_result_changed:
             self._on_result_changed(task_id, sample_id, next_result)
@@ -247,6 +247,7 @@ class _ResultMatrixWidget(QWidget):
         total_pass = 0
         total_fail = 0
         total_cells = 0
+        self._result_lookup.clear()
 
         for row, task in enumerate(tasks):
             # 任务名称
@@ -264,6 +265,8 @@ class _ResultMatrixWidget(QWidget):
                 tid = task.id
                 result_obj = lookup.get((tid, sid)) if tid else None
                 result_str = result_obj.result if result_obj else ""
+                if tid is not None:
+                    self._result_lookup[(tid, sid)] = result_str
                 color = self._result_colors().get(result_str, _t.SURFACE2)
 
                 # 根据模式选择显示文本

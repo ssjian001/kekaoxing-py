@@ -28,6 +28,19 @@ class SampleService:
     def create(self, sn: str, **kwargs: object) -> int:
         return self._repo.insert(sn=sn, **kwargs)
 
+    def create_with_ledger(self, sn: str, **kwargs: object) -> int:
+        """创建样品并写入入库台账（单事务原子化）。
+
+        台账写入失败时整体回滚——不会出现"样品已创建但无流水记录"
+        的不一致状态（2026-08-21 审计 #2）。
+        """
+        with self._repo.transaction():
+            sample_id = self._repo.insert(sn=sn, **kwargs)
+            # 状态联动由 create 的 status="in_stock" 完成，
+            # 此处直接写台账行，不再走 add_transaction 的冗余 update_status
+            self._repo.add_transaction(sample_id, "check_in")
+        return sample_id
+
     def count_by_status(self, project_id: int | None = None) -> dict[str, int]:
         """按状态分组计数（委托给 repo）。"""
         return self._repo.count_by_status(project_id=project_id)

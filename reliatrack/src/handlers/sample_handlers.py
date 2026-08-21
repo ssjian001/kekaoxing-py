@@ -75,9 +75,11 @@ class SampleHandlers:
         if dlg.exec():
             data = dlg.get_data()
             sample_project_id = data.get("project_id") or None
+            # create + 入库台账在 service 层单事务原子化（审计 #2）：
+            # 台账失败 → 整体回滚 + 错误弹窗，不再出现"样品已建但无流水"
             ok = exec_crud(
                 win=self._win,
-                action=ctrl.sample_service.create,
+                action=ctrl.sample_service.create_with_ledger,
                 action_kwargs=dict(
                     sn=data["sn"],
                     batch_no=data.get("batch_no") or "",
@@ -99,17 +101,6 @@ class SampleHandlers:
                 current_filter = self._win.get_project_filter_id()
                 if current_filter is not None and sample_project_id != current_filter:
                     self._win.project_filter_combo.setCurrentIndex(0)
-                # 同步创建入库记录（与入库操作原子化）
-                created = ctrl.sample_service.get_by_sn(data["sn"])
-                if created is not None and created.id is not None:
-                    try:
-                        with ctrl.sample_service._repo.transaction():
-                            ctrl.sample_service.add_transaction(
-                                sample_id=created.id,
-                                txn_type="check_in",
-                            )
-                    except Exception:
-                        logger.exception("check_in transaction failed for sample=%s", created.id)
         dlg.deleteLater()
 
     def _on_sample_checkout(self) -> None:
