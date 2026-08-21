@@ -182,19 +182,22 @@ class ExportHandlers:
 
         plan_pid = plan.project_id or project_id
 
+        tech_names = {}
+        if ctrl.technicians:
+            for tech in ctrl.technicians.list_all():
+                if tech.id is not None:
+                    tech_names[tech.id] = tech.name
+
         if "Excel" in fmt:
-            tech_names = {}
-            if ctrl.technicians:
-                for tech in ctrl.technicians.list_all():
-                    if tech.id is not None:
-                        tech_names[tech.id] = tech.name
             return svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
         elif "Word" in fmt:
             return svc.export_to_word(plan, tasks, ExportHandlers._get_issues(ctrl, plan_pid),
                                       ExportHandlers._get_samples(ctrl, plan_pid), results=results)
         else:
+            # 审计 #11：PDF 综合报告技术员列显示真名（与 Excel 对齐）
             return svc.export_report_pdf(plan, tasks, ExportHandlers._get_issues(ctrl, plan_pid),
-                                         ExportHandlers._get_samples(ctrl, plan_pid), results=results)
+                                         ExportHandlers._get_samples(ctrl, plan_pid), results=results,
+                                         technician_names=tech_names)
 
     @staticmethod
     def _export_issues(ctrl, svc, fmt: str, project_id: int | None,

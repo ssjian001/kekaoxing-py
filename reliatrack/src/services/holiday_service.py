@@ -14,6 +14,21 @@ import apsw
 logger = logging.getLogger(__name__)
 
 
+def _validate_iso_date(date_str: str) -> None:
+    """校验日期为合法 ISO 格式（YYYY-MM-DD），否则抛 ValueError。
+
+    审计 #17：holidays 表无 CHECK 约束，非法格式（"2024/01/01"、
+    "2024-13-99"）入库后会被 get_holidays_set 的字符串区间过滤
+    静默隐藏，导致排程漏假。
+    """
+    try:
+        date.fromisoformat(date_str)
+    except (ValueError, TypeError) as e:
+        raise ValueError(
+            f"节假日日期格式非法: {date_str!r}（要求 YYYY-MM-DD）"
+        ) from e
+
+
 class HolidayService:
     """节假日 CRUD + 查询。"""
 
@@ -70,6 +85,9 @@ class HolidayService:
 
     def add_holiday(self, date_str: str, name: str, source: str = "custom") -> int:
         """添加自定义节假日。返回记录 ID；已存在时返回 0。"""
+        # 审计 #17：日期零校验会让 "2024/01/01" 这类非法格式入库后被
+        # 字符串区间过滤静默隐藏（排程漏假）。入库前强制 ISO 格式校验。
+        _validate_iso_date(date_str)
         before = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
         self._conn.execute(
             "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
@@ -96,6 +114,9 @@ class HolidayService:
         """
         if not records:
             return 0
+        # 审计 #17：批量导入同样强制 ISO 格式校验（先整体校验再入库）
+        for date_str, _name, _source in records:
+            _validate_iso_date(date_str)
         # 事务前后 count 差值 = 实际插入行数
         before = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
         self._conn.execute("BEGIN")

@@ -56,18 +56,38 @@ def import_equipment(
                     result.errors.append(f"第 {idx} 行: 设备「{name}」与本批次重复")
                     continue
                 try:
+                    # 审计 #16：Excel 数字单元格可能是 float（6.0）或文本，
+                    # 直接 int()/strip() 会炸整批。先做类型规整 + 行级校验。
+                    # None/空串回落默认 12（与旧行为一致）。
+                    raw_interval = row.get("calibration_interval_months", 12)
+                    if raw_interval is None or str(raw_interval).strip() == "":
+                        interval = 12
+                    else:
+                        try:
+                            interval = int(float(str(raw_interval).strip()))
+                        except (ValueError, TypeError):
+                            result.skipped += 1
+                            result.errors.append(
+                                f"第 {idx} 行: 设备「{name}」校准间隔不是有效数字: {raw_interval!r}"
+                            )
+                            continue
+
+                    def _cell_str(key: str) -> str:
+                        v = row.get(key, "")
+                        return v.strip() if isinstance(v, str) else str(v or "").strip()
+
                     service.create(
                         name=name,
-                        type=row.get("type", "").strip(),
-                        model=row.get("model", "").strip(),
-                        location=row.get("location", "").strip(),
-                        status=row.get("status", "available").strip(),
-                        asset_no=row.get("asset_no", "").strip(),
-                        manufacturer=row.get("manufacturer", "").strip(),
-                        accuracy=row.get("accuracy", "").strip(),
-                        calibration_date=row.get("calibration_date", "").strip(),
-                        next_calibration_date=row.get("next_calibration_date", "").strip(),
-                        calibration_interval_months=int(row.get("calibration_interval_months", 12) or 12),
+                        type=_cell_str("type"),
+                        model=_cell_str("model"),
+                        location=_cell_str("location"),
+                        status=_cell_str("status") or "available",
+                        asset_no=_cell_str("asset_no"),
+                        manufacturer=_cell_str("manufacturer"),
+                        accuracy=_cell_str("accuracy"),
+                        calibration_date=_cell_str("calibration_date"),
+                        next_calibration_date=_cell_str("next_calibration_date"),
+                        calibration_interval_months=interval,
                     )
                     seen_this_batch.add(name)
                     result.success += 1

@@ -233,13 +233,16 @@ class BaseRepository:
         """按关键词模糊搜索。"""
         if columns is None:
             columns = self._columns()
-        clauses = [f"CAST([{c}] AS TEXT) LIKE ?" for c in columns]
+        # 审计 #10：ESCAPE 子句只绑定紧邻的 LIKE 表达式。原实现把 ESCAPE
+        # 拼在 OR 链尾部，仅最后一个子句生效——含 %/_ 关键词时其余列
+        # 漏匹配/误匹配。改为每个 LIKE 子句独立携带 ESCAPE。
+        clauses = [f"CAST([{c}] AS TEXT) LIKE ? ESCAPE '\\'" for c in columns]
         escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
         params = [pattern] * len(clauses)
         cols_sql = self._columns_sql()
         cols_list = self._columns()
-        sql = f"SELECT {cols_sql} FROM [{self._table}] WHERE {' OR '.join(clauses)} ESCAPE '\\'  "
+        sql = f"SELECT {cols_sql} FROM [{self._table}] WHERE {' OR '.join(clauses)}"
         rows = self._conn.execute(sql, params).fetchall()
         return self._rows_to_models(rows, cols=cols_list)
 

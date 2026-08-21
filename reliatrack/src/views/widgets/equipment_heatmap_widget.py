@@ -127,6 +127,9 @@ class EquipmentLoadHeatmapWidget(QFrame):
 
     def _apply_filter(self) -> None:
         if not self._equipments:
+            # 审计 #24：切到无设备项目时必须清空画布，
+            # 否则残留上一项目的旧网格
+            self._canvas.set_data([], {})
             return
 
         filtered = self._equipments
@@ -163,14 +166,24 @@ class EquipmentLoadHeatmapWidget(QFrame):
         """
         self._equipments = equipments
         self._task_ref_counts = task_ref_counts or {}
-        running = sum(1 for e in equipments if self._task_ref_counts.get(e.id, 0) > 0)
-        maint_cnt = sum(1 for e in equipments if e.status in ("maintenance", "offline"))
+        # 审计 #23：running 与 maint 集合非互斥（维护中设备仍可被任务引用），
+        # 原实现双重扣减导致空闲数可为负。改为按设备唯一归类计数。
+        running = 0
+        maint_cnt = 0
+        idle_cnt = 0
+        for e in equipments:
+            if e.status in ("maintenance", "offline"):
+                maint_cnt += 1
+            elif self._task_ref_counts.get(e.id, 0) > 0:
+                running += 1
+            else:
+                idle_cnt += 1
 
         total = max(len(equipments), 1)
         use_pct = int((running / total) * 100)
 
         self._summary_label.setText(
-            f"🟢 空闲: {total - running - maint_cnt}  |  🟡 运行中: {running}  |  🔴 维护: {maint_cnt}  (使用率 {use_pct}%)"
+            f"🟢 空闲: {idle_cnt}  |  🟡 运行中: {running}  |  🔴 维护: {maint_cnt}  (使用率 {use_pct}%)"
         )
         self._apply_filter()
 

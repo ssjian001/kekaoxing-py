@@ -246,12 +246,26 @@ class BatchImportDialog(_BaseDialog):
             return
 
         # 填充列映射下拉框
+        # 审计 #26：Excel 重复表头（两个"备注"）会导致 header_to_idx 后者
+        # 覆盖前者——用户选第一个"备注"实际取最后一列数据。给重复表头
+        # 加序号后缀生成唯一标签，userData 存列索引而非表头文本。
+        from collections import Counter
+        header_counts = Counter(h.strip() for h in self._headers)
+        seen_counts: dict[str, int] = {}
+        display_labels: list[str] = []
+        for h in self._headers:
+            hs = h.strip()
+            label = h if hs else "（無表頭）"
+            if header_counts[hs] > 1 and hs:
+                seen_counts[hs] = seen_counts.get(hs, 0) + 1
+                label = f"{h} ({seen_counts[hs]})"
+            display_labels.append(label)
+
         for field_name, combo in self._combos.items():
             combo.clear()
             combo.addItem("— 不导入 —", None)
-            for h in self._headers:
-                label = h if h.strip() else "（無表頭）"
-                combo.addItem(label, h)  # userData=實際表頭（可能空字串）
+            for col_idx, label in enumerate(display_labels):
+                combo.addItem(label, col_idx)  # userData=列索引（唯一）
 
         # 自动匹配：根据表头文字猜测
         for field_name, combo in self._combos.items():
@@ -289,12 +303,12 @@ class BatchImportDialog(_BaseDialog):
         if self._imported:
             return
 
-        # 获取映射
-        mapping: dict[str, str] = {}
+        # 获取映射（审计 #26：userData 已是列索引，不再存表头文本）
+        mapping: dict[str, int] = {}
         for field_name, combo in self._combos.items():
-            col_header = combo.currentData()
-            if col_header is not None:
-                mapping[field_name] = col_header
+            col_idx = combo.currentData()
+            if col_idx is not None:
+                mapping[field_name] = col_idx
 
         # 必填字段必须映射
         for req_field in self._required_fields:
@@ -305,19 +319,21 @@ class BatchImportDialog(_BaseDialog):
                 )
                 return
 
-        # 构建 header → index 映射
+        # 构建 field → col_idx（直接使用列索引，天然唯一）。
+        # 兼容外部直接 setCurrentData 塞表头文本的旧路径（含测试）：
+        # 若 userData 是字符串则按表头解析回索引。
         header_to_idx: dict[str, int] = {}
         for idx, h in enumerate(self._headers):
-            header_to_idx[h.strip()] = idx
+            header_to_idx.setdefault(h.strip(), idx)
 
-        # 构建 field → col_idx
         field_to_col: dict[str, int] = {}
-        for field_name, col_header in mapping.items():
-            col_idx: int | None = header_to_idx.get(col_header.strip())
-            if col_idx is None:
+        for field_name, col_idx in mapping.items():
+            if isinstance(col_idx, str):
+                col_idx = header_to_idx.get(col_idx.strip(), -1)
+            if not (0 <= col_idx < len(self._headers)):
                 QMessageBox.warning(
                     self, "映射错误",
-                    f"列「{col_header}」在 Excel 中未找到",
+                    f"字段「{field_name}」的列映射无效: {mapping[field_name]!r}",
                 )
                 return
             field_to_col[field_name] = col_idx

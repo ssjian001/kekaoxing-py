@@ -183,6 +183,7 @@ def export_report_pdf(
     samples: list[Sample],
     filepath: str | None = None,
     results: list | None = None,
+    technician_names: dict[int, str] | None = None,
 ) -> str:
     """导出综合测试报告为 PDF。"""
     _FN, _FN_B = _register_cjk_fonts()
@@ -261,15 +262,16 @@ def export_report_pdf(
                   for h in task_headers]
 
     prefix = getattr(plan, 'task_prefix', '') or ''
-    # 预构建技术员名称映射
-    tech_name_map: dict[int, str] = {}
+    # 审计 #11：原 tech_name_map 是从未写入的死字典，技术员列永远显示 ID:n。
+    # 与 Excel 版对齐，由调用方注入 {technician_id: name} 映射。
+    tech_map = technician_names or {}
     task_data_rows: list[list[object]] = []
     for idx, task in enumerate(tasks, 1):
         task_id_display = f"{prefix}-{idx:03d}" if prefix else str(idx)
         cat = CATEGORY_MAP.get(task.category, task.category)
         status = STATUS_MAP.get(task.status, task.status)
         equip = f"ID:{task.equipment_id}" if task.equipment_id else "—"
-        tech = tech_name_map.get(task.technician_id, f"ID:{task.technician_id}") if task.technician_id else "—"
+        tech = tech_map.get(task.technician_id, f"ID:{task.technician_id}") if task.technician_id else "—"
         task_data_rows.append([
             Paragraph(task_id_display, cell_style),
             Paragraph(task.name[:25], cell_style),
