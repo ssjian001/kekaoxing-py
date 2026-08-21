@@ -14,7 +14,6 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import numpy as np
 import pytest
 from PySide6.QtWidgets import QApplication
 
@@ -119,24 +118,27 @@ class TestRenderPixmap:
 
         from PIL import Image
         img = Image.open(tmp_path).convert("L")
-        arr = np.array(img)
 
         qr_x, qr_y, qr_s = int(18 * scale), int(60 * scale), int(120 * scale)
-        region = arr[qr_y:qr_y + qr_s, qr_x:qr_x + qr_s]
 
         matrix = _generate_qr_matrix(_qr_payload(sample))
         n = len(matrix)
         cell = qr_s / n
 
-        rebuilt = np.zeros((n, n), dtype=bool)
+        rebuilt = [[False] * n for _ in range(n)]
         for r in range(n):
             for c in range(n):
                 cx = int((c + 0.5) * cell)
                 cy = int((r + 0.5) * cell)
-                rebuilt[r][c] = region[cy, cx] < 128
+                gray = img.getpixel((qr_x + cx, qr_y + cy))
+                # "L" 模式下 getpixel 返回灰度 int；非 int 视为异常像素按白处理
+                rebuilt[r][c] = isinstance(gray, int) and gray < 128
 
-        expected = np.array(matrix, dtype=bool)
-        match = (rebuilt == expected).mean()
+        matches = sum(
+            1 for r in range(n) for c in range(n)
+            if rebuilt[r][c] == bool(matrix[r][c])
+        )
+        match = matches / (n * n)
         assert match == 1.0, f"渲染 QR 与 segno 矩阵不一致: {match:.4f}"
         os.remove(tmp_path)
 

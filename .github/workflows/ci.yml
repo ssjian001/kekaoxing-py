@@ -36,7 +36,7 @@ jobs:
         run: |
           python -m venv .venv
           . .venv/bin/activate
-          pip install --upgrade pip pytest pytest-cov
+          pip install --upgrade pip pytest pytest-cov pytest-qt
           pip install -r reliatrack/requirements.txt
 
       - name: Compile check
