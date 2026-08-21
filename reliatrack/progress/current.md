@@ -9,7 +9,7 @@
 - 附带恢复：Clash Verge GUI/mihomo 未自启导致代理断，已拉起
 
 ## 发现但未处理（观察项）
-- reportlab 4.5.1 vs PyPI 5.0.1 大版本落后（requirements 有意 pin <5.0）
+- ~~reportlab 4.5.1 vs PyPI 5.0.1 大版本落后~~ → **已升级 5.0.1（2026-08-21）**：官方确认无功能变化纯安全加固，shadow+真实环境全量 720 测试通过，pin 放宽 <6.0
 - ~/.reliatrack/reliatrack.db(Aug12) 与 data/reliatrack.db(Aug14) 并存，旧文件易混淆
 - PIL 在测试中靠 reportlab 传递依赖存在
 - gc ResourceWarning(3 uncollectable) 无害噪音
