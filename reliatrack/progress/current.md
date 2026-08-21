@@ -1,23 +1,19 @@
-# ReliaTrack 进度 — 2026-08-21 全面体检
+# ReliaTrack 进度 — 2026-08-21（晚）
 
-## 本次产物
-- 全面体检报告（见会话记录）：测试/静态/DB/依赖/CI/运行时 7 维度
-- **CI 从 6 连红修到绿**（run 32468142053 ok），4 个 commit：
-  - 4d4ff4b: test_sample_tag 去 numpy 硬依赖 + CI 补 pytest-qt
-  - 57bb695: E2E/performance 路径引导(tests/manual 需上跳3级) + 过时 API 对齐 + **生产 bug: sample_repo ESCAPE 子句双字符转义符**
-  - 07ba7e6: performance 脚本对齐 v23 状态机
-- 附带恢复：Clash Verge GUI/mihomo 未自启导致代理断，已拉起
+## 今日完成
+1. **全面体检** → CI 6 连红修绿，挖出 ESCAPE SQL bug
+2. **全量对抗审计**（15 单元 + 排程补审）：~66 条有效 bug → `progress/audit-20260821.md`
+3. **修复 29 项**（P1 全部 7 + P2 22）：详见审计报告"修复状态"节
+   - 数据破坏类：单实例锁/入库原子化/矩阵 upsert/双击真值/就地编辑守卫/校准日期/级联软删
+   - 功能类：ESCAPE/tech_name/文件名 sanitize/半成品清理/Word 换行/列宽/重复表头/heatmap×2/枚举/双定时器/锁守卫/overflow 菜单等
+   - UX/数据真实性：假履历换真数据、必填校验、KPI 死勾选、任务日期死守卫复活
+4. reportlab 4.5.1→5.0.1 升级评估并实装
 
-## 发现但未处理（观察项）
-- ~~reportlab 4.5.1 vs PyPI 5.0.1 大版本落后~~ → **已升级 5.0.1（2026-08-21）**：官方确认无功能变化纯安全加固，shadow+真实环境全量 720 测试通过，pin 放宽 <6.0
-- ~/.reliatrack/reliatrack.db(Aug12) 与 data/reliatrack.db(Aug14) 并存，旧文件易混淆
-- PIL 在测试中靠 reportlab 传递依赖存在
-- gc ResourceWarning(3 uncollectable) 无害噪音
-- performance 基线警告 MainWindow 构造 11.4s（offscreen 软件渲染环境，非回归）
+## 待办（下次继续）
+- #22 plan_summary off-by-one（需确认统计口径）
+- P3 批次：死代码集群 ~12 处一次性清理（update_status/purge_old/theme_palette_dialog/toast_stack/4 个零调用 service 方法等）
+- 契约假死：4 个 repo 的 getrowcount 恒 0（改 SELECT changes()）
+- gantt B3 主题快照/B4 关键路径未沿依赖链（低危）
 
-## 下次可复用
-- E2E/performance 手动脚本跑法: QT_QPA_PLATFORM=offscreen .venv/bin/python tests/manual/test_e2e_full.py
-- 服务方法存在性批量核对脚本（AST+反射）在会话记录中
-
-## 需人工确认
-- 无阻塞项。reportlab 升级需评估 API 变化后再动
+## 测试基线
+735 passed（新增 21 个审计回归测试 test_audit_fixes_20260821.py）+ E2E 57 PASS
