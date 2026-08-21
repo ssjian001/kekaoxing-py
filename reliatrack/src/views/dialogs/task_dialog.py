@@ -191,6 +191,12 @@ class TaskEditDialog(_BaseDialog):
         self._form.addRow("进度", prog_container)
 
         # 日期字段
+        # 审计 #28：QDateEdit 恒有有效日期，get_data 恒返回日期串 →
+        # handler 的"未填自动补今天"分支恒 False（死守卫），且跨天编辑时
+        # 实际日期被误记为弹窗打开当天。加「未设置」checkbox 显式表达空值。
+        self._actual_start_unset = self._add_checkbox_field(
+            "实际开始未设置", checked=not (task and task.actual_start_date),
+        )
         self._actual_start_edit = self._add_date_field(
             "实际开始日期",
         )
@@ -206,6 +212,9 @@ class TaskEditDialog(_BaseDialog):
                     task.actual_start_date, task.id, e
                 )
 
+        self._actual_end_unset = self._add_checkbox_field(
+            "实际完成未设置", checked=not (task and task.actual_end_date),
+        )
         self._actual_end_edit = self._add_date_field(
             "实际完成日期",
         )
@@ -220,6 +229,13 @@ class TaskEditDialog(_BaseDialog):
                     "Invalid actual_end_date '%s' for task %s: %s",
                     task.actual_end_date, task.id, e
                 )
+        # 勾选联动禁用日期输入
+        self._actual_start_edit.setEnabled(not self._actual_start_unset.isChecked())
+        self._actual_end_edit.setEnabled(not self._actual_end_unset.isChecked())
+        self._actual_start_unset.toggled.connect(
+            lambda c: self._actual_start_edit.setEnabled(not c))
+        self._actual_end_unset.toggled.connect(
+            lambda c: self._actual_end_edit.setEnabled(not c))
 
         self._add_separator()
 
@@ -757,8 +773,12 @@ class TaskEditDialog(_BaseDialog):
             "priority": self._priority_spin.value(),
             "status": task_status,
             "progress": float(self._progress_slider.value()),
-            "actual_start_date": self._actual_start_edit.date().toString("yyyy-MM-dd") if self._actual_start_edit.date().isValid() else "",
-            "actual_end_date": self._actual_end_edit.date().toString("yyyy-MM-dd") if self._actual_end_edit.date().isValid() else "",
+            "actual_start_date": "" if self._actual_start_unset.isChecked() else (
+                self._actual_start_edit.date().toString("yyyy-MM-dd") if self._actual_start_edit.date().isValid() else ""
+            ),
+            "actual_end_date": "" if self._actual_end_unset.isChecked() else (
+                self._actual_end_edit.date().toString("yyyy-MM-dd") if self._actual_end_edit.date().isValid() else ""
+            ),
             "equipment_id": equipment_id,
             "technician_id": technician_id,
             "sample_ids": json.dumps(self._selected_sample_ids, ensure_ascii=False),

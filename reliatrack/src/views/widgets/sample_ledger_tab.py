@@ -205,7 +205,18 @@ class _SampleLedgerTab(QWidget):
             sample = next((s for s in self._all_samples if s.id == sid), None)
             if sample:
                 from src.views.widgets.sample_lifecycle_dialog import SampleLifecycleTimelineDialog
-                dlg = SampleLifecycleTimelineDialog(sample, self)
+                # 审计 #30：传入真实台账记录，不再渲染硬编码假履历
+                txns: list[dict] = []
+                ctrl = getattr(self._win, "ctrl", None)
+                if ctrl and ctrl.sample_service and sample.sn:
+                    try:
+                        txns = [
+                            t for t in ctrl.sample_service.list_transactions(filter_sn=sample.sn)
+                            if t.get("sample_sn") == sample.sn
+                        ]
+                    except Exception:
+                        txns = []
+                dlg = SampleLifecycleTimelineDialog(sample, self, transactions=txns)
                 dlg.show_centered()
 
     @property

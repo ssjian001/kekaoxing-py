@@ -30,9 +30,11 @@ from src.models.sample import Sample
 class SampleLifecycleTimelineDialog(QDialog):
     """样品从入库、测试到归档的全生命周期履历弹窗。"""
 
-    def __init__(self, sample: Sample, parent: QWidget | None = None):
+    def __init__(self, sample: Sample, parent: QWidget | None = None,
+                 transactions: list[dict] | None = None):
         super().__init__(parent)
         self._sample = sample
+        self._transactions = transactions or []
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -88,7 +90,10 @@ class SampleLifecycleTimelineDialog(QDialog):
         m1 = QLabel(f"规格型号: {self._sample.spec or '未录入'}")
 
         m2 = QLabel(f"批次: {self._sample.batch_no or '标准批次'}")
-        m3 = QLabel(f"当前状态: {self._sample.status}")
+        # 状态显示中文标签而非 raw enum（审计 #2 附带发现）
+        from src.constants import SAMPLE_STATUS_LABELS
+        status_label = SAMPLE_STATUS_LABELS.get(self._sample.status, self._sample.status)
+        m3 = QLabel(f"当前状态: {status_label}")
         for m in (m1, m2, m3):
             m.setStyleSheet(f"color: {_theme.TEXT}; font-size: 12px;")
             ilay.addWidget(m)
@@ -100,7 +105,7 @@ class SampleLifecycleTimelineDialog(QDialog):
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("background: transparent; border: none;")
 
-        timeline_content = _TimelineWidget(self._sample)
+        timeline_content = _TimelineWidget(self._sample, transactions=self._transactions)
         scroll.setWidget(timeline_content)
         clay.addWidget(scroll, 1)
 
@@ -116,27 +121,56 @@ class SampleLifecycleTimelineDialog(QDialog):
 
 
 class _TimelineWidget(QWidget):
-    """时间轴主渲染区。"""
+    """时间轴主渲染区 — 真实数据（审计 #30：原为硬编码假履历）。"""
 
-    def __init__(self, sample: Sample, parent: QWidget | None = None):
+    _TXN_META = {
+        "check_in": ("📦 样品入库", DASH_SUCCESS),
+        "check_out": ("📤 样品出库", DASH_PRIMARY),
+        "return": ("↩️ 样品归还", DASH_WARNING),
+    }
+
+    def __init__(self, sample: Sample, parent: QWidget | None = None,
+                 transactions: list[dict] | None = None):
         super().__init__(parent)
         self._sample = sample
         self.setMinimumHeight(320)
 
-        # 模拟/真实履历节点
-        self._events = [
-            ("📦 1. 样品入库与登记", "2026-07-01 09:30", "样品完成物理外显检查并分配唯一的 S/N 编号登记入库。", DASH_SUCCESS),
-            ("🔬 2. 高低温循环试验", "2026-07-05 14:00", "投入环境试验箱，执行 -40℃ ~ 85℃ 步进温度循环试验 (工期 5 天)。", DASH_PRIMARY),
-            ("📉 3. 机械跌落与冲击测试", "2026-07-12 10:15", "完成 1.2m 自由落体冲击测试，检测六面防跌落性能。", DASH_PRIMARY),
-            ("🔍 4. FA 失效剖析与检测", "2026-07-18 16:20", "显微镜下未见焊点剥离与壳体开裂，各项功能性指标正常通过。", DASH_SUCCESS),
-            ("✅ 5. 试验结案与归档入库", "2026-07-22 11:00", "样品完成测试任务，转入样品库归档保管。", DASH_PRIMARY),
-        ]
+        # 真实履历：样品创建（登记）+ 出入库台账记录，按时间升序
+        events: list[tuple[str, str, str, str]] = []
+        if sample.created_at:
+            events.append((
+                "📋 样品登记入库",
+                sample.created_at[:16] if len(sample.created_at) > 16 else sample.created_at,
+                f"样品 {sample.sn} 完成登记，分配唯一 S/N 编号。",
+                DASH_SUCCESS,
+            ))
+        for txn in transactions or []:
+            t_type = txn.get("type", "")
+            title, color = self._TXN_META.get(t_type, (f"🏷️ {t_type or '记录'}", DASH_PRIMARY))
+            ts = str(txn.get("created_at", ""))[:16]
+            desc_parts = []
+            if txn.get("operator_name"):
+                desc_parts.append(f"操作人: {txn['operator_name']}")
+            if txn.get("purpose"):
+                desc_parts.append(f"事由: {txn['purpose']}")
+            if txn.get("task_name"):
+                desc_parts.append(f"关联任务: {txn['task_name']}")
+            if txn.get("notes"):
+                desc_parts.append(f"备注: {txn['notes']}")
+            desc = "；".join(desc_parts) if desc_parts else "无附加信息"
+            events.append((title, ts, desc, color))
+
+        if not events:
+            events.append((
+                "📭 暂无履历记录",
+                "", "该样品尚无出入库台账记录。", DASH_WARNING,
+            ))
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(20, 10, 20, 10)
         lay.setSpacing(14)
 
-        for title, time_str, desc, color in self._events:
+        for title, time_str, desc, color in events:
             card = QFrame()
             card.setStyleSheet(
                 f"QFrame {{"

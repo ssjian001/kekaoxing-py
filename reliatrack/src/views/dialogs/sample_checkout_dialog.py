@@ -117,4 +117,10 @@ class SampleCheckoutDialog(_BaseDialog):
             self._purpose_edit.setFocus()
             return
 
+        # 审计 #27：标签标「操作人 *」却无校验，空操作人可出库
+        if not data.get("operator_id"):
+            QMessageBox.warning(self, "校验失败", "操作人为必填项，请选择。")
+            self._operator_combo.setFocus()
+            return
+
         super().accept()

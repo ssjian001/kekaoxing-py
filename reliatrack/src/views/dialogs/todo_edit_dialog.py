@@ -153,3 +153,12 @@ class TodoEditDialog(_BaseDialog):
             "remind_at": self._remind_at_edit.text().strip(),
             "quadrant": self._QUADRANT_MAP.get(self._quadrant_combo.currentText(), 0),
         }
+
+    def accept(self) -> None:
+        """覆盖 accept 校验必填字段（审计 #27：原实现空标题可入库）。"""
+        from PySide6.QtWidgets import QMessageBox
+        if not self._title_edit.text().strip():
+            QMessageBox.warning(self, "校验失败", "标题为必填项，请输入。")
+            self._title_edit.setFocus()
+            return
+        super().accept()

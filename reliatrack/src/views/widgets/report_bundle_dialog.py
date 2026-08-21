@@ -118,6 +118,14 @@ class ReportBundleDialog(QDialog):
         self._chk_samples.setChecked(True)
         self._chk_capa = QCheckBox("🔧 4. 8D 缺陷失效分析与 CAPA 纠正预防措施")
         self._chk_capa.setChecked(True)
+        # 审计 #29：KPI/任务/样品勾选对产物无实际影响（Word/PDF 综合报告
+        # 无条件内置这些章节），可勾选状态是 UX 陷阱。改为禁用 + 说明。
+        self._chk_kpi.setEnabled(False)
+        self._chk_kpi.setToolTip("综合报告固定包含 KPI 章节，此勾选不可更改")
+        self._chk_tasks.setEnabled(False)
+        self._chk_tasks.setToolTip("综合报告固定包含任务清单，此勾选不可更改")
+        self._chk_samples.setEnabled(False)
+        self._chk_samples.setToolTip("综合报告固定包含样品章节，此勾选不可更改")
 
         for chk in (self._chk_kpi, self._chk_tasks, self._chk_samples, self._chk_capa):
             chk.setStyleSheet(f"QCheckBox {{ color: {_theme.TEXT}; font-size: 12px; }}")
