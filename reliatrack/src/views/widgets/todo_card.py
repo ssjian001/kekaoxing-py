@@ -100,7 +100,10 @@ class TodoCard(QFrame):
             if self._todo.is_done:
                 date_text = "✓ 已完成"
             elif d.isValid() and d < today:
-                date_text = f"⚠ 逾期 {today.daysTo(d)} 天" if today.daysTo(d) < 0 else "⚠ 逾期"
+                # 审计 #25：today.daysTo(d) 对过去日期恒为负，原代码渲染
+                # "逾期 -3 天"。取绝对值显示真实逾期天数。
+                overdue_days = abs(today.daysTo(d))
+                date_text = f"⚠ 逾期 {overdue_days} 天"
             elif d.isValid() and d == today:
                 date_text = "今天"
             else:

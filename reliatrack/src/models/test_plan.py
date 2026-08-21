@@ -35,6 +35,9 @@ class TestTaskStatus(str, Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     SKIPPED = "skipped"
+    # 审计 #9：handlers/styles/constants 均在用 failed（task_table 右键、
+    # TASK_STATUS_LABELS、颜色映射），枚举作为值权威必须收编
+    FAILED = "failed"
 
 
 class TestResultStatus(str, Enum):

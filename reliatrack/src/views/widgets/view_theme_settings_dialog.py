@@ -194,6 +194,8 @@ class ViewThemeSettingsDialog(QDialog):
     def _reset_all_column_visibility(self) -> None:
         settings = QSettings()
         # key 必须带 ReliaTrack/column_visibility_ 前缀（与 column_visibility_menu 一致）
+        # 审计 #21：key 清单与实际 create_column_visibility_button 调用点对齐
+        # （task_table/project_table/equipment_table/sample_ledger 四处接线）
         for key in ["task_table", "project_table", "equipment_table", "sample_ledger"]:
             settings.remove(f"ReliaTrack/column_visibility_{key}")
         mw = self.parent()

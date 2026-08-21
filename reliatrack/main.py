@@ -230,10 +230,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         # ── 待办提醒定时器 ──
-        self._reminder_timer = QTimer(self)
-        self._reminder_timer.setInterval(30_000)
-        self._reminder_timer.timeout.connect(self._check_todo_reminders)
-        self._reminder_timer.start()
+        # 审计 #8：原此处 30s 定时器与 _start_reminder_check 的 60s 定时器
+        # 双路并行（同事件双 toast、两种错误处理）。统一走 _start_reminder_check。
 
     # ── Tab 切换自动刷新 ──
 
@@ -416,23 +414,8 @@ class MainWindow(QMainWindow):
             self._tab_widget.setCurrentIndex(2)
 
     def _check_todo_reminders(self) -> None:
-        """检查到期待办提醒（30 秒定时器回调）。"""
-        from datetime import datetime
-        import apsw
-        ctrl = self._ctrl
-        if not ctrl or not ctrl.todo_service:
-            return
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        try:
-            due = ctrl.todo_service.list_due_reminders(now)
-            for todo in due:
-                if todo.id is not None:
-                    self.toast(f"⏰ 待办提醒：{todo.title}", "info")
-                    ctrl.todo_service.mark_reminded(todo.id)
-            if due:
-                self.schedule_throttled_refresh("todo")
-        except (apsw.ConnectionClosedError, AttributeError):
-            pass
+        """[已废弃] 旧 30s 提醒回调 — 审计 #8 后统一走 _check_due_reminders。保留空壳防外部引用。"""
+        return
 
     def _setup_menubar(self) -> None:
         """创建菜单栏。"""

@@ -181,8 +181,17 @@ class CommandBar(QFrame):
                     from PySide6.QtWidgets import QPushButton
                     a = QAction(w.text(), self._more_menu)
                     if isinstance(w, QPushButton):
+                        # 审计 #19：闭包按引用捕获循环变量 btn，所有菜单项
+                        # 都会触发最后一个按钮。用默认参数绑定当前实例。
                         btn = w
-                        a.triggered.connect(lambda: btn.click())
+                        a.triggered.connect(lambda _=False, b=btn: b.click())
+                    elif hasattr(w, 'menu') and w.menu() is not None:
+                        # 审计 #20：QToolButton+setMenu 溢出后原菜单项无 connect
+                        # 成死项——把整个按钮菜单挂进"更多"菜单
+                        btn_menu = w.menu()
+                        if btn_menu is not None:
+                            for act in btn_menu.actions():
+                                self._more_menu.addAction(act)
                     self._more_menu.addAction(a)
             self._more_button.show()
             self._more_button.move(x, (h - self._more_button.height()) // 2)
