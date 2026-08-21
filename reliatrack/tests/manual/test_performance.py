@@ -1,6 +1,6 @@
 """性能基线测试 — 大数据量场景"""
 import sys, os, time, tempfile, statistics
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 import pytest
 pytestmark = pytest.mark.skip(reason="Performance benchmark — run with: python tests/test_performance.py")

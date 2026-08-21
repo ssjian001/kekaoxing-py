@@ -19,8 +19,8 @@ import sys
 import tempfile
 import traceback
 
-# 确保项目根目录在 Python 路径中
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 确保项目根目录在 Python 路径中（文件在 tests/manual/ 下，需上跳 3 级）
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -160,14 +160,14 @@ def test_2_test_plan_and_tasks(tr: TestResult, conn, pid, eid, tid, plan_repo, t
     assert len(tasks) == 2
     tr.record("PASS", "TestTask CRUD", f"创建 {len(tasks)} 个任务")
 
-    # 更新进度
-    tp_svc.update_task_progress(t1, 50.0)
+    # 更新进度（服务层现为通用 update_task(**kwargs)，状态联动在 handler 层）
+    tp_svc.update_task(t1, progress=50.0, status="in_progress")
     task1 = tp_svc.get_task(t1)
     assert task1 is not None and task1.progress == 50.0 and task1.status == "in_progress"
     tr.record("PASS", "TestTask 进度更新", f"进度=50%, 状态=in_progress")
 
     # 完成进度
-    tp_svc.update_task_progress(t1, 100.0)
+    tp_svc.update_task(t1, progress=100.0, status="completed")
     task1 = tp_svc.get_task(t1)
     assert task1 is not None and task1.status == "completed"
     tr.record("PASS", "TestTask 完成", "进度=100%, 状态=completed")
@@ -233,8 +233,8 @@ def test_4_knowledge(tr: TestResult, conn):
     assert entry is not None and entry.failure_mode == "焊盘脱落"
     tr.record("PASS", "Knowledge CRUD", f"创建+查询知识条目 id={kid}")
 
-    # 搜索
-    results = k_svc.search("焊盘")
+    # 搜索（服务层无 search 方法，生产为客户端过滤，此处等价实现）
+    results = [e for e in k_svc.list_all() if "焊盘" in (e.failure_mode or "")]
     assert len(results) >= 1
     tr.record("PASS", "Knowledge 搜索", f"搜索'焊盘'命中 {len(results)} 条")
 
@@ -279,8 +279,10 @@ def test_5_sample_transactions(tr: TestResult, conn, sid, tid, sam_repo):
     assert sam is not None and sam.status == "in_stock"
     tr.record("PASS", "Sample check_in + 状态恢复")
 
-    # 查询记录
-    txns = sam_svc.get_transactions(sid)
+    # 查询记录（服务层现为 list_transactions(filter_sn=...)，按样品 SN 过滤）
+    sam = sam_svc.get(sid)
+    assert sam is not None
+    txns = [t for t in sam_svc.list_transactions(filter_sn=sam.sn) if t.get("sample_id") == sid]
     assert len(txns) == 2
     tr.record("PASS", "Sample transactions 查询", f"共 {len(txns)} 条记录")
 
@@ -469,13 +471,13 @@ def test_9_main_window(tr: TestResult):
 
         window = MainWindow(controller)
 
-        # 验证 Tab 数量
+        # 验证 Tab 数量（待办事项 Tab 加入后为 8）
         tab_count = window._tab_widget.count()
-        assert tab_count == 7, f"期望 7 个 Tab，实际 {tab_count}"
+        assert tab_count == 8, f"期望 8 个 Tab，实际 {tab_count}"
         tr.record("PASS", "MainWindow Tab 数量", f"{tab_count} 个 Tab")
 
         # 验证各 Tab 名称
-        expected_tabs = ["仪表盘", "项目管理", "样品管理", "测试计划", "Issue 追踪", "设备管理", "知识库"]
+        expected_tabs = ["仪表盘", "项目管理", "样品管理", "测试计划", "Issue 管理", "待办事项", "设备管理", "知识库"]
         for i, expected in enumerate(expected_tabs):
             tab_text = window._tab_widget.tabText(i)
             if expected in tab_text:

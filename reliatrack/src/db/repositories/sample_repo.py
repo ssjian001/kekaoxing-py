@@ -92,7 +92,8 @@ class SampleRepository(BaseRepository):
         conditions: list[str] = []
 
         if filter_sn.strip():
-            conditions.append("s.sn LIKE ? ESCAPE '\\\\'")
+            # SQLite ESCAPE 子句要求单字符；此处传反斜杠（SQL 字面量 '\'）
+            conditions.append("s.sn LIKE ? ESCAPE '\\'")
             sn_escaped = filter_sn.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             params.append(f"%{sn_escaped}%")
         if filter_type.strip():
