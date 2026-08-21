@@ -89,7 +89,7 @@ def bulk_create_issues(n):
         sid = ctrl.issue_service.create(
             title=f'Issue-{i+1:04d} 引脚断裂',
             priority=['critical', 'high', 'medium', 'low'][i % 4],
-            status=['open', 'analyzing', 'in_progress', 'resolved', 'closed'][i % 5],
+            status=['open', 'analyzing', 'verified', 'closed'][i % 4],
             plan_id=(i % 50) + 1,
             failure_mode=['短路', '断裂', '氧化', '变形', '漏电'][i % 5],
         )
@@ -112,8 +112,9 @@ def bulk_create_knowledge(n):
 
 bench("创建 200 个知识库条目", bulk_create_knowledge, 200)
 bench("知识库 list_all", ctrl.knowledge_service.list_all)
-bench("知识库 search('断裂')", lambda: ctrl.knowledge_service.search('断裂'))
-bench("知识库 search('短路')", lambda: ctrl.knowledge_service.search('短路'))
+# 服务层无 search，生产为客户端过滤，等价基准
+bench("知识库 客户端过滤('断裂')", lambda: [e for e in ctrl.knowledge_service.list_all() if "断裂" in (e.failure_mode or "")])
+bench("知识库 客户端过滤('短路')", lambda: [e for e in ctrl.knowledge_service.list_all() if "短路" in (e.failure_mode or "")])
 
 # ---- 5. 设备和技术员 ----
 print("\n═══ 5. 设备/技术员 ═══")
@@ -150,7 +151,7 @@ def bulk_transactions(n):
         )
 
 bench("创建 500 条出入库事务", bulk_transactions, 500)
-bench("get_transactions (sample_id=500)", lambda: ctrl.sample_service.get_transactions(sample_ids[499]))
+bench("list_transactions 全量", lambda: ctrl.sample_service.list_transactions())
 
 # ---- 7. MainWindow 启动 + 各 Tab 加载 ----
 print("\n═══ 7. MainWindow 启动 + Tab 加载 ═══")
