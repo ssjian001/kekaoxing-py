@@ -744,7 +744,7 @@ class TestBatchActionBarWiring:
         assert "_batch_bar.export_clicked.connect" in src
 
     def test_batch_status_updates_tasks(self, batch_win: MagicMock) -> None:
-        """批量改状态：_on_batch_status('completed') → 两个任务状态更新。"""
+        """批量改状态：_on_batch_status('completed') → 状态+联动字段全更新（B5）。"""
         from src.handlers.plan_handlers import PlanHandlers
         handlers = PlanHandlers(batch_win)
         handlers._on_batch_status("completed")
@@ -753,6 +753,9 @@ class TestBatchActionBarWiring:
         t2 = batch_win.ctrl.test_plan_service.get_task(2)
         assert t1 is not None and t1.status == "completed"
         assert t2 is not None and t2.status == "completed"
+        # B5 联动: completed 必须补实际完成日期与进度
+        assert t1.progress == 100.0 and t2.progress == 100.0
+        assert t1.actual_end_date and t2.actual_end_date
 
     def test_batch_status_no_selection_toast(self, batch_win: MagicMock) -> None:
         """未选任务 → toast 提示且不崩溃。"""
