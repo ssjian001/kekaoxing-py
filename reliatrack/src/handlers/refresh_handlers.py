@@ -208,23 +208,13 @@ class RefreshHandlers:
         pending_issue_count = len(pending_issues)
 
         # 本周关闭数（从活动日志查，按项目筛选）
+        # 审计 B3：原为 UI 层裸 SQL，收编到 issue_service.count_weekly_closed
         weekly_closed = 0
-        if hasattr(ctrl, '_conn') and ctrl._conn and filter_project_id:
-            row = ctrl._conn.execute(
-                """SELECT COUNT(*) FROM issue_activity_log
-                   WHERE field='status' AND new_value='closed'
-                     AND project_id = ?
-                     AND created_at >= date('now', '-7 days', 'localtime')""",
-                (filter_project_id,),
-            ).fetchone()
-            if row:
-                weekly_closed = row[0]
-        elif hasattr(ctrl, '_conn') and ctrl._conn:
-            row = ctrl._conn.execute(
-                "SELECT COUNT(*) FROM issue_activity_log WHERE field='status' AND new_value='closed' AND created_at >= date('now', '-7 days', 'localtime')"
-            ).fetchone()
-            if row:
-                weekly_closed = row[0]
+        if ctrl.issue_service:
+            try:
+                weekly_closed = ctrl.issue_service.count_weekly_closed(filter_project_id)
+            except Exception:
+                logger.exception("统计本周关闭 Issue 失败")
 
         # 平均停留天数
         aging_days_list = [
@@ -506,7 +496,7 @@ class RefreshHandlers:
         task_ref_counts: dict[int, int] = {}
         for eq in all_equipment:
             if eq.id is not None:
-                task_ref_counts[eq.id] = ctrl.equipment_service._repo.count_task_references(eq.id)
+                task_ref_counts[eq.id] = ctrl.equipment_service.count_task_references(eq.id)
         self._win.equipment_view.refresh(all_equipment, task_ref_counts)
 
     def _refresh_technicians(self) -> None:

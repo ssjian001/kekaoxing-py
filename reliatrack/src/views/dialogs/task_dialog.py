@@ -634,7 +634,7 @@ class TaskEditDialog(_BaseDialog):
             self._planned_start_edit.setEnabled(False)
             self._planned_end_edit.setEnabled(False)
             self._planned_hint.setText(
-                "<i style='color:#888'>请先在「编辑计划」中设置计划开始日期</i>"
+                f"<i style='color:{_t.SUBTEXT0}'>请先在「编辑计划」中设置计划开始日期</i>"
             )
             return
 
@@ -644,7 +644,7 @@ class TaskEditDialog(_BaseDialog):
             self._planned_start_edit.setEnabled(False)
             self._planned_end_edit.setEnabled(False)
             self._planned_hint.setText(
-                "<i style='color:#c00'>计划开始日期格式无效，无法计算预计日期</i>"
+                f"<i style='color:{_t.RED}'>计划开始日期格式无效，无法计算预计日期</i>"
             )
             return
 
@@ -676,7 +676,7 @@ class TaskEditDialog(_BaseDialog):
                 self._planned_end_edit.setDate(new_date)
                 self._planned_end_edit.blockSignals(False)
                 self._planned_hint.setText(
-                    "<i style='color:#f90'>已自动调整预计结束日期</i>"
+                    f"<i style='color:{_t.YELLOW}'>已自动调整预计结束日期</i>"
                 )
             # 重算工期
             dur = self._planned_start_edit.date().daysTo(self._planned_end_edit.date()) + 1

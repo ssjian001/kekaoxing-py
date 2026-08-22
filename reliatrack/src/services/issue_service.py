@@ -278,6 +278,10 @@ class IssueService:
         """获取某 Issue 的活动日志（按时间升序）。"""
         return self._activity_repo.get_by_issue(issue_id)
 
+    def count_weekly_closed(self, project_id: int | None = None) -> int:
+        """统计近 7 天关闭的 Issue 数（供仪表盘 4 指标，审计 B3 收编）。"""
+        return self._activity_repo.count_weekly_closed(project_id)
+
     def get_activity_with_duration(self, issue_id: int) -> list[dict]:
         """获取活动日志 + 每条状态变更的停留时长。
 

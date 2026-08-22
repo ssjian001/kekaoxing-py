@@ -48,8 +48,12 @@ class EquipmentService:
         return DeleteEntityCommand(self._repo, equipment_id, "设备")
 
     def transaction(self):
-        """事务上下文管理器。"""
+        """公共事务上下文（供 handler 使用，替代越层访问 _repo.transaction）。"""
         return self._repo.transaction()
+
+    def count_task_references(self, equipment_id: int) -> int:
+        """统计设备被测试任务引用数（热力图负载数据源，审计 B4 收编）。"""
+        return self._repo.count_task_references(equipment_id)
 
     def get_expiring_calibrations(self, days: int = 30) -> list[tuple[Equipment, int]]:
         """查找 N 天内即将到期或已过期的校准设备，返回 [(Equipment, remaining_days)]。"""

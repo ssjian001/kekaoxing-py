@@ -159,7 +159,7 @@ class _KanbanColumn(QFrame):
 
             if total_history > 0:
                 self._title_label.setText(
-                    f"{self._label} (30天内 {total_current}条"
+                    f"{self._label} (30天内 {total_current}条)"
                 )
                 if self._folded:
                     self._fold_info.setText(f"还有 {total_history} 条历史记录 ▾")

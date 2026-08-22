@@ -89,6 +89,14 @@ class TestPlanService:
     def bulk_update_start_day(self, updates: list[tuple[int, int]]) -> None:
         self._task_repo.bulk_update_start_day(updates)
 
+    def transaction(self):
+        """公共事务上下文（供 handler 使用，替代越层访问 _result_repo.transaction）。"""
+        return self._result_repo.transaction()
+
+    def task_repo(self):
+        """任务 repo 访问器（undo Command 需要，审计 B4 收编避免越层私有访问）。"""
+        return self._task_repo
+
     def task_count(self, plan_id: int) -> int:
         return self._plan_repo.get_task_count(plan_id)
 

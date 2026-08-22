@@ -124,12 +124,15 @@ class _StatCard(QFrame):
         super().leaveEvent(event)
 
     def mousePressEvent(self, event):  # noqa: N802
-        w = self.parent()
-        while w is not None:
-            if hasattr(w, "card_clicked"):
-                w.card_clicked.emit(self._tab_index, self._jump_data or None)
-                break
-            w = w.parent()
+        # 审计 B3：右键也触发页面跳转——仅左键响应
+        from PySide6.QtCore import Qt
+        if event.button() == Qt.MouseButton.LeftButton:
+            w = self.parent()
+            while w is not None:
+                if hasattr(w, "card_clicked"):
+                    w.card_clicked.emit(self._tab_index, self._jump_data or None)
+                    break
+                w = w.parent()
         super().mousePressEvent(event)
 
 

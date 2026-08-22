@@ -686,6 +686,28 @@ class IssueActivityLogRepository(BaseRepository):
         cols = [d[1] for d in self._conn.execute("PRAGMA table_info([issue_activity_log])").fetchall()]
         return [IssueActivityLog(**dict(zip(cols, row))) for row in rows]
 
+    def count_weekly_closed(self, project_id: int | None = None) -> int:
+        """统计近 7 天关闭的 Issue 数（field='status' → 'closed'）。
+
+        审计 B3：原 SQL 硬编码在 refresh_handlers（UI 层裸 SQL），
+        收编到 repo 层统一维护。
+        """
+        if project_id is not None:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM [issue_activity_log] "
+                "WHERE field = 'status' AND new_value = 'closed' "
+                "AND project_id = ? "
+                "AND created_at >= date('now', '-7 days', 'localtime')",
+                (project_id,),
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM [issue_activity_log] "
+                "WHERE field = 'status' AND new_value = 'closed' "
+                "AND created_at >= date('now', '-7 days', 'localtime')"
+            ).fetchone()
+        return row[0] if row else 0
+
 
 class IssueLinkRepository(BaseRepository):
     """Issue 关联数据访问。"""

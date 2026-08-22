@@ -495,45 +495,6 @@ class PlanHandlers:
             if hasattr(self._win, 'refresh_plan_combo'):
                 self._win.refresh_plan_combo()
 
-    def _on_plan_archive(self) -> None:
-        """归档当前选中的已完成计划。"""
-        ctrl = self._win.ctrl
-        if not ctrl or not ctrl.test_plan_service:
-            return
-        plan_id = self._win.test_plan_view.get_selected_plan_id()
-        if plan_id is None:
-            self._win.toast("请先选中一个测试计划", "info")
-            return
-        plan = ctrl.test_plan_service.get_plan(plan_id)
-        if plan is None:
-            return
-        if plan.status != "completed":
-            self._win.toast("只有已完成计划可以归档", "warning")
-            return
-        reply = QMessageBox.question(
-            self._win,
-            "确认归档",
-            f"确定要将计划「{plan.name}」归档吗？\n"
-            f"归档后计划将从默认视图中隐藏，数据和导出不受影响。",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-        ok = exec_crud(
-            win=self._win,
-            action=ctrl.test_plan_service.update_plan,
-            action_args=(plan_id,),
-            action_kwargs={"status": "archived"},
-            toast_msg=f"计划「{plan.name}」已归档",
-            entity="plan",
-            error_title="归档失败",
-        )
-        if ok:
-            self._on_refresh_all()
-            if hasattr(self._win, 'refresh_plan_combo'):
-                self._win.refresh_plan_combo()
-
     def _on_plan_unarchive(self) -> None:
         """取消归档，恢复为已完成。"""
         ctrl = self._win.ctrl
@@ -946,7 +907,7 @@ class PlanHandlers:
         saved = 0
         deleted_count = 0
         issue_count = 0
-        with ctrl.test_plan_service._result_repo.transaction():
+        with ctrl.test_plan_service.transaction():
             for item in all_data:
                 # 已有结果标记删除 → 删除
                 if item.get("deleted") and item.get("result_id"):
@@ -991,6 +952,8 @@ class PlanHandlers:
                                 issue_count += 1
                             except Exception:
                                 logger.exception("自动创建 Issue 失败")
+                                # G5：静默失败改 toast 提示（结果保存不受影响）
+                                self._win.toast("自动创建 Issue 失败，请查看日志", "warning")
         if saved > 0 or deleted_count > 0:
             msg = f"已保存 {saved} 条测试结果（任务: {task.name}）"
             if deleted_count:
@@ -1070,7 +1033,7 @@ class PlanHandlers:
                 from src.services.export import ExportService
                 svc = ExportService(output_dir=str(export_dir))
             else:
-                svc._output_dir = Path(export_dir)
+                svc.output_dir = export_dir
 
             path = svc.export_to_word(plan, tasks, issues, samples, results=results)
             self._win.toast(f"总结报告已导出: {path}", "success")
@@ -1330,6 +1293,7 @@ class PlanHandlers:
         # 列 → 字段名 + 类型转换
         field: str | None = None
         parsed_value: object = value
+        extra_updates: dict[str, object] = {}  # 状态联动附加字段（B5）
 
         if col == 1:   # 名稱
             field = "name"
@@ -1360,6 +1324,12 @@ class PlanHandlers:
         elif col == 8:  # 狀態
             field = "status"
             parsed_value = value
+            # 审计 B5：批量置 completed 需联动实际完成日期与进度，
+            # 与 _on_task_edit / _on_batch_status_advance 行为一致
+            if value == "completed":
+                from datetime import date as _date
+                extra_updates["actual_end_date"] = _date.today().isoformat()
+                extra_updates["progress"] = 100.0
         elif col == 11:  # 实际开始
             field = "actual_start_date"
         elif col == 12:  # 实际完成
@@ -1379,13 +1349,19 @@ class PlanHandlers:
             return
 
         count = 0
-        changes: list[tuple[int, object, object]] = []  # (task_id, old_value, new_value)
+        # (task_id, 字段名, old_value, new_value) —— B5: 每条目自带字段名，
+        # 避免 status 与联动字段共用外层 field 导致互相覆盖
+        changes: list[tuple[int, str, object, object]] = []
         for tid in task_ids:
             task = ctrl.test_plan_service.get_task(tid)
             if task is None:
                 continue
             old_value = getattr(task, field, None)
-            changes.append((tid, old_value, parsed_value))
+            changes.append((tid, field, old_value, parsed_value))
+            # B5: completed 联动字段也纳入 undo（每任务一条命令）
+            for extra_field, extra_val in extra_updates.items():
+                old_extra = getattr(task, extra_field, None)
+                changes.append((tid, extra_field, old_extra, extra_val))
             count += 1
 
         if count == 0:
@@ -1393,10 +1369,10 @@ class PlanHandlers:
 
         # 批量操作走 undo：MacroCommand 包裹 N 个 UpdateFieldCommand，一次入栈
         from src.services.undo_manager import UndoManager, MacroCommand, UpdateFieldCommand
-        task_repo = ctrl.test_plan_service._task_repo
+        task_repo = ctrl.test_plan_service.task_repo()
         commands = [
-            UpdateFieldCommand(task_repo, tid, field, old_value, new_value, "任务")
-            for tid, old_value, new_value in changes
+            UpdateFieldCommand(task_repo, tid, chg_field, old_value, new_value, "任务")
+            for tid, chg_field, old_value, new_value in changes
         ]
         macro = MacroCommand(commands, f"批量更新 {count} 个任务{field}")
         um = getattr(ctrl, "undo_manager", None)

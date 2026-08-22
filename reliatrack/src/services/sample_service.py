@@ -65,8 +65,11 @@ class SampleService:
     def update_status(self, sample_id: int, status: str) -> None:
         self._repo.update_status(sample_id, status)
 
-    def _check_references(self, sample_id: int) -> None:
-        """检查样品是否被其他实体引用，有引用则抛 ValueError。"""
+    def check_references(self, sample_id: int) -> None:
+        """检查样品是否被其他实体引用，有引用则抛 ValueError。
+
+        公共 API（审计 B4 收编，handler 不再访问私有方法）。
+        """
         reasons: list[str] = []
 
         if self._test_result_repo is not None:
@@ -94,7 +97,7 @@ class SampleService:
     def delete(self, sample_id: int) -> None:
         """删除样品，有引用时拒绝删除。"""
         with self._repo.transaction():
-            self._check_references(sample_id)
+            self.check_references(sample_id)
             # 1. 清理 test_tasks.sample_ids JSON 中的悬空引用
             self._repo.remove_from_task_sample_ids(sample_id)
             # 2. 删出入库记录（子表），再删样品（父表）
@@ -138,3 +141,7 @@ class SampleService:
     def transaction(self):
         """事务上下文管理器。"""
         return self._repo.transaction()
+
+    def repo(self):
+        """样品 repo 访问器（undo BatchEditSamplesCommand 需要，审计 B4 收编）。"""
+        return self._repo

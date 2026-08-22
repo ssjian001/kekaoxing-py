@@ -244,7 +244,7 @@ class SampleHandlers:
 
         # 先检查引用（在确认对话框之前，避免用户确认后被告知无法删除）
         try:
-            ctrl.sample_service._check_references(sample_id)
+            ctrl.sample_service.check_references(sample_id)
         except ValueError as e:
             QMessageBox.warning(self._win, "无法删除", str(e))
             return
@@ -369,7 +369,7 @@ class SampleHandlers:
 
             try:
                 # 事务中执行批量更新
-                sample_repo = ctrl.sample_service._repo
+                sample_repo = ctrl.sample_service.repo()
                 cmd = BatchEditSamplesCommand(sample_repo, command_changes)
                 with ctrl.sample_service.transaction():
                     ctrl.undo_manager.execute(cmd)
