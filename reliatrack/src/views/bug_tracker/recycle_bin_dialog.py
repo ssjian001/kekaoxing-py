@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.services.issue_service import IssueService
+import src.styles.theme as _t
 
 
 class RecycleBinDialog(QDialog):
@@ -39,7 +40,7 @@ class RecycleBinDialog(QDialog):
         layout.setSpacing(8)
 
         tip = QLabel("以下为已删除（软删）的 Issue，可恢复或彻底删除。彻底删除不可撤销。")
-        tip.setStyleSheet("color: #808080; font-size: 12px;")
+        tip.setStyleSheet(f"color: {_t.FG_MUTED}; font-size: 12px;")
         layout.addWidget(tip)
 
         self._table = QTableWidget(0, 4)

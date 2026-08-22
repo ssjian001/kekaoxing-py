@@ -136,7 +136,7 @@ class TodoView(QWidget):
         # 空状态提示（count==0 时居中显示，覆盖看板列）
         self._empty_label = QLabel("暂无待办事项，可在上方快速添加或点击「新增」")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet("color: #808080; font-size: 13px;")
+        self._empty_label.setStyleSheet(f"color: {_t.FG_MUTED}; font-size: 13px;")
         self._empty_label.hide()
 
         board_lay.addWidget(self._empty_label, stretch=1)

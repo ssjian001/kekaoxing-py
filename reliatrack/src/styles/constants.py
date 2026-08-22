@@ -111,12 +111,21 @@ ISSUE_STATUS_COLORS: dict[str, str] = {
     "closed": STATUS_GREEN,
 }
 
-# Issue 严重度
+# Issue 严重度 — 收敛色系: 红=致命 橙=主要 灰蓝阶=次要/外观 (原 4 色过载, 降为 2 主色+2 中性)
 ISSUE_SEVERITY_COLORS: dict[str, str] = {
     "critical": STATUS_RED,
     "major": STATUS_PEACH,
-    "minor": STATUS_YELLOW,
-    "cosmetic": STATUS_OVERLAY,
+    "minor": STATUS_OVERLAY,
+    "cosmetic": STATUS_SURFACE,
+}
+
+# Issue 优先级 — 与严重度共用红橙轴, 低优降中性灰 (原 5 色全谱 → 3 色)
+PRIORITY_COLORS: dict[int, str] = {
+    1: STATUS_RED,       # 最高
+    2: STATUS_PEACH,
+    3: STATUS_YELLOW,    # 默认
+    4: STATUS_OVERLAY,
+    5: STATUS_SURFACE,   # 最低
 }
 
 ISSUE_RESOLUTION_COLORS: dict[str, str] = {
@@ -136,14 +145,6 @@ EQUIPMENT_STATUS_COLORS: dict[str, str] = {
 }
 
 # 优先级
-PRIORITY_COLORS: dict[int, str] = {
-    1: STATUS_RED,       # 最高
-    2: STATUS_PEACH,
-    3: STATUS_YELLOW,    # 默认
-    4: STATUS_OVERLAY,
-    5: STATUS_SURFACE,   # 最低
-}
-
 # ═══════════════════════════════════════════════════════════════════
 #  Issue Aging 阈值
 # ═══════════════════════════════════════════════════════════════════

@@ -43,6 +43,17 @@ from src.styles.constants import (
 )
 from src.constants import SEVERITY_LABELS, ISSUE_STATUS_LABELS
 from src.models.issue import Issue, IssueComment
+
+
+def _rgba(hex_color: str, alpha: float) -> str:
+    """#RRGGBB → rgba(r, g, b, a)。QSS 不支持 8 位 hex，背景透明度必须走 rgba()。"""
+    h = hex_color.lstrip("#")
+    if len(h) != 6:
+        return hex_color
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
 from src.views.bug_tracker.fa_capa_panels import FAPanel as _FAPanel, CAPAPanel as _CAPAPanel
 
 
@@ -105,8 +116,10 @@ class IssueDetailDialog(QDialog):
         sev_color = ISSUE_SEVERITY_COLORS.get(self._issue.severity, _t.SUBTEXT0)
         sev_badge = QLabel(severity_label)
         sev_badge.setProperty("class", "badge")
+        # 坑: QSS 不支持 8 位 hex ({color}22), 必须用 rgba() — 否则背景静默失效
+        sev_bg = _rgba(sev_color, 0.13)
         sev_badge.setStyleSheet(
-            f"background-color: {sev_color}22; color: {sev_color};"
+            f"background-color: {sev_bg}; color: {sev_color};"
             f" padding: 2px 8px; border-radius: 4px; font-weight: bold;"
             f" font-size: {FONT_SIZE_NORMAL}px;"
         )
@@ -117,8 +130,9 @@ class IssueDetailDialog(QDialog):
         st_color = ISSUE_STATUS_COLORS.get(self._issue.status, _t.SUBTEXT0)
         st_badge = QLabel(status_label)
         st_badge.setProperty("class", "badge")
+        st_bg = _rgba(st_color, 0.09)
         st_badge.setStyleSheet(
-            f"background-color: {st_color}18; color: {st_color};"
+            f"background-color: {st_bg}; color: {st_color};"
             f" padding: 2px 8px; border-radius: 4px; font-weight: bold;"
             f" font-size: {FONT_SIZE_NORMAL}px;"
         )
