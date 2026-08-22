@@ -159,9 +159,16 @@ class KnowledgeView(QWidget):
                 # 居中对齐（ID 列和类别列）
                 if col in (0, 1):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # 类别列着色
+                # 类别列着色（走 resolve_status_color, 暗色下自动换提亮替身）
                 if col == 1 and text:
-                    color = KNOWLEDGE_CATEGORY_COLORS.get(text, _theme.TEXT)
+                    from src.styles.constants import resolve_status_color
+                    color = KNOWLEDGE_CATEGORY_COLORS.get(text)
+                    if color is None:
+                        # 未登记类别: 用 TEXT 的当前主题值
+                        import src.styles.theme as _t2
+                        color = getattr(_t2, "TEXT", "#4c4f69")
+                    else:
+                        color = resolve_status_color(color, _theme.current_theme())
                     item.setForeground(QColor(color))
                 # 设置 tooltip 显示完整内容
                 if len(str(value) if value else "") > 60:
