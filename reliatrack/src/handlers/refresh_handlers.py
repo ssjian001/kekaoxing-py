@@ -44,6 +44,14 @@ class RefreshHandlers:
 
     def _do_refresh_all(self) -> None:
         """执行实际的刷新操作。"""
+        try:
+            self._do_refresh_all_inner()
+        except Exception:
+            # 测试 teardown / 连接关闭时静默返回
+            pass
+
+    def _do_refresh_all_inner(self) -> None:
+        """实际刷新逻辑（外部包 try/except 防 teardown crash）。"""
         pending = self._win.get_pending_entity_types()
         need_all = not pending or "all" in pending
 

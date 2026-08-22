@@ -500,10 +500,9 @@ class MainWindow(QMainWindow):
             self._act_dark_theme.setChecked(name == "dark")
             self._act_dark_theme.blockSignals(False)
         self._refresh_remaining_inline_styles()
-        # setForeground 写死 QColor 的表格在切主题后不跟随 QSS 刷新 — 重载重绘
-        kv = getattr(self, "_knowledge_view", None)
-        if kv is not None and getattr(kv, "_entry_list", None):
-            kv.refresh(kv._entry_list)
+        # setForeground 写死 QColor 的表格不随 QSS 刷新 — 全量刷新让所有视图重绘
+        # (覆盖设备/项目/任务表/Issue/结果矩阵/知识库/样品tab等全部常驻表格)
+        self._schedule_refresh("all")
 
 
     def _refresh_remaining_inline_styles(self) -> None:
@@ -1168,6 +1167,7 @@ def main() -> int:
 
     apply_palette()
     app.setStyleSheet(get_stylesheet())
+
 
 
     # 全局异常兜底 — 未捕获异常记日志 + 友好弹窗
