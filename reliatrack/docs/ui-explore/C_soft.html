@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>方案C 软卡片</title>
+<style>
+/* ═══ 方案C：软卡片 Dashboard 风 — 大留白、大圆角、柔和渐变、柔阴影 ═══ */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Noto Sans SC","PingFang SC",sans-serif; background:linear-gradient(180deg,#EEF1F8 0%,#F7F8FC 240px); color:#3B3D52; font-size:13px; display:flex; height:100vh; overflow:hidden; }
+
+.sidebar { width:78px; background:rgba(255,255,255,.85); border-right:1px solid #E5E9F2; display:flex; flex-direction:column; align-items:center; padding:12px 0; flex-shrink:0; }
+.logo { width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6); color:#fff; display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px; margin-bottom:16px; box-shadow:0 4px 10px rgba(99,102,241,.25); }
+.nav { width:60px; padding:9px 0 8px; border-radius:11px; text-align:center; color:#8A8DA6; font-size:11.5px; cursor:pointer; margin-bottom:2px; }
+.nav:hover { background:rgba(99,102,241,.08); color:#5B5E7B; }
+.nav.active { background:linear-gradient(135deg,#6366F1,#7C6FF0); color:#fff; box-shadow:0 4px 10px rgba(99,102,241,.25); }
+.nav .ic { font-size:17px; display:block; margin-bottom:3px; }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar { height:56px; display:flex; align-items:center; padding:0 24px; gap:12px; flex-shrink:0; }
+.title-wrap { flex:1; }
+h1 { font-size:17px; font-weight:700; color:#2E3045; letter-spacing:-.2px; display:flex; align-items:center; gap:10px; }
+.chip-date { font-size:11px; color:#7B7E99; background:#E9EDF7; padding:3px 10px; border-radius:99px; font-weight:500; }
+.btn { padding:7px 16px; border-radius:10px; font-size:12.5px; border:none; background:#fff; color:#4A4D68; cursor:pointer; box-shadow:0 1px 3px rgba(46,48,69,.08); font-weight:500; }
+.btn:hover { background:#F6F7FB; }
+.btn.primary { background:linear-gradient(135deg,#6366F1,#7C6FF0); color:#fff; box-shadow:0 3px 8px rgba(99,102,241,.3); }
+.btn.primary:hover { filter:brightness(1.05); }
+
+.content { flex:1; overflow-y:auto; padding:6px 24px 24px; }
+
+.card { background:#fff; border-radius:14px; box-shadow:0 2px 6px rgba(46,48,69,.05), 0 12px 28px rgba(46,48,69,.06); border:1px solid rgba(232,236,246,.9); }
+
+.kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:16px; }
+.kpi { padding:16px 18px; position:relative; overflow:hidden; }
+.kpi .lb { font-size:11.5px; color:#8A8DA6; }
+.kpi .ic2 { width:26px;height:26px;border-radius:8px; display:inline-flex;align-items:center;justify-content:center; font-size:13px; position:absolute; right:14px; top:14px; }
+.kpi .v { font-size:26px; font-weight:750; color:#2E3045; margin-top:6px; letter-spacing:-.5px; }
+.kpi .v small { font-size:13px; font-weight:600; color:#8A8DA6; }
+.trend { display:inline-flex; align-items:center; gap:3px; font-size:11px; margin-top:6px; padding:2px 8px; border-radius:99px; font-weight:550; }
+.trend.up { background:#E5F6EC; color:#189A4A; }
+.trend.down { background:#FDEBED; color:#D4375A; }
+.trend.flat { background:#EEF0F6; color:#8A8DA6; }
+.ic2.blue{background:#EAEFFD;} .ic2.green{background:#E5F6EC;} .ic2.amber{background:#FBF4E4;} .ic2.red{background:#FDEBED;} .ic2.violet{background:#F3E9FD;}
+
+.grid2 { display:grid; grid-template-columns:1fr 330px; gap:16px; }
+.panel { padding:18px; }
+.panel-title { font-size:13.5px; font-weight:650; color:#2E3045; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.panel-title .more { margin-left:auto; font-size:11.5px; color:#8A8DA6; font-weight:450; cursor:pointer; background:#F1F3F9; padding:3px 10px; border-radius:99px; }
+.panel-title .more:hover { background:#E7EAF3; color:#5B5E7B; }
+
+table { width:100%; border-collapse:separate; border-spacing:0 4px; }
+thead th { text-align:left; font-size:11px; font-weight:600; color:#9A9DB5; padding:6px 12px; }
+tbody tr { }
+tbody tr:hover td { background:#F7F8FE; }
+tbody td { padding:9px 12px; font-size:12.5px; color:#4A4D68; border-top:1px solid transparent; border-bottom:1px solid transparent; }
+tbody td:first-child { border-left:1px solid transparent; border-radius:11px 0 0 11px; }
+tbody td:last-child { border-right:1px solid transparent; border-radius:0 11px 11px 0; }
+tbody tr:hover td { border-color:#E5E9F6; }
+
+.task-cell { display:flex; align-items:center; gap:10px; }
+.ticon { width:30px;height:30px;border-radius:9px; display:inline-flex;align-items:center;justify-content:center; font-size:14px; flex-shrink:0; }
+.ticon.env{background:#EAEFFD;} .ticon.mech{background:#FDEEE3;} .ticon.chem{background:#E9F7EF;} .ticon.rf{background:#F3E9FD;}
+.task-name { font-weight:550; color:#2E3045; font-size:12.5px; }
+.task-sub { font-size:10.5px; color:#9A9DB5; margin-top:1px; }
+
+.pill { display:inline-block; padding:3px 10px; border-radius:8px; font-size:11px; font-weight:550; }
+.pill.pass { background:#E5F6EC; color:#189A4A; }
+.pill.run  { background:#EAEFFD; color:#4263EB; }
+.pill.wait { background:#FBF4E4; color:#B07D10; }
+.pill.pause{ background:#EEF0F6; color:#7B7E99; }
+
+.prog { display:flex; align-items:center; gap:8px; }
+.prog .bar { width:60px; height:6px; background:#EDEFF6; border-radius:4px; overflow:hidden; }
+.prog .bar i { display:block; height:100%; border-radius:4px; }
+.prog span { font-size:11px; color:#9A9DB5; }
+
+.ring-card { padding:18px; margin-bottom:16px; }
+.ring-title { font-size:13.5px; font-weight:650; color:#2E3045; margin-bottom:10px; }
+.ring-wrap { display:flex; align-items:center; justify-content:space-between; padding:4px 6px; }
+.legend { text-align:left; font-size:12px; line-height:2.1; color:#5B5E7B; }
+.legend .row { min-width:100px; }
+.legend b { float:right; margin-left:14px; color:#2E3045; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; }
+
+.todo { padding:6px; }
+.todo-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px; margin-bottom:2px; }
+.todo-item:hover { background:#F5F7FC; }
+.tdot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+.todo-item .t { font-size:12.5px; font-weight:500; color:#3B3D52; }
+.todo-item .s { font-size:10.5px; color:#9A9DB5; margin-top:2px; }
+.badge { margin-left:auto; font-size:10.5px; color:#D4375A; background:#FDEBED; border-radius:99px; padding:2px 8px; font-weight:600; flex-shrink:0; }
+.badge.today { color:#4263EB; background:#EAEFFD; }
+
+.activity { margin-top:16px; padding:18px; }
+.timeline { display:flex; align-items:stretch; margin-top:6px; }
+.tstep { flex:1; text-align:center; position:relative; }
+.tstep .dot2 { width:10px; height:10px; border-radius:50%; background:#D9DCE9; margin:0 auto 8px; position:relative; z-index:2; border:2px solid #fff; box-shadow:0 0 0 1px #D9DCE9; }
+.tstep.done .dot2 { background:#189A4A; box-shadow:0 0 0 1px #189A4A; }
+.tstep.run .dot2 { background:#4263EB; box-shadow:0 0 0 1px #4263EB; }
+.tstep::before { content:""; position:absolute; top:4px; left:-50%; width:100%; height:2px; background:#E5E8F1; }
+.tstep:first-child::before { display:none; }
+.tstep.done::before { background:#189A4A; }
+.tstep .t { font-size:11px; color:#8A8DA6; margin-top:2px; }
+.tstep.done .t, .tstep.run .t { color:#2E3045; font-weight:550; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="logo">R</div>
+  <div class="nav"><span class="ic">📊</span>仪表盘</div>
+  <div class="nav"><span class="ic">📁</span>项目</div>
+  <div class="nav"><span class="ic">🧪</span>样品</div>
+  <div class="nav active"><span class="ic">📋</span>计划</div>
+  <div class="nav"><span class="ic">🐞</span>Issue</div>
+  <div class="nav"><span class="ic">✅</span>待办</div>
+  <div class="nav"><span class="ic">🔧</span>设备</div>
+  <div class="nav"><span class="ic">📚</span>知识库</div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <div class="title-wrap">
+      <h1>测试计划 <span class="chip-date">2026 Q3 · BHC668 / ACP668</span></h1>
+    </div>
+    <button class="btn">导出</button>
+    <button class="btn primary">＋ 新建任务</button>
+  </div>
+  <div class="content">
+    <div class="kpis">
+      <div class="card kpi"><div class="lb">总任务</div><div class="ic2 blue">📋</div><div class="v">12</div><span class="trend flat">4 个计划</span></div>
+      <div class="card kpi"><div class="lb">进行中</div><div class="ic2 blue">⚡</div><div class="v">2</div><span class="trend up">正常推进</span></div>
+      <div class="card kpi"><div class="lb">已通过</div><div class="ic2 green">✓</div><div class="v">9</div><span class="trend up">本周 +3</span></div>
+      <div class="card kpi"><div class="lb">待录入</div><div class="ic2 amber">✎</div><div class="v">7</div><span class="trend down">新增 2</span></div>
+      <div class="card kpi"><div class="lb">超期</div><div class="ic2 red">!</div><div class="v">6</div><span class="trend down">新增 1</span></div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="card panel">
+          <div class="panel-title">任务列表 <span class="more">查看全部</span></div>
+          <table>
+            <thead><tr><th>任务</th><th>技术员</th><th>进度</th><th>截止</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="task-cell"><span class="ticon env">🌡</span><div><div class="task-name">高温储存试验 85℃/168h</div><div class="task-sub">环境 · 高温储存</div></div></div></td>
+                <td>张工</td>
+                <td><div class="prog"><div class="bar"><i style="width:100%;background:#189A4A"></i></div><span>100%</span></div></td>
+                <td>08-25</td><td><span class="pill pass">PASS</span></td>
+              </tr>
+              <tr>
+                <td><div class="task-cell"><span class="ticon env">🔄</span><div><div class="task-name">温湿度循环 -40~85℃×48h</div><div class="task-sub">环境 · 温湿循环</div></div></div></td>
+                <td>李工</td>
+                <td><div class="prog"><div class="bar"><i style="width:60%;background:#4263EB"></i></div><span>60%</span></div></td>
+                <td>09-02</td><td><span class="pill run">进行中</span></td>
+              </tr>
+              <tr>
+                <td><div class="task-cell"><span class="ticon chem">🧂</span><div><div class="task-name">盐雾试验 48h (耳机)</div><div class="task-sub">腐蚀 · 盐雾</div></div></div></td>
+                <td>王工</td>
+                <td><div class="prog"><div class="bar"><i style="width:35%;background:#4263EB"></i></div><span>35%</span></div></td>
+                <td style="color:#D4375A;font-weight:600">08-20 超期</td><td><span class="pill run">进行中</span></td>
+              </tr>
+              <tr>
+                <td><div class="task-cell"><span class="ticon chem">💧</span><div><div class="task-name">人工汗液浸泡 24h</div><div class="task-sub">化学 · 汗液</div></div></div></td>
+                <td>张工</td>
+                <td><div class="prog"><div class="bar"><i style="width:0%"></i></div><span>0%</span></div></td>
+                <td>09-18</td><td><span class="pill wait">待开始</span></td>
+              </tr>
+              <tr>
+                <td><div class="task-cell"><span class="ticon mech">📱</span><div><div class="task-name">充电仓跌落 1.2m×6面</div><div class="task-sub">机械 · 跌落</div></div></div></td>
+                <td>刘工</td>
+                <td><div class="prog"><div class="bar"><i style="width:80%;background:#7B7E99"></i></div><span>80%</span></div></td>
+                <td>08-28</td><td><span class="pill pause">暂停</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card activity">
+          <div class="panel-title">BHC668 项目阶段</div>
+          <div class="timeline">
+            <div class="tstep done"><div class="dot2"></div><div class="t">样品入库</div></div>
+            <div class="tstep done"><div class="dot2"></div><div class="t">DVP&R 评审</div></div>
+            <div class="tstep done"><div class="dot2"></div><div class="t">环境测试</div></div>
+            <div class="tstep run"><div class="dot2"></div><div class="t">寿命测试</div></div>
+            <div class="tstep"><div class="dot2"></div><div class="t">FA/CAPA</div></div>
+            <div class="tstep"><div class="dot2"></div><div class="t">报告输出</div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card ring-card">
+          <div class="ring-title">测试进度总览</div>
+          <div class="ring-wrap">
+            <svg width="112" height="112" viewBox="0 0 112 112">
+              <circle cx="56" cy="56" r="45" fill="none" stroke="#EDEFF6" stroke-width="11"/>
+              <circle cx="56" cy="56" r="45" fill="none" stroke="#189A4A" stroke-width="11" stroke-dasharray="212.1 282.7" stroke-linecap="round" transform="rotate(-90 56 56)"/>
+              <text x="56" y="53" text-anchor="middle" font-size="21" font-weight="700" fill="#2E3045">75%</text>
+              <text x="56" y="71" text-anchor="middle" font-size="10.5" fill="#9A9DB5">通过率</text>
+            </svg>
+            <div class="legend">
+              <div class="row"><span class="dot" style="background:#189A4A"></span>PASS<b>9</b></div>
+              <div class="row"><span class="dot" style="background:#D4375A"></span>FAIL<b>0</b></div>
+              <div class="row"><span class="dot" style="background:#4263EB"></span>进行中<b>2</b></div>
+              <div class="row"><span class="dot" style="background:#D97706"></span>待开始<b>1</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="card todo">
+          <div class="panel-title" style="padding:6px 8px 0">今日待办</div>
+          <div class="todo-item"><div class="tdot" style="background:#D4375A"></div><div><div class="t">录入盐雾试验结果</div><div class="s">BHC668 · 已超期 2 天</div></div><div class="badge">超期</div></div>
+          <div class="todo-item"><div class="tdot" style="background:#D97706"></div><div><div class="t">校准恒温恒湿箱 TH-03</div><div class="s">设备管理 · 本周五前</div></div></div>
+          <div class="todo-item"><div class="tdot" style="background:#4263EB"></div><div><div class="t">评审 Issue IR-0048 FA 报告</div><div class="s">Issue 管理 · 今天</div></div><div class="badge today">今天</div></div>
+          <div class="todo-item"><div class="tdot" style="background:#9A9DB5"></div><div><div class="t">更新 DVP&R 试验矩阵</div><div class="s">测试计划 · 下周一</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

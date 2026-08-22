@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>方案B Linear风</title>
+<style>
+/* ═══ 方案B：Linear/Notion 工具风 — 深侧栏、键盘流、密集信息 ═══ */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif; background:#FFFFFF; color:#18181B; font-size:13px; display:flex; height:100vh; overflow:hidden; }
+
+/* 深色侧栏：Linear 标志性设计，与内容区形成强对比 */
+.sidebar { width:200px; background:#191927; color:#A9A9C0; display:flex; flex-direction:column; padding:14px 10px; flex-shrink:0; }
+.s-head { display:flex; align-items:center; gap:9px; padding:4px 8px 14px; }
+.s-logo { width:24px;height:24px;border-radius:6px;background:#5E6AD2;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center; }
+.s-title { font-size:13.5px; color:#E8E8F2; font-weight:600; }
+.s-search { display:flex;align-items:center;gap:8px; background:#232336; border:1px solid #2E2E44; border-radius:6px; padding:6px 9px; font-size:12px; color:#7C7C99; margin-bottom:12px; cursor:pointer; }
+.s-search:hover { background:#28283e; border-color:#3a3a55; }
+.kbd { margin-left:auto; font-size:10px; border:1px solid #3A3A55; border-radius:4px; padding:1px 5px; color:#8E8EB0; font-family:ui-monospace,monospace; }
+.s-group { font-size:10.5px; letter-spacing:.08em; color:#62627E; padding:12px 8px 5px; text-transform:uppercase; }
+.s-item { display:flex; align-items:center; gap:9px; padding:5.5px 9px; border-radius:6px; font-size:12.5px; cursor:pointer; }
+.s-item:hover { background:#232336; color:#E8E8F2; }
+.s-item.active { background:#2A2A44; color:#fff; }
+.s-item .ic { width:16px; text-align:center; font-size:13px; opacity:.85; }
+.s-item .cnt { margin-left:auto; font-size:10.5px; background:#2E2E44; border-radius:99px; padding:1px 6px; color:#A9A9C0; }
+.s-item .cnt.alert { background:#4A1D24; color:#FF8089; }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar { height:46px; border-bottom:1px solid #EDEDF0; display:flex; align-items:center; padding:0 16px; gap:8px; flex-shrink:0; background:#fff; }
+.tabs { display:flex; gap:2px; }
+.tab { padding:5px 11px; font-size:12.5px; color:#71717A; border-radius:6px; cursor:pointer; }
+.tab:hover { background:#F4F4F5; }
+.tab.active { background:#EFF0FB; color:#4F46E5; font-weight:500; }
+.spacer { flex:1; }
+.btn { padding:5px 12px; border-radius:6px; font-size:12px; border:1px solid #E4E4E7; background:#fff; color:#3F3F46; cursor:pointer; }
+.btn:hover { background:#F4F4F5; }
+.btn.primary { background:#4F46E5; border-color:#4F46E5; color:#fff; }
+.btn.primary:hover { background:#4338CA; }
+.filter-chip { display:flex; align-items:center; gap:5px; font-size:12px; color:#52525B; background:#F4F4F5; border-radius:6px; padding:4px 9px; cursor:pointer; border:1px solid #ECECEF; }
+.filter-chip:hover { background:#ECECEF; }
+.filter-chip b { font-weight:600; }
+
+.content { flex:1; overflow-y:auto; padding:16px; }
+
+/* 无卡片阴影、纯分割线工具风 —— 区别于 A 的卡片感 */
+.page-head { display:flex; align-items:baseline; gap:12px; margin-bottom:14px; }
+h1 { font-size:17px; font-weight:650; letter-spacing:-.2px; }
+.sub { font-size:12px; color:#8E8E98; }
+
+.metrics { display:flex; gap:0; border:1px solid #EDEDF0; border-radius:8px; overflow:hidden; margin-bottom:16px; background:#fff; }
+.metric { flex:1; padding:12px 16px; border-right:1px solid #EDEDF0; }
+.metric:last-child { border-right:none; }
+.metric .lb { font-size:11px; color:#8E8E98; }
+.metric .v { font-size:20px; font-weight:650; margin-top:2px; letter-spacing:-.3px; }
+.metric .v .u { font-size:11px; font-weight:500; color:#8E8E98; margin-left:2px; }
+.m-blue{color:#4F46E5;} .m-green{color:#16A34A;} .m-amber{color:#D97706;} .m-red{color:#DC2626;} .m-zinc{color:#3F3F46;}
+
+table { width:100%; border-collapse:collapse; }
+thead th { text-align:left; font-size:11px; font-weight:550; color:#8E8E98; padding:7px 10px; border-bottom:1px solid #EDEDF0; background:#fff; white-space:nowrap; }
+tbody td { padding:8px 10px; border-bottom:1px solid #F4F4F5; font-size:12.5px; }
+tbody tr:hover td { background:#FAFAFB; }
+.id-tag { font-family:ui-monospace,monospace; font-size:11px; color:#8E8E98; }
+.task { display:flex; align-items:center; gap:8px; font-weight:500; }
+.ck { width:14px;height:14px;border:1.5px solid #D4D4D8;border-radius:4px; display:inline-block; }
+.pri { font-size:12px; width:16px; display:inline-block; text-align:center; }
+.p0{color:#DC2626;} .p1{color:#EA580C;} .p2{color:#D4A017;} .p3{color:#A1A1AA;}
+
+.st { display:inline-flex; align-items:center; gap:6px; font-size:12px; }
+.st .d { width:6px;height:6px;border-radius:50%; }
+.st.run{color:#4F46E5;} .st.run .d{background:#4F46E5;}
+.st.pass{color:#16A34A;} .st.pass .d{background:#16A34A;}
+.st.wait{color:#A16207;} .st.wait .d{background:#D97706;}
+.st.pause{color:#A1A1AA;} .st.pause .d{background:#A1A1AA;}
+.date { font-size:12px; color:#71717A; }
+.date.over { color:#DC2626; font-weight:550; }
+.avatar { width:20px;height:20px;border-radius:50%; color:#fff; font-size:10px; display:inline-flex;align-items:center;justify-content:center; font-weight:600; }
+
+.rowbar { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.viewsw { display:flex; background:#F4F4F5; border-radius:7px; padding:2px; }
+.viewsw .v { padding:4px 10px; font-size:12px; border-radius:5px; color:#71717A; cursor:pointer; }
+.viewsw .v.on { background:#fff; color:#18181B; font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="s-head"><div class="s-logo">R</div><div class="s-title">ReliaTrack</div></div>
+  <div class="s-search">🔍 搜索或跳转… <span class="kbd">Ctrl K</span></div>
+  <div class="s-group">工作区</div>
+  <div class="s-item"><span class="ic">📊</span>仪表盘</div>
+  <div class="s-item active"><span class="ic">📋</span>测试计划<span class="cnt">12</span></div>
+  <div class="s-item"><span class="ic">🐞</span>Issue<span class="cnt alert">6</span></div>
+  <div class="s-item"><span class="ic">📁</span>项目</div>
+  <div class="s-item"><span class="ic">🧪</span>样品</div>
+  <div class="s-group">资源</div>
+  <div class="s-item"><span class="ic">🔧</span>设备</div>
+  <div class="s-item"><span class="ic">📚</span>知识库</div>
+  <div class="s-group">个人</div>
+  <div class="s-item"><span class="ic">✅</span>我的待办<span class="cnt alert">6</span></div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <div class="tabs"><div class="tab">看板</div><div class="tab active">列表</div></div>
+    <div class="spacer"></div>
+    <div class="filter-chip">状态 <b>全部</b> ▾</div>
+    <div class="filter-chip">技术员 <b>全部</b> ▾</div>
+    <div class="filter-chip">类别 <b>全部</b> ▾</div>
+    <button class="btn">⚙ 显示</button>
+    <button class="btn primary">＋ 新任务</button>
+  </div>
+  <div class="content">
+    <div class="metrics">
+      <div class="metric"><div class="lb">总任务</div><div class="v m-zinc">12</div></div>
+      <div class="metric"><div class="lb">进行中</div><div class="v m-blue">2</div></div>
+      <div class="metric"><div classlb="">已通过</div><div class="v m-green">9</div></div>
+      <div class="metric"><div class="lb">待录入</div><div class="v m-amber">7</div></div>
+      <div class="metric"><div class="lb">超期</div><div class="v m-red">6</div></div>
+      <div class="metric"><div class="lb">通过率</div><div class="v m-green">75<span class="u">%</span></div></div>
+    </div>
+    <div class="rowbar">
+      <div class="viewsw"><div class="v on">列表</div><div class="v">甘特</div><div class="v">矩阵</div></div>
+      <span class="sub">BHC668 可靠性测试 · 2026-08</span>
+    </div>
+    <table>
+      <thead><tr><th style="width:30px"></th><th>ID</th><th>任务</th><th>优先</th><th>状态</th><th>技术员</th><th>截止</th><th>进度</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ck"></span></td><td class="id-tag">TP-0231</td><td class="task">高温储存试验 85℃/168h</td><td><span class="pri p1">●</span></td><td class="st pass"><span class="d"></span>PASS</td><td><span class="avatar" style="background:#7C3AED">张</span></td><td class="date">08-25</td><td style="width:110px"><div style="height:4px;background:#F4F4F5;border-radius:2px"><div style="width:100%;height:100%;background:#16A34A;border-radius:2px"></div></div></td></tr>
+        <tr style="background:#FAFAFC"><td><span class="ck"></span></td><td class="id-tag">TP-0232</td><td class="task">温湿度循环 -40~85℃×48h</td><td><span class="pri p0">●</span></td><td class="st run"><span class="d"></span>进行中</td><td><span class="avatar" style="background:#0891B2">李</span></td><td class="date">09-02</td><td style="width:110px"><div style="height:4px;background:#F4F4F5;border-radius:2px"><div style="width:60%;height:100%;background:#4F46E5;border-radius:2px"></div></div></td></tr>
+        <tr><td><span class="ck"></span></td><td class="id-tag">TP-0233</td><td class="task">盐雾试验 48h (耳机)</td><td><span class="pri p0">●</span></td><td class="st run"><span class="d"></span>进行中</td><td><span class="avatar" style="background:#DC2626">王</span></td><td class="date over">08-20</td><td style="width:110px"><div style="height:4px;background:#F4F4F5;border-radius:2px"><div style="width:35%;height:100%;background:#4F46E5;border-radius:2px"></div></div></td></tr>
+        <tr style="background:#FAFAFC"><td><span class="ck"></span></td><td class="id-tag">TP-0234</td><td class="task">人工汗液浸泡 24h</td><td><span class="pri p2">●</span></td><td class="st wait"><span class="d"></span>待开始</td><td><span class="avatar" style="background:#7C3AED">张</span></td><td class="date">09-18</td><td style="width:110px"><div style="height:4px;background:#F4F4F5;border-radius:2px"></div></td></tr>
+        <tr><td><span class="ck"></span></td><td class="id-tag">TP-0235</td><td class="task">充电仓跌落 1.2m×6面</td><td><span class="pri p2">●</span></td><td class="st pause"><span class="d"></span>暂停</td><td><span class="avatar" style="background:#059669">刘</span></td><td class="date">08-28</td><td style="width:110px"><div style="height:4px;background:#F4F4F5;border-radius:2px"><div style="width:80%;height:100%;background:#A1A1AA;border-radius:2px"></div></div></td></tr>
+        <tr style="background:#FAFAFC"><td><span class="ck"></span></td><td class="id-tag">TP-0236</td><td class="task">热冲击 -40↔125℃ 200循环</td><td><span class="pri p1">●</span></td><td class="st run"><span class="d"></span>进行中</td><td><span class="avatar" style="background:#0891B2">李</span></td><td class="date">09-05</td><td style="width:110px"><div style="height:4px;background:#F4F4F5;border-radius:2px"><div style="width:45%;height:100%;background:#44E5;border-radius:2px"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

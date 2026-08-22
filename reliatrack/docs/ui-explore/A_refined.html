@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>方案A 精修现有</title>
+<style>
+/* ═══ 方案A：精修现有 Catppuccin 风格 — 保持布局，纯视觉打磨 ═══ */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Noto Sans SC","PingFang SC",sans-serif; background:#F7F8FC; color:#4C4F69; font-size:13px; display:flex; height:100vh; overflow:hidden; }
+
+/* 侧栏：保留结构，加选中态左accent条+圆角高亮 */
+.sidebar { width:76px; background:#FFFFFF; border-right:1px solid #E2E8F0; display:flex; flex-direction:column; align-items:center; padding:10px 0; gap:2px; }
+.logo { width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#1e66f5,#7287fd); color:#fff; display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px; margin-bottom:14px; }
+.nav { width:62px; padding:9px 0; border-radius:8px; text-align:center; color:#6C6F85; font-size:12px; cursor:pointer; position:relative; }
+.nav:hover { background:#F1F5F9; }
+.nav.active { background:#EFF3FC; color:#1e66f5; font-weight:600; }
+.nav.active::before { content:""; position:absolute; left:-7px; top:8px; bottom:8px; width:3px; border-radius:2px; background:#1e66f5; }
+.nav .ic { font-size:16px; display:block; margin-bottom:3px; }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* 顶栏：面包屑+主按钮体系 */
+.topbar { height:52px; background:#FFF; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; padding:0 20px; gap:10px; flex-shrink:0; }
+.crumb { font-size:14px; font-weight:600; color:#4C4F69; flex:1; }
+.btn { padding:6px 14px; border-radius:7px; font-size:12.5px; border:1px solid #D3D9E3; background:#FFF; color:#4C4F69; cursor:pointer; }
+.btn:hover { background:#F1F5F9; }
+.btn.primary { background:#1e66f5; border-color:#1e66f5; color:#fff; font-weight:500; }
+.btn.primary:hover { background:#1B5CE0; }
+
+.content { flex:1; overflow-y:auto; padding:18px 20px; }
+
+/* 卡片：白底+8px圆角+细边框+微阴影 —— 核心打磨点 */
+.card { background:#FFF; border:1px solid #EAEEF4; border-radius:9px; box-shadow:0 1px 2px rgba(76,79,105,.04); }
+.section-title { font-size:13px; font-weight:600; color:#4C4F69; margin:0 0 10px 2px; display:flex; align-items:center; gap:8px; }
+.section-title .more { margin-left:auto; font-size:12px; color:#8C8FA8; font-weight:400; cursor:pointer; }
+.section-title .more:hover { color:#1e66f5; }
+
+/* KPI 行 */
+.kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+.kpi { padding:13px 15px; position:relative; overflow:hidden; }
+.kpi .lb { font-size:11.5px; color:#8C8FA8; }
+.kpi .v { font-size:22px; font-weight:700; color:#303446; margin-top:3px; letter-spacing:-.3px; }
+.kpi .v small { font-size:12px; font-weight:500; color:#8C8FA8; }
+.kpi .trend { font-size:11px; margin-top:4px; }
+.up { color:#40A02B; } .down { color:#D20F39; } .flat{color:#8C8FA8;}
+.kpi::after { content:""; position:absolute; right:-14px; top:-14px; width:52px; height:52px; border-radius:50%; opacity:.07; }
+.kpi.blue::after{background:#1e66f5;} .kpi.green::after{background:#40A02B;} .kpi.red::after{background:#D20F39;} .kpi.yellow::after{background:#DF8E1D;} .kpi.mauve::after{background:#8839EF;}
+
+/* 双列布局 */
+.grid2 { display:grid; grid-template-columns:1fr 340px; gap:14px; }
+
+/* 表格：表头浅灰底深字（去掉重蓝头）、柔斑马纹、hover行、选中行左侧accent条 */
+table { width:100%; border-collapse:collapse; }
+thead th { text-align:left; font-size:11.5px; font-weight:600; color:#8C8FA8; background:#F8FAFD; padding:8px 12px; border-bottom:1px solid #EAEEF4; white-space:nowrap; }
+tbody td { padding:9px 12px; border-bottom:1px solid #F2F5F9; color:#4C4F69; }
+tbody tr:nth-child(even) { background:#FBFCFE; }
+tbody tr:hover td { background:#F0F4FB; }
+tbody tr.sel td { background:#EFF3FC; }
+tbody tr.sel td:first-child { box-shadow:inset 3px 0 0 #1e66f5; }
+.task-name { font-weight:500; color:#303446; }
+
+/* 状态胶囊：浅底深字统一体系 */
+.pill { display:inline-block; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:500; line-height:16px; }
+.pill.run  { background:#EFF3FC; color:#1e66f5; }
+.pill.pass { background:#E8F6EC; color:#218A53; }
+.pill.fail { background:#FDECEE; color:#C22F45; }
+.pill.wait { background:#F4F1EA; color:#9A7325; }
+.pill.pause{ background:#F1F1F4; color:#7A7D94; }
+.sev.crit { background:#FDECEE; color:#C22F45; }
+.sev.major{ background:#FBF0E4; color:#B4720F; }
+.sev.minor{ background:#EDF3EC; color:#57805A; }
+
+.prog { display:flex; align-items:center; gap:8px; }
+.prog .bar { width:64px; height:5px; background:#EDF0F5; border-radius:3px; overflow:hidden; }
+.prog .bar i { display:block; height:100%; background:#1e66f5; border-radius:3px; }
+.prog span { font-size:11.5px; color:#8C8FA8; min-width:30px; }
+
+/* 右栏：进度环 + 列表 */
+.ring-card { padding:16px; margin-bottom:14px; }
+.ring-wrap { display:flex; align-items:center; gap:18px; justify-content:center; padding:8px 0; }
+.legend { font-size:12px; line-height:2; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; }
+.todo-item { display:flex; align-items:flex-start; gap:9px; padding:10px 14px; border-bottom:1px solid #F2F5F9; }
+.todo-item:last-child { border-bottom:none; }
+.todo-item:hover { background:#F8FAFD; }
+.tdot { width:7px; height:7px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+.todo-item .t { font-size:12.5px; color:#4C4F69; }
+.todo-item .s { font-size:11px; color:#8C8FA8; margin-top:2px; }
+.badge { margin-left:auto; font-size:11px; color:#C22F45; background:#FDECEE; border-radius:99px; padding:1px 7px; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="logo">R</div>
+  <div class="nav"><span class="ic">📊</span>仪表盘</div>
+  <div class="nav active"><span class="ic">📁</span>项目</div>
+  <div class="nav"><span class="ic">🧪</span>样品</div>
+  <div class="nav"><span class="ic">📋</span>计划</div>
+  <div class="nav"><span class="ic">🐞</span>Issue</div>
+  <div class="nav"><span class="ic">✅</span>待办</div>
+  <div class="nav"><span class="ic">🔧</span>设备</div>
+  <div class="nav"><span class="ic">📚</span>知识库</div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <div class="crumb">项目管理 · BHC668 TWS 可靠性测试</div>
+    <button class="btn primary">＋ 新建测试计划</button>
+    <button class="btn">导出报告</button>
+  </div>
+  <div class="content">
+    <div class="kpis">
+      <div class="card kpi blue"><div class="lb">进行中项目</div><div class="v">4</div><div class="trend flat">较上周持平</div></div>
+      <div class="card kpi green"><div class="lb">活跃任务</div><div class="v">12</div><div class="trend up">▲ 本周完成 3</div></div>
+      <div class="card kpi yellow"><div class="lb">结果待录入</div><div class="v">7</div><div class="trend down">▲ 新增 2</div></div>
+      <div class="card kpi red"><div class="lb">超期任务</div><div class="v">6</div><div class="trend down">▲ 新增 1</div></div>
+      <div class="card kpi mauve"><div class="lb">测试通过率</div><div class="v">75<small>%</small></div><div class="trend up">▲ 5.2%</div></div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="section-title">测试计划任务 <span class="more">查看全部 →</span></div>
+        <div class="card">
+          <table>
+            <thead><tr><th>任务名称</th><th>类别</th><th>技术员</th><th>进度</th><th>截止</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td class="task-name">高温储存试验 85℃/168h</td><td>环境</td><td>张工</td><td><div class="prog"><div class="bar"><i style="width:100%"></i></div><span>100%</span></div></td><td>08-25</td><td><span class="pill pass">PASS</span></td></tr>
+              <tr class="sel"><td class="task-name">温湿度循环 -40~85℃×48h</td><td>环境</td><td>李工</td><td><div class="prog"><div class="bar"><i style="width:60%"></i></div><span>60%</span></div></td><td>09-02</td><td><span class="pill run">进行中</span></td></tr>
+              <tr><td class="task-name">盐雾试验 48h (耳机)</td><td>腐蚀</td><td>王工</td><td><div class="prog"><div class="bar"><i style="width:35%"></i></div><span>35%</span></div></td><td>09-10</td><td><span class="pill run">进行中</span></td></tr>
+              <tr><td class="task-name">人工汗液浸泡 24h</td><td>化学</td><td>张工</td><td><div class="prog"><div class="bar"><i style="width:0%"></i></div><span>0%</span></div></td><td>09-18</td><td><span class="pill wait">待开始</span></td></tr>
+              <tr><td class="task-name">充电仓跌落 1.2m×6面</td><td>机械</td><td>刘工</td><td><div class="prog"><div class="bar"><i style="width:80%"></i></div><span>80%</span></div></td><td>08-28</td><td><span class="pill pause">暂停</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">测试进度总览</div>
+        <div class="card ring-card">
+          <div class="ring-wrap">
+            <svg width="110" height="110" viewBox="0 0 110 110">
+              <circle cx="55" cy="55" r="44" fill="none" stroke="#EDF0F5" stroke-width="11"/>
+              <circle cx="55" cy="55" r="44" fill="none" stroke="#40A02B" stroke-width="11" stroke-dasharray="207.3 276.5" stroke-linecap="round" transform="rotate(-90 55 55)"/>
+              <text x="55" y="52" text-anchor="middle" font-size="21" font-weight="700" fill="#303446">75%</text>
+              <text x="55" y="70" text-anchor="middle" font-size="10.5" fill="#8C8FA8">通过率</text>
+            </svg>
+            <div class="legend">
+              <div><span class="dot" style="background:#40A02B"></span>PASS　9</div>
+              <div><span class="dot" style="background:#D20F39"></span>FAIL　0</div>
+              <div><span class="dot" style="background:#1e66f5"></span>进行中　2</div>
+              <div><span class="dot" style="background:#DF8E1D"></span>待开始　1</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-title">今日待办</div>
+        <div class="card">
+          <div class="todo-item"><div class="tdot" style="background:#D20F39"></div><div><div class="t">录入盐雾试验结果</div><div class="s">BHC668 · 已超期 2 天</div></div><div class="badge">超期</div></div>
+          <div class="todo-item"><div class="tdot" style="background:#DF8E1D"></div><div><div class="t">校准恒温恒湿箱 TH-03</div><div class="s">设备管理 · 本周五前</div></div></div>
+          <div class="todo-item"><div class="tdot" style="background:#1e66f5"></div><div><div class="t">评审 Issue IR-0048 FA 报告</div><div class="s">Issue 管理 · 今天</div></div></div>
+          <div class="todo-item"><div class="tdot" style="background:#8C8FA8"></div><div><div class="t">更新 DVP&R 试验矩阵</div><div class="s">测试计划 · 下周一</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
