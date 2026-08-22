@@ -399,6 +399,53 @@ class TestProjectDeleteDetachesCrossRefs:
         assert issue_repo.get_by_id(iid) is None, "本项目 Issue 应随项目删除"
 
 
+# ── #22 plan_summary 超期口径（按自然日，工期含首日）─────────────────
+
+class TestPlanSummaryOverdueBoundary:
+    """超期判定: 预计结束 = 计划开始 + start_day + duration - 1（工期含首日）。
+
+    权威口径来源: task_dialog._update_planned_dates / task_table 渲染。
+    """
+
+    def _task(self, start_day=0, duration=5, status="in_progress"):
+        from src.models.test_plan import TestTask
+        return TestTask(id=1, name="T", plan_id=1, status=status,
+                        start_day=start_day, duration=duration)
+
+    def test_end_today_not_overdue(self):
+        """预计结束 = 今天 → 到期而非超期。"""
+        from datetime import date, timedelta
+        from src.views.widgets.plan_summary import compute_summary
+        # 结束日 = base + 0 + 5 - 1 = base+4 = today → base = today-4
+        base = (date.today() - timedelta(days=4)).isoformat()
+        due, _pending, overdue = compute_summary([self._task()], {}, base)
+        assert overdue == 0, "工期含首日：结束=今天不算超期"
+        assert due == 1
+
+    def test_ended_yesterday_is_overdue(self):
+        """预计结束 = 昨天 → 超期。"""
+        from datetime import date, timedelta
+        from src.views.widgets.plan_summary import compute_summary
+        base = (date.today() - timedelta(days=5)).isoformat()
+        due, _pending, overdue = compute_summary([self._task()], {}, base)
+        assert overdue == 1
+        assert due == 0
+
+    def test_two_functions_agree(self, qapp=None):
+        """compute_summary 与 format_summary_text 的超期数一致。"""
+        from datetime import date, timedelta
+        from src.views.widgets.plan_summary import compute_summary, format_summary_text
+        task = self._task(start_day=3, duration=4)
+        base_dt = date.today() - timedelta(days=10)  # 结束日 = base+6 = 昨天
+        base = base_dt.isoformat()
+        _, _, overdue1 = compute_summary([task], {}, base)
+        text = format_summary_text([task], base)
+        import re
+        m = re.search(r"(\d+) 个超期", text)
+        overdue2 = int(m.group(1)) if m else 0
+        assert overdue1 == overdue2 == 1
+
+
 # ── S1 compress 放回时间线 ────────────────────────────────────
 
 class TestCompressRestoresOnFailure:
