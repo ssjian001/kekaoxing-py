@@ -35,10 +35,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QToolButton,
 )
-from PySide6.QtCore import QTimer, QSettings, Qt, QSize
+from PySide6.QtCore import QTimer, QSettings, Qt, QSize, QRectF, QRect
 from PySide6.QtGui import (
     QAction, QKeySequence, QShortcut,
-    QColor, QPaintEvent,
+    QColor, QPaintEvent, QPainterPath,
 )
 
 from src.styles.animation import TranslateYAnimation
@@ -85,7 +85,30 @@ class SidebarTabBar(QTabBar):
         opt = QStyleOptionTab()
         for i in range(self.count()):
             self.initStyleOption(opt, i)
-            painter.drawControl(QStyle.CE_TabBarTabShape, opt)
+            # 精修: 选中态画圆角胶囊底 + 左侧 accent 条，替代原 drawControl 平铺
+            # 坑: _t.SELECTION_BG 是 QSS rgba() 字符串, QColor() 解析为 INVALID→黑色。
+            #     必须用 QColor(hex)+setAlpha 构造半透明色
+            selected = bool(opt.state & QStyle.State_Selected)
+            painter.save()
+            rect = opt.rect.adjusted(3, 2, -3, -2)
+            if selected:
+                capsule = QColor(_t.ACCENT)
+                capsule.setAlpha(28)
+                path = QPainterPath()
+                path.addRoundedRect(QRectF(rect), 8, 8)
+                painter.fillPath(path, capsule)
+            elif opt.state & QStyle.State_MouseOver:
+                path = QPainterPath()
+                path.addRoundedRect(QRectF(rect), 8, 8)
+                painter.fillPath(path, QColor(_t.BG_HOVER))
+            else:
+                painter.drawControl(QStyle.CE_TabBarTabShape, opt)
+            if selected:
+                bar = QRect(rect.left() + 1, rect.top() + 7, 3, rect.height() - 14)
+                path_bar = QPainterPath()
+                path_bar.addRoundedRect(QRectF(bar), 1.5, 1.5)
+                painter.fillPath(path_bar, QColor(_t.ACCENT))
+            painter.restore()
 
             # 自繪文字（橫向）
             painter.save()

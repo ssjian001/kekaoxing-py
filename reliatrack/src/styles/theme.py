@@ -373,12 +373,12 @@ QTableWidget::item:hover, QTableView::item:hover {{
 }}
 QHeaderView::section {{
     background-color: {BG_INPUT};
-    color: {FG_PRIMARY};
+    color: {FG_SECONDARY};
     border: none;
-    border-bottom: 2px solid {BORDER};
-    padding: 8px 12px;
-    font-weight: bold;
-    font-size: 13px;
+    border-bottom: 1px solid {BORDER};
+    padding: 7px 10px;
+    font-weight: 600;
+    font-size: 12px;
 }}
 QHeaderView::section:hover {{
     background-color: {SURFACE1};
@@ -674,9 +674,12 @@ QWidget[class="container-base"] {{
     background-color: {BG_BASE};
 }}
 
-/* ── 统计卡片容器 ── */
+/* ── 统计卡片容器 ── 可点击卡片: 圆角加大 + hover 描边强调 */
 QFrame[class="stat-card"], QWidget[class="stat-card"] {{
-    background-color: {MANTLE}; border: 1px solid {SURFACE1}; border-radius: 6px; padding: 8px;
+    background-color: {MANTLE}; border: 1px solid {SURFACE1}; border-radius: 10px; padding: 8px;
+}}
+QFrame[class="stat-card"]:hover, QWidget[class="stat-card"]:hover {{
+    border: 1px solid {ACCENT};
 }}
 
 /* ── 卡片背景(圆角16px) / (圆角10px) — 替代 card_qss() ── */
