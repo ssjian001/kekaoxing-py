@@ -259,13 +259,12 @@ class MainWindow(QMainWindow):
     # ── Tab 切换自动刷新 ──
 
     def _on_tab_changed(self, index: int) -> None:
-        """切换 Tab 时保存索引 + 自动刷新数据 + 平滑淡入动画。"""
+        """切换 Tab 时保存索引 + 自动刷新数据。"""
         QSettings().setValue("ReliaTrack/last_tab_index", index)
 
-        # 淡入平滑微动效
-        current_widget = self._tab_widget.widget(index)
-        if current_widget:
-            self._animate_tab_transition(current_widget)
+        # 淡入微动效已移除（2026-08-22）：QGraphicsOpacityEffect 强制整页离屏合成，
+        # 在重页（测试计划：任务表+甘特图+筛选栏）上 X250 老显卡出现局部重绘乱序，
+        # 表现为切换瞬间"小弹窗一闪而过"。直接切换无动画。
 
         # Tab 0 仪表盘 / Tab 3 测试计划 / Tab 4 Issue 管理
         if index == 0:
@@ -274,20 +273,6 @@ class MainWindow(QMainWindow):
             self._schedule_refresh("test_plan")
         elif index == 4:
             self._schedule_refresh("issue")
-
-    def _animate_tab_transition(self, widget: QWidget) -> None:
-        """为 Tab 切换增加 150ms 平滑淡入动效。"""
-        from PySide6.QtWidgets import QGraphicsOpacityEffect
-        from PySide6.QtCore import QPropertyAnimation
-
-        effect = QGraphicsOpacityEffect(widget)
-        widget.setGraphicsEffect(effect)
-        anim = QPropertyAnimation(effect, b"opacity", widget)
-        anim.setDuration(150)
-        anim.setStartValue(0.3)
-        anim.setEndValue(1.0)
-        anim.finished.connect(lambda: widget.setGraphicsEffect(None))
-        anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
     # ── 仪表盘卡片点击 ──
 
