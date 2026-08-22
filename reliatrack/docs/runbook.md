@@ -10,7 +10,7 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack
 ## 数据库
 
 - **位置**：`data/reliatrack.db`（自动创建）
-- **Schema 版本**：v27（21 张表，含 todos）
+- **Schema 版本**：v28（20 张表）
 - **备份**：`data/backups/` 目录下自动/手动备份
 - **迁移**：`.venv/bin/python3 migrate.py`（运行 pending migrations）
 
@@ -26,11 +26,11 @@ cp data/reliatrack.db "data/backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
 ## 测试
 
 ```bash
-# 单元测试（596 项）
+# 单元测试（738 项）
 .venv/bin/python -m pytest tests/ -v
 
 # E2E 测试（脚本式，需 offscreen 模式）
-QT_QPA_PLATFORM=offscreen .venv/bin/python3 tests/test_e2e_full.py
+QT_QPA_PLATFORM=offscreen .venv/bin/python3 tests/manual/test_e2e_full.py
 ```
 
 ## 故障排查
