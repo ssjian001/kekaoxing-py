@@ -20,6 +20,7 @@ from PySide6.QtGui import QAction, QColor, QKeySequence
 
 import src.styles.theme as _t
 from src.styles.constants import TASK_STATUS_COLORS, PRIORITY_COLORS, FONT_FAMILY, apply_column_specs
+from src.views.widgets.table_delegate import RowHighlightDelegate
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS, TASK_CATEGORIES
 from src.styles.column_persistence import (
     save_column_widths_debounced, restore_column_widths,
@@ -103,9 +104,17 @@ class _TaskTable(QTableWidget):
         apply_column_specs(self, _TASK_SPECS, "task_table")
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.setAlternatingRowColors(True)
+        self.setAlternatingRowColors(False)
         self.verticalHeader().setVisible(False)
         self.setSortingEnabled(True)
+
+        # RowHighlightDelegate — 行 hover/选中高亮（与设备/项目/Issue 表格一致）
+        self.setMouseTracking(True)
+        self._delegate = RowHighlightDelegate(self)
+        self.setItemDelegate(self._delegate)
+        self.cellEntered.connect(self._on_cell_entered)
+        self.viewportEntered.connect(self._on_viewport_entered)
+        self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self._tasks: list[TestTask] = []
         self._equipment_list: list[Equipment] = []
         self._technician_list: list[Technician] = []
@@ -545,6 +554,18 @@ class _TaskTable(QTableWidget):
             self._empty_label.raise_()
         else:
             self._empty_label.hide()
+
+    def _on_cell_entered(self, row: int, column: int) -> None:
+        self._delegate.hover_row = row
+        self.viewport().update()
+
+    def _on_viewport_entered(self) -> None:
+        self._delegate.hover_row = -1
+        self.viewport().update()
+
+    def _on_selection_changed(self) -> None:
+        self._delegate.selected_rows = {idx.row() for idx in self.selectedIndexes()}
+        self.viewport().update()
 
     def eventFilter(self, obj, event):
         """viewport resize 时同步空状态标签位置。"""

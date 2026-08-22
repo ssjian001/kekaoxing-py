@@ -103,9 +103,19 @@ class _SampleUsageTab(QWidget):
         apply_column_specs(self._table, _LOG_SPECS, "sample_log")
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._table.setAlternatingRowColors(True)
+        self._table.setAlternatingRowColors(False)
         self._table.verticalHeader().setVisible(False)
         self._table.setSortingEnabled(True)
+
+        # RowHighlightDelegate — 行 hover/选中高亮
+        self._table.setMouseTracking(True)
+        from src.views.widgets.table_delegate import RowHighlightDelegate
+        self._log_delegate = RowHighlightDelegate(self._table)
+        self._table.setItemDelegate(self._log_delegate)
+        self._table.cellEntered.connect(self._on_log_cell_entered)
+        self._table.viewportEntered.connect(self._on_log_viewport_entered)
+        self._table.selectionModel().selectionChanged.connect(self._on_log_selection_changed)
+
         layout.addWidget(self._table)
 
         # 空状态
@@ -142,6 +152,18 @@ class _SampleUsageTab(QWidget):
         """触发外部回调重新查询数据。"""
         if self._refresh_callback:
             self._refresh_callback()  # type: ignore[operator]
+
+    def _on_log_cell_entered(self, row: int, column: int) -> None:
+        self._log_delegate.hover_row = row
+        self._table.viewport().update()
+
+    def _on_log_viewport_entered(self) -> None:
+        self._log_delegate.hover_row = -1
+        self._table.viewport().update()
+
+    def _on_log_selection_changed(self) -> None:
+        self._log_delegate.selected_rows = {idx.row() for idx in self._table.selectedIndexes()}
+        self._table.viewport().update()
 
     def _on_reset(self) -> None:
         """重置筛选条件并刷新。"""
