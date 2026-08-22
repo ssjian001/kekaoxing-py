@@ -55,6 +55,25 @@ STATUS_TEAL    = "#179299"  # 环境/特殊
 STATUS_OVERLAY = "#9ca0b0"  # 停用/草稿/关闭/外观
 STATUS_SURFACE = "#acb0be"  # 跳过/离线/最低
 
+# 暗色替身 — Latte 原值在深底上对比度不足 (WCAG AA 文字≥4.5), 切暗色时由
+# theme.set_theme() 调 resolve_status_color() 替换; 亮色值保持原样
+_DARK_ALIASES: dict[str, str] = {
+    "#d20f39": "#ea5a52",  # RED    3.0→4.75
+    "#179299": "#23b5bd",  # TEAL   4.4→6.6
+}
+
+
+def resolve_status_color(hex_color: str, theme_name: str) -> str:
+    """按主题解析语义色。亮色返回原值, 暗色返回提亮替身(如有)。"""
+    if theme_name == "dark":
+        return _DARK_ALIASES.get(hex_color.lower(), hex_color)
+    # 亮色: 把替身映射回原值 (主题来回切换时幂等)
+    for _orig, _dark in _DARK_ALIASES.items():
+        if hex_color.lower() == _dark:
+            return _orig
+    return hex_color
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  状态 → 颜色映射
 # ═══════════════════════════════════════════════════════════════════
@@ -198,6 +217,8 @@ SAMPLE_TYPE_COLORS: dict[str, str] = {
 }
 
 # Dashboard 图表配色（Latte 亮色调色板）
+# 注意: 模块级 list 在 import 时冻结 Latte 值; 暗色下由 theme.set_theme() 调
+# resolve_status_color() 就地刷新各元素
 CHART_COLORS: list[str] = [
     STATUS_BLUE,    # 蓝
     STATUS_GREEN,   # 绿
@@ -211,7 +232,7 @@ CHART_COLORS: list[str] = [
 DASH_PRIMARY = STATUS_BLUE       # #1e66f5
 DASH_SUCCESS = STATUS_GREEN      # #40a02b
 DASH_WARNING = STATUS_YELLOW     # #df8e1d
-DASH_DANGER  = STATUS_RED        # #d20f39
+DASH_DANGER  = STATUS_RED        # 模块级默认; 图表 paint 时经 resolve_status_color() 按主题刷新
 
 # 以下值通过延迟导入从 theme.py 动态读取，确保主题切换后同步
 def _dash_colors() -> dict[str, str]:

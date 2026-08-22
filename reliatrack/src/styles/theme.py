@@ -76,17 +76,17 @@ _PALETTES: dict[str, dict[str, str]] = {
         TEXT     = "#CDD6F4",      # 主文字
         SUBTEXT0 = "#A6ADC8",      # 次要文字
         SUBTEXT1 = "#BAC2DE",      # 二级文字
-        # Accent (保持 Latte 亮色 — 图表/语义色在暗色下更醒目)
-        RED      = "#d20f39",
+        # Accent (Latte 值微调 — 仅提亮暗底上作文字用且对比不足的色, WCAG AA≥4.5)
+        RED      = "#ea5a52",   # 3.0→4.75 (严重度/失败文字)
         PEACH    = "#fe640b",
         YELLOW   = "#df8e1d",
         GREEN    = "#40a02b",
         GREEN_DARK = "#358524",
-        BLUE     = "#1e66f5",
+        BLUE     = "#1e66f5",   # 3.3 作图形/边框达标; 按钮底白字 4.9 不动
         LAVENDER = "#7287fd",
-        MAUVE    = "#a678e8",   # 暗色提亮: 原 #8839ef 对深底对比度不足 (vision 审计 3.8:1)
+        MAUVE    = "#a678e8",   # R2 已提亮: 原 #8839ef 对深底 3.8:1
         PINK     = "#ea76cb",
-        TEAL     = "#179299",
+        TEAL     = "#23b5bd",   # 4.4→6.6 (环境/特殊状态文字)
         SKY      = "#04a5e5",
         # Semantic aliases
         BG_BASE      = "#1E1E2E",      # 主背景 → BASE 同值
@@ -100,7 +100,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         BORDER       = "#313244",
         ACCENT       = "#1e66f5",
         SUCCESS      = "#40a02b",
-        DANGER       = "#d20f39",
+        DANGER       = "#ea5a52",   # 与 RED 同步提亮
         WARNING      = "#df8e1d",
         # rgba helpers — 暗色下增大 alpha
         SELECTION_BG  = "rgba(30, 102, 245, 0.25)",
@@ -1141,6 +1141,15 @@ def set_theme(name: str) -> None:
     _current_theme = name
     globals().update(_PALETTES[name])
     _COMPILED_STYLESHEET = None
+    # 同步刷新 constants.py 的状态色表 — 语义色在暗色下用提亮替身 (WCAG AA)
+    from src.styles import constants as _sc
+    for _d in (_sc.ISSUE_SEVERITY_COLORS, _sc.ISSUE_STATUS_COLORS, _sc.PRIORITY_COLORS,
+               _sc.TASK_STATUS_COLORS, _sc.EQUIPMENT_STATUS_COLORS):
+        for _k, _v in list(_d.items()):
+            _d[_k] = _sc.resolve_status_color(_v, name)
+    # 图表调色板 (list) 与仪表盘语义常量
+    _sc.CHART_COLORS[:] = [_sc.resolve_status_color(_c, name) for _c in _sc.CHART_COLORS]
+    _sc.DASH_DANGER = _sc.resolve_status_color(_sc.STATUS_RED, name)
     theme_host.theme_changed.emit(name)
 
 

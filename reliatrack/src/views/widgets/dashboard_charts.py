@@ -198,10 +198,12 @@ class _StackedBar(QWidget):
             return
 
         # 按任务状态堆叠（全部分类显式覆盖，不靠减法）
+        import src.styles.constants as _sc
+        _resolve = _sc.resolve_status_color
         segments = [
-            (self._completed, DASH_SUCCESS),
-            (self._failed, DASH_DANGER),
-            (self._in_progress, DASH_WARNING),
+            (self._completed, _resolve(DASH_SUCCESS, _theme.current_theme())),
+            (self._failed, _resolve(DASH_DANGER, _theme.current_theme())),
+            (self._in_progress, _resolve(DASH_WARNING, _theme.current_theme())),
             (self._skipped, _theme.SKY if hasattr(_theme, "SKY") else _theme.SUBTEXT0),
             (self._paused, _theme.MAUVE if hasattr(_theme, "MAUVE") else _theme.SUBTEXT0),
             (self._pending, _theme.SUBTEXT0),
