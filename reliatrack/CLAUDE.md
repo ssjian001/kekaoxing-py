@@ -134,6 +134,9 @@ bd dolt push          # 同步
 - **`from src.styles.theme import GREEN` 冻结快照**：`globals().update()` 不更新其他模块已导入的变量，必须用 `import src.styles.theme as _t` + `_t.GREEN` 动态引用
 - **QPalette 不跟随 setStyleSheet 更新**：QSS 只覆盖匹配选择器的控件，QCalendarWidget / QComboBox popup / QScrollArea viewport 等原生子控件 fallback 到 QPalette。主题切换时必须调用 `apply_palette()` 同步 QPalette ColorRole → 当前色板
 - **Windows 暗色系统主题污染**：`QWindowsVistaStyle` 从 Windows 系统主题读取暗色 palette，覆盖 `setPalette()` 效果。必须用 `QStyleFactory.create("Fusion")` 作为 base style（跨平台一致，完全遵循 QPalette），再用 `CheckboxProxyStyle(fusion)` 包一层
+- **constants.py 状态色表亮暗共用静态 dict/list**：`ISSUE_SEVERITY_COLORS` / `CHART_COLORS` / `DASH_DANGER` 等 import 时冻结 Latte 值，暗底下 RED(3.0:1)/TEAL(4.4:1) 不达 WCAG AA。已由 `theme.set_theme()` 内 `resolve_status_color()` 就地刷新（`_DARK_ALIASES` 映射，往返幂等）。新增状态色表时：① 加进 `_DARK_ALIASES`（如需替身）② 注册到 set_theme 的刷新列表 ③ 消费方在 paint/重绘时取值而非构造时缓存（`setForeground` 类写死 QColor 的要随数据 reload 刷新）
+- **语义色单值提亮会毁亮色主题**：提亮红 #ea5a52 在白底只有 3.45:1 — Latte 色板为亮底优化，暗色适配必须走"按主题解析替身"，不能改共用常量值
+- **offscreen 验证像素采样容差**：文字抗锯齿边缘会产生 ±1 色 diff 宽松匹配误报，strict（±3）采样才能区分真残留；且测试脚本必须走完整链路（`set_theme()` + `apply_palette()` + 重挂 stylesheet），只调 `_on_theme_changed()` 只刷 UI 不切主题
 
 ## 启动工作流（每次会话开始必做）
 

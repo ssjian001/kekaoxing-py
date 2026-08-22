@@ -41,17 +41,19 @@ FONT_SIZE_LARGE: int = 17
 FONT_SIZE_TITLE: int = 22
 
 # ═══════════════════════════════════════════════════════════════════
-#  Catppuccin Latte 色板（与 theme.py 一致）
-#  用于前景着色/状态标识，需在亮色背景上可读
+#  Catppuccin Latte 色板（与 theme.py 亮色一致）
+#  用于前景着色/状态标识，需在亮色背景上可读。
+#  暗色下由 theme.set_theme() 调 resolve_status_color() 换提亮替身
+#  （_DARK_ALIASES），切回亮色自动还原 — 不要在消费方冻结这些值。
 # ═══════════════════════════════════════════════════════════════════
 
 STATUS_GREEN   = "#40a02b"  # 成功/完成/正常
 STATUS_BLUE    = "#1e66f5"  # 进行中/处理中
-STATUS_RED     = "#d20f39"  # 失败/严重/阻塞
+STATUS_RED     = "#d20f39"  # 失败/严重/阻塞（暗色替身 #ea5a52）
 STATUS_YELLOW  = "#df8e1d"  # 警告/暂停/已验证
 STATUS_PEACH   = "#fe640b"  # 次要/出库中
 STATUS_MAUVE   = "#8839ef"  # 测试中
-STATUS_TEAL    = "#179299"  # 环境/特殊
+STATUS_TEAL    = "#179299"  # 环境/特殊（暗色替身 #23b5bd）
 STATUS_OVERLAY = "#9ca0b0"  # 停用/草稿/关闭/外观
 STATUS_SURFACE = "#acb0be"  # 跳过/离线/最低
 
