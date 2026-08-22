@@ -10,10 +10,8 @@
 4. reportlab 4.5.1→5.0.1 升级评估并实装
 
 ## 待办（下次继续）
-- #22 plan_summary off-by-one（需确认统计口径）
-- P3 批次：死代码集群 ~12 处一次性清理（update_status/purge_old/theme_palette_dialog/toast_stack/4 个零调用 service 方法等）
-- 契约假死：4 个 repo 的 getrowcount 恒 0（改 SELECT changes()）
-- gantt B3 主题快照/B4 关键路径未沿依赖链（低危）
+- 审计项全部闭环，无遗留
+- Windows 端同步 zip 后重装依赖（reportlab 5.0.1）
 
 ## 测试基线
 735 passed（新增 21 个审计回归测试 test_audit_fixes_20260821.py）+ E2E 57 PASS
