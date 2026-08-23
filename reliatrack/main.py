@@ -47,6 +47,7 @@ import src.styles.theme as _t
 from src.styles.theme import get_stylesheet, set_theme, theme_host, apply_palette
 from src.styles.smooth_scroll import SmoothScroll
 from src.controllers import AppController
+from src.services.health_service import DbCorruptError
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
 from src.views.test_plan_view import TestPlanView
@@ -432,12 +433,23 @@ class MainWindow(QMainWindow):
         # 操作菜单
         op_menu = menubar.addMenu("操作(&O)")
 
-        act_refresh = QAction("刷新(&R)", self)
+        act_refresh = QAction("刷新(&R) ⏱", self)
         act_refresh.setIcon(RI_REFRESH.icon())
         act_refresh.setShortcut("F5")
         act_refresh.setToolTip("刷新所有数据 (F5)")
         act_refresh.triggered.connect(self._refresh_all)
         op_menu.addAction(act_refresh)
+
+        act_health = QAction("数据体检(&H)…", self)
+        act_health.setToolTip("扫描附件完整性、孤儿文件与断链引用")
+        act_health.triggered.connect(self._on_data_health_check)
+        op_menu.addAction(act_health)
+
+        act_backup = QAction("数据管理(&B)…", self)
+        act_backup.setIcon(RI_BACKUP.icon())
+        act_backup.setToolTip("数据库备份与恢复")
+        act_backup.triggered.connect(self._backup_handlers._on_data_manage)
+        op_menu.addAction(act_backup)
 
         # 导出子菜单 — 归拢所有导出入口，避免平铺混乱
         export_menu = op_menu.addMenu("导出(&E)")
@@ -463,6 +475,11 @@ class MainWindow(QMainWindow):
         act_backup.triggered.connect(self._backup_handlers._on_data_manage)
         op_menu.addAction(act_backup)
 
+        act_health = QAction("数据体检(&H)…", self)
+        act_health.setToolTip("扫描附件完整性、孤儿文件与断链引用")
+        act_health.triggered.connect(self._on_data_health_check)
+        op_menu.addAction(act_health)
+
         # 视图菜单 — 唯一精简入口
         view_menu = menubar.addMenu("视图(&V)")
 
@@ -482,6 +499,13 @@ class MainWindow(QMainWindow):
 
         # 筛选栏创建后才触发完整刷新（否则 combo 尚未创建，填充不了项目列表）
         self._refresh_all()
+
+    def _on_data_health_check(self) -> None:
+        """操作菜单 → 数据体检：后台扫描 + 结果对话框。"""
+        from src.views.dialogs.data_health_dialog import DataHealthDialog
+
+        dlg = DataHealthDialog(self._ctrl, self)
+        dlg.exec()
 
     def _on_toggle_dark_theme(self, checked: bool) -> None:
         """菜单 Toggle 回调 — 切换主题并持久化。"""
@@ -1226,7 +1250,25 @@ def main() -> int:
 
     # 初始化 Controller（数据库 + 服务）
     controller = AppController(_db_path)
-    controller.initialize()
+    try:
+        controller.initialize()
+    except DbCorruptError as exc:
+        # 启动自检失败 → 引导从备份恢复；恢复成功则重试初始化
+        from src.views.dialogs.db_corrupt_dialog import DbCorruptDialog
+
+        while True:
+            dlg = DbCorruptDialog(exc, _db_path)
+            if dlg.exec() and dlg.restored:
+                controller = AppController(_db_path)
+                try:
+                    controller.initialize()
+                    break  # 恢复后初始化成功
+                except DbCorruptError as exc2:
+                    exc = exc2  # 恢复的库仍有问题，继续让用户选下一个备份
+                    continue
+            else:
+                logging.getLogger("reliatrack").error("用户放弃恢复，程序退出")
+                return 1
 
     # 启动主窗口
     window = MainWindow(controller)

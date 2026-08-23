@@ -375,7 +375,17 @@ class BatchImportDialog(_BaseDialog):
         self._btn_import.setEnabled(False)
         self._btn_import.setText("⏳ 导入中…")
 
-        # 调用导入回调
+        # 调用导入回调（模态进度对话框保持 UI 响应反馈；<500 行量级毫秒~秒级完成，
+        # 不引入 QThread — 后台线程需要独立 DB 连接，对 4 个调用方都是侵入式改造）
+        from PySide6.QtWidgets import QApplication, QProgressDialog
+
+        progress = QProgressDialog("正在导入数据…", None, 0, 0, self)
+        progress.setWindowTitle("批量导入")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(300)  # 300ms 内完成则不显示（常见小批量）
+        progress.show()
+        QApplication.processEvents()
+
         errors_detail: list[str] = []
         if self._on_import:
             try:
@@ -388,6 +398,7 @@ class BatchImportDialog(_BaseDialog):
                 else:
                     success_count, skip_count = raw
             except Exception as e:
+                progress.cancel()
                 logger.exception("批量导入失败")
                 QMessageBox.critical(self, "导入失败", f"导入过程中出错：\n{e}")
                 self._btn_import.setEnabled(True)
@@ -397,6 +408,8 @@ class BatchImportDialog(_BaseDialog):
             # 没有回调，仅显示解析结果
             success_count = len(parsed_list)
             skip_count = 0
+
+        progress.cancel()  # 关闭进度对话框
 
         self._imported = True
         self._import_result = (success_count, skip_count)
@@ -424,6 +437,15 @@ class BatchImportDialog(_BaseDialog):
             self._lbl_result.setProperty("class", "import-result-warn")
         else:
             self._lbl_result.setProperty("class", "import-result-ok")
+
+        # 触发完成 Toast（持久通知，用户离开页面也能看到）
+        # 需要父窗口有 show_toast 方法或调用 ToastNotificationStack.show_toast
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "show_toast"):
+            parent.show_toast(
+                f"批量导入完成：{success_count} 条成功，{skip_count} 条跳过",
+                level="success" if skip_count == 0 else "warning",
+            )
 
     def _on_close(self) -> None:
         """关闭对话框。"""

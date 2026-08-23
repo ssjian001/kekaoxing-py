@@ -1,3 +1,23 @@
+# ReliaTrack 进度 — 2026-08-23 (数据安全与体检)
+
+## 当前分支：`explore/data-safety`（基于 explore/ui-polish @ a770ace）
+
+## 数据安全与体检闭环（参考 Calibre / Vorta / TagStudio 模式）
+
+| 模块 | 变更 | 说明 |
+|---|---|---|
+| 启动自检 | `src/services/health_service.py` | `check_db`：`PRAGMA quick_check` + `foreign_key_check`；失败抛 `DbCorruptError` |
+| 损坏恢复引导 | `src/views/dialogs/db_corrupt_dialog.py` | 自检失败模态弹窗列出现有备份 → 用户选择 → 走 `restore_backup()`；闭环 Calibre `restore.py` 模式 |
+| 启动链接入 | `main.py` + `app_controller.py` | `initialize()` 在 `init_schema` 前跑 `check_db`；`main()` 捕获 `DbCorruptError` 循环引导恢复 |
+| 数据体检 | `health_service.py` + `data_health_dialog.py` | 扫描：缺失附件 / 孤儿文件 / 断链结果；支持勾选一键删除孤儿文件（安全约束：仅限附件目录内）；操作菜单加「数据体检(&H)…」入口 |
+| 备份轮换修复 | `app_controller.py` | 按文件名时间戳正则解析排序，修复混合命名（`reliatrack_YYYYMMDD.db` 与 `_HHMMSS.db`）时的字符串混排问题 |
+| 批量导入反馈 | `batch_import_dialog.py` | 加入 `QProgressDialog` 模态脉冲（300ms 门槛），保留同步处理（<500 行毫秒级完成，避免对 4 个调用方的异步侵入） |
+
+## 测试基线
+pytest **748 passed**（+10 new in `test_health_service.py`），50.19s 全绿；offscreen 冒烟通过。
+
+---
+
 # ReliaTrack 进度 — 2026-08-22
 
 ## 当前分支：`explore/ui-polish`（基于 main @ f510818，已推 GitHub）

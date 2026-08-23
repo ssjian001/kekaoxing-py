@@ -49,6 +49,7 @@ from src.services import (
     ExportService,
 )
 from src.services.holiday_service import HolidayService
+from src.services.health_service import DbCheckResult, DbCorruptError, check_db
 from src.services.undo_manager import UndoManager
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,14 @@ class AppController:
         self._conn = get_connection(self._db_path)
         # 保存解析后的真实 DB 路径（get_connection 可能 fallback）
         self._db_path = self._conn.filename
+
+        # 启动健康自检 — 在任何写入之前检测主库完整性。
+        # 失败时抛 DbCorruptError，由 main() 捕获后引导用户从备份恢复。
+        health = check_db(self._conn)
+        if not health.ok:
+            logger.error("启动自检失败: %s", health.summary())
+            raise DbCorruptError(health.summary(), health)
+
         init_schema(self._conn)
         # 启动时自动备份
         self._startup_backup()
@@ -168,8 +177,17 @@ class AppController:
                                 backup_path, backup_path.stat().st_size)
             except Exception:
                 logger.exception("Backup failed")
-        # 清理超过30天的旧备份（只匹配日期格式，排除 pre_restore 安全备份）
-        for old in sorted(DEFAULT_BACKUPS_DIR.glob("reliatrack_[0-9]*.db"))[:-30]:
+        # 清理超过30份的旧备份（只匹配日期格式，排除 pre_restore 安全备份）。
+        # 按文件名内嵌时间戳解析排序 — 字符串排序会把 reliatrack_20260823.db（日期命名）
+        # 与 reliatrack_20260823_143012.db（时分秒命名）混排（'.' < '_'），删除顺序失真。
+        import re as _re
+
+        def _backup_sort_key(p) -> tuple:
+            m = _re.search(r"(\d{8})(?:_(\d{6}))?", p.stem)
+            return (m.group(1), m.group(2) or "") if m else ("", "")
+
+        candidates = sorted(DEFAULT_BACKUPS_DIR.glob("reliatrack_[0-9]*.db"), key=_backup_sort_key)
+        for old in candidates[:-30]:
             old.unlink(missing_ok=True)
 
     # ── 变更通知 ──

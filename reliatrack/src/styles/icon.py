@@ -50,6 +50,8 @@ _ICONS: dict[str, str] = {
         '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     "refresh":
         '<svg viewBox="0 0 24 24" fill="none"><path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    "stopwatch":
+        '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="2"/><path d="M12 9V3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 5h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="13" r="1.5" fill="currentColor"/></svg>',
     "backup":
         '<svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2"/><path d="M17 21v-4H7v4M7 3v2h10V3" stroke="currentColor" stroke-width="2"/><path d="M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     "dashboard":
@@ -166,6 +168,8 @@ RI_FOLDER = Icon("folder")
 RI_CALENDAR = Icon("calendar")
 RI_SETTINGS = Icon("settings")
 RI_REFRESH = Icon("refresh")
+RI_STOPWATCH = Icon("stopwatch")
+RI_IMPORT = Icon("import")
 RI_BACKUP = Icon("backup")
 RI_DASHBOARD = Icon("dashboard")
 RI_PIN = Icon("pin")
