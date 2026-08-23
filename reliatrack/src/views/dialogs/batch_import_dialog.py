@@ -439,10 +439,10 @@ class BatchImportDialog(_BaseDialog):
             self._lbl_result.setProperty("class", "import-result-ok")
 
         # 触发完成 Toast（持久通知，用户离开页面也能看到）
-        # 需要父窗口有 show_toast 方法或调用 ToastNotificationStack.show_toast
+        # MainWindow 的 Toast 方法名是 toast()（见 main.py），不是 show_toast
         parent = self.parent()
-        if parent is not None and hasattr(parent, "show_toast"):
-            parent.show_toast(
+        if parent is not None and hasattr(parent, "toast"):
+            parent.toast(
                 f"批量导入完成：{success_count} 条成功，{skip_count} 条跳过",
                 level="success" if skip_count == 0 else "warning",
             )

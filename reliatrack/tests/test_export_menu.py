@@ -169,6 +169,21 @@ class TestExportMenu:
         texts = _action_texts(op_menu)
         assert any("数据管理" in t for t in texts)
 
+    def test_op_menu_no_duplicate_entries(self, main_window):
+        """操作菜单无重复条目（回归防护 — 10e01f1 曾重复添加数据体检/数据管理）。"""
+        menus = _find_menus(main_window)
+        op_menu = _menu_by_title(menus, "操作")
+        texts = [t for t in _action_texts(op_menu) if t]  # 排除分隔符空文本
+        dups = {t for t in texts if texts.count(t) > 1}
+        assert not dups, f"操作菜单出现重复条目: {dups}"
+
+    def test_health_check_in_op_menu(self, main_window):
+        """操作菜单保留数据体检项（回归防护）。"""
+        menus = _find_menus(main_window)
+        op_menu = _menu_by_title(menus, "操作")
+        texts = _action_texts(op_menu)
+        assert any("数据体检" in t for t in texts)
+
     def test_view_menu_still_has_theme_settings(self, main_window):
         """视图菜单仍保留主题设置项（回归防护）。"""
         menus = _find_menus(main_window)

@@ -93,6 +93,9 @@ class ToastNotificationStack(QWidget):
 
     def show_toast(self, message: str, level: str = "info") -> None:
         """弹出一条新 Toast 卡片。"""
+        # 关键：stack 自身必须 show()，否则隐藏父容器中的卡片不渲染
+        # （Qt 子控件不会随可见父窗口的后来创建而自动可见）
+        self.show()
         card = _ToastCard(message, level, self)
         card.closed.connect(self._remove_toast)
         self._cards.append(card)
@@ -105,6 +108,9 @@ class ToastNotificationStack(QWidget):
             card.hide()
             card.deleteLater()
             self._reposition()
+            # 最后一张卡片移除后隐藏容器，避免隐形条挡住右上角点击
+            if not self._cards:
+                self.hide()
 
     def _reposition(self) -> None:
         if not self.parent():

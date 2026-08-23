@@ -467,19 +467,6 @@ class MainWindow(QMainWindow):
         act_report_bundle.triggered.connect(self._open_report_bundle)
         export_menu.addAction(act_report_bundle)
 
-        op_menu.addSeparator()
-
-        act_backup = QAction("数据管理(&B)…", self)
-        act_backup.setIcon(RI_BACKUP.icon())
-        act_backup.setToolTip("数据库备份与恢复")
-        act_backup.triggered.connect(self._backup_handlers._on_data_manage)
-        op_menu.addAction(act_backup)
-
-        act_health = QAction("数据体检(&H)…", self)
-        act_health.setToolTip("扫描附件完整性、孤儿文件与断链引用")
-        act_health.triggered.connect(self._on_data_health_check)
-        op_menu.addAction(act_health)
-
         # 视图菜单 — 唯一精简入口
         view_menu = menubar.addMenu("视图(&V)")
 
