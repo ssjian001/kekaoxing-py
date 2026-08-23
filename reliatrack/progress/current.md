@@ -1,3 +1,27 @@
+# ReliaTrack 进度 — 2026-08-24 (数据安全验收 + 回归修复)
+
+## 当前分支：`explore/data-safety`（HEAD `18ca6ac`，已推 GitHub）
+
+## 验收发现的回归与存量 bug（commit 18ca6ac 修复）
+
+| 问题 | 根因 | 修复 |
+|---|---|---|
+| 操作菜单重复条目 | 10e01f1 patch 插到顶部时未删分隔符后的旧条目 → 数据体检/数据管理各出现两次 | 删除重复块 |
+| 批量导入 Toast 从不弹出 | `batch_import_dialog.py` 调 `parent.show_toast()`，MainWindow 方法名是 `toast()` → hasattr 静默失败 | 方法名对齐 |
+| **Toast 全局从不渲染**（存量，d13dfb3 引入） | `ToastNotificationStack` 创建后从未 `show()`，卡片在隐藏父容器不渲染 → todo_handlers/report_bundle/view_theme_settings 所有 toast 调用点从未真正显示 | `show_toast()` 首行 `self.show()`；空栈 `self.hide()` 防隐形条挡点击 |
+
+## 验证证据
+
+- pytest **750 passed**（748 基线 + 2 新回归测试），0 failures，junitxml 权威计数
+- offscreen 截图 + 视觉模型确认：操作菜单 4 条无重复（刷新⏱/数据体检/数据管理/导出）、Toast 右上角可见（✅+文字正确）
+- 新增回归测试：`test_op_menu_no_duplicate_entries` + `test_health_check_in_op_menu`（tests/test_export_menu.py）
+
+## 测试基线
+
+pytest **750 passed**，全绿。
+
+---
+
 # ReliaTrack 进度 — 2026-08-23 (数据安全与体检)
 
 ## 当前分支：`explore/data-safety`（基于 explore/ui-polish @ a770ace）
