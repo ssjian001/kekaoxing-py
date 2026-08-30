@@ -33,6 +33,7 @@ venv/
 dist/
 build/
 *.spec
+!ReliaTrack.spec
 
 # Coverage
 .coverage

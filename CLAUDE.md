@@ -11,7 +11,7 @@ python3 -m venv .venv  # 首次
 .venv/bin/python3 main.py
 ```
 
-- PyInstaller 打包：`cd reliatrack && pyinstaller main.py --name ReliaTrack`
+- PyInstaller 打包：`cd reliatrack && pyinstaller --noconfirm ReliaTrack.spec`（产物 dist/ReliaTrack/）
 - 测试：`cd reliatrack && python -m pytest tests/ -x -q`
 
 ## 技术栈

@@ -19,7 +19,7 @@
 ## 已知遗留
 
 - Windows 端同步 zip 后重装依赖：可直接 `pip install -r requirements.lock.txt`（reportlab 5.0.1）
-- PyInstaller 打包参数仍内联在 release.yml（无 .spec 文件，本地无法复现打包）——低优先
+- PyInstaller 已抽出 ReliaTrack.spec（2026-08-30，本地打包+offscreen 冒烟验证通过），release.yml 同步改用 spec
 - 真机试用攒感受（用户决策项）
 
 ## 验证证据

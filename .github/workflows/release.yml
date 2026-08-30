@@ -22,11 +22,9 @@ jobs:
           - os: ubuntu-latest
             platform: Linux
             ext: tar.gz
-            pyinstaller_args: ""
           - os: windows-latest
             platform: Windows
             ext: zip
-            pyinstaller_args: "--console"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -58,45 +56,12 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           cd reliatrack
-          python -m pytest tests/ -q --tb=short --ignore=tests/test_boundary.py
+          python -m pytest tests/ -q --tb=short
 
-      - name: Build with PyInstaller (Linux)
-        if: runner.os == 'Linux'
+      - name: Build with PyInstaller
         run: |
           cd reliatrack
-          pyinstaller --noconfirm --onedir \
-            --name ReliaTrack \
-            --windowed \
-            --hidden-import apsw \
-            --hidden-import openpyxl \
-            --hidden-import docx \
-            --hidden-import reportlab \
-            --hidden-import reportlab.lib \
-            --hidden-import reportlab.pdfgen \
-            --hidden-import reportlab.platypus \
-            --hidden-import lxml \
-            --collect-all apsw \
-            --noupx \
-            main.py
-
-      - name: Build with PyInstaller (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd reliatrack
-          pyinstaller --noconfirm --onedir `
-            --name ReliaTrack `
-            --windowed `
-            --hidden-import apsw `
-            --hidden-import openpyxl `
-            --hidden-import docx `
-            --hidden-import reportlab `
-            --hidden-import reportlab.lib `
-            --hidden-import reportlab.pdfgen `
-            --hidden-import reportlab.platypus `
-            --hidden-import lxml `
-            --collect-all apsw `
-            --noupx `
-            main.py
+          pyinstaller --noconfirm ReliaTrack.spec
 
       - name: Create archive (Linux)
         if: runner.os == 'Linux'
