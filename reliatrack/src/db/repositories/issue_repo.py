@@ -15,6 +15,7 @@ from src.models.issue import (
 )
 from src.db.connection import DEFAULT_ATTACHMENTS_DIR
 from src.db.repositories.base import BaseRepository
+from src.db.sql_ident import quote_ident
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +194,7 @@ class IssueRepository(BaseRepository):
     def get_by_project(self, project_id: int) -> list[Issue]:
         """获取项目下未删除且未关联已归档计划的 Issue。"""
         cols_list = self._columns()
-        cols_sql = ", ".join(f"i.[{c}]" for c in cols_list)
+        cols_sql = ", ".join("i." + quote_ident(c) for c in cols_list)
         rows = self._conn.execute(f"""
             SELECT {cols_sql} FROM [issues] i
             LEFT JOIN [test_tasks] tt ON i.task_id = tt.id
@@ -222,7 +223,7 @@ class IssueRepository(BaseRepository):
     def get_by_task(self, task_id: int) -> list[Issue]:
         """获取任务下未删除且未关联已归档计划的 Issue。"""
         cols_list = self._columns()
-        cols_sql = ", ".join(f"i.[{c}]" for c in cols_list)
+        cols_sql = ", ".join("i." + quote_ident(c) for c in cols_list)
         rows = self._conn.execute(f"""
             SELECT {cols_sql} FROM [issues] i
             LEFT JOIN [test_tasks] tt ON i.task_id = tt.id
@@ -236,7 +237,7 @@ class IssueRepository(BaseRepository):
     def get_by_sample(self, sample_id: int) -> list[Issue]:
         """获取样品下未删除且未关联已归档计划的 Issue。"""
         cols_list = self._columns()
-        cols_sql = ", ".join(f"i.[{c}]" for c in cols_list)
+        cols_sql = ", ".join("i." + quote_ident(c) for c in cols_list)
         rows = self._conn.execute(f"""
             SELECT {cols_sql} FROM [issues] i
             LEFT JOIN [test_tasks] tt ON i.task_id = tt.id

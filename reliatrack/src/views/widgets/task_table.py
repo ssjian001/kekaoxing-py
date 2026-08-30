@@ -931,6 +931,9 @@ class _TaskTable(QTableWidget):
 
     def flash_row(self, task_id: int, duration_ms: int = 800) -> None:
         """闪烁指定任务所在行 — 用于撤销后视觉反馈。"""
+        import shiboken6
+        if not shiboken6.isValid(self):
+            return  # 定时器回调时 widget 已被 Qt 删除（视图关闭竞态）
         for row in range(self.rowCount()):
             item = self.item(row, 0)
             if item and item.data(Qt.ItemDataRole.UserRole) == task_id:
@@ -948,6 +951,9 @@ class _TaskTable(QTableWidget):
 
     def _unflash_row(self, row: int) -> None:
         """移除指定行的闪烁背景。"""
+        import shiboken6
+        if not shiboken6.isValid(self):
+            return  # 定时器回调时 widget 已被 Qt 删除（视图关闭竞态）
         from PySide6.QtGui import QBrush, QColor
         # 用透明 brush 清除背景，不能用 QColor()（無效顏色）
         # 否則暗色主題下行底色變黑（Qt 回退到系統 Base 角色）

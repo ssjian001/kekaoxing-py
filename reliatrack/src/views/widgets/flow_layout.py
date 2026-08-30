@@ -4,7 +4,7 @@
 容器寬度變化時自動將子控件換行。
 """
 from PySide6.QtCore import Qt, QRect, QSize, QPoint
-from PySide6.QtWidgets import QLayout, QWidgetItem, QSizePolicy, QStyle
+from PySide6.QtWidgets import QLayout, QWidgetItem, QStyle
 
 
 class FlowLayout(QLayout):

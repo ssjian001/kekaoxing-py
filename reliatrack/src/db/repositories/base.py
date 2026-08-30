@@ -10,6 +10,8 @@ from typing import Any, Optional, Type, TypeVar
 
 import apsw
 
+from src.db.sql_ident import is_safe_ident, quote_ident
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -61,13 +63,25 @@ class BaseRepository:
     # ── 列名查询（避免位置索引）──
 
     def _columns(self) -> list[str]:
-        """获取表的所有列名（带缓存）。"""
+        """获取表的所有列名（带缓存）。
+
+        列名来自 PRAGMA 自省 — 打开外部/损坏 DB 文件时属不可信输入，
+        逐一校验为常规标识符，防止下游 SQL 内插被结构注入。
+        """
         if self._columns_cache is not None:
             return self._columns_cache
-        rows = self._conn.execute(f"PRAGMA table_info([{self._table}])").fetchall()
+        rows = self._conn.execute(
+            f"PRAGMA table_info({quote_ident(self._table)})"
+        ).fetchall()
         if not rows:
             logger.warning("PRAGMA table_info(%s) returned empty — table may not exist", self._table)
-        self._columns_cache = [str(r[1]) for r in rows]
+        cols: list[str] = []
+        for r in rows:
+            c = str(r[1])
+            if not is_safe_ident(c):
+                raise ValueError(f"数据表 {self._table!r} 含非法列名: {c!r}")
+            cols.append(c)
+        self._columns_cache = cols
         return self._columns_cache
 
     def table_exists(self) -> bool:

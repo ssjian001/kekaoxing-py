@@ -16,6 +16,53 @@ import apsw
 from src.db.schema import init_schema
 
 
+@pytest.fixture(autouse=True)
+def _qt_widget_cleanup():
+    """每个测试结束后回收该测试期间新出现的顶层控件。
+
+    前序测试泄漏的 Qt 控件会让 QApplication.setStyleSheet 的重刷成本
+    随套件推进线性累积（表现为后段测试从 0.1s 涨到 14s）。
+    只删除测试开始后新建的顶层控件，模块/会话级 fixture 持有的
+    控件（快照中已存在）不受影响；纯服务层测试直接跳过。
+    """
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    before = set(app.topLevelWidgets()) if app is not None else None
+    yield
+    if before is None:
+        return
+    from PySide6.QtCore import QEvent
+
+    for w in app.topLevelWidgets():
+        if w not in before:
+            w.close()
+            w.deleteLater()
+    app.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _qt_module_widget_cleanup():
+    """每个测试模块结束时回收所有顶层控件。
+
+    module 级 UI fixture（如 MainWindow）没有 teardown，模块结束后其
+    控件树会泄漏到套件其余部分，让 QApplication.setStyleSheet 的重刷
+    成本累积（后段测试从 0.1s 涨到 14s）。模块终态化时其 fixture 已
+    全部终结（本 fixture 的 teardown 最后执行），此时回收是安全的。
+    """
+    yield
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        return
+    for w in app.topLevelWidgets():
+        w.close()
+        w.deleteLater()
+    app.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
 @pytest.fixture()
 def db_conn() -> apsw.Connection:
     """创建一个内存数据库连接，并初始化完整 schema。

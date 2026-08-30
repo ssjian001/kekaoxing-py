@@ -7,8 +7,8 @@ from typing import Any
 import logging
 logger = logging.getLogger("views.bug_tracker.__init__")
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget,
-    QLabel, QSizePolicy, QToolButton, QMenu,
+    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
+    QLabel, QToolButton, QMenu,
 )
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt, Signal
@@ -22,7 +22,6 @@ from src.views.bug_tracker.kanban_view import BugKanbanView
 from src.views.bug_tracker.list_view import BugListView
 from src.views.bug_tracker.quick_create import QuickCreateDialog
 from src.views.bug_tracker.detail_dialog import IssueDetailDialog
-from src.views.bug_tracker.resolve_dialog import ResolveDialog
 from src.views.bug_tracker.shortcuts import (
     register_bug_tracker_shortcuts,
     install_shortcut_focus_guard,

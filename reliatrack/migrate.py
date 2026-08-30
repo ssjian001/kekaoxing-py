@@ -23,6 +23,8 @@ if _PROJECT_ROOT not in sys.path:
 
 import apsw
 
+from src.db.sql_ident import quote_ident
+
 
 def migrate(old_db_path: str, new_db_path: str) -> None:
     """执行数据迁移。"""
@@ -43,7 +45,7 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
     ).fetchall()]
     print(f"   旧表: {old_tables}")
     for t in old_tables:
-        cnt = old.execute(f"SELECT COUNT(*) FROM [{t}]").fetchone()[0]
+        cnt = old.execute(f"SELECT COUNT(*) FROM {quote_ident(t)}").fetchone()[0]
         if cnt > 0:
             print(f"   {t}: {cnt} rows")
 
@@ -224,7 +226,7 @@ def _migrate_core(
     # ── 9. 验证 ──
     print("\n📊 迁移后验证:")
     for table in ["projects", "equipment", "test_plans", "test_tasks", "issues", "settings"]:
-        cnt = new.execute(f"SELECT COUNT(*) FROM [{table}]").fetchone()[0]
+        cnt = new.execute(f"SELECT COUNT(*) FROM {quote_ident(table)}").fetchone()[0]
         print(f"   {table}: {cnt} rows")
 
     new.execute("VACUUM")
