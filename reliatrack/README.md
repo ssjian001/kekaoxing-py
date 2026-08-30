@@ -60,8 +60,10 @@ src/
 │       ├── issue_repo.py
 │       ├── knowledge_repo.py
 │       ├── settings_repo.py
+│       ├── sample_repo.py
+│       ├── project_repo.py
 │       └── todo_repo.py
-├── handlers/        # 信号处理（12个Handler类，含export_handlers）
+├── handlers/        # 信号处理（11个Handler类 + crud_helpers）
 │   ├── project_handlers.py
 │   ├── sample_handlers.py
 │   ├── plan_handlers.py
@@ -69,6 +71,7 @@ src/
 │   ├── equipment_handlers.py
 │   ├── knowledge_handlers.py
 │   ├── export_handlers.py
+│   ├── backup_handlers.py
 │   ├── refresh_handlers.py
 │   ├── technician_handlers.py
 │   └── todo_handlers.py
@@ -83,13 +86,12 @@ src/
 │   ├── todo_service.py       # 待办事项
 │   ├── undo_manager.py       # 撤销操作管理
 │   └── ...
-├── styles/          # QSS 样式（Catppuccin Latte 明亮主题）
+├── styles/          # QSS 样式（Catppuccin Latte 明亮 / Mocha 暗黑，明暗切换）
 └── views/           # Qt 视图
     ├── dashboard_view.py      # SaaS v2: 健康度+环形图+独立进度环卡片, QPainter
     ├── project_view.py
     ├── sample_view.py
     ├── test_plan_view.py      # 任务表 + 甘特图 + 结果矩阵 + 失效分析 + 一键报告
-    ├── issue_view.py          # Issue + FA + CAPA（已合并至 bug_tracker, 保留兼容）
     ├── equipment_view.py      # 设备 + 技术员子Tab
     ├── knowledge_view.py
     ├── todo_view.py             # 待办看板（3列拖拽+快速添加+双击编辑）

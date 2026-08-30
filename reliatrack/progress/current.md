@@ -1,3 +1,33 @@
+# ReliaTrack 进度 — 2026-08-30 (收尾加固：CI/测试/清理/工程化)
+
+## 本次完成（4 个 commit，main 分支）
+
+| commit | 内容 |
+|---|---|
+| `9d88d3e` | ci: test_boundary 纳入主测试流程，移除 `--ignore` 与 `\|\| true`（旧 CI-only 问题已失效，Python 3.11.15 合跑全绿） |
+| `c7771b4` | test: 补低覆盖模块测试 — 全局覆盖率 56%→73%，CI 门槛 50%→70%。新文件 test_dialog_coverage_2 / test_handlers_coverage / test_widgets_coverage |
+| `518b433` | refactor: 修复综合报告 PDF 技术员列缺陷（ExportService 门面补 technician_names 透传）+ 清理合并迁移残留（main.py issue_view 别名、diag_category.py、旧 seed 脚本、审计报告 html） |
+| `0e5e1a0` | chore: pyproject 补 [project] 元数据 + requirements.lock.txt 依赖锁定 |
+
+## 覆盖率明细
+
+- task_dialog 7%→94%、test_result_dialog 10%→99%、schedule_preview_dialog 11%→96%、attachment_dialog 14%→90%
+- plan_handlers 11%→74%、sample_handlers 18%→78%、export_handlers 27%→88%
+- analysis_widget 18%→96%、result_matrix 29%→100%
+- 全局 TOTAL 73%（21208 stmts）
+
+## 已知遗留
+
+- Windows 端同步 zip 后重装依赖：可直接 `pip install -r requirements.lock.txt`（reportlab 5.0.1）
+- PyInstaller 打包参数仍内联在 release.yml（无 .spec 文件，本地无法复现打包）——低优先
+- 真机试用攒感受（用户决策项）
+
+## 验证证据
+
+- pytest 全套件（含 test_boundary）合跑 100% dots 全绿；py_compile 通过
+
+---
+
 # ReliaTrack 进度 — 2026-08-24 (数据安全验收 + 回归修复)
 
 ## 当前分支：`explore/data-safety`（HEAD `18ca6ac`，已推 GitHub）

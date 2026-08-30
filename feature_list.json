@@ -1,209 +1,249 @@
 [
-  {
-    "_meta": true,
-    "version": "2.0.0",
-    "schema_version": 24,
-    "updated": "2026-06-29",
-    "description": "ReliaTrack 功能清单 — 用于跟踪功能完成状态和依赖关系",
-    "note": "_meta 条目不表示功能，仅包含元数据"
-  },
-  {
-    "id": "F001",
-    "name": "项目管理",
-    "description": "项目的CRUD和状态管理",
-    "status": "done",
-    "dependencies": [],
-    "priority": "high"
-  },
-  {
-    "id": "F002",
-    "name": "样品管理",
-    "description": "测试样品的录入、关联和追踪",
-    "status": "done",
-    "dependencies": [
-      "F001"
-    ],
-    "priority": "high"
-  },
-  {
-    "id": "F003",
-    "name": "设备管理",
-    "description": "测试设备的台账和校准管理",
-    "status": "done",
-    "dependencies": [],
-    "priority": "medium"
-  },
-  {
-    "id": "F004",
-    "name": "测试计划",
-    "description": "测试计划的创建、配置和分配",
-    "status": "done",
-    "dependencies": [
-      "F001",
-      "F002"
-    ],
-    "priority": "high"
-  },
-  {
-    "id": "F005",
-    "name": "测试任务",
-    "description": "测试任务的生成、调度和状态流转",
-    "status": "done",
-    "dependencies": [
-      "F004"
-    ],
-    "priority": "high"
-  },
-  {
-    "id": "F006",
-    "name": "测试结果",
-    "description": "测试结果的录入、判定和汇总",
-    "status": "done",
-    "dependencies": [
-      "F005"
-    ],
-    "priority": "high"
-  },
-  {
-    "id": "F007",
-    "name": "问题跟踪",
-    "description": "不合格项和问题的记录与追踪",
-    "status": "done",
-    "dependencies": [
-      "F006"
-    ],
-    "priority": "high"
-  },
-  {
-    "id": "F008",
-    "name": "知识库",
-    "description": "经验教训和知识条目的管理",
-    "status": "done",
-    "dependencies": [],
-    "priority": "medium"
-  },
-  {
-    "id": "F009",
-    "name": "技术人员",
-    "description": "测试人员的资质和技能管理",
-    "status": "done",
-    "dependencies": [],
-    "priority": "medium"
-  },
-  {
-    "id": "F010",
-    "name": "仪表盘",
-    "description": "数据统计和可视化看板",
-    "status": "done",
-    "dependencies": [
-      "F001",
-      "F005",
-      "F006"
-    ],
-    "priority": "medium"
-  },
-  {
-    "id": "F011",
-    "name": "甘特图",
-    "description": "测试计划的甘特图可视化",
-    "status": "done",
-    "dependencies": [
-      "F004"
-    ],
-    "priority": "medium"
-  },
-  {
-    "id": "F012",
-    "name": "导出功能",
-    "description": "PDF/Word/Excel报告导出",
-    "status": "done",
-    "dependencies": [
-      "F006"
-    ],
-    "priority": "high"
-  },
-  {
-    "id": "F013",
-    "name": "批量导入",
-    "description": "Excel批量导入数据",
-    "status": "done",
-    "dependencies": [
-      "F001",
-      "F002"
-    ],
-    "priority": "medium"
-  },
-  {
-    "id": "F014",
-    "name": "调度器",
-    "description": "自动任务调度和提醒",
-    "status": "done",
-    "dependencies": [
-      "F005"
-    ],
-    "priority": "medium"
-  },
-  {
-    "id": "F015",
-    "name": "撤销管理",
-    "description": "操作撤销/重做支持",
-    "status": "done",
-    "dependencies": [],
-    "priority": "low"
-  },
-  {
-    "id": "F016",
-    "name": "列宽持久化",
-    "description": "表格列宽的保存和恢复",
-    "status": "done",
-    "dependencies": [],
-    "priority": "low"
-  },
-  {
-    "id": "F017",
-    "name": "Toast通知",
-    "description": "操作反馈的Toast通知组件",
-    "status": "done",
-    "dependencies": [],
-    "priority": "low"
-  },
-  {
-    "id": "F018",
-    "name": "暗色主题",
-    "description": "Catppuccin Mocha 暗色主题，支持菜单切换+QSettings持久化。仪表盘/Gantt图表语义色保持亮色不变；PDF导出保持白底。",
-    "status": "done",
-    "dependencies": [],
-    "priority": "low",
-    "design_decisions": [
-      "图表语义色(CHART_COLORS/DASH_PRIMARY等)保持亮色，不跟随主题",
-      "PDF导出保持白底，不跟随主题",
-      "持久化用数据库settings表，由MainWindow层写，theme.py纯查询"
-    ],
-    "subtasks": [
-      "P1: theme.py双色板+signal+cache修复",
-      "P2: DB持久化+MainWindow菜单Toggle",
-      "P3: 内联样式清理+硬编码修正+rgba alpha",
-      "P4: 11个表格+Dashboard卡片theme_changed刷新",
-      "P5: Dashboard背景色QPainter适配+阴影修正",
-      "P6: Gantt背景色QPainter适配",
-      "P7: 全量走查+边界调试"
-    ],
-    "known_gaps": [
-      "Dashboard QPainter(仅改背景色~8处，语义色不变)",
-      "Gantt QPainter(仅改背景色~12处，语义色不变)",
-      "11个表格TABLE_QSS.format()需订阅signal刷新",
-      "add_shadow暗色下阴影不可见需修正",
-      "4处rgba alpha暗色下需增大"
-    ]
-  },
-  {
-    "id": "F019",
-    "name": "Issue 管理（合并重构）",
-    "description": "Issue 追踪 + Bug 管理合并为统一 Tab 6「Issue 管理」：看板/列表 Tab 切换 + 列表下方 FA/CAPA 面板 + 横筛选项部 + 导航 Tab 与项目/计划筛选合并同一行 + 按钮风格统一 + 指派人→DRI 统一",
-    "status": "done",
-    "dependencies": [
-      "F007"
-    ],
-    "priority": "high"
-  }
+ {
+  "_meta": true,
+  "version": "2.0.0",
+  "schema_version": 28,
+  "updated": "2026-08-30",
+  "description": "ReliaTrack 功能清单 — 用于跟踪功能完成状态和依赖关系",
+  "note": "_meta 条目不表示功能，仅包含元数据"
+ },
+ {
+  "id": "F001",
+  "name": "项目管理",
+  "description": "项目的CRUD和状态管理",
+  "status": "done",
+  "dependencies": [],
+  "priority": "high"
+ },
+ {
+  "id": "F002",
+  "name": "样品管理",
+  "description": "测试样品的录入、关联和追踪",
+  "status": "done",
+  "dependencies": [
+   "F001"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F003",
+  "name": "设备管理",
+  "description": "测试设备的台账和校准管理",
+  "status": "done",
+  "dependencies": [],
+  "priority": "medium"
+ },
+ {
+  "id": "F004",
+  "name": "测试计划",
+  "description": "测试计划的创建、配置和分配",
+  "status": "done",
+  "dependencies": [
+   "F001",
+   "F002"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F005",
+  "name": "测试任务",
+  "description": "测试任务的生成、调度和状态流转",
+  "status": "done",
+  "dependencies": [
+   "F004"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F006",
+  "name": "测试结果",
+  "description": "测试结果的录入、判定和汇总",
+  "status": "done",
+  "dependencies": [
+   "F005"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F007",
+  "name": "问题跟踪",
+  "description": "不合格项和问题的记录与追踪",
+  "status": "done",
+  "dependencies": [
+   "F006"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F008",
+  "name": "知识库",
+  "description": "经验教训和知识条目的管理",
+  "status": "done",
+  "dependencies": [],
+  "priority": "medium"
+ },
+ {
+  "id": "F009",
+  "name": "技术人员",
+  "description": "测试人员的资质和技能管理",
+  "status": "done",
+  "dependencies": [],
+  "priority": "medium"
+ },
+ {
+  "id": "F010",
+  "name": "仪表盘",
+  "description": "数据统计和可视化看板",
+  "status": "done",
+  "dependencies": [
+   "F001",
+   "F005",
+   "F006"
+  ],
+  "priority": "medium"
+ },
+ {
+  "id": "F011",
+  "name": "甘特图",
+  "description": "测试计划的甘特图可视化",
+  "status": "done",
+  "dependencies": [
+   "F004"
+  ],
+  "priority": "medium"
+ },
+ {
+  "id": "F012",
+  "name": "导出功能",
+  "description": "PDF/Word/Excel报告导出",
+  "status": "done",
+  "dependencies": [
+   "F006"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F013",
+  "name": "批量导入",
+  "description": "Excel批量导入数据",
+  "status": "done",
+  "dependencies": [
+   "F001",
+   "F002"
+  ],
+  "priority": "medium"
+ },
+ {
+  "id": "F014",
+  "name": "调度器",
+  "description": "自动任务调度和提醒",
+  "status": "done",
+  "dependencies": [
+   "F005"
+  ],
+  "priority": "medium"
+ },
+ {
+  "id": "F015",
+  "name": "撤销管理",
+  "description": "操作撤销/重做支持",
+  "status": "done",
+  "dependencies": [],
+  "priority": "low"
+ },
+ {
+  "id": "F016",
+  "name": "列宽持久化",
+  "description": "表格列宽的保存和恢复",
+  "status": "done",
+  "dependencies": [],
+  "priority": "low"
+ },
+ {
+  "id": "F017",
+  "name": "Toast通知",
+  "description": "操作反馈的Toast通知组件",
+  "status": "done",
+  "dependencies": [],
+  "priority": "low"
+ },
+ {
+  "id": "F018",
+  "name": "暗色主题",
+  "description": "Catppuccin Mocha 暗色主题，支持菜单切换+QSettings持久化。仪表盘/Gantt图表语义色保持亮色不变；PDF导出保持白底。",
+  "status": "done",
+  "dependencies": [],
+  "priority": "low",
+  "design_decisions": [
+   "图表语义色(CHART_COLORS/DASH_PRIMARY等)保持亮色，不跟随主题",
+   "PDF导出保持白底，不跟随主题",
+   "持久化用数据库settings表，由MainWindow层写，theme.py纯查询"
+  ],
+  "subtasks": [
+   "P1: theme.py双色板+signal+cache修复",
+   "P2: DB持久化+MainWindow菜单Toggle",
+   "P3: 内联样式清理+硬编码修正+rgba alpha",
+   "P4: 11个表格+Dashboard卡片theme_changed刷新",
+   "P5: Dashboard背景色QPainter适配+阴影修正",
+   "P6: Gantt背景色QPainter适配",
+   "P7: 全量走查+边界调试"
+  ],
+  "known_gaps": [
+   "Dashboard QPainter(仅改背景色~8处，语义色不变)",
+   "Gantt QPainter(仅改背景色~12处，语义色不变)",
+   "11个表格TABLE_QSS.format()需订阅signal刷新",
+   "add_shadow暗色下阴影不可见需修正",
+   "4处rgba alpha暗色下需增大"
+  ]
+ },
+ {
+  "id": "F019",
+  "name": "Issue 管理（合并重构）",
+  "description": "Issue 追踪 + Bug 管理合并为统一 Tab 6「Issue 管理」：看板/列表 Tab 切换 + 列表下方 FA/CAPA 面板 + 横筛选项部 + 导航 Tab 与项目/计划筛选合并同一行 + 按钮风格统一 + 指派人→DRI 统一",
+  "status": "done",
+  "dependencies": [
+   "F007"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F020",
+  "name": "待办提醒与四象限视图",
+  "description": "todos 表加提醒字段（v26）+ 四象限视图（quadrant_view/cell/card，theme quadrant QSS），待办提醒集成",
+  "status": "done",
+  "dependencies": [
+   "F018"
+  ],
+  "priority": "medium"
+ },
+ {
+  "id": "F021",
+  "name": "待办归档",
+  "description": "todos 加 archived 字段（v27），待办可归档/取消归档，归档后从主视图隐藏",
+  "status": "done",
+  "dependencies": [
+   "F020"
+  ],
+  "priority": "medium"
+ },
+ {
+  "id": "F022",
+  "name": "数据安全与体检",
+  "description": "启动自检（PRAGMA quick_check/foreign_key_check）+ 损坏恢复引导弹窗 + 数据体检（孤儿附件扫描清理）+ 备份轮换修复 + 批量导入进度反馈",
+  "status": "done",
+  "dependencies": [
+   "F019"
+  ],
+  "priority": "high"
+ },
+ {
+  "id": "F023",
+  "name": "主题明暗切换",
+  "description": "Catppuccin Latte 明亮 / Mocha 暗黑完整支持，theme.py 色板切换 + apply_palette 同步 QPalette",
+  "status": "done",
+  "dependencies": [
+   "F019"
+  ],
+  "priority": "medium"
+ }
 ]
