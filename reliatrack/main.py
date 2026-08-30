@@ -51,7 +51,6 @@ from src.services.health_service import DbCorruptError
 from src.views.dashboard_view import DashboardView
 from src.views.sample_view import SampleView
 from src.views.test_plan_view import TestPlanView
-# IssueView 不再单独实例化（已合并到 BugTrackerView），import 保留供 test/ref 使用
 from src.views.bug_tracker import BugTrackerView
 from src.views.equipment_view import EquipmentView
 from src.views.technician_view import TechnicianView
@@ -749,11 +748,6 @@ class MainWindow(QMainWindow):
     @property
     def bug_tracker_view(self):
         """Bug Tracker 视图（合并了 Issue 追踪功能）。"""
-        return self._bug_tracker_view
-
-    @property
-    def issue_view(self):
-        """兼容别名 — 返回 bug_tracker_view（Issue 追踪已合并）。"""
         return self._bug_tracker_view
 
     @property

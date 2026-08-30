@@ -11,3 +11,6 @@ build/
 .vscode/
 .hermes/
 reliatrack/exports/
+
+# Mimosa tool cache (local only)
+.mimosa/

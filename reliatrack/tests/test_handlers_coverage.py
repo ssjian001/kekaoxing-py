@@ -1157,18 +1157,14 @@ class TestExportDispatchMethods:
 
     def test_export_tasks_all_formats(self, export_handlers, ctrl, base_data, svc,
                                       tmp_path):
-        """测试任务导出：Excel / Word 产物非空；PDF 分支受 src 已知缺陷限制
-        （export_handlers 传 technician_names，但 ExportService 门面未支持该参数）。"""
+        """测试任务导出：Excel / Word / PDF 产物非空（PDF 含技术员真名列）。"""
         plan_id = base_data['plan_a']
-        for fmt, suffix in [('Excel (.xlsx)', '.xlsx'), ('Word (.docx)', '.docx')]:
+        for fmt, suffix in [('Excel (.xlsx)', '.xlsx'), ('Word (.docx)', '.docx'),
+                            ('PDF (.pdf)', '.pdf')]:
             path = export_handlers._export_tasks(ctrl, svc, fmt, None, plan_id)
             self._assert_file(path)
             assert path.endswith(suffix)
             os.unlink(path)
-        with pytest.raises(TypeError):
-            # src/handlers/export_handlers.py PDF 分支传入 technician_names，
-            # 而 src/services/export 门面 export_report_pdf 尚无该形参（生产同路径必炸）
-            export_handlers._export_tasks(ctrl, svc, 'PDF (.pdf)', None, plan_id)
 
     def test_export_tasks_without_plan_raises(self, export_handlers, ctrl, svc):
         """plan_id=None → ValueError。"""

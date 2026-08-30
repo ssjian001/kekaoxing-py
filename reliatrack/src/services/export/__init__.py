@@ -70,8 +70,10 @@ class ExportService:
     def export_samples_excel(self, samples, filepath=None):
         return export_samples_excel(self._output_dir, samples, filepath)
 
-    def export_report_pdf(self, plan, tasks, issues, samples, filepath=None, results=None):
-        return export_report_pdf(self._output_dir, plan, tasks, issues, samples, filepath, results)
+    def export_report_pdf(self, plan, tasks, issues, samples, filepath=None, results=None,
+                          technician_names=None):
+        return export_report_pdf(self._output_dir, plan, tasks, issues, samples, filepath,
+                                 results, technician_names)
 
     def export_dvpr_pdf(self, plan, tasks, results, issues, samples, filepath=None):
         return export_dvpr_pdf(self._output_dir, plan, tasks, results, issues, samples, filepath)
