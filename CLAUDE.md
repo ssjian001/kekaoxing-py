@@ -110,7 +110,7 @@ bd dolt push          # 同步
 ## CI/CD
 
 - GitHub Actions：ci.yml (3.11/3.12 matrix) + release.yml (PyInstaller, tag v* 触发)
-- 已知 CI-only bug：test_boundary.py 在 CI 上 init_schema 返回空表，本地无法复现，CI 中 `--ignore` 跳过
+- 全部测试（含 test_boundary.py）在 CI 主流程中统一运行（2026-08-30 验证合跑全绿，旧 CI-only 问题已失效）
 
 ## 已知 Qt 坑
 

@@ -71,12 +71,9 @@ jobs:
           . .venv/bin/activate
           cd reliatrack
           QT_QPA_PLATFORM=offscreen python -m pytest tests/ -v --tb=long \
-            --ignore=tests/test_boundary.py \
             --cov=src --cov-report=term-missing --cov-report=xml \
             --cov-fail-under=50 \
             2>&1 | tee pytest-output.txt
-          # test_boundary 单独跑，允许失败（已知 CI-only 问题）
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_boundary.py -v --tb=long || true
 
       - name: Upload pytest output on failure
         if: failure()
