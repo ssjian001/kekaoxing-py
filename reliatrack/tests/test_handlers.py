@@ -777,3 +777,47 @@ class TestBatchActionBarWiring:
 
         t1 = batch_win.ctrl.test_plan_service.get_task(1)
         assert t1 is not None and t1.technician_id == 7
+
+
+class TestArchivedPlansByProject:
+    """get_archived_plans_by_project 回归测试（2026-09-03 修复：main.py:832 AttributeError）。"""
+
+    @pytest.fixture()
+    def plan_svc_arch(self, db_conn: apsw.Connection):
+        from src.db.repositories.test_task_repo import TestTaskRepository
+        from src.db.repositories.test_plan_repo import TestPlanRepository
+        from src.db.repositories.test_result_repo import TestResultRepository
+        from src.services.test_plan_service import TestPlanService
+        return TestPlanService(
+            TestPlanRepository(db_conn),
+            TestTaskRepository(db_conn),
+            TestResultRepository(db_conn),
+        )
+
+    @pytest.fixture()
+    def arch_project(self, db_conn: apsw.Connection) -> int:
+        db_conn.execute(
+            "INSERT INTO projects (id, name, product, customer, description, status)"
+            " VALUES (1, '归档测试项目', 'X', 'Y', '', 'active')"
+        )
+        return 1
+
+    def test_archived_plans_returns_only_archived(
+        self, plan_svc_arch, arch_project: int
+    ) -> None:
+        """归档视图：只返回 status='archived' 的计划，active 计划排除。"""
+        pid = arch_project
+        p1 = plan_svc_arch.create_plan(pid, "活跃计划")
+        p2 = plan_svc_arch.create_plan(pid, "已归档计划")
+        plan_svc_arch.update_plan(p2, status="archived")
+
+        active = plan_svc_arch.get_active_plans_by_project(pid)
+        archived = plan_svc_arch.get_archived_plans_by_project(pid)
+
+        assert [p.name for p in active] == ["活跃计划"]
+        assert [p.name for p in archived] == ["已归档计划"]
+
+    def test_archived_plans_empty_when_none(self, plan_svc_arch, arch_project: int) -> None:
+        """无归档计划时返回空列表（不崩溃）。"""
+        plan_svc_arch.create_plan(arch_project, "只有活跃")
+        assert plan_svc_arch.get_archived_plans_by_project(arch_project) == []
