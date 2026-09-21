@@ -56,7 +56,7 @@ class DashboardData:
     __slots__ = (
         # 测试状态
         "task_total", "task_completed", "task_in_progress", "task_pending",
-        "task_skipped", "task_paused",
+        "task_skipped", "task_paused", "task_done",
         "pass_rate", "failure_rate", "task_status_data",
         # 质量与问题
         "issue_count", "issue_closed_count",
@@ -210,14 +210,16 @@ class DashboardView(QWidget):
         tr1.addWidget(self._ctx_label_left)
         left.addLayout(tr1)
 
-        # KPI 4 卡（已完成 / 进行中 / 待开始 / Fail）
+        # KPI 卡（已完成=做完的测试[completed+failed] / Pass / 进行中 / 待开始 / Fail）
         ga = QHBoxLayout()
         ga.setSpacing(10)
-        self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3, jump_data={"task_status": "completed"})
+        self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3, jump_data={"task_status": None})
+        self._card_pass   = _StatCard("Pass", "0", DASH_PRIMARY, 3, jump_data={"task_status": None})
         self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3, jump_data={"task_status": "in_progress"})
         self._card_wait   = _StatCard("待开始", "0", _theme.SUBTEXT0, 3, jump_data={"task_status": "pending"})
-        self._card_fail   = _StatCard("Fail", "0", DASH_DANGER, 3, jump_data={"task_status": "fail"})
+        self._card_fail   = _StatCard("Fail", "0", DASH_DANGER, 3, jump_data={"task_status": "failed"})
         ga.addWidget(self._card_done)
+        ga.addWidget(self._card_pass)
         ga.addWidget(self._card_active)
         ga.addWidget(self._card_wait)
         ga.addWidget(self._card_fail)
@@ -336,7 +338,8 @@ class DashboardView(QWidget):
         )
 
         # 左栏 KPI
-        self._card_done.set_value(str(data.task_completed))
+        self._card_done.set_value(str(data.task_done or 0))
+        self._card_pass.set_value(str(data.pass_count or 0))
         self._card_active.set_value(str(data.task_in_progress))
         self._card_wait.set_value(str(data.task_pending))
         self._card_fail.set_value(str(data.failed_task_count or 0))

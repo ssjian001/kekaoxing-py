@@ -191,6 +191,8 @@ class RefreshHandlers:
         failed_task_count = task_status_data.get("failed", 0) + task_status_data.get("fail", 0)
         skipped_count = task_status_data.get("skipped", 0)
         paused_count = task_status_data.get("paused", 0)
+        # 已完成(做完的测试) = completed + failed（fail 也是做完的，只是结果不通过）
+        task_done = completed + failed_task_count
 
         # ── 任务列表（SQL 过滤） ──
         if filter_plan_id:
@@ -297,6 +299,7 @@ class RefreshHandlers:
         return DashboardData(
             task_total=total,
             task_completed=completed,
+            task_done=task_done,
             task_in_progress=in_progress,
             task_pending=pending_count,
             task_skipped=skipped_count,
