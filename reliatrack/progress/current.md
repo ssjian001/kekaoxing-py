@@ -41,3 +41,9 @@
   ~/.ssh/hermes_deploy.pub 加为账号级 SSH key
 - [ ] Windows 端同步此修复（git pull 或手补三文件）
 - [ ] 用户真机验证：勾选"显示归档计划"开关不再崩溃、归档计划正确过滤显示
+
+## 2026-09-19 仪表盘"已完成"语义修正 + Pass 卡片
+- 问题：仪表盘"已完成"= status=completed，不含 failed 任务；用户要求"已完成"= 做完的测试（Pass+Fail 都算做完）
+- 改动：refresh_handlers.py 新增 task_done=completed+failed 填入 DashboardData；dashboard_view.py 加 task_done 槽、左栏 KPI 4卡→5卡（已完成/Pass/进行中/待开始/Fail），Pass 卡=pass_count（结果维度）；Fail 卡 jump "fail"→"failed"（原值在 filter combo 不存在，跳转静默失效，顺手修复）
+- 验证：py_compile 通过；pytest 938 passed
+- 待人工：UI 实际点一次卡片跳转确认
