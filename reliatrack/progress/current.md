@@ -57,3 +57,9 @@
 - P2⑦fa_capa_panels 25+13+14 处繁体→简体（用户可见文案+docstring）
 - 验证: pytest 938 passed；已推送 371afce
 - 待人工: UI 双主题各看一眼 severity bar 与样品状态色
+
+## 2026-09-23 优化批次：KPI 自检 + 搜索防抖
+- ④ KPI 自检：src/services/kpi_audit.py — 8 项 DashboardData 一致性断言（状态求和=total、task_done=completed+failed、done/failed≤total、pass/fail非负、closed≤total Issue、weekly≤closed、pass_rate∈[0,100]、None安全），违规 logger.warning + 首次toast(每会话限1次防刷屏)
+- ② 任务表搜索防抖：test_plan_view textChanged→QTimer单触发300ms，程序化恢复不延迟
+- 测试：tests/test_kpi_audit.py 9条；全量 947 passed；推送 3add1a5
+- 待人工：UI 实测搜索输入手感（300ms 是否合适）+ 人为弄脏数据看 toast 是否触发
