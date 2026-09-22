@@ -46,7 +46,7 @@ class FAPanel(QScrollArea):
         self.setProperty("class", "issue-scroll")
 
     def refresh_theme(self) -> None:
-        """主題切換回調 — 用當前數據重建卡片以刷新內聯顏色。"""
+        """主题切换回调 — 用当前数据重建卡片以刷新内联颜色。"""
         self.set_fa_records(self._records)
 
     def set_fa_records(self, records: list[FARecord]) -> None:
@@ -123,7 +123,7 @@ class FAPanel(QScrollArea):
                 cause.setProperty("class", "cause-text")
                 card_layout.addWidget(cause)
 
-            # 原因分類 + 確認狀態
+            # 原因分類 + 確認状态
             meta_parts = []
             if rec.cause_category:
                 meta_parts.append(f"分類: {rec.cause_category}")
@@ -131,10 +131,10 @@ class FAPanel(QScrollArea):
             confirmed_colors = {0: _t.SUBTEXT0, 1: _t.GREEN, 2: _t.RED}
             confirmed_label = confirmed_labels.get(rec.confirmed, "待定")
             confirmed_color = confirmed_colors.get(rec.confirmed, _t.SUBTEXT0)
-            meta_parts.append(f"狀態: {confirmed_label}")
+            meta_parts.append(f"状态: {confirmed_label}")
             meta_text = "  |  ".join(meta_parts)
             meta = QLabel(meta_text)
-            # 動態顏色（confirmed_color 取決於運行時狀態），保留內聯
+            # 动态颜色（confirmed_color 取決於運行時状态），保留內聯
             meta.setStyleSheet(f"color: {confirmed_color};")
             card_layout.addWidget(meta)
 
@@ -146,9 +146,9 @@ class FAPanel(QScrollArea):
 # ═══════════════════════════════════════════════════════════════
 
 class CAPAPanel(QScrollArea):
-    """CAPA 糾正預防措施面板。
+    """CAPA 纠正预防措施面板。
 
-    與舊版差異：不再透過 parent_issue_view() 向上查找，
+    与旧版差异：不再透过 parent_issue_view() 向上查找，
     改為發射信號 capa_edit_requested / capa_delete_requested。
     """
 
@@ -157,12 +157,12 @@ class CAPAPanel(QScrollArea):
 
     @classmethod
     def _status_labels(cls) -> dict[str, tuple[str, str]]:
-        """動態讀取主題色，主題切換後自動生效。"""
+        """动态读取主题色，主题切换后自动生效。"""
         return {
-            "pending": ("待執行", _t.SUBTEXT0),
-            "in_progress": ("進行中", _t.YELLOW),
+            "pending": ("待执行", _t.SUBTEXT0),
+            "in_progress": ("进行中", _t.YELLOW),
             "completed": ("已完成", _t.GREEN),
-            "verified": ("已驗證", _t.BLUE),
+            "verified": ("已验证", _t.BLUE),
         }
 
     def __init__(self, parent: QWidget | None = None):
@@ -180,7 +180,7 @@ class CAPAPanel(QScrollArea):
         self._layout.addWidget(label)
 
     def refresh_theme(self) -> None:
-        """主題切換回調 — 用當前數據重建卡片以刷新內聯顏色。"""
+        """主题切换回调 — 用当前数据重建卡片以刷新内联颜色。"""
         self.set_capa_records(self._records)
 
     def set_capa_records(self, records: list) -> None:
@@ -206,13 +206,13 @@ class CAPAPanel(QScrollArea):
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(10, 8, 10, 8)
 
-            # 狀態行
+            # 状态行
             status_label_text, status_color = self._status_labels().get(
                 rec.status, ("未知", _t.SUBTEXT0)
             )
             header = QHBoxLayout()
             status_lbl = QLabel(status_label_text)
-            # 動態顏色（status_color 取決於運行時狀態），保留內聯
+            # 动态颜色（status_color 取決於運行時状态），保留內聯
             status_lbl.setStyleSheet(f"color: {status_color}; font-weight: bold;")
             header.addWidget(status_lbl)
             if rec.due_date:
@@ -242,10 +242,10 @@ class CAPAPanel(QScrollArea):
             action_lbl.setProperty("class", "body-text")
             card_layout.addWidget(action_lbl)
 
-            # 負責人
+            # 负责人
             assignee_name = getattr(rec, 'assignee_name', '') or ''
             if assignee_name:
-                assignee_lbl = QLabel(f"負責人: {assignee_name}")
+                assignee_lbl = QLabel(f"负责人: {assignee_name}")
                 assignee_lbl.setProperty("class", "hint-label")
                 card_layout.addWidget(assignee_lbl)
 
@@ -260,14 +260,14 @@ class CAPAPanel(QScrollArea):
                 rc_lbl.setProperty("class", "hint-italic")
             card_layout.addWidget(rc_lbl)
 
-            # PDCA 欄位：效果驗證
+            # PDCA 欄位：效果验证
             effectiveness = getattr(rec, 'effectiveness', '') or ''
             if effectiveness:
-                eff_lbl = QLabel(f"效果驗證: {effectiveness}")
+                eff_lbl = QLabel(f"效果验证: {effectiveness}")
                 eff_lbl.setWordWrap(True)
                 eff_lbl.setProperty("class", "success-text")
             else:
-                eff_lbl = QLabel("效果驗證: 待填寫")
+                eff_lbl = QLabel("效果验证: 待填寫")
                 eff_lbl.setProperty("class", "hint-italic")
             card_layout.addWidget(eff_lbl)
 
@@ -282,9 +282,9 @@ class CAPAPanel(QScrollArea):
                 fu_lbl.setProperty("class", "hint-italic")
             card_layout.addWidget(fu_lbl)
 
-            # 驗證結果
+            # 验证結果
             if rec.verification_result:
-                v_lbl = QLabel(f"驗證: {rec.verification_result}")
+                v_lbl = QLabel(f"验证: {rec.verification_result}")
                 v_lbl.setWordWrap(True)
                 v_lbl.setProperty("class", "success-text")
                 card_layout.addWidget(v_lbl)
@@ -300,10 +300,10 @@ class CAPADialog(_BaseDialog):
     """新建/編輯 CAPA 記錄彈窗。"""
 
     _STATUS_OPTIONS = [
-        ("待執行", "pending"),
-        ("進行中", "in_progress"),
+        ("待执行", "pending"),
+        ("进行中", "in_progress"),
         ("已完成", "completed"),
-        ("已驗證", "verified"),
+        ("已验证", "verified"),
     ]
 
     def __init__(self, technician_list: list | None = None,
@@ -343,20 +343,20 @@ class CAPADialog(_BaseDialog):
             if d.isValid():
                 self._due_date_edit.setDate(d)
 
-        # 負責人（自由輸入）
+        # 负责人（自由輸入）
         self._assignee_edit = self._add_text_field(
-            "負責人",
+            "负责人",
             default=(capa_record.assignee_name or "") if is_edit else (
                 getattr(issue, "dri_name", "") or "" if issue else ""
             ),
-            placeholder="輸入負責人姓名",
+            placeholder="輸入负责人姓名",
         )
 
-        # 驗證人（自由輸入，一直顯示）
+        # 验证人（自由輸入，一直顯示）
         self._verifier_edit = self._add_text_field(
-            "驗證人",
+            "验证人",
             default=(capa_record.verifier_name or "") if is_edit and hasattr(capa_record, "verifier_name") else "",
-            placeholder="輸入驗證人姓名",
+            placeholder="輸入验证人姓名",
         )
 
         status_labels = [label for label, _ in self._STATUS_OPTIONS]
@@ -368,7 +368,7 @@ class CAPADialog(_BaseDialog):
                     default_status = lbl
                     break
         self._status_combo = self._add_combo_field(
-            "狀態",
+            "状态",
             items=status_labels,
             default=default_status,
         )
@@ -384,14 +384,14 @@ class CAPADialog(_BaseDialog):
             placeholder="Plan: 分析問題根因",
         )
         self._effectiveness_edit = self._add_text_area(
-            "效果驗證",
+            "效果验证",
             default=(capa_record.effectiveness or "") if is_edit else "",
             placeholder="Check: 措施效果如何",
         )
         self._follow_up_edit = self._add_text_area(
             "改善追蹤",
             default=(capa_record.follow_up or "") if is_edit else "",
-            placeholder="Act: 後續改善計劃",
+            placeholder="Act: 后续改善计划",
         )
 
     def get_data(self) -> dict:
@@ -418,10 +418,10 @@ class CAPADialog(_BaseDialog):
 
     def accept(self) -> None:
         if not self._action_edit.toPlainText().strip():
-            QMessageBox.warning(self, "校驗失敗", "措施描述為必填項。")
+            QMessageBox.warning(self, "校验失败", "措施描述为必填项。")
             self._action_edit.setFocus()
             return
-        # 職責分離檢查：驗證人不能是負責人
+        # 職責分離檢查：验证人不能是负责人
         status_map = {label: val for label, val in self._STATUS_OPTIONS}
         status = status_map.get(self._status_combo.currentText(), "pending")
         if status == "verified":
@@ -429,18 +429,18 @@ class CAPADialog(_BaseDialog):
             verifier_name = self._verifier_edit.text().strip()
             if verifier_name and assignee_name and verifier_name == assignee_name:
                 QMessageBox.warning(
-                    self, "職責分離衝突",
-                    f"按品質管理要求，驗證人不應與負責人為同一人。\n\n"
-                    f"當前負責人：{assignee_name}\n"
-                    f"當前驗證人：{verifier_name}\n\n"
-                    f"請修改後再保存。",
+                    self, "职责分离冲突",
+                    f"按品质管理要求，验证人不应与负责人为同一人。\n\n"
+                    f"当前负责人：{assignee_name}\n"
+                    f"当前验证人：{verifier_name}\n\n"
+                    f"请修改后再保存。",
                 )
                 return
             if not verifier_name:
                 reply = QMessageBox.question(
-                    self, "驗證人未指定",
-                    "狀態為「已驗證」但未指定驗證人。\n\n"
-                    "建議填寫驗證人以確保職責分離。仍要繼續嗎？",
+                    self, "验证人未指定",
+                    "状态为「已验证」但未指定验证人。\n\n"
+                    "建议填写验证人以确保职责分离。仍要继续吗？",
                 )
                 if reply != QMessageBox.StandardButton.Yes:
                     return

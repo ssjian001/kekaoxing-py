@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QAbstractItemView, QLabel, QTableWidget, QTableWidgetItem, QWidget
 
 from src.models.sample import Sample
@@ -57,12 +58,20 @@ class _SampleTable(QTableWidget):
         for row_idx, sample in enumerate(samples):
             for col_idx, (_, field_name) in enumerate(self._columns):
                 value = getattr(sample, field_name, "")
+                raw_status = ""
                 if field_name == "status":
-                    value = SAMPLE_STATUS_LABELS.get(value, str(value))
+                    raw_status = str(value)
+                    value = SAMPLE_STATUS_LABELS.get(raw_status, str(value))
                 elif field_name == "test_hours" and isinstance(value, float):
                     value = f"{value:.1f}" if value != int(value) else str(int(value))
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                if raw_status:
+                    from src.styles.constants import SAMPLE_STATUS_COLORS, resolve_status_color
+                    import src.styles.theme as _t
+                    color = SAMPLE_STATUS_COLORS.get(raw_status)
+                    if color:
+                        item.setForeground(QColor(resolve_status_color(color, _t.current_theme())))
                 if col_idx == 0 and sample.id is not None:
                     item.setData(Qt.ItemDataRole.UserRole, sample.id)
                 self.setItem(row_idx, col_idx, item)

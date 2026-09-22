@@ -37,7 +37,8 @@ def compute_summary(
     pending_result_count = 0
 
     for task in tasks:
-        if task.status in ("completed", "skipped"):
+        if task.status in ("completed", "failed", "skipped"):
+            # failed 也是做完的测试, 不再参与超期统计（与 format_summary_text 口径一致, 枚举无 "done"）
             continue
         # 审计 #22：原 end_day = start_day + duration 多算一天（工期含首日，
         # 结束日应为 start+duration-1），导致超期判定提前一天触发。
@@ -72,13 +73,14 @@ def format_summary_text(
 ) -> str:
     """生成摘要栏文本（统计 + 任务状态）。"""
     total = len(tasks)
-    completed = sum(1 for t in tasks if t.status == "completed")
+    # 已完成(做完的测试) = completed + failed（与仪表盘 task_done 口径一致，failed 也是做完的）
+    completed = sum(1 for t in tasks if t.status in ("completed", "failed"))
     pending = total - completed
 
     today = date.today()
     overdue = 0
     for t in tasks:
-        if t.status in ("completed", "done", "skipped", "failed"):
+        if t.status in ("completed", "skipped", "failed"):
             continue
         if t.start_day is not None:
             plan_start = None

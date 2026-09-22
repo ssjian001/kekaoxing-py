@@ -67,7 +67,7 @@ class DashboardData:
         # 新增
         "health_score", "plan_count", "technician_count",
         "pass_count", "fail_count",
-        "last_update", "pass_rate_trend", "capa_trend",
+        "last_update",
         # Bug Tracker 4 指标
         "pending_count", "weekly_closed", "avg_age_days", "aging_warning_count",
     )
@@ -271,6 +271,10 @@ class DashboardView(QWidget):
         gb2.addWidget(self._card_aging)
         right.addLayout(gb2)
 
+        # 严重度分段条（Critical/Major/Minor/Cosmetic）
+        self._severity_bar = _SeverityBar()
+        right.addWidget(self._severity_bar)
+
 
         # 进度环（两个独立卡片）
         ring_row = QHBoxLayout()
@@ -344,10 +348,14 @@ class DashboardView(QWidget):
         self._card_wait.set_value(str(data.task_pending))
         self._card_fail.set_value(str(data.failed_task_count or 0))
 
+        # 严重度分段条
+        self._severity_bar.setData(data.issue_severity_data or {})
+
         # 环形图
         task_map = {
             "pending": "待开始", "in_progress": "进行中",
             "completed": "已完成", "skipped": "已跳过", "failed": "失败",
+            "paused": "已暂停",
         }
         self._donut.setData(
             {task_map.get(k, k): v for k, v in (data.task_status_data or {}).items() if v > 0}
