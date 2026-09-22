@@ -63,3 +63,9 @@
 - ② 任务表搜索防抖：test_plan_view textChanged→QTimer单触发300ms，程序化恢复不延迟
 - 测试：tests/test_kpi_audit.py 9条；全量 947 passed；推送 3add1a5
 - 待人工：UI 实测搜索输入手感（300ms 是否合适）+ 人为弄脏数据看 toast 是否触发
+
+## 2026-09-23 Pass/Fail 统一中文 (634f947)
+- 仪表盘卡片 Pass→通过 / Fail→不通过; 测试进度卡图例 PASS/FAIL→通过/不通过
+- 导出判定结论 export_utils: FAIL→不通过, PASS→通过, CONDITIONAL→条件接受(与 constants.py RESULT_LABELS 对齐)
+- 全 src 已无用户可见 Pass/Fail 英文残留; 947 passed
+- 待人工: 导出一份报告肉眼确认判定列文字
