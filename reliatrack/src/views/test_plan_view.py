@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QMessageBox,
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 
 import src.styles.theme as _t
 from src.styles.constants import VIEW_MARGINS
@@ -91,7 +91,14 @@ class TestPlanView(QWidget):
         self._summary_bar = fb._summary_bar
 
         # 连接筛选信号
-        self._search_edit.textChanged.connect(self._on_task_search)
+        # 搜索防抖: 每击键不再立即重建全表, 300ms 停顿后才过滤(任务量上千时可感)
+        self._search_debounce = QTimer(self)
+        self._search_debounce.setSingleShot(True)
+        self._search_debounce.setInterval(300)
+        self._search_debounce.timeout.connect(self._on_task_search)
+        self._search_edit.textChanged.connect(self._search_debounce.start)
+        # 程序化恢复(启动回填搜索历史)直接跑, 无防抖延迟
+        self._search_edit.editingFinished.connect(self._search_debounce.stop)
         self._tech_filter_combo.currentIndexChanged.connect(self._on_task_search)
         self._status_filter_combo.currentIndexChanged.connect(self._on_task_search)
         self._category_filter_combo.currentIndexChanged.connect(self._on_task_search)

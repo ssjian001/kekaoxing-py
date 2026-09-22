@@ -326,6 +326,15 @@ class RefreshHandlers:
             avg_age_days=avg_age_days,
             aging_warning_count=aging_warning_count,
         )
+        # KPI 自检 — 显示层数据一致性哨兵, 违规仅记日志+一次 toast
+        from src.services.kpi_audit import audit_dashboard_data
+        problems = audit_dashboard_data(data)
+        if problems and not getattr(self._win, "_kpi_audit_warned", False):
+            self._win._kpi_audit_warned = True
+            try:
+                self._win.toast(f"仪表盘数据校验异常: {problems[0]}", "error")
+            except Exception:
+                pass
 
     def _refresh_dashboard(self) -> None:
         """刷新 Dashboard A/B 两区 KPI + 图表。"""
