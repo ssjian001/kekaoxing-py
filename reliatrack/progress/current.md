@@ -47,3 +47,13 @@
 - 改动：refresh_handlers.py 新增 task_done=completed+failed 填入 DashboardData；dashboard_view.py 加 task_done 槽、左栏 KPI 4卡→5卡（已完成/Pass/进行中/待开始/Fail），Pass 卡=pass_count（结果维度）；Fail 卡 jump "fail"→"failed"（原值在 filter combo 不存在，跳转静默失效，顺手修复）
 - 验证：py_compile 通过；pytest 938 passed
 - 待人工：UI 实际点一次卡片跳转确认
+
+## 2026-09-22 显示层审计修复批次（7项）
+- P1①环形图 task_map 补 paused（原暂停任务扇区消失）②SeverityBar 接通（原死代码, 有数据无UI）
+- P1③plan_summary 已完成口径统一 =completed+failed（与仪表盘 task_done 一致）
+- P2④DashboardData 删恒None死槽 pass_rate_trend/capa_trend（其余4槽保留, handler已填）
+- P2⑤样品表状态列上色（复用 SAMPLE_STATUS_COLORS + resolve_status_color, 补 QColor import）
+- P2⑥删 done 幽灵枚举值; compute_summary 超期口径补跳过 failed（两函数一致）
+- P2⑦fa_capa_panels 25+13+14 处繁体→简体（用户可见文案+docstring）
+- 验证: pytest 938 passed；已推送 371afce
+- 待人工: UI 双主题各看一眼 severity bar 与样品状态色
