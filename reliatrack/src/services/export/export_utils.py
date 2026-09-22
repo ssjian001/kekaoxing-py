@@ -222,27 +222,27 @@ def _judge_conclusion(
                 ctype = criteria.get("type", "")
                 if ctype == "c0":
                     if fail_count > 0:
-                        return "FAIL"
+                        return "不通过"
                     elif conditional_count > 0:
-                        return "CONDITIONAL"
+                        return "条件接受"
                     elif pass_count > 0:
-                        return "PASS"
+                        return "通过"
                     return "—"
                 elif ctype in ("aql", "custom"):
                     accept_n = criteria.get("accept", 0)
                     if fail_count > accept_n:
-                        return "FAIL"
+                        return "不通过"
                     elif conditional_count > 0 and fail_count == accept_n:
-                        return "CONDITIONAL"
+                        return "条件接受"
                     elif pass_count > 0:
-                        return "PASS"
+                        return "通过"
                     return "—"
         except (json.JSONDecodeError, ValueError):
             pass
     if fail_count > 0:
-        return "FAIL"
+        return "不通过"
     elif conditional_count > 0:
-        return "CONDITIONAL"
+        return "条件接受"
     elif pass_count > 0:
-        return "PASS"
+        return "通过"
     return "—"

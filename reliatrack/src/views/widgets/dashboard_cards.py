@@ -163,7 +163,7 @@ class _TestProgressCard(QFrame):
         self._legend_labels: list[QLabel] = []
         self._legend_dots: list[QLabel] = []
         self._legend_color_keys: list[str] = []
-        for label, key in [("PASS", "GREEN"), ("FAIL", "RED"),
+        for label, key in [("通过", "GREEN"), ("不通过", "RED"),
                            ("进行中", "YELLOW"), ("待开始", "SUBTEXT0")]:
             color = getattr(_theme, key)
             dot = QLabel("●")
