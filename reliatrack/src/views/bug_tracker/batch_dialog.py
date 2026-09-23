@@ -146,7 +146,18 @@ class BatchOperationDialog(QDialog):
                 old_issue = self._service.get(issue_id)
                 old_value = getattr(old_issue, field, None) if old_issue else None
 
-                self._service.update(issue_id, operator="batch", **{field: target_value})
+                # 改状态必须走状态机校验（transition_status），不能绕过
+                # resolution 强制 / FA 前置等约束；其余字段仍走普通 update。
+                if field == "status":
+                    ok, reason = self._service.transition_status(
+                        issue_id, target_value, operator="batch",
+                    )
+                    if not ok:
+                        logger.warning("批量改状态 #%s 失败: %s", issue_id, reason)
+                        failed += 1
+                        continue
+                else:
+                    self._service.update(issue_id, operator="batch", **{field: target_value})
                 updated += 1
 
                 # 推送 undo 命令（用 record 而非直接 push，确保 redo_stack 清空）

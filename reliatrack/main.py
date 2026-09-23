@@ -906,7 +906,19 @@ class MainWindow(QMainWindow):
         if not um:
             return
         cmd = um.peek_undo()
-        desc = um.undo()
+        try:
+            desc = um.undo()
+        except Exception as e:
+            # 典型场景: 撤销"新建"时该记录已被子表引用（FK 限制）。
+            # um.undo() 失败时命令已回栈, 不丢失可重试; 只提示, 不弹出全局错误窗。
+            logger.warning("Undo failed (command kept on stack): %s", e)
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self, "无法撤销",
+                "该记录已被其他数据引用，无法直接撤销。\n"
+                "请先删除相关的关联数据后重试，或手动处理。",
+            )
+            return
         if desc:
             self.statusBar().showMessage(f"已撤销: {desc}", 3000)
             for entity in self._entity_types_for_command(cmd):
@@ -919,7 +931,16 @@ class MainWindow(QMainWindow):
         if not um:
             return
         cmd = um.peek_redo()
-        desc = um.redo()
+        try:
+            desc = um.redo()
+        except Exception as e:
+            logger.warning("Redo failed (command kept on stack): %s", e)
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self, "无法重做",
+                "该记录状态不允许重做此操作。\n操作已保留，可稍后重试或手动处理。",
+            )
+            return
         if desc:
             self.statusBar().showMessage(f"已重做: {desc}", 3000)
             for entity in self._entity_types_for_command(cmd):

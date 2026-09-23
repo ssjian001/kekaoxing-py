@@ -1130,8 +1130,14 @@ class PlanHandlers:
         result_count = len(results)
         # 计算进度
         progress = min(result_count / sample_count * 100, 100.0)
+        # 防御: 无结果时不要把非 pending 状态的任务拖回 pending(如未来加的 paused)
+        task_now = ctrl.test_plan_service.get_task(task_id) if hasattr(ctrl.test_plan_service, "get_task") else None
         # 计算状态
         if result_count == 0:
+            # 无结果: 特殊状态(skipped/paused)不被拖回 pending, 只更新 progress
+            if task_now is not None and getattr(task_now, "status", "") in ("skipped", "paused"):
+                ctrl.test_plan_service.update_task(task_id, progress=progress)
+                return
             status = "pending"
         elif result_count >= sample_count and all(r.result == "pass" for r in results):
             status = "completed"
