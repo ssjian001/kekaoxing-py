@@ -69,3 +69,11 @@
 - 导出判定结论 export_utils: FAIL→不通过, PASS→通过, CONDITIONAL→条件接受(与 constants.py RESULT_LABELS 对齐)
 - 全 src 已无用户可见 Pass/Fail 英文残留; 947 passed
 - 待人工: 导出一份报告肉眼确认判定列文字
+
+## 2026-09-23 业务逻辑层审计+修复 (7ed2230)
+- P1批量改状态绕状态机漏洞: batch_dialog 改状态操作改调 transition_status, 被拒计入failed提示
+- M1 undo/redo失败保护: main.py _on_undo/_on_redo 包 try, FK冲突弹友好提示而非全局错误窗, 命令回栈可重试
+- M2 _auto_update_task_progress: 无结果时 skipped/paused 任务不再被拖回 pending
+- 其余审计确认正常: 排程日历计算/出库防呆/事务原子性/SQL参数化/嵌套事务/删除级联/7300防死循环
+- 测试: +2条回归(test_batch_status_machine) 全量 949 passed
+- 待人工: 批量改状态实测一次(含非法转换被拒的提示)
