@@ -346,7 +346,7 @@ class DashboardView(QWidget):
         self._card_pass.set_value(str(data.pass_count or 0))
         self._card_active.set_value(str(data.task_in_progress))
         self._card_wait.set_value(str(data.task_pending))
-        self._card_fail.set_value(str(data.failed_task_count or 0))
+        self._card_fail.set_value(str(data.fail_count or 0))
 
         # 严重度分段条
         self._severity_bar.setData(data.issue_severity_data or {})
