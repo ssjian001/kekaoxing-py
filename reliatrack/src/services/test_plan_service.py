@@ -115,6 +115,12 @@ class TestPlanService:
         """批量获取多个任务的通过率 {task_id: (pass_count, total)}。"""
         return self._result_repo.get_pass_counts_by_tasks(task_ids)
 
+    def get_result_breakdown_by_tasks(
+        self, task_ids: list[int]
+    ) -> dict[int, dict[str, int]]:
+        """批量获取多个任务的结果分布 {task_id: {result: count}}（含 conditional 独立计数）。"""
+        return self._result_repo.get_result_breakdown_by_tasks(task_ids)
+
     def get_all_results_by_tasks(self, task_ids: list[int]) -> list[TestResult]:
         """批量获取多个任务的全部测试结果（含 sample_id）。"""
         return self._result_repo.get_all_by_tasks(task_ids)

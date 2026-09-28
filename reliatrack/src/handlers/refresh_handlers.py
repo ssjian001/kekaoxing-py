@@ -237,15 +237,25 @@ class RefreshHandlers:
         # Aging 超期警告
         aging_warning_count = sum(1 for d in aging_days_list if d > 7)
 
-        # ── 通过率 ──
+        # ── 通过率 / 失败项 ──
+        # 口径与导出模块(export_utils 条件接受三分)对齐:
+        #   fail_count 只算 fail, conditional(条件接受)独立、不吞进失败
         pass_rate: float | None = None
         total_pass = 0
         total_result = 0
+        total_conditional = 0
+        total_fail = 0
         task_ids = [t.id for t in filtered_tasks if t.id is not None]
         if task_ids and ctrl.test_plan_service:
-            rm = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
-            total_pass = sum(v[0] for v in rm.values())
-            total_result = sum(v[1] for v in rm.values())
+            rm = ctrl.test_plan_service.get_result_breakdown_by_tasks(task_ids)
+            per_result: dict[str, int] = {}
+            for counts in rm.values():
+                for res, cnt in counts.items():
+                    per_result[res] = per_result.get(res, 0) + cnt
+            total_pass = per_result.get("pass", 0)
+            total_conditional = per_result.get("conditional", 0)
+            total_fail = per_result.get("fail", 0)
+            total_result = sum(per_result.values())
             if total_result > 0:
                 pass_rate = total_pass / total_result * 100
 
@@ -318,7 +328,7 @@ class RefreshHandlers:
             plan_count=plan_count,
             last_update=last_update,
             pass_count=total_pass if task_ids else 0,
-            fail_count=max(total_result - total_pass, 0) if task_ids else 0,
+            fail_count=total_fail if task_ids else 0,
             technician_count=ctrl.technicians.count() if ctrl.technicians else 0,
             # Bug Tracker 4 指标
             pending_count=pending_issue_count,

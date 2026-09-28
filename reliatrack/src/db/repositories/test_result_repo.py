@@ -107,6 +107,22 @@ class TestResultRepository(BaseRepository):
         Returns:
             {task_id: (pass_count, total_count)} — 只包含有结果的 task_id。
         """
+        breakdown = self.get_result_breakdown_by_tasks(task_ids)
+        out: dict[int, tuple[int, int]] = {}
+        for tid, counts in breakdown.items():
+            total = sum(counts.values())
+            if total > 0:
+                out[tid] = (counts.get("pass", 0), total)
+        return out
+
+    def get_result_breakdown_by_tasks(
+        self, task_ids: list[int]
+    ) -> dict[int, dict[str, int]]:
+        """批量获取多个任务的结果分布 {task_id: {result: count}}。
+
+        通过率/失败项口径拆分用：pass、fail、conditional（条件接受）各自独立计数，
+        仪表盘 "不通过" 卡片不应把 conditional 吞进 fail。
+        """
         if not task_ids:
             return {}
         placeholders = ",".join("?" * len(task_ids))
@@ -116,18 +132,10 @@ class TestResultRepository(BaseRepository):
             f"GROUP BY task_id, result",
             task_ids,
         ).fetchall()
-        # 先聚合 {task_id: {result: count}}
-        agg: dict[int, dict[str, int]] = {}
+        breakdown: dict[int, dict[str, int]] = {}
         for row in rows:
             tid = cast(int, row[0])
             res = cast(str, row[1])
             cnt = cast(int, row[2])
-            agg.setdefault(tid, {})[res] = cnt
-        # 转为 (pass_count, total)
-        result_map: dict[int, tuple[int, int]] = {}
-        for tid, by_result in agg.items():
-            total = sum(by_result.values())
-            pass_count = by_result.get("pass", 0)
-            if total > 0:
-                result_map[tid] = (pass_count, total)
-        return result_map
+            breakdown.setdefault(tid, {})[res] = cnt
+        return breakdown
