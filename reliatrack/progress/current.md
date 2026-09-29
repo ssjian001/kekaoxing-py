@@ -101,10 +101,14 @@
 - 软校验自身绝不抛异常（取任务失败/任务不存在都只 `logger.debug` 后放行）
 
 **验证证据（2026-09-29）**
-- 全量 `pytest tests/` = **1103 collected / 1103 passed / 0 failed / EXIT=0**
+- 全量 `pytest tests/` = **1111 collected / 1111 passed / 0 failed / EXIT=0**（P3-10 追加后；P3-10 之前的基线是 1103，本次新增 8 条）
 - 反向验证（防"测试放水"）：`src` 层 13 项逐条"撤销修复 → 对应测试必失败 → 还原后 sha256 一致"；他人批次用 sandbox（`git archive HEAD` 的**旧源码** + 当前 `tests/`）复跑 → 大量 FAILED / `UndoConflictError` 收集即 ERROR，证明修复真在源码改动里而非只在测试里
 - P3-10 反向探针：现状 completed→skipped 告警 1 条且写入仍成功；去掉新代码 → 0 条；换成硬校验 → 抛异常（即方案 B 会打断写入）
-- 推送核对：本地 HEAD == `git ls-remote origin refs/heads/main` == `04fb2d0`；7 commit 共 41 文件零 junk（无 `__pycache__`/`.log`/`.db`/`.env`）
+- 推送核对：本地 HEAD == `git ls-remote origin refs/heads/main` == `1a13536`(P3-10) → `4fc4839`(文档)；7 commit 共 41 文件零 junk（无 `__pycache__`/`.log`/`.db`/`.env`）
+
+**P3-10 软校验的作用边界（刻意如此，非疏漏）**
+- 只覆盖经 `TestPlanService.update_task(status=...)` 的写入。绕过它的路径**不受校验**：undo/redo 按旧值写回、批量编辑保存、导入批次、迁移回填 —— 这些是"恢复/回填"语义，校验它们反而会产生误报。
+- 代价：带 `status` 的单次更新会多一次 `get_by_id` 读库（SQLite 主键单条，可忽略）。
 
 **待人工确认**
 - [ ] P3-10 的 3 条提示性告警是否接受（任务编辑对话框"已完成 → 已跳过"会记 WARNING，不阻断）；不想看可放宽矩阵或降级为 DEBUG
