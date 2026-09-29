@@ -306,7 +306,7 @@ class RefreshHandlers:
             if latest:
                 last_update = str(latest)[:16]
 
-        return DashboardData(
+        data = DashboardData(
             task_total=total,
             task_completed=completed,
             task_done=task_done,
@@ -337,14 +337,22 @@ class RefreshHandlers:
             aging_warning_count=aging_warning_count,
         )
         # KPI 自检 — 显示层数据一致性哨兵, 违规仅记日志+一次 toast
-        from src.services.kpi_audit import audit_dashboard_data
-        problems = audit_dashboard_data(data)
-        if problems and not getattr(self._win, "_kpi_audit_warned", False):
-            self._win._kpi_audit_warned = True
-            try:
-                self._win.toast(f"仪表盘数据校验异常: {problems[0]}", "error")
-            except Exception:
-                pass
+        # 自检本身失败必须被吞掉: 哨兵绝不比正常渲染更重要
+        try:
+            from src.services.kpi_audit import audit_dashboard_data
+            problems = audit_dashboard_data(data)
+        except Exception:
+            logger.exception("KPI 自检本身失败(已忽略, 不影响仪表盘)")
+            problems = []
+        if problems:
+            logger.warning("仪表盘数据校验异常: %s", problems)
+            if not getattr(self._win, "_kpi_audit_warned", False):
+                self._win._kpi_audit_warned = True
+                try:
+                    self._win.toast(f"仪表盘数据校验异常: {problems[0]}", "error")
+                except Exception:
+                    pass
+        return data
 
     def _refresh_dashboard(self) -> None:
         """刷新 Dashboard A/B 两区 KPI + 图表。"""

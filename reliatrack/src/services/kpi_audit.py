@@ -20,35 +20,43 @@ def audit_dashboard_data(d) -> list[str]:
 
     非对象/缺字段一律静默 pass — 自检绝不比正常渲染更重要。
     """
-    if d is None or not is_dataclass(d):
+    if d is None:
+        return []
+    # 数据载体兼容: 测试替身用 @dataclass, 生产 DashboardData 是 __slots__ 普通类。
+    # 早期只认 is_dataclass 会导致生产侧永远静默空转(测试全绿也发现不了)。
+    if not is_dataclass(d) and not hasattr(d, "__slots__"):
         return []
     problems: list[str] = []
     g = getattr
 
+    def _num(v) -> int:
+        """None/非数值一律归 0 — 真实 DashboardData 未赋值字段是 None。"""
+        return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
     total = g(d, "task_total", None)
-    if total is not None:
+    if isinstance(total, int):
         # 1. 状态互斥求和 = total
-        parts = [g(d, k, 0) for k in
+        parts = [_num(g(d, k, 0)) for k in
                  ("task_completed", "task_in_progress", "task_pending",
                   "task_skipped", "task_paused")]
-        failed = g(d, "failed_task_count", 0) or 0
+        failed = _num(g(d, "failed_task_count", 0))
         s = sum(parts) + failed
-        if isinstance(total, int) and s != total:
+        if s != total:
             problems.append(f"任务状态求和 {s} != total {total}")
         # 2. task_done = completed + failed（口径基线）
         done = g(d, "task_done", None)
-        if done is not None:
-            expect = g(d, "task_completed", 0) + failed
-            if isinstance(done, int) and done != expect:
+        if isinstance(done, int):
+            expect = _num(g(d, "task_completed", 0)) + failed
+            if done != expect:
                 problems.append(f"task_done {done} != completed+failed {expect}")
         # 3. done/failed 不可能超过 total
-        if g(d, "task_done", 0) > total:
+        if _num(g(d, "task_done", 0)) > total:
             problems.append("task_done > task_total")
         if failed > total:
             problems.append("failed_task_count > task_total")
 
     # 4. Pass ≤ 结果总数(等价: pass ≤ pass+fail, fail ≥ 0)
-    pc, fc = g(d, "pass_count", 0) or 0, g(d, "fail_count", 0) or 0
+    pc, fc = _num(g(d, "pass_count", 0)), _num(g(d, "fail_count", 0))
     if pc < 0 or fc < 0:
         problems.append("pass/fail 计数为负")
 

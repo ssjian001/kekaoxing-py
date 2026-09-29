@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 import os
+import logging
 
 # 开发模式：将 reliatrack/ 的父目录加入 sys.path，使 from src.xxx 可用
 # PyInstaller 打包模式（sys.frozen）下跳过，因为依赖已内嵌
@@ -15,6 +16,8 @@ if not getattr(sys, 'frozen', False):
     _parent_dir = os.path.dirname(_PROJECT_ROOT)
     if _parent_dir not in sys.path:
         sys.path.insert(0, _parent_dir)
+
+logger = logging.getLogger(__name__)
 
 from PySide6.QtWidgets import (
     QApplication,

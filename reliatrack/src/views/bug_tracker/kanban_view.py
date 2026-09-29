@@ -1,7 +1,5 @@
 """看板视图 — BugKanbanView + _KanbanCard + _KanbanColumn。
 
-import logging
-logger = logging.getLogger(__name__)
 4 列（open / analyzing / verified / closed）布局，支持：
   - 跨列拖拽（QDrag + dropEvent + transition_status）
   - 卡片 aging 色块（<3d 绿 / 3-7d 黄 / >7d 红）
@@ -11,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
 from PySide6.QtCore import QEvent, Qt, Signal, QTimer
@@ -44,6 +43,8 @@ from src.views.widgets.search_box import SearchBox
 
 from src.views.widgets.kanban_card import _KanbanCard
 from src.views.widgets.kanban_column import _KanbanColumn
+
+logger = logging.getLogger(__name__)
 
 # 常量
 _CLOSED_FOLD_DAYS = 30  # closed 列折叠阈值（天）
