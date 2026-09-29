@@ -458,7 +458,9 @@ def export_report_pdf(
     _hf = lambda c, d: _build_header_footer(c, d, font_name=_FN)
     try:
         doc_obj.build(story, onFirstPage=_hf, onLaterPages=_hf)
-    except (OSError, PermissionError) as e:
+    except Exception as e:
+        # 统一捕 Exception（与 DVP&R / 8D 两处一致）：reportlab 的布局错误是
+        # ValueError，只捕 OSError/PermissionError 会把半成品 PDF 留在磁盘上。
         logger.error("PDF build failed: %s → %s", out, e)
         if os.path.exists(out):
             try:

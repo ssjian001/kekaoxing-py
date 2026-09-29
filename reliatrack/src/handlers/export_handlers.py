@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
@@ -25,6 +26,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _has_schema(conn) -> bool:
+    """库是否已建过 schema（任何一次 init_schema 都会建 schema_version 表）。
+
+    用于区分"完全未初始化的空库"与"已有 schema 的库"——后者不在此处迁移。
+    """
+    row = conn.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'"
+    ).fetchone()
+    return bool(row and row[0])
 
 
 class WorkerDataProvider:
@@ -49,9 +61,13 @@ class WorkerDataProvider:
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA busy_timeout=5000")
 
-        # 确保 schema 已初始化（Worker 使用独立连接）
-        from src.db.schema import init_schema
-        init_schema(conn)
+        # 不在后台线程跑 schema 迁移（审计 P2-5）：从旧备份恢复的库在这里
+        # 初始化会把 v11+ 的迁移（含无事务部分）搬到无 UI 的后台线程执行。
+        # 只在**完全未初始化**的空库上建表（首次运行/临时库），已有 schema
+        # 的库一律交给主线程启动流程迁移。
+        if not _has_schema(conn):
+            from src.db.schema import init_schema
+            init_schema(conn)
 
         tp = TestPlanRepository(conn)
         tt = TestTaskRepository(conn)
@@ -84,10 +100,16 @@ class WorkerDataProvider:
 
 
 class ExportWorker(QThread):
-    """后台导出线程，使用独立 DB 连接，不访问 Qt widget。"""
+    """后台导出线程，使用独立 DB 连接，不访问 Qt widget。
+
+    取消是**协作式**的：request_cancel() 只置标志位（线程安全），导出写完后
+    由 run() 清掉半成品文件并发 cancelled —— 绝不在写盘/写库中途 terminate
+    线程（强杀会让连接停在写入中途，见审计 P3-16）。
+    """
 
     finished = Signal(str)
     error = Signal(str)
+    cancelled = Signal()
 
     def __init__(self, handler_fn: Callable, db_path: str, svc, fmt: str,
                  project_id: int | None, plan_id: int | None,
@@ -100,6 +122,26 @@ class ExportWorker(QThread):
         self._project_id = project_id
         self._plan_id = plan_id
         self._issue_id = issue_id
+        self._cancel_requested = threading.Event()
+
+    def request_cancel(self) -> None:
+        """请求取消导出（线程安全，可从 UI 线程调用）。"""
+        self._cancel_requested.set()
+
+    def is_cancel_requested(self) -> bool:
+        return self._cancel_requested.is_set()
+
+    @staticmethod
+    def _discard_output(path: object) -> None:
+        """删除取消后残留的导出产物（best-effort）。"""
+        if not path:
+            return
+        try:
+            p = Path(str(path))
+            if p.exists():
+                p.unlink()
+        except OSError:
+            logger.warning("Failed to remove cancelled export output: %s", path)
 
     def run(self) -> None:
         provider: WorkerDataProvider | None = None
@@ -107,6 +149,11 @@ class ExportWorker(QThread):
             provider = WorkerDataProvider(self._db_path)
             path = self._handler_fn(provider, self._svc, self._fmt,
                                     self._project_id, self._plan_id, self._issue_id)
+            if self._cancel_requested.is_set():
+                # 已请求取消：产物丢弃，不写回 UI
+                self._discard_output(path)
+                self.cancelled.emit()
+                return
             self.finished.emit(str(path) if path else "")
         except ValueError as e:
             self.error.emit(str(e))
@@ -400,9 +447,17 @@ class ExportHandlers:
                     logger.warning("Failed to clean partial export: %s", _generated_path)
             QMessageBox.critical(self._win, "导出失败", msg)
 
+        def _on_cancelled() -> None:
+            progress.close()
+            self._win.toast("已取消导出", "info")
+
         worker.finished.connect(_on_finished)
         worker.error.connect(_on_error)
+        worker.cancelled.connect(_on_cancelled)
         worker.finished.connect(worker.deleteLater)
         worker.error.connect(worker.deleteLater)
-        progress.canceled.connect(worker.terminate)
+        worker.cancelled.connect(worker.deleteLater)
+        # 取消走标志位 + 协作式退出：绝不 terminate（强杀会让 DB 连接停在
+        # 写入中途，产物与 WAL 状态都可能损坏）
+        progress.canceled.connect(worker.request_cancel)
         worker.start()

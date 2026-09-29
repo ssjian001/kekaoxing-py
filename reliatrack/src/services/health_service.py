@@ -80,6 +80,47 @@ class DbCorruptError(RuntimeError):
         self.check_result = result
 
 
+class HealthScanProvider:
+    """后台体检线程的独立连接 provider（只读扫描所需的最小子集）。
+
+    提供与 AppController 相同的 `issue_service` / `_conn` 接口，
+    使 scan_data_health 无需感知自己跑在主线程还是后台线程。
+    不调用 init_schema：旧库（含从旧备份恢复的库）的迁移由主线程启动
+    流程负责，后台线程触发迁移是审计 P2-5 同类风险。
+    """
+
+    def __init__(self, db_path: str) -> None:
+        import apsw
+
+        from src.db.repositories import IssueRepository
+        from src.services.issue_service import IssueService
+
+        conn = apsw.Connection(db_path)
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA foreign_keys=ON")
+        self._conn: apsw.Connection | None = conn
+        self.issue_service = IssueService(IssueRepository(conn), conn=conn)
+
+    def close(self) -> None:
+        """关闭独立连接（幂等）。"""
+        conn, self._conn = self._conn, None
+        if conn is None:
+            return
+        try:
+            conn.close()
+        except Exception:
+            logger.exception("体检扫描连接关闭失败")
+
+
+def open_health_scan_provider(db_path: str) -> HealthScanProvider:
+    """为后台体检线程创建独立连接（调用方负责 close）。
+
+    主线程的 apsw 连接禁止跨线程使用（见 db/connection.py 的线程约定），
+    因此后台线程必须自建连接。此连接只做只读扫描，不跑 schema 迁移。
+    """
+    return HealthScanProvider(db_path)
+
+
 def scan_data_health(controller) -> dict[str, list[str]]:
     """全量数据体检(供 UI 调用, 可能较慢 — 应在后台线程跑)。
 
