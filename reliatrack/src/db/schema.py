@@ -656,15 +656,61 @@ def _migrate_v10(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (10)")
 
 
+def _table_exists(conn: apsw.Connection, name: str) -> bool:
+    """表是否存在（PRAGMA 自省）。"""
+    return bool(
+        conn.execute(f"PRAGMA table_info({quote_ident(name)})").fetchall()
+    )
+
+
+def _resume_interrupted_rebuild(conn: apsw.Connection, name: str) -> bool:
+    """收尾「上次重建中断在 DROP 与 RENAME 之间」的现场。
+
+    表重建是 DROP 旧表 → RENAME 新表两步。若进程恰在这两步之间被杀（或旧版本
+    在无事务下迁移失败），落盘状态为「旧表不存在、name_new 是唯一数据副本」。
+    此时若按常规流程先 DROP IF EXISTS name_new 再重建，会连唯一副本一起删掉，
+    随后的 INSERT…SELECT FROM 旧表 必然失败，except 分支再删一次 _new
+    → 该表数据物理丢失且不可恢复。
+
+    这里检测到该现场就直接把 name_new 改名为 name 收尾，数据得以保全。
+
+    Returns:
+        True 表示已收尾（调用方必须跳过重建），False 表示无中断现场。
+    """
+    if not is_safe_ident(name):
+        raise ValueError(f"非法表名: {name!r}")
+    new_name = f"{name}_new"
+    if not _table_exists(conn, name) and _table_exists(conn, new_name):
+        logger.warning(
+            "检测到中断的表重建现场（%s 缺失、%s 存在）——直接 RENAME 收尾",
+            name, new_name,
+        )
+        conn.execute(
+            f"ALTER TABLE {quote_ident(new_name)} RENAME TO {quote_ident(name)}"
+        )
+        return True
+    return False
+
+
+def _safe_rollback(conn: apsw.Connection) -> None:
+    """尽力回滚；SQLite 可能已自动回滚，回滚失败不得掩盖原始异常。"""
+    try:
+        conn.execute("ROLLBACK")
+    except Exception:
+        logger.debug("ROLLBACK 失败（事务可能已自动回滚）", exc_info=True)
+
+
 def _rebuild_table(conn: apsw.Connection, name: str, new_ddl: str) -> None:
     """通过 DROP TABLE + RENAME 重建表（用于 SQLite 不支持的 ALTER CONSTRAINT）。
 
     步骤：CREATE name_new → INSERT 显式列名 → DROP name → RENAME name_new → name
-    需在 PRAGMA foreign_keys = OFF 环境下调用。
+    需在 PRAGMA foreign_keys = OFF 环境下调用；调用方必须把整个重建过程包在
+    事务内（见 _migrate_v11），否则中断会留下半重建状态。
     使用新表列名显式映射，避免 SELECT * 在列顺序不一致时数据错乱。
     """
-    if not is_safe_ident(name):
-        raise ValueError(f"非法表名: {name!r}")
+    # 上次中断在 DROP/RENAME 之间 → _new 是唯一数据副本，直接收尾
+    if _resume_interrupted_rebuild(conn, name):
+        return
     conn.execute(f"DROP TABLE IF EXISTS {quote_ident(name + '_new')}")
     conn.execute(new_ddl)
     # 获取新表列名（从 new_ddl 创建的表）
@@ -702,12 +748,17 @@ def _migrate_v11(conn: apsw.Connection) -> None:
     SQLite 不支持 ALTER TABLE ADD CONSTRAINT，迁移通过表重建实现。
     使用 _rebuild_table 辅助函数避免重复代码。
 
-    ⚠️ 涉及 DROP TABLE / CREATE TABLE / RENAME（SQLite DDL 不可回滚）。
-    schema_version 记录在重建全部成功后最后写入，确保版本与实际状态一致。
+    涉及 7 次 DROP TABLE / CREATE TABLE / RENAME。SQLite 的 DDL 本身是可事务化的
+    （唯一限制是 PRAGMA foreign_keys 不能在事务内修改），因此整个重建过程包在
+    单个事务内：先关闭 FK，再 BEGIN，任一步失败或进程被强杀都整体回滚，不会留下
+    「旧表已 DROP、新表未 RENAME」的中间态（该现场在旧实现里会让重试删掉唯一数据
+    副本，导致整表数据物理丢失）。
+    schema_version 在同一事务内、所有重建成功之后写入，确保版本与实际状态一致。
     若中途崩溃，schema_version 保持旧版本号，下次启动会重试迁移。
     """
     conn.execute("PRAGMA foreign_keys = OFF")
     try:
+        conn.execute("BEGIN")
         # ── 重建顺序：先子表后父表 ──
         _rebuild_table(conn, "issue_attachments", """CREATE TABLE issue_attachments_new (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -837,9 +888,10 @@ def _migrate_v11(conn: apsw.Connection) -> None:
         )""")
 
         conn.execute("INSERT INTO schema_version (version) VALUES (11)")
-    except Exception:
-        # 中途失败时恢复 FK 并重新抛出，让调用方处理
-        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("COMMIT")
+    except BaseException:
+        # 失败或被杀：整体回滚，绝不留半重建状态；FK 在 finally 恢复
+        _safe_rollback(conn)
         logger.exception("Schema migration v11 failed during table rebuild")
         raise
     finally:
@@ -884,31 +936,46 @@ def _migrate_v13(conn: apsw.Connection) -> None:
     本次迁移：
     1. 重建 schema_version 表，添加 UNIQUE 约束防止重复版本记录
     2. 重新执行所有索引 DDL（CREATE INDEX IF NOT EXISTS，已存在的会跳过）
+
+    与 v11 相同：整个重建 + 索引补建包在单个事务内（SQLite DDL 可回滚，
+    唯 PRAGMA foreign_keys 需在事务外修改）。schema_version 的重建同样做了
+    「中断在 DROP/RENAME 之间」的现场收尾——且 init_schema 会在建表**之前**
+    先调用同一个 helper：否则那里会建出一张空表，版本号读成 0，整条迁移链
+    从 v1 重放（实测症状：v1..v12 被重新执行、schema_version 里的历史记录
+    被重写，而不是 schema_version 从此消失）。
     """
-    # 1. 重建 schema_version 表，添加 UNIQUE 约束
     conn.execute("PRAGMA foreign_keys = OFF")
     try:
-        conn.execute("DROP TABLE IF EXISTS schema_version_new")
-        conn.execute("""CREATE TABLE schema_version_new (
-            version     INTEGER NOT NULL UNIQUE,
-            applied_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-        )""")
-        # 只保留最新版本号，丢弃可能的重复记录
-        conn.execute("""
-            INSERT INTO schema_version_new (version, applied_at)
-            SELECT version, applied_at FROM schema_version
-            WHERE version = (SELECT MAX(version) FROM schema_version)
-        """)
-        conn.execute("DROP TABLE schema_version")
-        conn.execute("ALTER TABLE schema_version_new RENAME TO schema_version")
+        conn.execute("BEGIN")
+        # 1. 重建 schema_version 表，添加 UNIQUE 约束
+        #    （上次中断在 DROP/RENAME 之间的现场由该 helper 直接 RENAME 收尾）
+        if not _resume_interrupted_rebuild(conn, "schema_version"):
+            conn.execute("DROP TABLE IF EXISTS schema_version_new")
+            conn.execute("""CREATE TABLE schema_version_new (
+                version     INTEGER NOT NULL UNIQUE,
+                applied_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+            )""")
+            # 只保留最新版本号，丢弃可能的重复记录
+            conn.execute("""
+                INSERT INTO schema_version_new (version, applied_at)
+                SELECT version, applied_at FROM schema_version
+                WHERE version = (SELECT MAX(version) FROM schema_version)
+            """)
+            conn.execute("DROP TABLE schema_version")
+            conn.execute("ALTER TABLE schema_version_new RENAME TO schema_version")
+
+        # 2. 重建所有索引（已存在的会跳过，只补 v11 丢失的）
+        for ddl in _DDL_INDEXES:
+            conn.execute(ddl)
+
+        conn.execute("INSERT INTO schema_version (version) VALUES (13)")
+        conn.execute("COMMIT")
+    except BaseException:
+        _safe_rollback(conn)
+        logger.exception("Schema migration v13 failed")
+        raise
     finally:
         conn.execute("PRAGMA foreign_keys = ON")
-
-    # 2. 重建所有索引（已存在的会跳过，只补 v11 丢失的）
-    for ddl in _DDL_INDEXES:
-        conn.execute(ddl)
-
-    conn.execute("INSERT INTO schema_version (version) VALUES (13)")
 
 
 def _migrate_v14(conn: apsw.Connection) -> None:
@@ -1240,6 +1307,11 @@ def init_schema(conn: apsw.Connection) -> int:
     Returns:
         初始化后的 schema 版本号。
     """
+    # 上次 v13 若中断在「DROP schema_version」与「RENAME schema_version_new」之间，
+    # schema_version 会整个不存在、schema_version_new 是唯一副本。必须先收尾再往下走：
+    # 否则这里会建出一张空表，_get_current_version 归零 → 整条迁移链从 v1 重放。
+    _resume_interrupted_rebuild(conn, "schema_version")
+
     # 确保迁移追踪表存在（DDL 自动提交，无需事务）
     conn.execute(
         """CREATE TABLE IF NOT EXISTS schema_version (
@@ -1294,10 +1366,11 @@ def init_schema(conn: apsw.Connection) -> int:
             logger.exception("Schema migration (v1-v10) failed at version %d", current)
             raise
 
-    # v11 需关闭 FK 约束后重建表，不能在事务内执行 PRAGMA foreign_keys
-    # SQLite DDL 不可回滚，但加 try/except 保证失败有日志记录
+    # v11 需关闭 FK 约束后重建表（PRAGMA foreign_keys 不能在事务内修改）；
+    # 迁移函数内部自管事务：7 次 DROP/RENAME 要么全部生效要么整体回滚，
+    # 失败或被强杀后版本号仍是旧值，下次启动可安全重试。
     if current < 11:
-        logger.info("Starting non-transactional migration v11...")
+        logger.info("Starting migration v11 (table rebuild in one transaction)...")
         try:
             _migrate_v11(conn)
         except Exception:
@@ -1317,9 +1390,9 @@ def init_schema(conn: apsw.Connection) -> int:
             logger.exception("Schema migration v12 failed")
             raise
 
-    # v13 修复 v11 丢失的索引 + schema_version 加 UNIQUE 约束
+    # v13 修复 v11 丢失的索引 + schema_version 加 UNIQUE 约束（同样自管事务）
     if current < 13:
-        logger.info("Starting non-transactional migration v13...")
+        logger.info("Starting migration v13 (rebuild in one transaction)...")
         try:
             _migrate_v13(conn)
         except Exception:
