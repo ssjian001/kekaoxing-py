@@ -24,7 +24,7 @@ venv     = ../.venv                 # 在仓库根，不在本目录（本文件
 | 数据库迁移 | `migrate.py` |
 | schema 定义 | `src/db/schema.py`（`SCHEMA_VERSION`，当前 v28 / 20 张表） |
 | 上次进度 | `progress/current.md` ← 会话开始必读 |
-| 功能清单 | `feature_list.json`（dict 格式，**权威**；仓库根那份是旧布局残留） |
+| 功能清单 | `feature_list.json`（dict 格式，**权威且唯一**；仓库根旧 list 副本已于 2026-09-29 删除，`git checkout 4d6b532 -- feature_list.json` 可恢复） |
 | 测试套件 | `tests/`（1111 用例，2026-09-29 全量通过） |
 | 环境自检 | `../init.sh` |
 | 构建配置 | `ReliaTrack.spec` |
