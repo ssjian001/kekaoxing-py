@@ -160,7 +160,7 @@ bd dolt push          # 同步
 1. `cd reliatrack` — 进入代码目录
 2. `cat progress/current.md` — 读取上次进度
 3. `cat feature_list.json` — 确认当前功能状态（dict 格式：`_meta` / `features`）
-4. 验证环境：`../.venv/bin/python -m pytest tests/ --collect-only -q | tail -2`（快速确认依赖与收集数 = 1111；要判"全绿"另跑不带 `-x` 的全量，**别用 `pytest -q | tail -N`——summary 行会被挤掉**）
+4. 验证环境：`../.venv/bin/python -m pytest tests/ --collect-only -o addopts= -q | tail -1`（→ `1111 tests collected`；`-o addopts=` 用来覆盖 `pytest.ini` 里的 `-q`，否则叠加成 `-qq` 连汇总行都没有）
 5. 如果 progress 中有未完成任务，从断点继续
 
 ## 完成定义（Definition of Done）

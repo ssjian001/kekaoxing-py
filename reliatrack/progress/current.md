@@ -85,7 +85,7 @@ AssertionError: 撞名应加序号后缀: reliatrack_20260929_164358.db
 **修复**：`tests/test_p3_audit_fixes.py` fixture 内冻结 wall clock（`monkeypatch.setattr(bs, "datetime", _FrozenDatetime)`，`now()` 恒返回 `2026-09-29 16:43:58`）。撞名路径由"碰运气命中"变为 100% 覆盖，且不再依赖调度时序；生产代码零改动。
 
 **验证证据**
-- 单跑 3 次 `2 passed`；全量 `pytest tests/ -q`（不带 `-x`）→ **1111 passed，exit 0**；独立核对：`--collect-only` 逐文件计数求和 = **1111**，与进度点（15×72+31）一致
+- 单跑 3 次 `2 passed`；全量真跑 **exit 0**（⚠️ 本轮原记"`-q` 看到 1111 passed"**不实** —— 见下节：本仓库 `-q` 实为 `-qq`，根本没有 summary 行；正确判据 = exit code + `--collect-only` 计数）；逐文件计数求和 = **1111**，与进度点（15×72+31）一致
 - **反向探针**（key 证据）：临时把"序号后缀重试循环"替换为单次尝试（= 修复前行为）→ 两个测试**同时 FAILED（`FileExistsError`）**；还原后 `sha256` 与探针前一致（`1c98d865…`）。证明冻结时间后测试**仍有区分度**，不是靠放宽断言换来的绿
 - 同类隐患全目录扫描：仅此一处有"同一秒/同一时刻"假设；其余 `datetime.now()` 均为 past/future 相对偏移
 
