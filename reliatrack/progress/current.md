@@ -1,83 +1,16 @@
-# ReliaTrack 进度 — 2026-09-03 (修复归档视图崩溃 + 本机环境重建)
+# ReliaTrack 进度
 
-## 本次完成
+> **会话开始必读。**结构/约定的权威文档是仓库根 `../CLAUDE.md`，本文件只记「做到哪了 + 还欠什么」。
+> 2026-09-03 ~ 09-23 的已完成批次已归档至 `progress/archive/current-2026-09-03_to_09-23.md`。
 
-| commit | 内容 |
-|---|---|
-| `14dc65b` | fix: 补 TestPlanService.get_archived_plans_by_project，修复归档视图崩溃 |
+## 未决事项（跨日期汇总，先看这里）
 
-## Bug 修复详情
+- [ ] **P3-10 三条提示性告警是否接受**：任务编辑对话框「已完成 → 已跳过」会记 WARNING（不阻断）。不想看可放宽矩阵或降级 DEBUG
+- [ ] **审计报告与代码归属不符**：报告写成 `issue_dialog.py`，实际在 `bug_tracker/batch_dialog.py:145-170` 且已走 `transition_status` —— 待确认无需再改
+- [ ] **UI 实测三项**：甘特 Ctrl+滚轮缩放、看板卡片拖拽期间触发刷新、出库弹窗手输操作人
+- [ ] `bd`（beads）本机未安装 → AGENTS.md 的 `bd dolt push` 等步骤在 Linux 侧跳过（`.beads/` 数据由 Windows 端维护）
 
-**现象**：Windows 端勾选"显示归档计划"开关时 AttributeError:
-`'TestPlanService' object has no attribute 'get_archived_plans_by_project'`
-
-**根因**：main.py:832 调用 `get_archived_plans_by_project()`，但 service/repo 只实现了
-`get_active_plans_by_project`（镜像方法缺失），属于"调用存在但实现缺失"的静默断点。
-
-**修复**（3 文件，+60 行）：
-- `src/db/repositories/test_plan_repo.py` — 新增 `get_archived_by_project`（SQL 层 `status='archived'` 过滤）
-- `src/services/test_plan_service.py` — 新增 `get_archived_plans_by_project`（转发 repo）
-- `tests/test_handlers.py` — 新增 `TestArchivedPlansByProject` 回归测试（2 用例：active/archived 互斥过滤 + 空归档不崩溃）
-
-## 本机环境重建（Linux/ThinkPad X250）
-
-- venv：`kekaoxing-py/.venv`（Python 3.11.16）
-- 依赖：`requirements.lock.txt` + pytest + pytest-qt + pytest-cov（CI 同款组合）
-- 注意：**必须装 pytest-qt**，否则 qapp fixture 缺失 → 部分 UI 测试 ERROR，
-  且 Qt 状态异常引发 QProgressDialog 段错误（已踩坑确认因果）
-- 必须设 `QT_QPA_PLATFORM=minimal`（X250 无显示输出；offscreen 平台在
-  batch_import_dialog.py:387 QProgressDialog 处有段错误 bug，minimal 正常）
-
-## 验证证据
-
-- `pytest tests/ -q` 全量 938 tests，exit=0 全绿（minimal 平台，2026-09-03）
-- `py_compile` 三文件通过
-- 历史已对齐：本地 main = origin/main(d93b297) + 1 fix commit(14dc65b)，无分叉
-
-## 待办 / 阻塞
-
-- [ ] git push 需凭证：本机 SSH key 是 hermes-config 专用 deploy key（对
-  kekaoxing-py 无权限）；需用户提供 GitHub PAT（写入 key.md）或把
-  ~/.ssh/hermes_deploy.pub 加为账号级 SSH key
-- [ ] Windows 端同步此修复（git pull 或手补三文件）
-- [ ] 用户真机验证：勾选"显示归档计划"开关不再崩溃、归档计划正确过滤显示
-
-## 2026-09-19 仪表盘"已完成"语义修正 + Pass 卡片
-- 问题：仪表盘"已完成"= status=completed，不含 failed 任务；用户要求"已完成"= 做完的测试（Pass+Fail 都算做完）
-- 改动：refresh_handlers.py 新增 task_done=completed+failed 填入 DashboardData；dashboard_view.py 加 task_done 槽、左栏 KPI 4卡→5卡（已完成/Pass/进行中/待开始/Fail），Pass 卡=pass_count（结果维度）；Fail 卡 jump "fail"→"failed"（原值在 filter combo 不存在，跳转静默失效，顺手修复）
-- 验证：py_compile 通过；pytest 938 passed
-- 待人工：UI 实际点一次卡片跳转确认
-
-## 2026-09-22 显示层审计修复批次（7项）
-- P1①环形图 task_map 补 paused（原暂停任务扇区消失）②SeverityBar 接通（原死代码, 有数据无UI）
-- P1③plan_summary 已完成口径统一 =completed+failed（与仪表盘 task_done 一致）
-- P2④DashboardData 删恒None死槽 pass_rate_trend/capa_trend（其余4槽保留, handler已填）
-- P2⑤样品表状态列上色（复用 SAMPLE_STATUS_COLORS + resolve_status_color, 补 QColor import）
-- P2⑥删 done 幽灵枚举值; compute_summary 超期口径补跳过 failed（两函数一致）
-- P2⑦fa_capa_panels 25+13+14 处繁体→简体（用户可见文案+docstring）
-- 验证: pytest 938 passed；已推送 371afce
-- 待人工: UI 双主题各看一眼 severity bar 与样品状态色
-
-## 2026-09-23 优化批次：KPI 自检 + 搜索防抖
-- ④ KPI 自检：src/services/kpi_audit.py — 8 项 DashboardData 一致性断言（状态求和=total、task_done=completed+failed、done/failed≤total、pass/fail非负、closed≤total Issue、weekly≤closed、pass_rate∈[0,100]、None安全），违规 logger.warning + 首次toast(每会话限1次防刷屏)
-- ② 任务表搜索防抖：test_plan_view textChanged→QTimer单触发300ms，程序化恢复不延迟
-- 测试：tests/test_kpi_audit.py 9条；全量 947 passed；推送 3add1a5
-- 待人工：UI 实测搜索输入手感（300ms 是否合适）+ 人为弄脏数据看 toast 是否触发
-
-## 2026-09-23 Pass/Fail 统一中文 (634f947)
-- 仪表盘卡片 Pass→通过 / Fail→不通过; 测试进度卡图例 PASS/FAIL→通过/不通过
-- 导出判定结论 export_utils: FAIL→不通过, PASS→通过, CONDITIONAL→条件接受(与 constants.py RESULT_LABELS 对齐)
-- 全 src 已无用户可见 Pass/Fail 英文残留; 947 passed
-- 待人工: 导出一份报告肉眼确认判定列文字
-
-## 2026-09-23 业务逻辑层审计+修复 (7ed2230)
-- P1批量改状态绕状态机漏洞: batch_dialog 改状态操作改调 transition_status, 被拒计入failed提示
-- M1 undo/redo失败保护: main.py _on_undo/_on_redo 包 try, FK冲突弹友好提示而非全局错误窗, 命令回栈可重试
-- M2 _auto_update_task_progress: 无结果时 skipped/paused 任务不再被拖回 pending
-- 其余审计确认正常: 排程日历计算/出库防呆/事务原子性/SQL参数化/嵌套事务/删除级联/7300防死循环
-- 测试: +2条回归(test_batch_status_machine) 全量 949 passed
-- 待人工: 批量改状态实测一次(含非法转换被拒的提示)
-
+---
 ## 2026-09-29 全量对抗审计修复（P0-1 / P2-x / P3-x，8 commit 已推送 origin/main）
 
 **审计项 → 修复（每条都带回归测试）**
@@ -156,4 +89,34 @@ AssertionError: 撞名应加序号后缀: reliatrack_20260929_164358.db
 - **反向探针**（key 证据）：临时把"序号后缀重试循环"替换为单次尝试（= 修复前行为）→ 两个测试**同时 FAILED（`FileExistsError`）**；还原后 `sha256` 与探针前一致（`1c98d865…`）。证明冻结时间后测试**仍有区分度**，不是靠放宽断言换来的绿
 - 同类隐患全目录扫描：仅此一处有"同一秒/同一时刻"假设；其余 `datetime.now()` 均为 past/future 相对偏移
 
-**教训**：①新增测试不得依赖 wall clock（用 monkeypatch 冻结时间）；②`init.sh` 带 `set -e` 且 pytest 带 `-x`，首个失败即停会隐藏后续失败，判断"是否全绿"必须真跑全量并看 summary；③`pytest -q | tail -N` 会把 summary 行挤掉，取证要落文件再 grep。
+**教训**：①新增测试不得依赖 wall clock（用 monkeypatch 冻结时间）；②`init.sh` 带 `set -e` 且 pytest 带 `-x`，首个失败即停会隐藏后续失败，判断"是否全绿"必须真跑全量并看 exit code；③`pytest -q | tail -N` 会把 summary 行挤掉，取证要落文件再 grep —— **并且见下节：本仓库的 `-q` 本身就是 `-qq`**。
+
+---
+
+## 2026-09-29（深夜）：neat-freak 第二轮 —— 验证方法本身失效
+
+**⚠️ 最大发现：文档记的"看 summary 判全绿"在本仓库从未生效**
+
+`pytest.ini` 有 `addopts = -q`；文档里照抄的 `pytest tests/ -q` 实际是 **`-qq`** → 进度点照打，但 **summary 行（`N passed`）完全消失**。全量跑几分钟只看到一串点，容易被当成"没输出=正常"。受影响位置：DoD 第 2 条、启动工作流第 4 步、根 `README.md`、`docs/runbook.md`。
+
+**修复后的正确姿势（均实测）**
+- 全量判据：`../.venv/bin/python -m pytest tests/`（不带 `-q`）→ 末行 `1111 passed in 69.41s` + `EXIT=0`
+- 快速环境检查：`--collect-only -o addopts= -q | tail -1` → `1111 tests collected in 0.97s`
+- 教训：**文档里的耗时同属腐败源** —— 原写"约 5 分钟"，实测 **69 秒**
+
+**本轮其他修复**
+- 根 `README.md` 的全量测试命令仍带 `-x`（与 CLAUDE.md 去 `-x` 规则矛盾）→ 已去除并加两条警示
+- 启动工作流第 4 步原为 `pytest tests/ -q | tail -5`，正是 skill 记录过的"summary 被挤掉"反面教材 → 已改
+- 根 `CLAUDE.md` handlers 目录树样例只列 10 个，与"11 个 Handler 类"不符 → 补 `backup_handlers.py`
+- `progress/current.md` 瘦身：159 行 / 14.6KB → **92 行 / 10.2KB**；2026-09-03~09-23 的 4 个已完成批次外迁 `progress/archive/current-2026-09-03_to_09-23.md`（含一条**已失效**的"push 需凭证"待办，归档头已注明失效原因：现用 ssjian001 账号级 key）；**未决事项已汇总到本文件顶部**
+
+**计数口径澄清（防下轮误判）**
+- `src/handlers` = 12 个 .py = **11 个 `*_handlers.py` + `crud_helpers.py`** → 文档写"11 个 Handler 类 + crud_helpers"**正确**，不是笔误
+- dialogs 30 含 `base_dialog.py`；widgets 40 不含 `__init__`；services 18；views 9
+
+**本轮核对为一致（无需改动）**
+- `docs/runbook.md`：schema v28 / 20 张表 / `../.venv` 路径 / Linux 无 `bd` 说明 ✓
+- `docs/architecture.md`：v28 + "11 个 Handler 类 + crud_helpers" ✓
+- `feature_list.json` `_meta`：schema 28 / 1111 passed / 2026-09-29 ✓；全仓引用均指向代码目录副本，无指向已删的仓库根副本
+- `progress/current.md` 的相对路径 `cat feature_list.json` 在 cwd = 代码目录下有效 ✓
+- 无相对时间词残留（"今天/最近"）= 0 ✓

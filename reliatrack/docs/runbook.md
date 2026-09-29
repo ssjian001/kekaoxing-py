@@ -28,8 +28,10 @@ cp data/reliatrack.db "data/backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
 ## 测试
 
 ```bash
-# 单元测试（1111 项，2026-09-29 全量通过）
-../.venv/bin/python -m pytest tests/ -v
+# 单元测试（1111 项；2026-09-29 实测 1111 passed / EXIT=0 / 69s）
+../.venv/bin/python -m pytest tests/
+# ⚠️ 别再加 -q（pytest.ini 的 addopts 已含 -q → 叠加成 -qq 会吞掉 summary 行）
+# ⚠️ 判"全绿"看最后一行 + exit code，不要 `| tail -N`（会挤掉 summary）
 
 # E2E 测试（脚本式，需 offscreen 模式；53 项断言）
 QT_QPA_PLATFORM=offscreen ../.venv/bin/python3 tests/manual/test_e2e_full.py

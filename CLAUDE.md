@@ -25,7 +25,7 @@ cd reliatrack                                          # 代码目录
 ```
 
 - PyInstaller 打包：`cd reliatrack && pyinstaller --noconfirm ReliaTrack.spec`（产物 `dist/ReliaTrack/`；报 command not found 就先 `../.venv/bin/pip install pyinstaller`）
-- 测试：`cd reliatrack && ../.venv/bin/python -m pytest tests/ -q`（**不加 `-x`** —— 首个失败即停会隐藏后续失败；1111 用例，全量约 5 分钟）
+- 测试：`cd reliatrack && ../.venv/bin/python -m pytest tests/`（**不要加 `-q`**：`pytest.ini` 的 `addopts = -q` 会让它变成 `-qq`、**吞掉 summary 行**；**不要加 `-x`**：首个失败即停会隐藏后续失败。1111 用例，2026-09-29 实测 `1111 passed` / EXIT=0 / **69s**）
 - 环境自检：`bash init.sh`（语法 + schema + 测试 + feature_list 四步）
 
 ## 技术栈
@@ -57,7 +57,7 @@ src/
       test_task_repo.py, todo_repo.py
   handlers/             # UI 事件处理层（11 个 Handler 类 + crud_helpers）
     crud_helpers.py     # 通用 CRUD 辅助
-    equipment_handlers.py, export_handlers.py, issue_handlers.py,
+    backup_handlers.py, equipment_handlers.py, export_handlers.py, issue_handlers.py,
     knowledge_handlers.py, plan_handlers.py, project_handlers.py,
     refresh_handlers.py, sample_handlers.py, technician_handlers.py,
     todo_handlers.py
@@ -160,7 +160,7 @@ bd dolt push          # 同步
 1. `cd reliatrack` — 进入代码目录
 2. `cat progress/current.md` — 读取上次进度
 3. `cat feature_list.json` — 确认当前功能状态（dict 格式：`_meta` / `features`）
-4. 验证环境：`../.venv/bin/python -m pytest tests/ -q | tail -5`（不要加 `-x`）
+4. 验证环境：`../.venv/bin/python -m pytest tests/ --collect-only -q | tail -2`（快速确认依赖与收集数 = 1111；要判"全绿"另跑不带 `-x` 的全量，**别用 `pytest -q | tail -N`——summary 行会被挤掉**）
 5. 如果 progress 中有未完成任务，从断点继续
 
 ## 完成定义（Definition of Done）
@@ -168,7 +168,7 @@ bd dolt push          # 同步
 一个功能"完成"必须满足全部 5 项：
 
 1. ✅ `../.venv/bin/python -m py_compile <改动文件>` 语法检查通过
-2. ✅ `../.venv/bin/python -m pytest tests/ -q` 相关测试通过（**判"全绿"要跑不带 `-x` 的全量**，`-x` 会首个失败即停、隐藏后续失败）
+2. ✅ `../.venv/bin/python -m pytest tests/` 相关测试通过（**加 `-x` 会首个失败即停、隐藏后续失败；加 `-q` 会与 `pytest.ini` 的 `addopts = -q` 叠加成 `-qq` 吞掉 summary 行** —— 判据 = 输出最后一行 `N passed` + `echo EXIT=$?`）
 3. ✅ `git diff` 审查无敏感数据泄露
 4. ✅ `feature_list.json` 中对应功能 status 更新为 `"done"`
 5. ✅ 验证证据记录（测试输出/截图）写入 progress/current.md

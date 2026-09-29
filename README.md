@@ -21,7 +21,9 @@ python3 -m venv .venv                              # 首次
 
 cd reliatrack                                      # 代码目录
 ../.venv/bin/python3 main.py                       # 启动
-../.venv/bin/python -m pytest tests/ -x -q         # 全量测试
+../.venv/bin/python -m pytest tests/            # 全量测试（1111 用例，实测 69s）
+# ⚠️ 别再加 -q：pytest.ini 的 addopts 已含 -q，叠加成 -qq 会吞掉 summary 行
+# ⚠️ 判"全绿"看最后一行 `N passed` + exit code，别用 `| tail -N` 管道（会挤掉 summary）
 ```
 
 环境自检脚本：`bash init.sh`（语法 + schema + 测试 + feature_list 校验）。
