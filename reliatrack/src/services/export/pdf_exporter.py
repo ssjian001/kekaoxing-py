@@ -23,11 +23,15 @@ from src.services.export.export_utils import (
 )
 from src.constants import RESOLUTION_LABELS
 
+from xml.sax.saxutils import escape as _xml_escape
+
 if TYPE_CHECKING:
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.pdfgen.canvas import Canvas as _Canvas
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+    from reportlab.platypus import Paragraph as _RLParagraph
+    from reportlab.lib.styles import ParagraphStyle
 else:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
@@ -35,12 +39,35 @@ else:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+        SimpleDocTemplate, Spacer, Table, TableStyle,
         PageBreak,
     )
+    from reportlab.platypus import Paragraph as _RLParagraph
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.pdfgen.canvas import Canvas as _Canvas
+
+
+def _esc(text: object) -> str:
+    """转义用户数据中的 & < >。
+
+    reportlab 的 Paragraph 把文本按迷你 XML 解析, 任务/计划/Issue 名里出现
+    & 或 < (如 "AT&T 验证"、"<85℃") 会让 doc.build 抛 ValueError, PDF 导出
+    必然失败。所有进 Paragraph 的动态文本必须经过这里。
+    """
+    if text is None:
+        return ""
+    return _xml_escape(str(text))
+
+
+def Paragraph(text: object, style, *args, **kwargs):  # noqa: N802
+    """默认转义版 Paragraph — 本模块唯一入口, 调用点无需逐处 _esc()。"""
+    return _RLParagraph(_esc(text), style, *args, **kwargs)
+
+
+def ParagraphMarkup(text: str, style, *args, **kwargs):  # noqa: N802
+    """需要内联标记(<b> 等)时使用; 动态部分须自行 _esc() 后再拼接。"""
+    return _RLParagraph(text, style, *args, **kwargs)
 
 
 def _find_cjk_font() -> tuple[str, str, int | None, int | None]:
@@ -146,9 +173,9 @@ def _build_signature_block(font_name: str = "CJK") -> Table:
 
     sign_data = [
         [
-            Paragraph("<b>编制人 (Prepared By):</b>", style_sign_header),
-            Paragraph("<b>审核人 (Reviewed By):</b>", style_sign_header),
-            Paragraph("<b>批准人 (Approved By):</b>", style_sign_header),
+            ParagraphMarkup("<b>编制人 (Prepared By):</b>", style_sign_header),
+            ParagraphMarkup("<b>审核人 (Reviewed By):</b>", style_sign_header),
+            ParagraphMarkup("<b>批准人 (Approved By):</b>", style_sign_header),
         ],
         [
             Paragraph("签名 / 签章: _________________", style_sign_cell),
@@ -1021,11 +1048,11 @@ def export_8d_pdf(
 
         # D 章节标题行
         header_data = [[
-            Paragraph(f"<b>{d_label}</b>", ParagraphStyle(
+            ParagraphMarkup(f"<b>{_esc(d_label)}</b>", ParagraphStyle(
                 "DH", fontName=_FN_B, fontSize=10,
                 textColor=HexColor("#FFFFFF"), alignment=TA_CENTER,
             )),
-            Paragraph(f"<b>{d_title}</b>", ParagraphStyle(
+            ParagraphMarkup(f"<b>{_esc(d_title)}</b>", ParagraphStyle(
                 "DT", fontName=_FN_B, fontSize=10,
                 textColor=HexColor("#FFFFFF"), alignment=TA_LEFT,
             )),
@@ -1066,7 +1093,7 @@ def export_8d_pdf(
     sig_cells = []
     for role in sig_roles:
         sig_cells.append([
-            Paragraph(f"<b>{role}</b>", style_sig_label),
+            ParagraphMarkup(f"<b>{_esc(role)}</b>", style_sig_label),
             Spacer(1, 10 * mm),
             Paragraph("________________________", style_sig_line),
         ])

@@ -519,6 +519,9 @@ def run_auto_schedule(
             place_task(t, t.start_day, timeline, config, starts, tech_timeline)
 
     # 1b. Clear start_day for non-locked, non-completed tasks
+    # 先快照原值: 若 1d 找不到合法槽位, 需要回滚为原排期而不是静默清零
+    original_start_days = {t.id: t.start_day for t in valid_tasks}
+    unschedulable: list[int] = []
     for t in valid_tasks:
         if t.status != "completed" and t.id not in locked_ids:
             t.start_day = 0
@@ -547,7 +550,19 @@ def run_auto_schedule(
         )
         slot = find_earliest_slot(task, earliest, timeline, config, starts=starts, tech_timeline=tech_timeline)
         if slot is None:
-            # 找不到合法槽位：跳过该任务，不静默违反约束
+            # 找不到合法槽位：不静默违反约束, 更不能把已有排期清成"未排期"。
+            # 回滚为原 start_day 并锁定(不被后续 Compress 改写), 同时记账到
+            # report["unschedulable_tasks"], 由 service 层拒绝把原值>0 写回 0。
+            tid = task.id
+            if tid is not None:
+                unschedulable.append(tid)
+                prev = original_start_days.get(tid, 0)
+                if isinstance(prev, int) and prev > 0:
+                    task.start_day = prev
+                    place_task(task, prev, timeline, config, starts, tech_timeline)
+                    locked_ids.add(tid)
+                else:
+                    task.start_day = 0
             continue
         task.start_day = slot
         place_task(task, slot, timeline, config, starts, tech_timeline)
@@ -633,6 +648,12 @@ def run_auto_schedule(
             f"注意: {len(cycle_task_ids)} 个任务因循环依赖被跳过（ID: {cycle_task_ids[:5]}）"
         )
 
+    if unschedulable:
+        suggestions.append(
+            f"注意: {len(unschedulable)} 个任务在可用日历内找不到合法槽位"
+            f"（ID: {unschedulable[:5]}），已保留其原有排期未改动"
+        )
+
     for b in bottlenecks:
         suggestions.append(
             f"注意: {b['name']} 利用率 {b['utilization']}%，建议增加设备以缓解瓶颈"
@@ -684,6 +705,7 @@ def run_auto_schedule(
             "bottlenecks": bottlenecks,
             "suggestions": suggestions,
             "skipped_cycle_tasks": cycle_task_ids,
+            "unschedulable_tasks": unschedulable,
             "technician_utilization": tech_utilization,
         },
         "timeline": timeline,

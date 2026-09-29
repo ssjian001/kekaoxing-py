@@ -296,3 +296,72 @@ def test_empty_data_exports(svc: ExportService, plan: TestPlan):
     # 空 Issue 列表
     path3 = svc.export_issues_excel([])
     _assert_valid_file(path3, ".xlsx")
+
+
+# ═══════════════════════════════════════════════════════════════
+#  用户数据含 XML 特殊字符 (& < >) — PDF 必须能导出
+# ═══════════════════════════════════════════════════════════════
+
+def test_pdf_special_chars_escaped(
+    svc: ExportService,
+    plan: TestPlan,
+    tasks: list[TestTask],
+    results: list[TestResult],
+    issues: list[Issue],
+    samples: list[Sample],
+):
+    """回归: 名称含 & / < / > 时 PDF 导出必须成功。
+
+    reportlab 的 Paragraph 按迷你 XML 解析文本, 未转义时 doc.build 抛
+    ValueError, 导致 PDF 导出必然失败。
+
+    注意触发条件(实测): `AT&T`、`<85℃>` 这类其实被 reportlab 容忍;
+    真正崩的是 `<` + ASCII 字母且无闭合(如 "A<B"、"温度<Tmax")与游离的
+    闭合标签(如 "文本</b>")。下面用例必须包含这类输入, 否则测试在修复前
+    也会通过, 起不到回归作用。
+    """
+    plan.name = "温度<Tmax 验证计划"
+    tasks[0].name = "A<B 临界试验"
+    tasks[1].name = "压力<limit 组"
+    issues[0].title = "AT&T 信号</b>失效"
+    issues[0].description = "阈值 < 5 && 波动 > 10 且 X<Y"
+
+    _assert_valid_file(svc.export_report_pdf(plan, tasks, issues, samples), ".pdf")
+    _assert_valid_file(svc.export_dvpr_pdf(plan, tasks, results, issues, samples), ".pdf")
+
+
+def test_paragraph_wrapper_actually_escapes():
+    """回归: 统一入口 Paragraph 必须真转义(而非只是改名)。"""
+    from src.services.export import pdf_exporter as px
+
+    assert px._esc("AT&T") == "AT&amp;T"
+    assert px._esc("<85℃") == "&lt;85℃"
+    assert px._esc("A<B") == "A&lt;B"
+    assert px._esc(None) == ""
+    # 标记版保留标记, 不转义
+    assert px.ParagraphMarkup is not px.Paragraph
+
+
+def test_unescaped_paragraph_would_crash():
+    """锁定触发条件: 证明未转义时确实会崩(修复的必要性依据)。"""
+    import io
+
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate
+
+    from src.services.export import pdf_exporter as px
+
+    style = getSampleStyleSheet()["Normal"]
+
+    def _render(text: str, factory) -> None:
+        SimpleDocTemplate(io.BytesIO()).build([factory(text, style)])
+
+    for bad in ("A<B", "温度<Tmax", "文本</b>"):
+        try:
+            _render(bad, px._RLParagraph)
+        except Exception:
+            pass
+        else:
+            raise AssertionError(f"{bad!r} 预期未转义会报错, 实际没有")
+        # 转义后必须都能正常解析
+        _render(bad, px.Paragraph)

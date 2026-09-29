@@ -211,11 +211,29 @@ class SchedulerService:
         report = result["report"]
 
         # 写回 start_day 到数据库（用拷贝后的结果）
-        updates = [
-            (t.id, t.start_day)
-            for t in tasks_copy
-            if t.id is not None and t.start_day != original_start_days.get(t.id)
-        ]
+        # 第二道防线: 拒绝把"原值>0"的任务写回 0（未排期）—— 即使 scheduler
+        # 侧回滚逻辑失效, 也绝不让数据库里已有的排期被静默抹掉。
+        updates: list[tuple[int, int]] = []
+        cleared: list[int] = []
+        for t in tasks_copy:
+            if t.id is None:
+                continue
+            prev = original_start_days.get(t.id)
+            if t.start_day == prev:
+                continue
+            if t.start_day == 0 and isinstance(prev, int) and prev > 0:
+                cleared.append(t.id)
+                continue
+            updates.append((t.id, t.start_day))
+
+        if cleared:
+            logger.warning(
+                "拒绝清除 %d 个任务的已有排期(原 start_day>0 → 0): %s",
+                len(cleared), cleared[:10],
+            )
+            merged = sorted(set(report.get("unschedulable_tasks") or []) | set(cleared))
+            report["unschedulable_tasks"] = merged
+
         if updates:
             self._task_repo.bulk_update_start_day(updates)
 

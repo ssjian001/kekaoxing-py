@@ -318,3 +318,56 @@ class TestFindEarliestSlot:
         t = _task(1, dur=1)
         slot = find_earliest_slot(t, 5, {}, cfg, starts=starts)
         assert slot == 5
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  10. 排不进窗口的任务不得被静默清零已有排期
+# ═══════════════════════════════════════════════════════════════════
+
+class TestUnschedulableKeepsSchedule:
+    """回归: 窗口内无槽位时, 任务原有 start_day 必须保留并记账到 report。
+
+    旧行为: Phase 1b 把所有任务 start_day 清零, Phase 1d 找不到槽位直接
+    continue, 之后被进程清场的任务以 0(未排期) 写回 DB, 已有排期凭空消失,
+    UI 无任何提示。单设备容量 1 + 任务需求超窗口即可触发。
+    """
+
+    def test_unschedulable_task_keeps_original_start_day(self):
+        n = 380  # 逐天限 1 → 需求 380 天 > 365 天窗口
+        tasks = [_task(i, dur=1) for i in range(1, n + 1)]
+        tasks[-1].start_day = 200  # 已有排期, 且排序后处理时机最晚
+        cfg = ScheduleConfig(
+            start_date=_START, skip_weekends=False, daily_start_limit=1,
+        )
+        result = run_auto_schedule(tasks, [], cfg)
+        report = result["report"]
+
+        assert report["unschedulable_tasks"], "超出窗口的任务未记账到 report"
+        assert tasks[-1].start_day == 200, (
+            f"已有排期被静默清零: start_day={tasks[-1].start_day}"
+        )
+
+    def test_never_scheduled_task_stays_zero(self):
+        """从未排期的任务不应被伪造成有排期。"""
+        n = 380
+        tasks = [_task(i, dur=1) for i in range(1, n + 1)]  # 全部 start_day=0
+        cfg = ScheduleConfig(
+            start_date=_START, skip_weekends=False, daily_start_limit=1,
+        )
+        result = run_auto_schedule(tasks, [], cfg)
+        report = result["report"]
+        unsched = set(report["unschedulable_tasks"])
+        assert unsched
+        for t in tasks:
+            if t.id in unsched:
+                assert t.start_day == 0, f"任务 {t.id} 从未排期却被写成 {t.start_day}"
+
+    def test_report_has_suggestion_for_unschedulable(self):
+        n = 380
+        tasks = [_task(i, dur=1) for i in range(1, n + 1)]
+        cfg = ScheduleConfig(
+            start_date=_START, skip_weekends=False, daily_start_limit=1,
+        )
+        result = run_auto_schedule(tasks, [], cfg)
+        joined = " ".join(result["report"]["suggestions"])
+        assert "找不到合法槽位" in joined, "UI 无任何提示, 用户无从得知排期未生效"
