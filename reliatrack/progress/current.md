@@ -132,9 +132,10 @@
 - 代码目录 `feature_list.json` `_meta` = schema 28 / 1111 passed / last_updated 2026-09-29 ✓
 - 目录计数（2026-09-29 实测）：dialogs 30（含 `base_dialog.py`）、widgets 40（不含 `__init__`）、services 18、repos 11 + base、views 9、handlers 11
 
-**未处理（需人工放行/决策）**
-- `CLAUDE.md` / `AGENTS.md` 是 Hermes 写保护的 agent-instruction 文件（patch/write_file 均被拦，审批超时）。仓库根 `CLAUDE.md` 的"两份合并 + 数字校正 + 路径显式化"内容已备好但未落地；内层 `reliatrack/CLAUDE.md`（停留 08-22，含已失效的 CI-only bug 说明与旧 PyInstaller 命令）应改为指针
-- 仓库根 `feature_list.json`（list 格式 v2.0.0，2026-08-30）是旧布局残留，与代码目录 dict 格式副本重复 → 建议删除，但要等 CLAUDE.md 的 `cat feature_list.json` 指引同步修改后再动
+**已解决（2026-09-29 晚，用户授权后落地）**
+- ✅ 仓库根 `CLAUDE.md` 与内层 `reliatrack/CLAUDE.md` 完成**并集合并**：根 = 唯一权威（补入内层独有的 4 条 Qt 坑 + 结构树细节；保留根侧更新的 CI 结论与 `ReliaTrack.spec` 打包命令；修正 `.venv` 解释器路径、测试命令去掉 `-x`）；内层改为指针（含 cwd/解释器说明与关键路径表）。守恒核对：两份旧文件共 93 条实质条目，26 处差异**全部为有意替换**，无知识丢失
+- ✅ `AGENTS.md` 在 Beads 自动生成块（`BEGIN/END`）之后补 Linux 无 `bd` 的适用说明，未触碰自动块内容
+- ✅ 仓库根 `feature_list.json`（旧 list 格式 v2.0.0，2026-08-30）**已删除**：仓库内零代码/脚本/CI 引用；内容经逐条核对是代码目录 dict 副本的**严格子集**（23 vs 25 条目，无独有 id）。恢复：`git checkout 4d6b532 -- feature_list.json`
 
 ---
 
