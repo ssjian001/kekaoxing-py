@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import weakref
 
 import apsw
 
@@ -14,10 +15,80 @@ from src.models.issue import (
     IssueComment, IssueActivityLog, IssueLink,
 )
 from src.db.connection import DEFAULT_ATTACHMENTS_DIR
-from src.db.repositories.base import BaseRepository
+from src.db.repositories.base import BaseRepository, _Transaction
 from src.db.sql_ident import quote_ident
 
 logger = logging.getLogger(__name__)
+
+# ── 延后的附件磁盘删除队列 ──────────────────────────────────────────
+# 按「连接对象」共享：同一连接上的不同 Repository（Issue / TestTask）都往
+# 同一份队列里放，才能在同一个事务提交点统一清理。
+# WeakKeyDictionary 让连接回收后队列一起释放，也避免 id() 复用导致误删。
+_pending_disk_deletions: "weakref.WeakKeyDictionary[apsw.Connection, list[str]]" \
+    = weakref.WeakKeyDictionary()
+
+
+def _remove_disk_file_now(file_path: str) -> None:
+    """删除单个附件磁盘文件（白名单 + 符号链接防护，见 _remove_disk_file）。"""
+    IssueRepository._remove_disk_file(file_path)
+
+
+def defer_disk_deletions(conn: apsw.Connection, paths: "list[str | None]") -> None:
+    """删除附件磁盘文件 —— 事务内延后到提交后，事务外立即删除。
+
+    调用方必须先删 DB 行再调用本函数：DB 行删除是事务语义的、可回滚，
+    磁盘 unlink 不可回滚，所以顺序必须是 DB 优先，且事务内必须延后。
+    """
+    pending = [p for p in paths if p]
+    if not pending:
+        return
+    if conn.in_transaction:
+        _pending_disk_deletions.setdefault(conn, []).extend(pending)
+        return
+    for fp in pending:
+        _remove_disk_file_now(fp)
+
+
+def flush_disk_deletions(conn: apsw.Connection) -> None:
+    """执行 conn 上延后的磁盘删除（best-effort，失败只记日志）。"""
+    for fp in _pending_disk_deletions.pop(conn, []):
+        _remove_disk_file_now(fp)
+
+
+def discard_disk_deletions(conn: apsw.Connection) -> None:
+    """丢弃 conn 上延后的磁盘删除 —— 事务已回滚，DB 行仍在，文件必须保留。"""
+    _pending_disk_deletions.pop(conn, None)
+
+
+class _DeferredDiskTransaction(_Transaction):
+    """IssueRepository 事务包装 —— 提交成功后才删除延后的附件磁盘文件。
+
+    背景（审计 P2-3）：附件删除若发生在调用方事务内，事务回滚会恢复 DB 行
+    却留下已被 unlink 的文件，成为"悬空附件记录"。因此事务内的磁盘删除一律
+    进延后队列：**提交后**才真正删除，回滚则丢弃队列（文件必须保留）。
+    COMMIT 自身失败（磁盘满 / BUSY）时同样丢弃队列。
+    """
+
+    def __init__(self, repo: "IssueRepository") -> None:
+        super().__init__(repo)
+        # 收窄类型：基类 _Transaction._repo 标注为 BaseRepository
+        self._repo: "IssueRepository" = repo
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            result = super().__exit__(exc_type, exc_val, exc_tb)
+        except BaseException:
+            # COMMIT/ROLLBACK 自身失败：事务未落地，文件必须保留
+            if self._owns_transaction:
+                self._repo.discard_deferred_disk_deletions()
+            raise
+        # 只有真正持有事务（最外层）才决定 flush/discard
+        if self._owns_transaction:
+            if exc_type is not None:
+                self._repo.discard_deferred_disk_deletions()
+            else:
+                self._repo.flush_deferred_disk_deletions()
+        return result
 
 
 class IssueRepository(BaseRepository):
@@ -25,6 +96,22 @@ class IssueRepository(BaseRepository):
 
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "issues", Issue)
+
+    def transaction(self):
+        """事务上下文管理器（覆盖基类：提交后清理延后的附件文件删除）。"""
+        return _DeferredDiskTransaction(self)
+
+    def _defer_or_remove_disk_files(self, paths: "list[str | None]") -> None:
+        """删除附件磁盘文件 —— 事务内延后到提交后，事务外立即删除。"""
+        defer_disk_deletions(self._conn, paths)
+
+    def flush_deferred_disk_deletions(self) -> None:
+        """执行本连接上延后的磁盘删除（best-effort，失败只记日志）。"""
+        flush_disk_deletions(self._conn)
+
+    def discard_deferred_disk_deletions(self) -> None:
+        """丢弃本连接上延后的磁盘删除（事务回滚，文件必须保留）。"""
+        discard_disk_deletions(self._conn)
 
     def list_all(self, **filters: Any) -> list[Issue]:
         """查询所有未删除的 Issue，支持可选过滤条件。
@@ -106,8 +193,9 @@ class IssueRepository(BaseRepository):
     def purge_old(self, days: int = 30) -> int:
         """彻底删除已软删除超过 N 天的 Issue，返回删除行数。
 
-        审计修复：删除前先清理附件磁盘文件（与 delete() 一致），
-        否则 DB 行级联删除后附件变孤儿文件。
+        先删 DB 行，附件磁盘文件随后清理（事务内则延后到提交后，见
+        _deferred_disk_deletions），避免 DB 行级联删除后附件变孤儿文件，
+        也避免回滚后留下悬空记录。
         """
         attachment_paths = self._conn.execute(
             "SELECT ia.file_path FROM [issue_attachments] ia "
@@ -116,14 +204,13 @@ class IssueRepository(BaseRepository):
             "AND i.deleted_at < datetime('now','localtime', ?)",
             (f"-{days} days",),
         ).fetchall()
-        for (fp,) in attachment_paths:
-            self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issues] WHERE is_deleted = 1 "
             "AND deleted_at < datetime('now','localtime', ?)",
             (f"-{days} days",),
         )
         row = self._conn.execute("SELECT changes()").fetchone()
+        self._defer_or_remove_disk_files([fp for (fp,) in attachment_paths])
         return row[0] if row else 0
 
     def count_by_assignee(self, assignee_id: int) -> int:
@@ -386,9 +473,12 @@ class IssueRepository(BaseRepository):
                 logger.warning("附件路径是符号链接，拒绝删除: %s -> %s", raw, raw.resolve())
                 return
             p = raw.resolve()
-            # 路径前缀校验：只删除允许目录下的文件
+            # 路径校验：只删除允许目录内的文件。
+            # 必须用 is_relative_to（按路径分量比较），不能用 startswith
+            # —— 前缀比较会被兄弟目录绕过（如 attachments_old/ 也以
+            # attachments 开头）。写法与 backup_service 的白名单一致。
             allowed = IssueRepository._ALLOWED_ATTACH_DIRS
-            if not any(str(p).startswith(d) for d in allowed):
+            if not any(p == Path(d) or p.is_relative_to(Path(d)) for d in allowed):
                 logger.warning("附件路径超出允许范围，跳过删除: %s", p)
                 return
             if p.exists():
@@ -399,26 +489,24 @@ class IssueRepository(BaseRepository):
     def delete_attachments(self, issue_id: int) -> None:
         """删除 Issue 的所有附件（DB 记录 + 磁盘文件）。
 
-        先删磁盘文件再删 DB 记录：与 delete_attachment 顺序一致。
-        磁盘删除失败时保留 DB 记录，用户可重试；
-        避免 DB 记录丢失后文件变为孤儿。
+        先删 DB 记录，再处理磁盘文件：处于调用方事务中时磁盘删除延后到提交后
+        （见 _DeferredDiskTransaction），回滚则文件保留，不会留下悬空附件记录；
+        事务外（autocommit）紧随语句删除。
         """
         rows = self._conn.execute(
             "SELECT id, file_path FROM [issue_attachments] WHERE issue_id = ?",
             (issue_id,),
         ).fetchall()
-        for (aid, fp) in rows:
-            if fp:
-                self._remove_disk_file(fp)
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE issue_id = ?", (issue_id,)
         )
+        self._defer_or_remove_disk_files([fp for (_aid, fp) in rows])
 
     def delete_attachment(self, attachment_id: int) -> None:
-        """删除单条附件（磁盘文件 + DB 记录）。
+        """删除单条附件（DB 记录 + 磁盘文件）。
 
-        先删磁盘文件再删 DB 记录：磁盘删除失败时保留 DB 记录，
-        用户可重试；避免 DB 记录丢失后文件变为孤儿。
+        先删 DB 记录再删磁盘文件；事务内磁盘删除延后到提交后（见
+        _DeferredDiskTransaction），避免回滚后记录恢复而文件已丢。
         """
         row = self._conn.execute(
             "SELECT file_path FROM [issue_attachments] WHERE id = ?",
@@ -426,14 +514,11 @@ class IssueRepository(BaseRepository):
         ).fetchone()
         if not row:
             return
-        file_path = row[0]
-        # 先尝试删除磁盘文件
-        if file_path:
-            self._remove_disk_file(str(file_path))
-        # 磁盘文件已删除（或不存在 / 不在允许目录），安全删除 DB 记录
         self._conn.execute(
             "DELETE FROM [issue_attachments] WHERE id = ?", (attachment_id,)
         )
+        # DB 行已删（事务内则等提交）；磁盘文件已删除 / 不在允许目录则跳过
+        self._defer_or_remove_disk_files([row[0]])
 
     # ── CAPA 记录 ──
 
@@ -580,7 +665,9 @@ class IssueRepository(BaseRepository):
         """删除项目关联的所有 issue（含附件磁盘清理），返回删除行数。
 
         子表（fa_records / issue_attachments / capa_records）依赖 FK CASCADE。
-        附件磁盘文件需手动清理。不删除 projects 本身——由 ProjectService 负责。
+        附件磁盘文件需手动清理 —— 先删 DB 行，磁盘清理延后到调用方事务提交后
+        （调用方提交后须调 flush_deferred_disk_deletions，回滚则 discard）。
+        不删除 projects 本身——由 ProjectService 负责。
         """
         # 收集附件文件路径（磁盘清理，CASCADE 不处理文件系统）
         attachment_paths = self._conn.execute(
@@ -589,13 +676,13 @@ class IssueRepository(BaseRepository):
             "WHERE i.project_id = ?",
             (project_id,),
         ).fetchall()
-        for (fp,) in attachment_paths:
-            self._remove_disk_file(fp)
         # FK CASCADE 自动清理 fa_records / issue_attachments / capa_records
         cursor = self._conn.execute(
             "DELETE FROM [issues] WHERE project_id = ?", (project_id,),
         )
         row = self._conn.execute("SELECT changes()").fetchone()
+        # 磁盘清理不可回滚：延后到调用方事务提交后（回滚时文件必须保留）
+        self._defer_or_remove_disk_files([fp for (fp,) in attachment_paths])
         return row[0] if row else 0
 
 

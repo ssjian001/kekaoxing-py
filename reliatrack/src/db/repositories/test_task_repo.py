@@ -154,6 +154,8 @@ class TestTaskRepository(BaseRepository):
         附件文件清理（磁盘 .unlink）需手动执行，其余子表依赖 FK CASCADE。
         issues 及其子表（fa_records, capa_records, issue_attachments）由
         FK ON DELETE CASCADE 自动级联清理。
+        磁盘清理顺序：先删 DB 行，再延后到事务提交后清理（嵌在调用方事务里
+        时不会提前 unlink，避免回滚后留下悬空附件记录）。
         """
         # 收集附件文件路径（CASCADE 后无法再查询）
         attachment_paths = self._conn.execute(
@@ -163,14 +165,13 @@ class TestTaskRepository(BaseRepository):
             "WHERE tt.plan_id = ?",
             (plan_id,),
         ).fetchall()
-        from src.db.repositories.issue_repo import IssueRepository
+        from src.db.repositories.issue_repo import defer_disk_deletions
         # 先执行 DB 删除（事务内），成功后再清理磁盘文件
         with self.transaction():
             cursor = self._conn.execute(
                 "DELETE FROM [test_tasks] WHERE plan_id = ?", (plan_id,),
             )
-        # DB 删除成功后，清理磁盘附件文件（best-effort）
-        for (fp,) in attachment_paths:
-            IssueRepository._remove_disk_file(fp)
+        # DB 删除成功后清理磁盘附件：仍在调用方事务中则自动延后到提交后
+        defer_disk_deletions(self._conn, [fp for (fp,) in attachment_paths])
         row = self._conn.execute("SELECT changes()").fetchone()
         return row[0] if row else 0

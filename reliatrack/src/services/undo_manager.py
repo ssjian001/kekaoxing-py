@@ -42,6 +42,10 @@ class Command(ABC):
         self.do()
 
 
+class UndoConflictError(RuntimeError):
+    """撤销/重做目标已不存在：不能静默 no-op，必须按失败处理并告知用户。"""
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  通用字段更新命令
 # ═══════════════════════════════════════════════════════════════════
@@ -248,15 +252,52 @@ class BatchEditSamplesCommand(Command):
         self._changes = changes
         self.description = f"批量编辑 {len(changes)} 个样品"
 
+    # ── 内部：写入 + 影响行数校验 ──────────────────────────────
+
+    def _missing_ids(self) -> list[int]:
+        """返回已不存在的样品 ID（撤销/重做前置校验）。"""
+        return [
+            sample_id
+            for sample_id, _old, _new in self._changes
+            if self._repo.get_by_id(sample_id) is None
+        ]
+
+    def _apply(self, old_to_new: bool) -> None:
+        """批量写回字段（True = 写新值，False = 恢复旧值）。
+
+        审计 P3-5：原实现直接 update()，update 无 rowcount 检查——目标行
+        已被删除时影响 0 行、静默 no-op，撤销返回"成功"但数据没恢复。
+        现在先整体存在性校验（不产生半成品状态），再逐行校验影响行数，
+        任何一行写不进去就抛 UndoConflictError，由 UndoManager 保留命令
+        并向上告知用户。
+        """
+        missing = self._missing_ids()
+        if missing:
+            raise UndoConflictError(
+                f"无法{'重做' if old_to_new else '撤销'}批量编辑：样品 "
+                f"{missing} 已被删除，命令已保留可重试"
+            )
+        for sample_id, old_vals, new_vals in self._changes:
+            vals = new_vals if old_to_new else old_vals
+            if not vals:
+                continue
+            self._repo.update(sample_id, **vals)
+            # 影响 0 行 = 目标行不存在（update 静默不报错），按失败处理。
+            # changes() 只在「确认行确实没了」时才算证据，避免 update 因
+            # 字段被过滤而未执行 SQL 造成的误判。
+            if self._repo.conn.changes() == 0 and self._repo.get_by_id(sample_id) is None:
+                raise UndoConflictError(
+                    f"批量编辑命令影响 0 行：样品 #{sample_id} 已不存在，"
+                    f"命令已保留可重试"
+                )
+
     def do(self) -> None:
         """执行所有字段更新。"""
-        for sample_id, _old, new_vals in self._changes:
-            self._repo.update(sample_id, **new_vals)
+        self._apply(old_to_new=True)
 
     def undo(self) -> None:
         """恢复所有旧值。"""
-        for sample_id, old_vals, _new in self._changes:
-            self._repo.update(sample_id, **old_vals)
+        self._apply(old_to_new=False)
 
     def redo(self) -> None:
         """重新执行更新。"""

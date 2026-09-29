@@ -158,10 +158,22 @@ class BaseRepository:
         """过滤 kwargs，只保留表中实际存在的列名（防 SQL 列名注入）。
 
         列名集合缓存于 _columns_set，invalidate_columns_cache 时同步失效。
+
+        丢弃未知键时记 warning（不静默）：update 传错列名会退化成 no-op、
+        list_all/count 过滤失效会退化为全表扫描，静默丢弃把这类 bug 藏起来。
+        合法调用不会传未知键，故返回值与既有行为完全一致。
         """
         if not hasattr(self, '_columns_set') or self._columns_set is None:
             self._columns_set = set(self._columns())
-        return {k: v for k, v in kwargs.items() if k in self._columns_set}
+        safe = {k: v for k, v in kwargs.items() if k in self._columns_set}
+        if len(safe) != len(kwargs):
+            dropped = sorted(k for k in kwargs if k not in self._columns_set)
+            logger.warning(
+                "%s: 丢弃表中不存在的键 %s（表=%s）— update 会退化为 no-op、"
+                "list_all/count 过滤会退化为全表",
+                type(self).__name__, dropped, self._table,
+            )
+        return safe
 
     def insert(self, **kwargs: Any) -> int:
         """插入一行，返回 lastrowid。"""

@@ -32,11 +32,38 @@ DEFAULT_LOGS_DIR = _DEFAULT_DB_DIR / "logs"
 _connections: dict[str, apsw.Connection] = {}
 _lock = threading.Lock()
 
+# 库文件本身损坏时 aPSW 抛出的异常（PRAGMA 阶段实测为 NotADBError，
+# 头破坏为 CorruptError/FormatError）。连接层不吞这些错误、但也不在
+# PRAGMA 阶段抛出——保留连接交由上层 check_db 判定，用户才能看到
+# DbCorruptError 的备份恢复引导，而不是未处理的 traceback。
+_CORRUPTION_ERRORS = (apsw.CorruptError, apsw.NotADBError, apsw.FormatError)
+
 
 def _ensure_dir(db_path: str) -> None:
     """确保数据库文件所在目录存在。"""
     parent = Path(db_path).parent
     parent.mkdir(parents=True, exist_ok=True)
+
+
+def _apply_pragmas(conn: apsw.Connection, db_path: str) -> None:
+    """应用连接级 PRAGMA（WAL / 外键 / 超时 / 缓存）。
+
+    损坏库在 PRAGMA 阶段就可能失败（实测损坏文件在此抛 NotADBError）。
+    这类错误只记日志并保留连接：上层 AppController.initialize 的 check_db
+    会据此抛 DbCorruptError 并引导从备份恢复。其余错误（锁 / 权限 /
+    打不开）原样抛出——那是必须立即失败的配置或环境问题，不该被静默降级。
+    """
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
+    except _CORRUPTION_ERRORS:
+        logger.error(
+            "数据库文件损坏，连接 PRAGMA 初始化失败（交由启动自检判定）: %s",
+            db_path, exc_info=True,
+        )
 
 
 def get_connection(db_path: str = "") -> apsw.Connection:
@@ -58,11 +85,15 @@ def get_connection(db_path: str = "") -> apsw.Connection:
             # 检查连接是否仍然可用（可能被外部 close()）
             try:
                 conn.execute("SELECT 1")
-            except apsw.SQLError:
-                # 连接已关闭或损坏，清理后重建
+            except apsw.Error:
+                # 连接已关闭或损坏，清理后重建。
+                # 注意必须捕 apsw.Error 而非 apsw.SQLError：aPSW 的异常都直接
+                # 派生自 Error（实测 ConnectionClosedError 的 MRO 为
+                # ConnectionClosedError → Error → Exception，不含 SQLError），
+                # 只捕 SQLError 会让这段自愈变成死代码。
                 try:
                     conn.close()
-                except apsw.SQLError:
+                except apsw.Error:
                     logger.debug("Failed to close stale connection: %s", db_path)
                 del _connections[db_path]
                 # fall through to recreate
@@ -72,11 +103,7 @@ def get_connection(db_path: str = "") -> apsw.Connection:
                 _ensure_dir(db_path)
 
             conn = apsw.Connection(db_path)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys=ON")
-            conn.execute("PRAGMA busy_timeout=5000")
-            conn.execute("PRAGMA synchronous=NORMAL")
-            conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
+            _apply_pragmas(conn, db_path)
             _connections[db_path] = conn
 
         return _connections[db_path]
