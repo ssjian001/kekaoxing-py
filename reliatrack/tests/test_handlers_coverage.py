@@ -1356,6 +1356,7 @@ class TestExportWorkerComponents:
         class _StubWorker(QThread):
             finished = Signal(str)
             error = Signal(str)
+            cancelled = Signal()  # 与真实 ExportWorker 的协作式取消契约一致
 
             def __init__(self, handler_fn, db_path, svc, fmt, project_id, plan_id,
                          issue_id, parent=None) -> None:
@@ -1365,6 +1366,9 @@ class TestExportWorkerComponents:
 
             def start(self) -> None:
                 self.finished.emit('')
+
+            def request_cancel(self) -> None:
+                pass
 
             def terminate(self) -> None:
                 pass
