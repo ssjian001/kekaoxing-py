@@ -600,6 +600,18 @@ class TestP34AutoBackupSameSecond:
     @pytest.fixture()
     def backup_svc(self, tmp_path, monkeypatch):
         import src.services.backup_service as bs
+        from datetime import datetime as _dt
+
+        # 冻结 wall clock：create_auto_backup() 用 datetime.now() 生成「秒级」时间戳，
+        # 测试若隐含假设「两次调用落在同一秒」，在机器负载高/时钟跨秒时会随机失败
+        # （2026-09-29 16:43 全量跑实测命中：second 拿到新时间戳 164358，无 _1 后缀）。
+        # 冻结后撞名路径 100% 被覆盖，且不依赖调度时序。
+        class _FrozenDatetime(_dt):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2026, 9, 29, 16, 43, 58)
+
+        monkeypatch.setattr(bs, "datetime", _FrozenDatetime)
 
         db_path = tmp_path / "src.db"
         conn = apsw.Connection(str(db_path))

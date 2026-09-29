@@ -135,3 +135,24 @@
 **未处理（需人工放行/决策）**
 - `CLAUDE.md` / `AGENTS.md` 是 Hermes 写保护的 agent-instruction 文件（patch/write_file 均被拦，审批超时）。仓库根 `CLAUDE.md` 的"两份合并 + 数字校正 + 路径显式化"内容已备好但未落地；内层 `reliatrack/CLAUDE.md`（停留 08-22，含已失效的 CI-only bug 说明与旧 PyInstaller 命令）应改为指针
 - 仓库根 `feature_list.json`（list 格式 v2.0.0，2026-08-30）是旧布局残留，与代码目录 dict 格式副本重复 → 建议删除，但要等 CLAUDE.md 的 `cat feature_list.json` 指引同步修改后再动
+
+---
+
+## 2026-09-29（晚）：`init.sh` 真跑暴露 P3-4 测试的时序竞态（已修）
+
+**现象**：`init.sh` 第 3 步真跑全量时（16:43，`DISPLAY=:0`）首个失败即停：
+```
+FAILED tests/test_p3_audit_fixes.py::TestP34AutoBackupSameSecond::test_two_backups_in_same_second_both_succeed
+AssertionError: 撞名应加序号后缀: reliatrack_20260929_164358.db
+```
+
+**根因**：`create_auto_backup()` 用 `datetime.now().strftime("%Y%m%d_%H%M%S")`（**秒级**）生成文件名，撞名时才追加 `_1/_2`。测试连调两次并**隐含假设两次落在同一秒**；高负载下两次调用跨秒 → 第二次本就该拿新时间戳 → 断言失败。**生产代码的撞名重试逻辑正确，问题在测试。**
+
+**修复**：`tests/test_p3_audit_fixes.py` fixture 内冻结 wall clock（`monkeypatch.setattr(bs, "datetime", _FrozenDatetime)`，`now()` 恒返回 `2026-09-29 16:43:58`）。撞名路径由"碰运气命中"变为 100% 覆盖，且不再依赖调度时序；生产代码零改动。
+
+**验证证据**
+- 单跑 3 次 `2 passed`；全量 `pytest tests/ -q`（不带 `-x`）→ **1111 passed，exit 0**；独立核对：`--collect-only` 逐文件计数求和 = **1111**，与进度点（15×72+31）一致
+- **反向探针**（key 证据）：临时把"序号后缀重试循环"替换为单次尝试（= 修复前行为）→ 两个测试**同时 FAILED（`FileExistsError`）**；还原后 `sha256` 与探针前一致（`1c98d865…`）。证明冻结时间后测试**仍有区分度**，不是靠放宽断言换来的绿
+- 同类隐患全目录扫描：仅此一处有"同一秒/同一时刻"假设；其余 `datetime.now()` 均为 past/future 相对偏移
+
+**教训**：①新增测试不得依赖 wall clock（用 monkeypatch 冻结时间）；②`init.sh` 带 `set -e` 且 pytest 带 `-x`，首个失败即停会隐藏后续失败，判断"是否全绿"必须真跑全量并看 summary；③`pytest -q | tail -N` 会把 summary 行挤掉，取证要落文件再 grep。
