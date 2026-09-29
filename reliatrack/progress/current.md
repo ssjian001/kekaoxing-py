@@ -77,3 +77,37 @@
 - 其余审计确认正常: 排程日历计算/出库防呆/事务原子性/SQL参数化/嵌套事务/删除级联/7300防死循环
 - 测试: +2条回归(test_batch_status_machine) 全量 949 passed
 - 待人工: 批量改状态实测一次(含非法转换被拒的提示)
+
+## 2026-09-29 全量对抗审计修复（P0-1 / P2-x / P3-x，8 commit 已推送 origin/main）
+
+**审计项 → 修复（每条都带回归测试）**
+
+| commit | 审计项 | 关键修复 |
+|---|---|---|
+| `a06c6c5` | P0-1 | schema v11 重建/续跑原子化（迁移中断不再丢数据） |
+| `87f8648` | P2-1/P2-2/P2-3/P3-1/P3-5 | 陈旧/损坏连接自愈（捕 `apsw.Error`）、附件白名单 `is_relative_to`、先删 DB 后删磁盘、未知字段不再静默丢弃、撤销冲突抛 `UndoConflictError` |
+| `2d72f9a` | P2-7/P2-10/P2-14/P3-2/P3-6 | 导入单元格全类型兜底、批量导入补"入库"台账、编辑框不洗枚举外状态、台账"行+状态联动"两步写原子、holidays 非法行告警 |
+| `d07ae03` | P2-4/P2-5/P2-6/P3-16/P3-18 | 体检线程独立连接、后台线程不跑迁移、报告 PDF 失败清半成品、导出取消改协作式退出（不再 `terminate`）、体检框关闭等扫描线程 |
+| `8313e49` | P2-8/P2-11/P2-13/P3-11/P3-12/P3-15 | 刷新失败不静默、选中计划不重复查询、闪烁后恢复行底色、批量更新失败逆序回滚、去掉无效 `notify("result")`、启动只做一次全量加载 |
+| `b192d36` | P3-3/P3-4/P3-7～P3-9/P3-17/P3-18 | 恢复后重启改进程退出时执行（原 `startDetached` 与 QLockFile 竞态恒失败）、自动备份同秒撞名递增序号、排程 `strptime` 加缓存、`user_locked_days` 锁住 `start_day=0`、docx 显式路径净化、空状态标签死代码、同列拖放写库/甘特滚轮劫持/结果弹窗「应用到全部」回退/出库手输操作人/看板卡片拖拽期被销毁 |
+| `04fb2d0` | — | 回归测试集（P0-1 + P2-1..P2-14 + P3-1..P3-16）+ `ExportWorker` 协作式取消测试桩补齐 |
+| 本次追加 | P3-10 | 任务状态软校验（详见下节） |
+
+**P3-10 任务状态机 — 方案 A（软校验，只告警不拦截）**
+- `src/constants.py` 新增 `TASK_TRANSITIONS`；`TestPlanService._warn_if_unusual_status_transition` 在 `update_task(status=...)` 时校验
+- 刻意不做硬状态机：结果回算（`_auto_update_task_progress`）可产出 pending/completed/failed/in_progress **任意**目标、任务编辑对话框 5 状态自由选、批量菜单可跨状态批改、undo 按旧值反向写回 —— 硬约束会打断这些合法流程
+- 矩阵未收的 3 条语义矛盾跳跃会打 WARNING（不阻断）：`completed→skipped`、`skipped→completed`、`skipped→failed`（编辑对话框/批量标记完成可达，属提示性告警）
+- 枚举外状态值（如 `paused`）单独告警且**原样保留**（与 P1-6 语义一致）
+- 软校验自身绝不抛异常（取任务失败/任务不存在都只 `logger.debug` 后放行）
+
+**验证证据（2026-09-29）**
+- 全量 `pytest tests/` = **1103 collected / 1103 passed / 0 failed / EXIT=0**
+- 反向验证（防"测试放水"）：`src` 层 13 项逐条"撤销修复 → 对应测试必失败 → 还原后 sha256 一致"；他人批次用 sandbox（`git archive HEAD` 的**旧源码** + 当前 `tests/`）复跑 → 大量 FAILED / `UndoConflictError` 收集即 ERROR，证明修复真在源码改动里而非只在测试里
+- P3-10 反向探针：现状 completed→skipped 告警 1 条且写入仍成功；去掉新代码 → 0 条；换成硬校验 → 抛异常（即方案 B 会打断写入）
+- 推送核对：本地 HEAD == `git ls-remote origin refs/heads/main` == `04fb2d0`；7 commit 共 41 文件零 junk（无 `__pycache__`/`.log`/`.db`/`.env`）
+
+**待人工确认**
+- [ ] P3-10 的 3 条提示性告警是否接受（任务编辑对话框"已完成 → 已跳过"会记 WARNING，不阻断）；不想看可放宽矩阵或降级为 DEBUG
+- [ ] 审计报告把批量改状态归属写成 `issue_dialog.py`，但实际代码在 `bug_tracker/batch_dialog.py:145-170` 且已走 `transition_status` —— 确认无需再改
+- [ ] UI 实测：甘特 Ctrl+滚轮缩放、看板卡片拖拽期间触发刷新、出库弹窗手输操作人
+- [ ] `bd`（beads）本机未安装，AGENTS.md 的 `bd dolt push` 步骤本次跳过
