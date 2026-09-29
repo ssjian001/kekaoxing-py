@@ -71,6 +71,11 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+> ⚠️ **Linux 侧未安装 `bd`**（2026-09-29 核实）：`.beads/` 数据由 Windows 端维护，Linux 会话中所有 `bd *` 命令（含 `bd dolt push`、`bd prime`、`bd remember`）一律跳过。此时：
+> - 推送用 `git push`（不依赖 bd）
+> - issue / 任务状态以 `progress/current.md` + `feature_list.json` 为准，**不要**另建 markdown TODO 列表
+> - 上面的 Beads 自动生成块（`BEGIN/END` 之间）不手工编辑
+
 ## Tab 增删/重排 — 索引全局同步
 
 移除或重排 QTabWidget 的 Tab 时，tab 索引在多处以**魔法数字**出现，
