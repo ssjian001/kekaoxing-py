@@ -10,7 +10,7 @@
 > └── reliatrack/                     ← 代码目录（cwd 用它）
 >     ├── main.py  src/  tests/
 >     ├── progress/current.md          ← 会话开始必读
->     └── feature_list.json            ← 权威功能清单（仓库根那份是旧布局残留）
+>     └── feature_list.json            ← 权威功能清单（唯一副本）
 > ```
 > 本文件（仓库根）是**唯一权威项目文档**。代码目录的 `reliatrack/CLAUDE.md` 已改为指针（2026-09-29 合并两份分叉副本）。
 
