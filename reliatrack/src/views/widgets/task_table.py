@@ -425,18 +425,32 @@ class _TaskTable(QTableWidget):
         result_map: dict[int, tuple[int, int]] | None = None,
         start_date: str = "",
         task_prefix: str = "",
+        plan_start_dates: dict[int, str] | None = None,
     ) -> None:
         from datetime import date, timedelta
         self._tasks = tasks
         tech_map = technician_map or {}
         res_map = result_map or {}
-        # 解析计划开始日期
+        plan_starts = plan_start_dates or {}
+        # 解析计划开始日期。合并"全部计划"视图时必须按每个任务所属计划
+        # 各自起算: 用 all_plans[0].start_date 统一推算会让各计划起算日
+        # 不同时日期全错、超期误判（含红底标红）。
         plan_start: date | None = None
         if start_date:
             try:
                 plan_start = date.fromisoformat(start_date)
             except ValueError:
                 plan_start = None
+
+        def _task_base(task: TestTask) -> date | None:
+            """任务所属计划的起算日; 计划缺失/日期非法时回退到全局 start_date。"""
+            raw = plan_starts.get(task.plan_id) if task.plan_id else None
+            if raw:
+                try:
+                    return date.fromisoformat(raw)
+                except ValueError:
+                    pass
+            return plan_start
         today = date.today()
         self.setSortingEnabled(False)
         self.setRowCount(len(tasks))
@@ -453,9 +467,10 @@ class _TaskTable(QTableWidget):
             planned_start_str: str = ""
             planned_end_str: str = ""
             planned_end_date: date | None = None
-            if plan_start and task.start_day is not None:
-                planned_start_date = plan_start + timedelta(days=task.start_day)
-                planned_end_date = plan_start + timedelta(days=task.start_day + task.duration - 1)
+            _base = _task_base(task)
+            if _base and task.start_day is not None:
+                planned_start_date = _base + timedelta(days=task.start_day)
+                planned_end_date = _base + timedelta(days=task.start_day + task.duration - 1)
                 planned_start_str = planned_start_date.isoformat()
                 planned_end_str = planned_end_date.isoformat()
             else:

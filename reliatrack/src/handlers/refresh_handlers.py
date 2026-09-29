@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -428,21 +429,47 @@ class RefreshHandlers:
 
         selected_plan_id = self._win.test_plan_view.get_selected_plan_id()
 
+        # plan_id → 计划起算日。合并"全部计划"视图时各计划起算日不同, 必须
+        # 按任务所属计划分别推算日期(见 task_table / gantt / plan_summary 的
+        # plan_start_dates 参数); 用 all_plans[0] 统一推算会让日期全错、超期误判。
+        plan_start_dates: dict[int, str] = {}
+
         if selected_plan_id is None:
             tasks = []
             for p in all_plans:
                 if p.id is not None:
                     tasks.extend(ctrl.test_plan_service.get_tasks(p.id))
-            start_date = all_plans[0].start_date if all_plans else ""
+            plan_start_dates = {
+                p.id: p.start_date
+                for p in all_plans
+                if p.id is not None and p.start_date
+            }
+            # 甘特轴原点取最早起算日: 取 all_plans[0] 会让更早计划的条跑出负坐标
+            _starts = sorted(plan_start_dates.values())
+            start_date = _starts[0] if _starts else ""
             task_prefix = "ALL"
-            plan_obj = all_plans[0] if all_plans else None
+            # 合并视图没有单一计划: Issue 面板取所有相关项目的并集
+            plan_obj = None
         else:
             tasks = ctrl.test_plan_service.get_tasks(selected_plan_id)
             plan_obj = ctrl.test_plan_service.get_plan(selected_plan_id)
             start_date = plan_obj.start_date if plan_obj else ""
             task_prefix = plan_obj.task_prefix if plan_obj else ""
+            if plan_obj and plan_obj.id is not None and plan_obj.start_date:
+                plan_start_dates = {plan_obj.id: plan_obj.start_date}
 
-        max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
+        def _axis_day(t) -> int:
+            """任务在甘特轴上的结束日(相对 start_date 轴原点)。"""
+            off = 0
+            _raw = plan_start_dates.get(t.plan_id) if t.plan_id else None
+            if _raw and start_date:
+                try:
+                    off = (date.fromisoformat(_raw) - date.fromisoformat(start_date)).days
+                except ValueError:
+                    off = 0
+            return off + (t.start_day or 0) + t.duration
+
+        max_day = max((_axis_day(t) for t in tasks), default=30)
 
         # 构建技术员映射 {technician_id: name}
         technician_map: dict[int, str] = {}
@@ -481,8 +508,22 @@ class RefreshHandlers:
         # 关联 Issue（用于失效模式分析）
         plan_issues: list = []
         if ctrl.issue_service:
-            if plan_obj and plan_obj.project_id:
+            if plan_obj is not None and plan_obj.project_id:
                 plan_issues = ctrl.issue_service.get_by_project(plan_obj.project_id)
+            elif selected_plan_id is None and all_plans:
+                # 合并"全部计划"视图: 取所有计划所属项目 Issue 的并集
+                # (原先只取 all_plans[0].project_id, 失效模式分析只看得到第一个计划)
+                seen: set = set()
+                merged: list = []
+                for pid in sorted({p.project_id for p in all_plans if p.project_id}):
+                    for iss in ctrl.issue_service.get_by_project(pid):
+                        _iid = getattr(iss, "id", None)
+                        if _iid is not None:
+                            if _iid in seen:
+                                continue
+                            seen.add(_iid)
+                        merged.append(iss)
+                plan_issues = merged
             else:
                 plan_issues = ctrl.issue_service.list_all()
 
@@ -495,6 +536,7 @@ class RefreshHandlers:
             issues=plan_issues,
             task_prefix=task_prefix,
             holidays=holidays,
+            plan_start_dates=plan_start_dates,
         )
 
 

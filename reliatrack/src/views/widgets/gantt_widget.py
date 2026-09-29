@@ -56,6 +56,7 @@ class _GanttWidget(QWidget):
         self._tasks: list[TestTask] = []
         self._total_days: int = 30
         self._start_date: str = ""
+        self._plan_start_dates: dict[int, str] = {}
         self._row_height: int = 28
         self._header_height: int = 24
         self._bar_height: int = 18
@@ -124,16 +125,34 @@ class _GanttWidget(QWidget):
         self._scroll_v_offset = value
         self.update()
 
+    def _plan_day_offset(self, task: TestTask) -> int:
+        """任务所属计划起算日相对甘特轴原点(_start_date)的天数偏移。
+
+        合并"全部计划"视图时各计划 start_date 不同, 直接用 start_day 画会把
+        日期画错、拖拽回写也会写成相对错误原点的值。
+        """
+        if not self._start_date or not self._plan_start_dates:
+            return 0
+        raw = self._plan_start_dates.get(task.plan_id) if task.plan_id else None
+        if not raw:
+            return 0
+        try:
+            return (date.fromisoformat(raw) - date.fromisoformat(self._start_date)).days
+        except ValueError:
+            return 0
+
     def _task_day_range(self, task: TestTask) -> tuple[int, int]:
         """获取任务在甘特图中的 (start_day, duration)。"""
         if not self._show_actual:
-            return task.start_day, task.duration
+            return task.start_day + self._plan_day_offset(task), task.duration
         if not task.actual_start_date or not self._start_date:
-            return task.start_day, task.duration
+            return task.start_day + self._plan_day_offset(task), task.duration
         try:
-            base = date.fromisoformat(self._start_date)
+            # 实际日期是绝对日期, 但需相对"该任务所属计划"的起算日换算
+            _raw_base = self._plan_start_dates.get(task.plan_id) if task.plan_id else None
+            base = date.fromisoformat(_raw_base or self._start_date)
             a_start = date.fromisoformat(task.actual_start_date)
-            start_day = max((a_start - base).days, 0)
+            start_day = max((a_start - base).days, 0) + self._plan_day_offset(task)
             if task.actual_end_date:
                 a_end = date.fromisoformat(task.actual_end_date)
                 duration = max((a_end - a_start).days + 1, 1)
@@ -141,7 +160,7 @@ class _GanttWidget(QWidget):
                 duration = task.duration
             return start_day, duration
         except ValueError:
-            return task.start_day, task.duration
+            return task.start_day + self._plan_day_offset(task), task.duration
 
     def set_tasks(
         self,
@@ -152,6 +171,7 @@ class _GanttWidget(QWidget):
         technician_map: dict[int, str] | None = None,
         task_prefix: str = "",
         holidays: set[str] | None = None,
+        plan_start_dates: dict[int, str] | None = None,
     ) -> None:
         self._drag_task_idx = None
         self._drag_preview_offset = 0
@@ -161,6 +181,7 @@ class _GanttWidget(QWidget):
         self._tasks = tasks
         self._total_days = max(total_days, 1)
         self._start_date = start_date
+        self._plan_start_dates = plan_start_dates or {}
         self._task_prefix = task_prefix
         self._holidays = holidays or set()
         self._equip_map = equipment_map or {}
@@ -266,7 +287,8 @@ class _GanttWidget(QWidget):
         task = self._tasks[idx]
         start_day, duration = self._task_day_range(task)
         if self._drag_task_idx == idx and not self._show_actual:
-            start_day = self._drag_start_day + self._drag_preview_offset
+            start_day = (self._drag_start_day + self._drag_preview_offset
+                         + self._plan_day_offset(task))
         x = self._label_w + start_day * self._day_w
         y = self._header_height + idx * self._row_height + (self._row_height - self._bar_height) / 2
         # 工期为 0 时按里程碑最小宽度 16px 渲染

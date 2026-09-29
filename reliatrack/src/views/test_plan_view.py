@@ -189,6 +189,7 @@ class TestPlanView(QWidget):
         self._last_technician_map: dict[int, str] = {}
         self._last_result_map: dict[int, tuple[int, int]] = {}
         self._last_start_date: str = ""
+        self._last_plan_start_dates: dict[int, str] = {}
         self._last_equipment_map: dict[int, str] = {}
         self._last_task_prefix: str = ""
         self._last_holidays: set[str] = set()
@@ -252,38 +253,55 @@ class TestPlanView(QWidget):
         d_from = self._date_from.date().toPython() if self._date_from.date() > self._date_from.minimumDate() else None
         d_to = self._date_to.date().toPython() if self._date_to.date() < self._date_to.maximumDate() else None
         if d_from or d_to:
-            plan_start = None
-            try:
-                plan_start = date.fromisoformat(self._last_start_date) if self._last_start_date else None
-            except ValueError:
-                pass
-            if plan_start:
+            def _base_of(t: TestTask) -> date | None:
+                """按任务所属计划取起算日(合并视图各计划起算日不同)。"""
+                raw = (self._last_plan_start_dates or {}).get(t.plan_id) if t.plan_id else None
+                for cand in (raw, self._last_start_date):
+                    if cand:
+                        try:
+                            return date.fromisoformat(cand)
+                        except ValueError:
+                            continue
+                return None
+
+            if not self._last_plan_start_dates and not self._last_start_date:
+                # 计划无 start_date（或格式非法）时日期筛选无法计算，必须提示而非静默失效
+                # 节流：每次搜索都会走到这，只在用户确实选了日期时提示一次/状态变化时提示
+                self._show_date_filter_hint()
+            else:
                 date_filtered = []
+                unresolvable = False
                 for t in filtered:
-                    s_date = plan_start + timedelta(days=t.start_day)
-                    e_date = plan_start + timedelta(days=t.start_day + max(t.duration, 1) - 1)
+                    base = _base_of(t)
+                    if base is None:
+                        # 无法换算日期的任务不参与日期过滤, 但保留在结果里(不静默隐藏)
+                        unresolvable = True
+                        date_filtered.append(t)
+                        continue
+                    s_date = base + timedelta(days=t.start_day)
+                    e_date = base + timedelta(days=t.start_day + max(t.duration, 1) - 1)
                     if d_from and e_date < d_from:
                         continue
                     if d_to and s_date > d_to:
                         continue
                     date_filtered.append(t)
                 filtered = date_filtered
-            else:
-                # 计划无 start_date（或格式非法）时日期筛选无法计算，必须提示而非静默失效
-                # 节流：每次搜索都会走到这，只在用户确实选了日期时提示一次/状态变化时提示
-                self._show_date_filter_hint()
+                if unresolvable:
+                    self._show_date_filter_hint()
 
         self._task_table.set_tasks(
             filtered, self._last_technician_map, self._last_result_map,
             start_date=self._last_start_date,
             task_prefix=self._last_task_prefix,
+            plan_start_dates=self._last_plan_start_dates,
         )
         total_d = getattr(self, '_last_total_days', 30)
         self._gantt.set_tasks(filtered, total_days=total_d, start_date=self._last_start_date,
                               equipment_map=self._last_equipment_map,
                               technician_map=self._last_technician_map,
                               task_prefix=self._last_task_prefix,
-                              holidays=self._last_holidays)
+                              holidays=self._last_holidays,
+                              plan_start_dates=self._last_plan_start_dates)
 
         self._update_summary_bar()
         self._update_stats(filtered)
@@ -326,6 +344,7 @@ class TestPlanView(QWidget):
         issues: list | None = None,
         task_prefix: str = "",
         holidays: set[str] | None = None,
+        plan_start_dates: dict[int, str] | None = None,
     ) -> None:
         self._all_tasks_for_filter = tasks
         self._last_total_days = total_days
@@ -336,6 +355,8 @@ class TestPlanView(QWidget):
         self._last_technician_map = technician_map or {}
         self._last_task_prefix = task_prefix
         self._last_holidays = holidays or set()
+        # plan_id → 该计划起算日; 合并"全部计划"视图时按任务所属计划各自推算日期
+        self._last_plan_start_dates = plan_start_dates or {}
         # 更新技术员筛选下拉
         self._tech_filter_combo.blockSignals(True)
         selected = self._tech_filter_combo.currentData()
@@ -371,12 +392,18 @@ class TestPlanView(QWidget):
         start_date: str,
     ) -> tuple[int, int, int]:
         """计算摘要指标: (到期数, 待录入数, 超期数)。"""
-        return compute_summary(tasks, result_map, start_date)
+        return compute_summary(
+            tasks, result_map, start_date,
+            plan_start_dates=self._last_plan_start_dates,
+        )
 
     def _update_stats(self, tasks: list[TestTask]) -> None:
         """更新任务统计：总数/完成/未完成/超期。"""
         self._summary_bar.setText(
-            format_summary_text(tasks, self._last_start_date, self._summary_bar.text())
+            format_summary_text(
+                tasks, self._last_start_date, self._summary_bar.text(),
+                plan_start_dates=self._last_plan_start_dates,
+            )
         )
 
     def _update_summary_bar(self) -> None:

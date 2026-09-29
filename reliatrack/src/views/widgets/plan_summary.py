@@ -7,10 +7,31 @@ from src.models.test_plan import TestTask
 import src.styles.theme as _t
 
 
+def _resolve_plan_start(
+    task: TestTask,
+    start_date: str,
+    plan_start_dates: dict[int, str] | None,
+) -> date | None:
+    """任务所属计划的起算日。
+
+    合并"全部计划"视图时各计划 start_date 不同, 必须按 task.plan_id 取各自
+    起算日; 缺失或解析失败才回退全局 start_date。
+    """
+    raw = (plan_start_dates or {}).get(task.plan_id) if task.plan_id else None
+    for candidate in (raw, start_date):
+        if candidate:
+            try:
+                return date.fromisoformat(candidate)
+            except ValueError:
+                continue
+    return None
+
+
 def compute_summary(
     tasks: list[TestTask],
     result_map: dict[int, tuple[int, int]],
     start_date: str,
+    plan_start_dates: dict[int, str] | None = None,
 ) -> tuple[int, int, int]:
     """计算摘要指标: (到期数, 待录入数, 超期数)。
 
@@ -23,12 +44,7 @@ def compute_summary(
     """
     import json as _json
 
-    if not start_date:
-        return 0, 0, 0
-
-    try:
-        base = date.fromisoformat(start_date)
-    except ValueError:
+    if not start_date and not plan_start_dates:
         return 0, 0, 0
 
     today = date.today()
@@ -42,17 +58,19 @@ def compute_summary(
             continue
         # 审计 #22：原 end_day = start_day + duration 多算一天（工期含首日，
         # 结束日应为 start+duration-1），导致超期判定提前一天触发。
-        duration = max(task.duration or 1, 1)
-        end_date = base + timedelta(days=(task.start_day or 0) + duration - 1)
+        base = _resolve_plan_start(task, start_date, plan_start_dates)
+        if base is not None:
+            duration = max(task.duration or 1, 1)
+            end_date = base + timedelta(days=(task.start_day or 0) + duration - 1)
 
-        # 超期
-        if end_date < today:
-            overdue_count += 1
-        # 到期（今天到期）
-        elif end_date == today:
-            due_count += 1
+            # 超期
+            if end_date < today:
+                overdue_count += 1
+            # 到期（今天到期）
+            elif end_date == today:
+                due_count += 1
 
-        # 待录入: sample_ids 有内容但结果数不足
+        # 待录入: sample_ids 有内容但结果数不足（与日期无关, 计划日期缺失也照算）
         if task.id is not None:
             try:
                 sids = _json.loads(task.sample_ids) if task.sample_ids else []
@@ -70,6 +88,7 @@ def format_summary_text(
     tasks: list[TestTask],
     start_date: str,
     existing_summary: str = "",
+    plan_start_dates: dict[int, str] | None = None,
 ) -> str:
     """生成摘要栏文本（统计 + 任务状态）。"""
     total = len(tasks)
@@ -83,12 +102,7 @@ def format_summary_text(
         if t.status in ("completed", "skipped", "failed"):
             continue
         if t.start_day is not None:
-            plan_start = None
-            if start_date:
-                try:
-                    plan_start = date.fromisoformat(start_date)
-                except ValueError:
-                    pass
+            plan_start = _resolve_plan_start(t, start_date, plan_start_dates)
             if plan_start:
                 # 审计 #22：与 compute_summary / task_dialog 口径一致，
                 # 工期含首日，结束日 = start + duration - 1
