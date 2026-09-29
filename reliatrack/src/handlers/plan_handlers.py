@@ -981,7 +981,9 @@ class PlanHandlers:
             result=new_result,
             test_date=date.today().isoformat(),
         )
-        self._win.ctrl.notify_data_changed("result")
+        # 注意: 此处不再 notify("result") — _do_refresh_all_inner 无 "result"
+        # 分支, 属无效通知(不刷新任何视图)。结果变化已由下方 task 通知 +
+        # _on_plan_changed() 的表格/甘特/矩阵重载覆盖。
         # 与 dialog 路径保持一致：自动更新任务进度/状态 + 通知 task/issue
         self._auto_update_task_progress(ctrl, task_id)
         self._win.ctrl.notify_data_changed("task")
@@ -1384,12 +1386,34 @@ class PlanHandlers:
         um = getattr(ctrl, "undo_manager", None)
         if isinstance(um, UndoManager):
             # 真实运行路径：入 undo 栈（可 Ctrl+Z 撤销整个批量操作）
+            # 不用 um.execute(macro)：MacroCommand.do() 逐条执行，第 k 条失败时
+            # 前 k-1 条已落库，而 execute() 因异常不把命令压栈 —— 部分写入既
+            # 不可撤销也无人回滚。这里手动逐条执行 + 记录已应用部分，失败则
+            # 逆序回滚，保证「要么全部生效并入栈，要么全部回滚」。
+            applied: list = []
             try:
-                um.execute(macro)
+                for cmd in commands:
+                    cmd.do()
+                    applied.append(cmd)
             except Exception:
-                logger.exception("批量更新失败: field=%s count=%d", field, count)
-                QMessageBox.critical(self._win, "批量更新失败", "批量更新任务失败，请查看日志")
+                logger.exception(
+                    "批量更新失败，回滚已写入的 %d 条: field=%s count=%d",
+                    len(applied), field, count,
+                )
+                for done in reversed(applied):
+                    try:
+                        done.undo()
+                    except Exception:
+                        logger.exception(
+                            "批量更新回滚失败: task_id=%s",
+                            getattr(done, "_entity_id", "?"),
+                        )
+                QMessageBox.critical(
+                    self._win, "批量更新失败",
+                    "批量更新任务失败，已回滚本次已写入的更改，请查看日志",
+                )
                 return
+            um.record(macro)
         else:
             # 无 undo manager（测试/异常路径）：直接执行命令，行为一致
             for cmd in commands:

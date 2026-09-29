@@ -175,8 +175,10 @@ class MainWindow(QMainWindow):
         self._refresh_timer.setInterval(100)  # 100ms debounce
         self._refresh_timer.timeout.connect(self._refresh_handlers._do_refresh_all)
 
-        # 初始数据加载
-        self._refresh_all()
+        # 初始数据加载已由 _setup_menubar() → _create_filter_bar_content() 之后的
+        # 那次 _refresh_all() 完成（菜单栏先于此处构建，且筛选 combo 那时才存在）。
+        # 这里不再重复调用，否则启动时全量加载跑两遍（叠加 notify_data_changed
+        # 的 pending 刷新最多 4 遍）。
 
         # 监听数据变更
         controller.register_on_data_changed(self._schedule_refresh)
@@ -415,7 +417,9 @@ class MainWindow(QMainWindow):
             elif value == "backup":
                 self._on_backup_db()
             elif value == "theme":
-                self._on_toggle_dark_theme(True)
+                # 切换式而非硬编码切暗色：否则处在暗色主题时命令面板
+                # 只会重复设为 dark，用户切不回亮色（Ctrl+K → 暗色死锁）。
+                self._on_toggle_dark_theme(_t.current_theme() != "dark")
         elif kind == "project":
             idx = self._project_filter_combo.findData(value)
             if idx >= 0:
@@ -646,8 +650,11 @@ class MainWindow(QMainWindow):
             getter = search_map.get(idx)
         if getter:
             widget = getter()
-            widget.setFocus()
-            widget.selectAll()
+            # getter 可能返回 None（如 Bug Tracker 列表未构建、视图控件
+            # 已被销毁），直接 setFocus 会 AttributeError。
+            if widget is not None:
+                widget.setFocus()
+                widget.selectAll()
 
     # ── 刷新/撤销快捷入口（委托给 handler） ──
 
@@ -859,7 +866,6 @@ class MainWindow(QMainWindow):
             MacroCommand,
             SoftDeleteCommand,
             TransitionIssueStatusCommand,
-            UpdateFieldCommand,
         )
         if cmd is None:
             return {"issue"}
@@ -872,9 +878,14 @@ class MainWindow(QMainWindow):
         # 明确类型的命令 → 固定实体
         if isinstance(cmd, BatchEditSamplesCommand):
             return {"sample"}
-        if isinstance(cmd, (BatchScheduleCommand, UpdateFieldCommand)):
-            # UpdateFieldCommand 子类: MoveTask/UpdateProgress/UpdateTaskStatus → task
+        if isinstance(cmd, BatchScheduleCommand):
+            # 批量排程只作用于 test_tasks
             return {"task"}
+        # UpdateFieldCommand 是通用命令：子类 MoveTask/UpdateProgress/
+        # UpdateTaskStatus 作用于 task，但 Issue 批量编辑也用它
+        # (bug_tracker/batch_dialog.py)。一律映射 task 会让撤销后 Issue
+        # 视图停留旧值 —— 统一交给下方 repo._table 推断，推断不出则回退
+        # 全量刷新（安全）。
         if isinstance(cmd, (SoftDeleteCommand, TransitionIssueStatusCommand)):
             return {"issue"}
         # 通用: 从 repo._table 推断

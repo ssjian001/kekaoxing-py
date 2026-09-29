@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from main import MainWindow
@@ -44,12 +44,32 @@ class RefreshHandlers:
         self._win.schedule_throttled_refresh(entity_type)
 
     def _do_refresh_all(self) -> None:
-        """执行实际的刷新操作。"""
+        """执行实际的刷新操作。
+
+        审计 P2-8：原实现顶层 `except Exception: pass` 把刷新异常全部吞掉，
+        单个视图失败时后半段视图停在旧数据，既无日志也无提示。现在改为
+        步骤级隔离（_safe_step）+ 兜底留痕，任何一步失败都不中断其余视图。
+        """
         try:
             self._do_refresh_all_inner()
         except Exception:
-            # 测试 teardown / 连接关闭时静默返回
-            pass
+            # 兜底：步骤级 guard 之外的结构性失败（teardown 期连接已关闭等）
+            # 也必须留痕，不再静默吞掉
+            logger.exception("全量刷新中断（非单视图失败）")
+
+    def _safe_step(self, label: str, step: Callable[[], None]) -> None:
+        """执行单个刷新步骤：失败只影响该步骤，且必须留痕（日志 + 一次性提示）。"""
+        try:
+            step()
+        except Exception:
+            logger.exception("刷新「%s」失败（其余视图继续刷新）", label)
+            if getattr(self._win, "_refresh_error_warned", False):
+                return  # 一次性提示：同窗口只打扰用户一次
+            self._win._refresh_error_warned = True
+            try:
+                self._win.toast(f"刷新「{label}」失败，部分数据可能未更新", "error")
+            except Exception:
+                logger.exception("刷新失败提示无法弹出")
 
     def _do_refresh_all_inner(self) -> None:
         """实际刷新逻辑（外部包 try/except 防 teardown crash）。"""
@@ -62,52 +82,52 @@ class RefreshHandlers:
 
         # 全量刷新时预取共享数据，避免重复 DB 查询
         if need_all:
-            self._prefetch_shared_data()
+            self._safe_step("共享数据", self._prefetch_shared_data)
 
-        # 根据需要选择刷新范围
+        # 根据需要选择刷新范围（每步独立 guard：单个视图失败不中断其余视图）
         if need_all:
-            self._refresh_projects()
-            self._refresh_dashboard()
-            self._refresh_samples()
-            self._refresh_plans()
-            self._refresh_issues()
-            self._refresh_equipment()
-            self._refresh_technicians()
-            self._refresh_knowledge()
-            self._refresh_todos()
+            self._safe_step("项目", self._refresh_projects)
+            self._safe_step("仪表盘", self._refresh_dashboard)
+            self._safe_step("样品", self._refresh_samples)
+            self._safe_step("测试计划", self._refresh_plans)
+            self._safe_step("Issue", self._refresh_issues)
+            self._safe_step("设备", self._refresh_equipment)
+            self._safe_step("技术员", self._refresh_technicians)
+            self._safe_step("知识库", self._refresh_knowledge)
+            self._safe_step("待办", self._refresh_todos)
         else:
             _need_dashboard = False
             if "project" in pending:
-                self._refresh_projects()
+                self._safe_step("项目", self._refresh_projects)
                 self._need_plan_combo_refresh = True
                 _need_dashboard = True
             if "sample" in pending:
-                self._refresh_samples()
+                self._safe_step("样品", self._refresh_samples)
                 _need_dashboard = True
             if "task" in pending or "plan" in pending:
-                self._refresh_plans()
+                self._safe_step("测试计划", self._refresh_plans)
                 self._need_plan_combo_refresh = True
                 _need_dashboard = True
             if "issue" in pending:
-                self._refresh_issues()
+                self._safe_step("Issue", self._refresh_issues)
                 _need_dashboard = True
             if "equipment" in pending:
-                self._refresh_equipment()
+                self._safe_step("设备", self._refresh_equipment)
             if "technician" in pending:
-                self._refresh_technicians()
+                self._safe_step("技术员", self._refresh_technicians)
             if "knowledge" in pending:
-                self._refresh_knowledge()
+                self._safe_step("知识库", self._refresh_knowledge)
             if "todo" in pending:
-                self._refresh_todos()
+                self._safe_step("待办", self._refresh_todos)
             if _need_dashboard:
-                self._refresh_dashboard()
+                self._safe_step("仪表盘", self._refresh_dashboard)
 
         # 撤销/重做按钮始终更新
-        self._refresh_undo_state()
+        self._safe_step("撤销/重做按钮", self._refresh_undo_state)
 
         # 按需刷新顶部计划筛选 combo
         if self._need_plan_combo_refresh:
-            self._win.refresh_plan_combo()
+            self._safe_step("计划筛选", self._win.refresh_plan_combo)
             self._need_plan_combo_refresh = False
 
         pending.clear()

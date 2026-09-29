@@ -30,6 +30,11 @@ from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
 
 
+# 行「应有底色」存储角色 — 闪烁结束后按它恢复（审计 P2-13）。
+# 列 0 的 UserRole 已被 task.id 占用，这里用 UserRole + 1。
+_ROW_BG_ROLE = Qt.ItemDataRole.UserRole + 1
+
+
 def _make_focus_out_filter(widget, on_focus_out):
     """创建焦点离开事件过滤器 — 就地编辑器失去焦点时触发提交。
 
@@ -530,8 +535,8 @@ class _TaskTable(QTableWidget):
                         item.setForeground(QColor(_t.RED))
                 self.setItem(row, col, item)
             # 行背景：超期红 / 未指派技术员橘黄
+            row_bg = None
             if task.status not in ("completed", "done"):
-                row_bg = None
                 if is_overdue and planned_end_date is not None:
                     bg_c = QColor(_t.RED)
                     bg_c.setAlpha(25)
@@ -540,11 +545,15 @@ class _TaskTable(QTableWidget):
                     bg_c = QColor(_t.YELLOW)
                     bg_c.setAlpha(35)
                     row_bg = bg_c
-                if row_bg:
-                    for c in range(self.columnCount()):
-                        cell = self.item(row, c)
-                        if cell:
-                            cell.setBackground(row_bg)
+            if row_bg:
+                for c in range(self.columnCount()):
+                    cell = self.item(row, c)
+                    if cell:
+                        cell.setBackground(row_bg)
+                        # 记下「应有底色」：闪烁(flash_row)结束后按它恢复，
+                        # 不能一律清成透明（审计 P2-13：透明会永久抹掉超期红/
+                        # 未指派黄行底色，直到下次全量刷新）
+                        cell.setData(_ROW_BG_ROLE, row_bg)
         self.setSortingEnabled(True)
         self._update_empty_state()
         # 恢复列宽 & 排序状态（仅在首次数据加载后）
@@ -952,9 +961,8 @@ class _TaskTable(QTableWidget):
         for row in range(self.rowCount()):
             item = self.item(row, 0)
             if item and item.data(Qt.ItemDataRole.UserRole) == task_id:
-                from PySide6.QtCore import QTimer, QPropertyAnimation
+                from PySide6.QtCore import QTimer
                 from PySide6.QtGui import QColor
-                orig_bg = QColor(_t.SURFACE2)
                 flash = QColor(_t.YELLOW)
                 flash.setAlpha(120)
                 for col in range(self.columnCount()):
@@ -965,14 +973,24 @@ class _TaskTable(QTableWidget):
                 break
 
     def _unflash_row(self, row: int) -> None:
-        """移除指定行的闪烁背景。"""
+        """闪烁结束 — 恢复该行「应有底色」（超期红 / 未指派黄 / 无底色）。
+
+        审计 P2-13：原实现把整行背景刷成透明，永久抹掉超期红/未指派黄行底色
+        （直到下次全量刷新）。应底色在 set_tasks 时已写入 _ROW_BG_ROLE，这里
+        按它恢复；无底色的行必须真正清除 BackgroundRole —— 传 None（无效
+        QVariant）才是「无显式底色」语义，透明 brush 会残留、也可能盖掉
+        delegate 画的行高亮。
+        """
         import shiboken6
         if not shiboken6.isValid(self):
             return  # 定时器回调时 widget 已被 Qt 删除（视图关闭竞态）
-        from PySide6.QtGui import QBrush, QColor
-        # 用透明 brush 清除背景，不能用 QColor()（無效顏色）
-        # 否則暗色主題下行底色變黑（Qt 回退到系統 Base 角色）
         for col in range(self.columnCount()):
             cell = self.item(row, col)
             if cell:
-                cell.setBackground(QBrush(Qt.GlobalColor.transparent))
+                base_bg = cell.data(_ROW_BG_ROLE)
+                if base_bg is not None:
+                    cell.setBackground(base_bg)
+                else:
+                    # 传 None（无效 QVariant）才是「无显式底色」语义：
+                    # 透明 brush 会残留、也可能盖掉 delegate 画的行高亮
+                    cell.setData(Qt.ItemDataRole.BackgroundRole, None)

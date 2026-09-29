@@ -448,7 +448,18 @@ class TestPlanView(QWidget):
     def set_plans_and_restore(
         self, plan_names: list[str], plan_ids: list[int], restore_id: int | None = None,
     ) -> None:
-        """设置计划下拉选项并恢复选中。"""
+        """设置计划下拉选项并恢复选中。
+
+        审计 P2-11：只有选中计划(plan_id)真的变化时才 emit currentIndexChanged。
+        该信号的接收方（plan_handlers._on_plan_changed / _update_plan_menu）
+        只读「当前选中计划」，而唯一调用方 refresh_handlers._refresh_plans
+        紧接着自己就会用更完整的数据（plan_start_dates / holidays / equipment_map）
+        刷新一次 —— 无条件 emit 会让最重的测试计划页每次刷新都跑两遍全套
+        查询 + 重渲染。选中未变时跳过 emit 不丢任何外部状态：两个接收方都不
+        依赖「列表被重建」这件事，且「取消归档」菜单可见性只随选中计划的状态
+        变化，而列表本身已按归档状态过滤（状态变 ⇒ 该计划进出列表 ⇒ 选中变化）。
+        """
+        prev_selected = self.get_selected_plan_id()
         self._plan_combo.blockSignals(True)
         self._plan_combo.clear()
         self._plan_combo.addItem("全部计划", None)
@@ -465,7 +476,8 @@ class TestPlanView(QWidget):
         if self._plan_combo.count() > 0:
             self._plan_combo.setCurrentIndex(restore_idx)
         self._plan_combo.blockSignals(False)
-        self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
+        if self.get_selected_plan_id() != prev_selected:
+            self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
 
     def get_selected_plan_id(self) -> int | None:
         """获取当前选中计划的 ID（None = 全部计划）。"""
