@@ -14,6 +14,24 @@ import apsw
 logger = logging.getLogger(__name__)
 
 
+def _is_valid_iso_date(date_str: object) -> bool:
+    """严格校验 YYYY-MM-DD。
+
+    date.fromisoformat 在 3.11+ 也接受紧凑格式（"20240101"），而排程侧
+    比较的是 d.isoformat() 生成的带连字符字符串——紧凑格式照样匹配不上
+    任何日期（同样导致漏假），所以这里按长度 + 连字符位置严格判定。
+    """
+    if not isinstance(date_str, str) or len(date_str) != 10:
+        return False
+    if date_str[4] != "-" or date_str[7] != "-":
+        return False
+    try:
+        date.fromisoformat(date_str)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
 def _validate_iso_date(date_str: str) -> None:
     """校验日期为合法 ISO 格式（YYYY-MM-DD），否则抛 ValueError。
 
@@ -21,12 +39,10 @@ def _validate_iso_date(date_str: str) -> None:
     "2024-13-99"）入库后会被 get_holidays_set 的字符串区间过滤
     静默隐藏，导致排程漏假。
     """
-    try:
-        date.fromisoformat(date_str)
-    except (ValueError, TypeError) as e:
+    if not _is_valid_iso_date(date_str):
         raise ValueError(
             f"节假日日期格式非法: {date_str!r}（要求 YYYY-MM-DD）"
-        ) from e
+        )
 
 
 class HolidayService:
@@ -43,6 +59,12 @@ class HolidayService:
         Args:
             year: 指定年份，None 表示全部。
             future_only: 只返回今天及以后的日期。
+
+        审计 P3-6：修复前入库的非法日期行（'2024/01/01'、'2024-13-99'）
+        会被原样放进集合——永远匹配不上任何 ISO 日期 → 排程静默漏假；
+        另有部分格式被字符串区间过滤直接吞掉。这里逐行校验：非法日期
+        跳过并记 warning 日志（不静默、不修改用户数据），需要人工清洗时
+        用 list_invalid_holidays() 列出待处理行。
         """
         conditions: list[str] = []
         params: list[object] = []
@@ -58,7 +80,39 @@ class HolidayService:
         rows = self._conn.execute(
             f"SELECT date FROM [holidays]{where} ORDER BY date", params
         ).fetchall()
-        return {r[0] for r in rows}
+        holidays: set[str] = set()
+        invalid: list[str] = []
+        for r in rows:
+            date_str = str(r[0])
+            if not _is_valid_iso_date(date_str):
+                invalid.append(date_str)
+                continue
+            holidays.add(date_str)
+        if invalid:
+            logger.warning(
+                "holidays 表有 %d 条非法日期行已跳过（排程无法识别，需人工清洗）: %s",
+                len(invalid), invalid[:10],
+            )
+        return holidays
+
+    def list_invalid_holidays(self) -> list[dict[str, object]]:
+        """列出 holidays 表中日期格式非法的存量行（只读，不修改数据）。
+
+        供启动诊断/提醒使用：这些行会被 get_holidays_set 跳过（排程漏假），
+        但清洗是用户决定——本方法只报告，不删除、不改写。
+        """
+        rows = self._conn.execute(
+            "SELECT id, date, name, source FROM [holidays] ORDER BY date"
+        ).fetchall()
+        invalid: list[dict[str, object]] = []
+        for r in rows:
+            date_str = str(r[1])
+            if _is_valid_iso_date(date_str):
+                continue
+            invalid.append(
+                {"id": r[0], "date": r[1], "name": r[2], "source": r[3]}
+            )
+        return invalid
 
     def get_holidays(
         self, year: int | None = None,

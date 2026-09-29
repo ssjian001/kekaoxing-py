@@ -163,35 +163,42 @@ class SampleHandlers:
         project_id = self._win.get_project_filter_id()
 
         def _do_import(sample_list: list[dict]) -> tuple[int, int]:
-            """执行批量导入，返回 (成功数, 跳过数)。"""
+            """执行批量导入，返回 (成功数, 跳过数)。
+
+            审计 P2-10：整批一个事务 + 逐条走 create_with_ledger 写"入库"
+            台账，与单个入库口径一致（原实现逐条 create()，导入的样品没有
+            任何出入库流水，样品台账 Tab 查不到入库记录）。
+            service 层的原子单元在批次事务内退化为 savepoint：单条失败只
+            回滚该条（计入 skip），已成功行与批次原子性都不受影响。
+            """
             assert ctrl is not None and ctrl.sample_service is not None
             success = 0
             skip = 0
-            for data in sample_list:
-                sn = data.get("sn", "").strip()
-                if not sn:
-                    continue
-                # 检查 SN 是否已存在
-                if ctrl.sample_service.get_by_sn(sn) is not None:
-                    skip += 1
-                    continue
-                try:
-                    kwargs = dict(
-                        sn=sn,
-                        batch_no=data.get("batch_no") or "",
-                        spec=data.get("spec") or "",
-                        location=data.get("location") or "",
-                        supplier=data.get("supplier") or "",
-                        notes=data.get("notes") or "",
-                        status="in_stock",
-                    )
-                    if project_id is not None:
-                        kwargs["project_id"] = project_id
-                    ctrl.sample_service.create(**kwargs)
-                    success += 1
-                except Exception:
-                    logger.exception("Failed to import sample SN=%s: data=%s", sn, data)
-                    skip += 1
+            with ctrl.sample_service.transaction():
+                for data in sample_list:
+                    sn = data.get("sn", "").strip()
+                    if not sn:
+                        continue
+                    # 检查 SN 是否已存在
+                    if ctrl.sample_service.get_by_sn(sn) is not None:
+                        skip += 1
+                        continue
+                    try:
+                        kwargs: dict[str, object] = dict(
+                            batch_no=data.get("batch_no") or "",
+                            spec=data.get("spec") or "",
+                            location=data.get("location") or "",
+                            supplier=data.get("supplier") or "",
+                            notes=data.get("notes") or "",
+                            status="in_stock",
+                        )
+                        if project_id is not None:
+                            kwargs["project_id"] = project_id
+                        ctrl.sample_service.create_with_ledger(sn=sn, **kwargs)
+                        success += 1
+                    except Exception:
+                        logger.exception("Failed to import sample SN=%s: data=%s", sn, data)
+                        skip += 1
             return success, skip
 
         dlg = BatchImportDialog(

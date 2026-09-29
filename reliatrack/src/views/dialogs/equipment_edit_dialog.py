@@ -12,6 +12,10 @@ from PySide6.QtCore import QDate
 
 from src.models.common import Equipment
 from src.views.dialogs.base_dialog import _BaseDialog
+from src.constants import EQUIPMENT_STATUS_LABELS
+
+# 枚举外/legacy 状态占位项后缀：保留原状态值并标记为不可手选
+_LEGACY_STATUS_SUFFIX = "（原状态，不可改）"
 
 
 class EquipmentEditDialog(_BaseDialog):
@@ -24,13 +28,10 @@ class EquipmentEditDialog(_BaseDialog):
     """
 
     _EQUIPMENT_TYPES = ["温度箱", "振动台", "湿热箱", "盐雾箱", "其他"]
-    _STATUS_OPTIONS = ["正常", "维修中", "停用"]
-    _STATUS_MAP = {
-        "正常": "available",
-        "维修中": "maintenance",
-        "停用": "offline",
-    }
-    _STATUS_REVERSE = {v: k for k, v in _STATUS_MAP.items()}
+    # 状态标签/枚举映射以 src/constants.py 的 EQUIPMENT_STATUS_LABELS 为唯一真源
+    _STATUS_OPTIONS = list(EQUIPMENT_STATUS_LABELS.values())
+    _STATUS_MAP = {label: value for value, label in EQUIPMENT_STATUS_LABELS.items()}
+    _STATUS_REVERSE = dict(EQUIPMENT_STATUS_LABELS)
 
     def __init__(
         self,
@@ -124,14 +125,52 @@ class EquipmentEditDialog(_BaseDialog):
         self._add_separator()
 
         # ── 状态 ──
-        status_label = self._STATUS_REVERSE.get(
-            equipment.status, "正常"
-        ) if equipment else "正常"
+        # 枚举外/legacy 状态不映射成默认标签（否则打开不改动直接保存就会
+        # 把原状态洗成"正常"写回库，审计 P2-14）：追加占位项并默认选中，
+        # get_data 对占位项按原值透传。
+        self._legacy_status_value: str | None = None
+        status_default = self._find_status_label(equipment.status) if equipment else "正常"
+        status_items = list(self._STATUS_OPTIONS)
+        if status_default not in status_items:
+            status_items = [*status_items, status_default]
+            self._legacy_status_value = equipment.status if equipment else None
         self._status_combo = self._add_combo_field(
             "设备状态",
-            items=self._STATUS_OPTIONS,
-            default=status_label,
+            items=status_items,
+            default=status_default,
         )
+
+    # ── 状态标签 ↔ 状态值 ──────────────────────────────────────
+
+    @staticmethod
+    def _find_status_label(status: str | None) -> str:
+        """设备状态的显示标签。
+
+        枚举内值走 EQUIPMENT_STATUS_LABELS（唯一真源）；枚举外/legacy 值
+        （如 'in_use'、旧中文标签）保留原状态并加后缀，标记为不可手选，
+        绝不回落成默认标签（否则保存即静默改写数据，审计 P2-14）。
+        """
+        label = EQUIPMENT_STATUS_LABELS.get(status or "")
+        if label is not None:
+            return label
+        if not status:
+            return "正常"
+        return f"{status}{_LEGACY_STATUS_SUFFIX}"
+
+    def _status_value_for(self, text: str) -> str:
+        """下拉文本 → 状态值。
+
+        占位项（枚举外原状态）原值透传；无法识别时保留原设备状态，
+        绝不静默回落 "available"。
+        """
+        if self._legacy_status_value is not None and text.endswith(_LEGACY_STATUS_SUFFIX):
+            return self._legacy_status_value
+        value = self._STATUS_MAP.get(text)
+        if value is not None:
+            return value
+        if self._equipment is not None and self._equipment.status:
+            return self._equipment.status
+        return "available"
 
     # ── 公开 API ───────────────────────────────────────────────
 
@@ -143,6 +182,7 @@ class EquipmentEditDialog(_BaseDialog):
 
     def get_data(self) -> dict:
         """返回表单数据字典。"""
+        status = self._status_value_for(self._status_combo.currentText())
         # 未校准 = 显式空数据，不伪造日期（审计 #6）
         if self._never_calibrated_chk.isChecked():
             return {
@@ -156,7 +196,7 @@ class EquipmentEditDialog(_BaseDialog):
                 "calibration_date": "",
                 "next_calibration_date": "",
                 "calibration_interval_months": 12,
-                "status": self._STATUS_MAP.get(self._status_combo.currentText(), "available"),
+                "status": status,
             }
 
         cal_date = ""
@@ -174,7 +214,6 @@ class EquipmentEditDialog(_BaseDialog):
             next_qdate = cal_qdate.addMonths(interval)
             next_cal_date = next_qdate.toString("yyyy-MM-dd")
 
-        status_label = self._status_combo.currentText()
         return {
             "name": self._name_edit.text().strip(),
             "model": self._model_edit.text().strip(),
@@ -186,7 +225,7 @@ class EquipmentEditDialog(_BaseDialog):
             "calibration_date": cal_date,
             "next_calibration_date": next_cal_date,
             "calibration_interval_months": interval,
-            "status": self._STATUS_MAP.get(status_label, "available"),
+            "status": status,
         }
 
     # ── 校验 ───────────────────────────────────────────────────

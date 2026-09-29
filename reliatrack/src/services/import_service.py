@@ -22,6 +22,21 @@ class ImportResult:
     errors: list[str] = field(default_factory=list)
 
 
+def _cell_text(value: object) -> str:
+    """把 Excel 单元格值规整为去空白的 str（永不抛异常）。
+
+    Excel 数字单元格是 float/int，None 则来自空单元格。旧实现直接
+    `row.get("name", "").strip()`，遇到数字单元格抛 AttributeError ——
+    且该语句在行级 try 之外，异常被外层吞掉后整批回滚、errors 里却
+    一条原因都没有（审计 P2-7）。这里做全类型兜底。
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    return str(value).strip()
+
+
 def import_equipment(
     rows: list[dict],
     service: EquipmentService,
@@ -42,7 +57,7 @@ def import_equipment(
     try:
         with service.transaction():
             for idx, row in enumerate(rows, 1):
-                name = row.get("name", "").strip()
+                name = _cell_text(row.get("name"))
                 if not name:
                     result.skipped += 1
                     result.errors.append(f"第 {idx} 行: 设备名称为空")
@@ -73,8 +88,7 @@ def import_equipment(
                             continue
 
                     def _cell_str(key: str) -> str:
-                        v = row.get(key, "")
-                        return v.strip() if isinstance(v, str) else str(v or "").strip()
+                        return _cell_text(row.get(key))
 
                     service.create(
                         name=name,
@@ -114,12 +128,12 @@ def import_technicians(
     try:
         with service.transaction():
             for idx, row in enumerate(rows, 1):
-                name = row.get("name", "").strip()
+                name = _cell_text(row.get("name"))
                 if not name:
                     result.skipped += 1
                     result.errors.append(f"第 {idx} 行: 技术员名称为空")
                     continue
-                emp_id = row.get("employee_id", "").strip()
+                emp_id = _cell_text(row.get("employee_id"))
                 key = (name, emp_id)
                 if key in existing:
                     result.skipped += 1
@@ -133,10 +147,10 @@ def import_technicians(
                     service.create(
                         name=name,
                         employee_id=emp_id,
-                        role=row.get("role", "").strip(),
-                        department=row.get("department", "").strip(),
-                        phone=row.get("phone", "").strip(),
-                        email=row.get("email", "").strip(),
+                        role=_cell_text(row.get("role")),
+                        department=_cell_text(row.get("department")),
+                        phone=_cell_text(row.get("phone")),
+                        email=_cell_text(row.get("email")),
                     )
                     seen_this_batch.add(key)
                     result.success += 1

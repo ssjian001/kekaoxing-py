@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from src.db.repositories import SampleRepository
 from src.db.repositories.test_result_repo import TestResultRepository
@@ -10,6 +12,17 @@ from src.db.repositories.issue_repo import IssueRepository
 from src.models.sample import Sample, SampleTransaction
 
 logger = logging.getLogger(__name__)
+
+# 嵌套安全原子单元的 savepoint 名（SQLite 允许同名 savepoint 叠加，
+# RELEASE / ROLLBACK TO 作用于最近一次同名 savepoint）
+_SAVEPOINT_NAME = "sp_sample_service_atomic"
+
+# txn_type → 样品状态联动映射
+_TXN_STATUS_MAP: dict[str, str] = {
+    "check_out": "checked_out",
+    "return": "in_stock",
+    "check_in": "in_stock",
+}
 
 
 class SampleService:
@@ -25,6 +38,29 @@ class SampleService:
         self._test_result_repo = test_result_repo
         self._issue_repo = issue_repo
 
+    @contextmanager
+    def _atomic(self) -> Iterator[None]:
+        """最小原子单元（嵌套安全）。
+
+        无外层事务时用 BEGIN/COMMIT：失败整体回滚（同 repo.transaction()）；
+        已有外层事务时（例如批量导入的"整批一个事务"）改用 SAVEPOINT：
+        失败只回滚本单元写入，不污染外层已成功写入，也不静默吞掉本单元
+        的部分写入（审计 P2-10/P3-2）。
+        """
+        conn = self._repo.conn
+        if not conn.in_transaction:
+            with self._repo.transaction():
+                yield
+            return
+        conn.execute(f"SAVEPOINT {_SAVEPOINT_NAME}")
+        try:
+            yield
+        except BaseException:
+            conn.execute(f"ROLLBACK TO {_SAVEPOINT_NAME}")
+            conn.execute(f"RELEASE {_SAVEPOINT_NAME}")
+            raise
+        conn.execute(f"RELEASE {_SAVEPOINT_NAME}")
+
     def create(self, sn: str, **kwargs: object) -> int:
         return self._repo.insert(sn=sn, **kwargs)
 
@@ -33,8 +69,11 @@ class SampleService:
 
         台账写入失败时整体回滚——不会出现"样品已创建但无流水记录"
         的不一致状态（2026-08-21 审计 #2）。
+
+        通过 _atomic() 实现：调用方若已开事务（如批量导入整批一个事务），
+        本条写入退化为 savepoint，失败只回滚本条而不破坏批次原子性。
         """
-        with self._repo.transaction():
+        with self._atomic():
             sample_id = self._repo.insert(sn=sn, **kwargs)
             # 状态联动由 create 的 status="in_stock" 完成，
             # 此处直接写台账行，不再走 add_transaction 的冗余 update_status
@@ -106,24 +145,26 @@ class SampleService:
 
     def list_all(self) -> list[Sample]:
         return self._repo.list_all()
+
     def add_transaction(self, sample_id: int, txn_type: str, **kwargs: object) -> int:
-        """添加出入库记录，并自动联动样品状态。
+        """添加出入库记录，并自动联动样品状态（单事务原子化）。
 
         映射: check_out → checked_out, return/check_in → in_stock
-        """
-        txn_id = self._repo.add_transaction(sample_id, txn_type, **kwargs)
 
-        # 自动联动样品状态
-        _STATUS_MAP = {
-            "check_out": "checked_out",
-            "return": "in_stock",
-            "check_in": "in_stock",
-        }
-        new_status = _STATUS_MAP.get(txn_type)
-        if new_status:
-            self._repo.update_status(sample_id, new_status)
+        审计 P3-2：台账行 + 状态联动是两步写，原实现无事务——状态更新失败
+        时流水已落库，留下"有流水但状态没变"的脏数据。现整体包裹在
+        _atomic()（无外层事务 = BEGIN/COMMIT，有外层 = savepoint），
+        调用方自带的事务与之嵌套安全。
+        """
+        with self._atomic():
+            txn_id = self._repo.add_transaction(sample_id, txn_type, **kwargs)
+
+            new_status = _TXN_STATUS_MAP.get(txn_type)
+            if new_status:
+                self._repo.update_status(sample_id, new_status)
 
         return txn_id
+
     def list_transactions(
         self, filter_sn: str = "", filter_type: str = ""
     ) -> list[dict]:
