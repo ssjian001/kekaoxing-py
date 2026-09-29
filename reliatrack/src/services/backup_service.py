@@ -90,11 +90,26 @@ class BackupService:
         """创建带时间戳的自动备份到默认备份目录。
 
         文件名格式: reliatrack_YYYYMMDD_HHMMSS.db
+
+        时间戳精度只到秒，同一秒内重复调用（或并发调用）会撞名。
+        撞名时递增序号后缀 ``_1``、``_2`` …, 而不是把 FileExistsError
+        抛给调用方（备份是"立即备份"按钮/定时任务的常见动作，撞名属正常情况）。
         """
         DEFAULT_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dest = DEFAULT_BACKUPS_DIR / f"reliatrack_{ts}.db"
-        return self.create_backup(dest)
+        last_exc: FileExistsError | None = None
+        for seq in range(0, 100):
+            suffix = "" if seq == 0 else f"_{seq}"
+            dest = DEFAULT_BACKUPS_DIR / f"reliatrack_{ts}{suffix}.db"
+            try:
+                return self.create_backup(dest)
+            except FileExistsError as exc:
+                # 撞名（可能来自并发进程）→ 换下一个序号重试
+                last_exc = exc
+                continue
+        raise FileExistsError(
+            f"同一时间戳的自动备份已存在 100 个，放弃创建: {DEFAULT_BACKUPS_DIR}"
+        ) from last_exc
 
     # ── 恢复 ──
 

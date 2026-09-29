@@ -84,16 +84,20 @@ class SampleCheckoutDialog(_BaseDialog):
             except (ValueError, TypeError, IndexError):
                 pass
 
-        # 解析操作人 operator_id（从 "id: name" 格式提取 id）
+        # 解析操作人 operator_id：
+        #   1) 下拉项格式 "id: name" → 取冒号前的 id
+        #   2) 手输名字（占位符「选择或输入技术员」承诺可手输）→ 按名字匹配技术员
         operator_text = self._operator_combo.currentText().strip()
         operator_id: int | None = None
         if operator_text:
-            if ':' in operator_text:
+            head, sep, _tail = operator_text.partition(':')
+            if sep:
                 try:
-                    operator_id = int(operator_text.split(':')[0].strip())
+                    operator_id = int(head.strip())
                 except (ValueError, TypeError):
                     operator_id = None
-            # 纯文本输入时无法匹配 technician ID，设为 None
+            if operator_id is None:
+                operator_id = self._match_technician_by_name(operator_text)
 
         return {
             "sample_id": self._sample.id,
@@ -105,6 +109,21 @@ class SampleCheckoutDialog(_BaseDialog):
         }
 
     # ── 校验 ─────────────────────────────────────────────────────
+
+    def _match_technician_by_name(self, text: str) -> int | None:
+        """手输操作人时按名字反查 technician id。
+
+        重名（匹配到多个）时返回 None，宁可不放行也不能记错人。
+        """
+        wanted = text.strip().lower()
+        if not wanted:
+            return None
+        matched = [
+            t.id for t in self._technicians
+            if getattr(t, "id", None) is not None
+            and str(getattr(t, "name", "")).strip().lower() == wanted
+        ]
+        return matched[0] if len(matched) == 1 else None
 
     def accept(self) -> None:
         """覆盖 accept 以增加校验逻辑。"""
@@ -119,7 +138,13 @@ class SampleCheckoutDialog(_BaseDialog):
 
         # 审计 #27：标签标「操作人 *」却无校验，空操作人可出库
         if not data.get("operator_id"):
-            QMessageBox.warning(self, "校验失败", "操作人为必填项，请选择。")
+            typed = self._operator_combo.currentText().strip()
+            if typed:
+                # 手输了名字但匹配不到技术员：说清原因，别让用户在必填提示里打转
+                msg = f"未找到技术员「{typed}」，请从下拉列表中选择。"
+            else:
+                msg = "操作人为必填项，请选择。"
+            QMessageBox.warning(self, "校验失败", msg)
             self._operator_combo.setFocus()
             return
 

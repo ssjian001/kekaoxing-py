@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import logging
 logger = logging.getLogger("views.bug_tracker.list_view")
-from PySide6.QtCore import QDate, Qt, Signal
+from PySide6.QtCore import QDate, QPoint, QRect, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -425,6 +425,17 @@ class BugListView(QWidget):
             filtered.append(issue)
 
         self._table.set_issues(filtered)
+        # 空状态提示：原代码写在 _collect_filters 的 return 之后 → 永不执行
+        # （Issue 列表用 _BugTable，它自身没有空状态标签，必须这里控制）
+        empty = len(filtered) == 0
+        if empty:
+            viewport = self._table.viewport()
+            self._empty_label.setGeometry(
+                QRect(viewport.mapTo(self._table, QPoint(0, 0)), viewport.size())
+            )
+        self._empty_label.setVisible(empty)
+        if empty:
+            self._empty_label.raise_()
         # 连父视图的统计信息一起更新
         parent = self.parent()
         if parent and hasattr(parent, '_update_stats'):
@@ -443,9 +454,6 @@ class BugListView(QWidget):
             "dri_name": self._filter_dri.currentText().strip(),
             "keyword": self._search_input.text().strip(),
         }
-
-        # 空状态提示
-        self._empty_label.setVisible(len(filtered) == 0)
 
     def _on_card_double_click(self, issue_id: int) -> None:
         """双击行 — 发射信号给父视图打开详情弹窗。"""

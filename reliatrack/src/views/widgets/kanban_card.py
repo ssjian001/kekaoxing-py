@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
 import src.styles.theme as _t
 from src.models.issue import Issue
@@ -207,6 +208,11 @@ class _KanbanCard(QFrame):
         drag.setHotSpot(QPoint(self.CARD_WIDTH // 4, self.CARD_HEIGHT // 4))
         self.setGraphicsEffect(None)
         result = drag.exec(Qt.DropAction.MoveAction)
+        # drag.exec() 是嵌套事件循环：放在这里落库后通常会全量刷新看板
+        # （set_issues → 本卡片 deleteLater()），此时本卡片的 C++ 对象可能已被销毁。
+        # 对已销毁对象取属性/调方法会抛 RuntimeError，必须先判存活再收尾。
+        if not isValid(self):
+            return
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         super().mouseMoveEvent(event)
 

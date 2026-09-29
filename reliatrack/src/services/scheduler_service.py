@@ -102,6 +102,7 @@ class SchedulerService:
             holidays=holidays,
             daily_start_limit=daily_start_limit,
             technician_capacity=technician_capacity or {},
+            locked_task_ids=locked_ids,
         )
 
         # 记录原始 start_day

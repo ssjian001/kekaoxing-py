@@ -15,6 +15,7 @@ import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 
 from src.models.test_plan import TestTask
@@ -47,6 +48,10 @@ class ScheduleConfig:
     daily_start_limit: int = 0
     # 技术员并行任务上限：technician_id → 上限（默认 1）
     technician_capacity: dict[int, int] = field(default_factory=dict)
+    # 用户显式锁定的任务 ID：这些任务保留自己的 start_day 不参与自动排程。
+    # 不能只靠 ``start_day > 0`` 判断 —— 用户可以把任务锁在 0（= 计划起始日），
+    # 而 0 同时是"未排期"的默认值，两者必须由显式集合区分。
+    locked_task_ids: set[int] = field(default_factory=set)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -59,7 +64,7 @@ def _is_weekend(day_number: int, start_date_str: str) -> bool:
     falls on Saturday or Sunday."""
     if not start_date_str:
         return False
-    start = datetime.strptime(start_date_str, "%Y-%m-%d")
+    start = _parse_start_date(start_date_str)
     target = start + timedelta(days=day_number)
     return target.weekday() >= 5
 
@@ -68,18 +73,35 @@ def _is_holiday(day_number: int, start_date_str: str, holidays: set[str]) -> boo
     """Return True if the date is a configured holiday."""
     if not start_date_str or not holidays:
         return False
-    start = datetime.strptime(start_date_str, "%Y-%m-%d")
+    start = _parse_start_date(start_date_str)
     target = start + timedelta(days=day_number)
     return target.strftime("%Y-%m-%d") in holidays
+
+
+@lru_cache(maxsize=32)
+def _parse_start_date(start_date_str: str) -> datetime:
+    """解析计划起始日期（按字符串缓存）。
+
+    排程按"日历天"逐日检查工作日/节假日，每次 ``strptime`` 都是纯浪费：
+    缓存后同一 start_date 只解析一次（``_is_non_working`` 会被
+    O(任务数 × 工期) 次调用）。
+    """
+    return datetime.strptime(start_date_str, "%Y-%m-%d")
 
 
 def _is_non_working(day_number: int, start_date_str: str,
                      skip_weekends: bool, skip_holidays: bool,
                      holidays: set[str]) -> bool:
     """Return True if the day is a non-working day (weekend or holiday)."""
-    if skip_weekends and _is_weekend(day_number, start_date_str):
+    if not start_date_str:
+        return False
+    if not skip_weekends and not (skip_holidays and holidays):
+        return False
+    # 起始日只解析一次（缓存），避免逐日重复 strptime
+    target = _parse_start_date(start_date_str) + timedelta(days=day_number)
+    if skip_weekends and target.weekday() >= 5:
         return True
-    if skip_holidays and _is_holiday(day_number, start_date_str, holidays):
+    if skip_holidays and holidays and target.strftime("%Y-%m-%d") in holidays:
         return True
     return False
 
@@ -490,7 +512,13 @@ def run_auto_schedule(
     cycle_task_ids = [t.id for t in valid_tasks if t.id is not None and t.id not in topo_ids]
 
     # ── Identify locked tasks ───────────────────────────────────
-    locked_ids: set[int] = set()
+    # 用户显式锁定的任务优先收编（含 start_day == 0 = 计划起始日）。
+    # 只靠下面的 start_day > 0 判定会把"锁在起始日"的任务重新排程。
+    locked_ids: set[int] = {
+        t.id for t in valid_tasks
+        if t.id is not None and t.id in config.locked_task_ids
+        and t.status != "completed"
+    }
     if config.lock_existing:
         for t in valid_tasks:
             # start_day > 0 表示已排期（默认值 0 表示未排）

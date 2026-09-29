@@ -95,6 +95,11 @@ class KanbanColumn(QFrame):
             event.acceptProposedAction()
 
     def dropEvent(self, event) -> None:
+        # 同列拖放（源卡片就是本列的卡片）不构成状态变更：既不写库也不触发刷新
+        source = event.source()
+        if source is not None and source in self._cards:
+            event.ignore()
+            return
         data = event.mimeData().data(_MIME_TODO_ID)
         try:
             todo_id = int(data.data().decode())

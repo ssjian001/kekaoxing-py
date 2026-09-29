@@ -426,16 +426,21 @@ class TestResultDialog(QWidget):
 
     def _apply_env_to_all(self) -> None:
         """将首个非空行的温湿度值填充到所有空行。"""
-        # 优先用 task 默认值，fallback 到首个非空行
+        # 优先用 task 默认值，fallback 到首个非空行。
+        # 温湿度各自独立查找：第一行温度空不代表后面的行也没有值，
+        # 所以 break 必须放在「两个值都拿到」之后（原来无条件 break
+        # 在第一行就退出，fallback 永远看不到第 2 行起的数据）。
         source_temp = self._task.temperature or ""
         source_humid = self._task.humidity or ""
         for row in self._rows:
-            if not row._deleted:
-                t, h = row.get_env_values()
-                if not source_temp and t:
-                    source_temp = t
-                if not source_humid and h:
-                    source_humid = h
+            if row._deleted:
+                continue
+            t, h = row.get_env_values()
+            if not source_temp:
+                source_temp = t
+            if not source_humid:
+                source_humid = h
+            if source_temp and source_humid:
                 break
         if not source_temp and not source_humid:
             return

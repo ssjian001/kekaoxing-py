@@ -112,6 +112,11 @@ class QuadrantCell(QFrame):
             event.acceptProposedAction()
 
     def dropEvent(self, event: Any) -> None:
+        # 同象限拖放（源卡片就是本象限的卡片）不构成变更：不写库、不刷新
+        source = event.source()
+        if source is not None and source in self._cards:
+            event.ignore()
+            return
         data = event.mimeData().data(_MIME_TODO_ID)
         try:
             todo_id = int(data.data().decode())

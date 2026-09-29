@@ -12,7 +12,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.services.export.export_utils import (
-    CATEGORY_MAP, STATUS_MAP, _validate_output_path, _sanitize_filename, logger,
+    CATEGORY_MAP, STATUS_MAP, _validate_output_path, _sanitize_filename,
+    _sanitize_path, logger,
     excel_styles, excel_save, excel_write_headers, excel_write_row,
     _judge_conclusion, get_cjk_font,
 )
@@ -304,7 +305,9 @@ def export_to_word(
             ], center_cols={0})
 
     # ── 保存 ──
-    out = filepath or str(output_dir / _sanitize_filename(f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"))
+    # 与 excel_save 对称：用户显式路径同样要净化，否则非法字符会写进磁盘
+    out = _sanitize_path(filepath or str(
+        output_dir / _sanitize_filename(f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx")))
     _validate_output_path(out, output_dir)
     try:
         doc.save(out)
@@ -632,7 +635,9 @@ def export_dvpr_docx(
     run.font.size = Pt(8)
     run.font.color.rgb = _GRAY
 
-    out = filepath or str(output_dir / _sanitize_filename(f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx"))
+    # 与 excel_save 对称：用户显式路径同样要净化
+    out = _sanitize_path(filepath or str(
+        output_dir / _sanitize_filename(f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx")))
     _validate_output_path(out, output_dir)
     try:
         doc.save(out)
@@ -725,9 +730,10 @@ def export_8d_docx(
     _WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out = filepath or str(
+    # 与 excel_save 对称：用户显式路径同样要净化
+    out = _sanitize_path(filepath or str(
         output_dir / _sanitize_filename(f"8D_Report_Issue{issue.id}_{datetime.now():%Y%m%d_%H%M}.docx")
-    )
+    ))
 
     doc = Document()
 

@@ -414,9 +414,18 @@ class _GanttWidget(QWidget):
         self.zoom_changed.emit(self._day_w)
 
     def wheelEvent(self, event: QWheelEvent) -> None:  # type: ignore[override]
+        # 缩放只响应 Ctrl+滚轮（与 plan_gantt_tab 的 tooltip 契约一致）；
+        # 普通滚轮交还父级 QScrollArea 滚动，否则滚轮被劫持成缩放。
+        if not (event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            event.ignore()
+            return
         delta = event.angleDelta().y()
+        if not delta:
+            event.ignore()
+            return
         factor = 1.1 if delta > 0 else 0.9
         self.set_day_width(self._day_w * factor)
+        event.accept()
 
 
     # ── 绘图核心 ──
