@@ -115,3 +115,23 @@
 - [ ] 审计报告把批量改状态归属写成 `issue_dialog.py`，但实际代码在 `bug_tracker/batch_dialog.py:145-170` 且已走 `transition_status` —— 确认无需再改
 - [ ] UI 实测：甘特 Ctrl+滚轮缩放、看板卡片拖拽期间触发刷新、出库弹窗手输操作人
 - [ ] `bd`（beads）本机未安装，AGENTS.md 的 `bd dolt push` 步骤本次跳过
+
+---
+
+## 2026-09-29（下）：文档/环境同步（neat-freak）
+
+**发现并修复的真实断链**
+- `init.sh` 用系统 `python3` 跑语法/schema/测试校验 → 系统解释器无 apsw/pytest/PySide6（实测 `ModuleNotFoundError`），脚本在 `set -e` 下第 2 步必然失败；且第 4 步读的是**仓库根**那份旧格式 `feature_list.json`。已改为 `../.venv/bin/python` + 读代码目录权威副本（dict 格式 `_meta`/`features`，并打印 last_updated/tests）
+- 文档里的 `.venv/bin/...` 全部不可执行：**venv 在仓库根，不在代码目录**（正确写法是 `../.venv/bin/python`，已实测 Python 3.11.16 + PySide6 6.11.1 + `pytest --collect-only` 通过）。受影响：`README.md`、`reliatrack/README.md`、`docs/runbook.md`
+- 数字过时：测试 738 → **1111**（runbook/README）；E2E 断言 57 → **53**（实测 `r.record(` 计数）；`docs/architecture.md` "Handler 12个类" → **11 个 Handler 类 + crud_helpers**（实测 `src/handlers` 11 个 `*Handlers`）
+- 仓库根 `README.md` 由重复的功能/技术栈清单改为**指针**（指向 `reliatrack/README.md`），消除两份 README 数字打架
+- `docs/runbook.md` 补 bd 适用性说明（Linux 侧无 bd，`.beads/` 数据由 Windows 端维护）
+
+**已验证一致（无需改动）**
+- runbook 的 `schema v28 / 20 张表` ✓（Python 解析 `schema.py` 计数，非 shell grep）
+- 代码目录 `feature_list.json` `_meta` = schema 28 / 1111 passed / last_updated 2026-09-29 ✓
+- 目录计数（2026-09-29 实测）：dialogs 30（含 `base_dialog.py`）、widgets 40（不含 `__init__`）、services 18、repos 11 + base、views 9、handlers 11
+
+**未处理（需人工放行/决策）**
+- `CLAUDE.md` / `AGENTS.md` 是 Hermes 写保护的 agent-instruction 文件（patch/write_file 均被拦，审批超时）。仓库根 `CLAUDE.md` 的"两份合并 + 数字校正 + 路径显式化"内容已备好但未落地；内层 `reliatrack/CLAUDE.md`（停留 08-22，含已失效的 CI-only bug 说明与旧 PyInstaller 命令）应改为指针
+- 仓库根 `feature_list.json`（list 格式 v2.0.0，2026-08-30）是旧布局残留，与代码目录 dict 格式副本重复 → 建议删除，但要等 CLAUDE.md 的 `cat feature_list.json` 指引同步修改后再动

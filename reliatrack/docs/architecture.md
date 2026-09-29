@@ -43,7 +43,7 @@ Project ──< TestPlan ──< TestTask >── Sample
 ```
 View (Qt UI)
   ↓ Signal
-Handler (信号处理器, 12个类)
+Handler (信号处理器, 11个 Handler 类 + crud_helpers)
   ↓ 调用
 Service (业务逻辑)
   ↓ 调用
@@ -53,7 +53,7 @@ SQLite (apsw)
 ```
 
 - **Views**：纯 UI 绑定，不做业务判断
-- **Handlers**：连接 View 信号到 Service 调用，处理用户交互反馈
+- **Handlers**：连接 View 信号到 Service 调用，处理用户交互反馈（11 个 Handler 类 + crud_helpers）
 - **Services**：业务规则（调度、导入导出、统计计算）
 - **Repositories**：单表 CRUD，封装 SQL 细节
 

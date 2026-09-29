@@ -6,9 +6,10 @@
 
 ```bash
 cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python3 main.py
+python3 -m venv .venv                                    # 首次（venv 建在仓库根）
+.venv/bin/pip install -r reliatrack/requirements.txt     # 首次
+cd reliatrack                                            # 代码目录
+../.venv/bin/python3 main.py
 ```
 
 数据库自动创建在 `data/reliatrack.db`。
@@ -116,10 +117,11 @@ src/
 ## 测试
 
 ```bash
-.venv/bin/python -m pytest tests/ -v
+cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack/reliatrack   # 代码目录
+../.venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen .venv/bin/python tests/manual/test_e2e_full.py`（57 项断言）。738 个 pytest 测试全通过（2026-08-21）。
+E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen ../.venv/bin/python tests/manual/test_e2e_full.py`（53 项断言）。**1111 个 pytest 用例全通过**（2026-09-29）。
 
 ## CI/CD
 
