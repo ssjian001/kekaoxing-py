@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from src.constants import TASK_STATUS_LABELS, TASK_TRANSITIONS
 from src.db.repositories import TestPlanRepository, TestTaskRepository, TestResultRepository
 from src.models.test_plan import TestPlan, TestTask, TestResult
 
@@ -82,7 +83,47 @@ class TestPlanService:
                 tasks = [t for t in tasks if t.plan_id not in archived_plan_ids]
         return tasks
     def update_task(self, task_id: int, **kwargs: object) -> None:
+        """更新任务字段。
+
+        status 走软校验（TASK_TRANSITIONS）：非常规流转与枚举外状态只记
+        WARNING，仍如实写入。任务侧刻意不做硬拦截 —— 结果回算、编辑对话框、
+        批量菜单、undo 反向写回都依赖写入自由（见 constants.TASK_TRANSITIONS）。
+        """
+        new_status = kwargs.get("status")
+        if new_status is not None:
+            self._warn_if_unusual_status_transition(task_id, str(new_status))
         self._task_repo.update(task_id, **kwargs)
+
+    def _warn_if_unusual_status_transition(self, task_id: int, new_status: str) -> None:
+        """任务状态软校验：可疑流转打 WARNING，绝不抛异常、绝不阻断写入。"""
+        if new_status not in TASK_STATUS_LABELS:
+            logger.warning(
+                "任务状态写入枚举外值: task_id=%s status=%r（合法值: %s）；已放行",
+                task_id, new_status, "/".join(TASK_STATUS_LABELS),
+            )
+            return
+        try:
+            task = self._task_repo.get_by_id(task_id)
+        except Exception:
+            # 软校验失败不得影响正常写入
+            logger.debug("任务状态软校验读取失败: task_id=%s", task_id, exc_info=True)
+            return
+        old_status = getattr(task, "status", None) if task is not None else None
+        if not old_status or old_status == new_status:
+            return
+        allowed = TASK_TRANSITIONS.get(old_status)
+        if allowed is None:
+            logger.warning(
+                "任务当前状态不在流转矩阵内: task_id=%s status=%r；已放行",
+                task_id, old_status,
+            )
+            return
+        if new_status not in allowed:
+            logger.warning(
+                "任务状态非常规流转: task_id=%s %s → %s（矩阵允许: %s）；软校验放行",
+                task_id, old_status, new_status, "/".join(sorted(allowed)),
+            )
+
     def delete_task(self, task_id: int) -> None:
         with self._task_repo.transaction():
             # 先删子表: test_results

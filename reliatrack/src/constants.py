@@ -18,6 +18,28 @@ TASK_STATUS_LABELS: dict[str, str] = {
     "failed": "失败",
 }
 
+# 任务状态流转矩阵 — **软校验专用**（TestPlanService.update_task 只记 WARNING，
+# 绝不拦截写入）。
+#
+# 为什么任务侧不做 Issue 那样的硬状态机（ISSUE_TRANSITIONS + transition_status）：
+#   1) 结果回算（plan_handlers._auto_update_task_progress）会按已录结果把任务
+#      改成 pending / completed / failed / in_progress 中的任意一个，
+#      方向由数据决定，不是"单向推进"；
+#   2) 任务编辑对话框的状态下拉允许 5 个状态自由选择，批量菜单也可跨状态批量改；
+#   3) 撤销/重做（undo_manager）按旧值原样写回，本质需要反向迁移。
+#   硬约束会打断以上合法流程（2026-09-29 审计 P3-10 结论）。
+#
+# 因此矩阵只标记「互相矛盾、需要人工确认」的跳跃；未列入的 3 条
+# （completed→skipped、skipped→completed、skipped→failed）在编辑对话框与
+# 批量标记完成路径上可到达 —— 它们会打 WARNING 作为提示，但照样写入。
+TASK_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"in_progress", "completed", "failed", "skipped"},
+    "in_progress": {"pending", "completed", "failed", "skipped"},
+    "completed": {"pending", "in_progress", "failed"},
+    "failed": {"pending", "in_progress", "completed", "skipped"},
+    "skipped": {"pending", "in_progress"},
+}
+
 # ═══════════════════════════════════════════════════════════════════
 #  计划状态
 # ═══════════════════════════════════════════════════════════════════

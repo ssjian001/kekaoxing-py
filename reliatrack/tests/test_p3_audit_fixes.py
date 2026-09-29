@@ -6,6 +6,7 @@
 - P3-7  排程逐日重复 strptime
 - P3-8  user_locked_days 锁在 start_day=0 的任务锁不住
 - P3-9  docx 导出用户显式路径不净化
+- P3-10 任务状态无校验 → TASK_TRANSITIONS 软校验（只告警不拦截）
 - P3-17 列表视图空状态标签永不显示（return 后死代码）
 - P3-18 todo/quadrant 同列拖放写库、gantt 滚轮劫持、结果弹窗 fallback、
         出库弹窗手输操作人、看板卡片 drag.exec 期间被销毁
@@ -13,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import pathlib
 import subprocess
@@ -771,3 +773,105 @@ class TestP39DocxExplicitPathSanitized:
                              filepath=str(bad))
         assert Path(out).name == "8D_报告_.docx"
         assert Path(out).exists()
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  P3-10  任务状态软校验（TASK_TRANSITIONS：只告警，不拦截）
+# ═══════════════════════════════════════════════════════════════════
+
+@pytest.fixture()
+def plan_svc(mem_conn):
+    from src.db.repositories.test_result_repo import TestResultRepository
+    from src.services.test_plan_service import TestPlanService
+
+    return TestPlanService(
+        TestPlanRepository(mem_conn), TestTaskRepository(mem_conn),
+        TestResultRepository(mem_conn),
+    )
+
+
+def _seed_task(plan_svc, plan_repo, *, status: str = "pending", name: str = "P3-10 任务") -> int:
+    plan_id = _seed_plan(plan_repo)
+    task_id = plan_svc.create_task(plan_id=plan_id, name=name)
+    plan_svc.update_task(task_id, status=status)
+    return task_id
+
+
+def _status_warnings(caplog) -> list[str]:
+    """仅取任务状态软校验自己打的告警（其他模块的 WARNING 不算）。"""
+    return [r.getMessage() for r in caplog.records
+            if r.levelno >= logging.WARNING
+            and r.name == "src.services.test_plan_service"]
+
+
+class TestP310TaskTransitionSoftCheck:
+    """审计 P3-10：任务侧不设硬状态机，只做 TASK_TRANSITIONS 软校验。
+
+    断言两件事：(1) 正常/回算路径一条告警都不打（不能变成噪音）；
+    (2) 可疑流转与枚举外值一定有告警，且写入照旧成功（软 = 不拦截）。
+    """
+
+    def test_matrix_covers_all_known_statuses(self):
+        from src.constants import TASK_STATUS_LABELS, TASK_TRANSITIONS
+
+        assert set(TASK_TRANSITIONS) == set(TASK_STATUS_LABELS)
+        for source, targets in TASK_TRANSITIONS.items():
+            assert targets, f"{source} 没有任何允许目标"
+            assert targets <= set(TASK_STATUS_LABELS), f"{source} → {targets} 含枚举外值"
+
+    def test_normal_transitions_do_not_warn(self, plan_svc, repos, caplog):
+        _, _, plan_repo = repos
+        task_id = _seed_task(plan_svc, plan_repo, status="pending")
+        with caplog.at_level("WARNING", logger="src.services.test_plan_service"):
+            for nxt in ("in_progress", "completed", "in_progress", "failed",
+                        "in_progress", "skipped", "pending"):
+                plan_svc.update_task(task_id, status=nxt)
+        assert _status_warnings(caplog) == [], f"正常流转被误报: {_status_warnings(caplog)}"
+
+    def test_recompute_targets_all_allowed(self, plan_svc, repos, caplog):
+        """回算（_auto_update_task_progress）四个产物都必须静默通过。"""
+        _, _, plan_repo = repos
+        with caplog.at_level("WARNING", logger="src.services.test_plan_service"):
+            for start in ("pending", "in_progress", "completed", "failed", "skipped"):
+                task_id = _seed_task(plan_svc, plan_repo, status=start, name=f"回算-{start}")
+                for target in ("pending", "completed", "failed", "in_progress"):
+                    plan_svc.update_task(task_id, status=target)
+        assert _status_warnings(caplog) == [], f"回算被误报: {_status_warnings(caplog)}"
+
+    def test_contradictory_transition_warns_but_still_writes(self, plan_svc, repos, caplog):
+        _, _, plan_repo = repos
+        task_id = _seed_task(plan_svc, plan_repo, status="completed")
+        with caplog.at_level("WARNING", logger="src.services.test_plan_service"):
+            plan_svc.update_task(task_id, status="skipped")
+        warnings = _status_warnings(caplog)
+        assert any("非常规流转" in m and "completed" in m and "skipped" in m for m in warnings), warnings
+        # 软校验：必须照样写入
+        assert plan_svc.get_task(task_id).status == "skipped"
+
+    def test_unknown_status_warns_and_value_is_preserved(self, plan_svc, repos, caplog):
+        """与 P1-6 一致：枚举外状态不被降级，只记告警。"""
+        _, _, plan_repo = repos
+        task_id = _seed_task(plan_svc, plan_repo, status="pending")
+        with caplog.at_level("WARNING", logger="src.services.test_plan_service"):
+            plan_svc.update_task(task_id, status="paused")
+        warnings = _status_warnings(caplog)
+        assert any("枚举外值" in m for m in warnings), warnings
+        assert plan_svc.get_task(task_id).status == "paused"
+
+    def test_progress_only_update_does_not_warn(self, plan_svc, repos, caplog):
+        _, _, plan_repo = repos
+        task_id = _seed_task(plan_svc, plan_repo, status="completed")
+        with caplog.at_level("WARNING", logger="src.services.test_plan_service"):
+            plan_svc.update_task(task_id, progress=50.0)
+        assert _status_warnings(caplog) == []
+
+    def test_same_status_write_does_not_warn(self, plan_svc, repos, caplog):
+        _, _, plan_repo = repos
+        task_id = _seed_task(plan_svc, plan_repo, status="completed")
+        with caplog.at_level("WARNING", logger="src.services.test_plan_service"):
+            plan_svc.update_task(task_id, status="completed")
+        assert _status_warnings(caplog) == []
+
+    def test_soft_check_never_blocks_unknown_task(self, plan_svc):
+        """任务不存在也不能抛异常（软校验不得破坏写入路径）。"""
+        plan_svc.update_task(999999, status="completed")
