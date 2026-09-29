@@ -29,6 +29,16 @@ from src.constants import TASK_CATEGORIES
 from src.views.dialogs.base_dialog import _BaseDialog
 from src.configs.test_type_templates import get_template_names, get_template_by_name
 
+# 状态下拉文本 ↔ 状态值(仅本对话框可选的四态; failed 等枚举外状态不可手选,
+# 通过占位项原值透传, 防止打开旧任务保存后被静默降级为"待开始")
+_STATUS_TEXT_TO_VALUE: dict[str, str] = {
+    "待开始": "pending",
+    "进行中": "in_progress",
+    "已完成": "completed",
+    "已跳过": "skipped",
+}
+_LEGACY_STATUS_SUFFIX = "（原状态，不可改）"
+
 
 class TaskEditDialog(_BaseDialog):
     """测试任务新建 / 编辑弹窗。
@@ -164,10 +174,19 @@ class TaskEditDialog(_BaseDialog):
             ("已跳过", TestTaskStatus.SKIPPED.value),
         ]
         status_items = [label for label, _ in status_options]
+        # 枚举外状态(failed / 历史 done、fail 等)不能静默降级:
+        # 追加占位项并默认选中, get_data 对占位项按原值透传写回。
+        self._legacy_status_value: str | None = None
+        _status_default = status_items[0]
+        if task is not None:
+            _status_default = self._find_status_label(task)
+            if _status_default not in status_items:
+                status_items = [*status_items, _status_default]
+                self._legacy_status_value = task.status
         self._status_combo = self._add_combo_field(
             "状态",
             items=status_items,
-            default=self._find_status_label(task) if task else status_items[0],
+            default=_status_default,
         )
 
         # 进度滑块
@@ -496,13 +515,31 @@ class TaskEditDialog(_BaseDialog):
         return "（无）"
 
     def _find_status_label(self, task: TestTask) -> str:
-        status_map = {
-            "pending": "待开始",
-            "in_progress": "进行中",
-            "completed": "已完成",
-            "skipped": "已跳过",
-        }
-        return status_map.get(task.status, "待开始")
+        """任务状态的显示标签。
+
+        枚举内值走 TASK_STATUS_LABELS(唯一真源); 枚举外值(如 failed、历史
+        done/fail)保留原状态并加后缀, 由 _LEGACY_STATUS_SUFFIX 标记为不可选。
+        """
+        from src.constants import TASK_STATUS_LABELS
+        label = TASK_STATUS_LABELS.get(task.status)
+        if label is not None and label in _STATUS_TEXT_TO_VALUE:
+            return label
+        return f"{TASK_STATUS_LABELS.get(task.status, task.status)}{_LEGACY_STATUS_SUFFIX}"
+
+    def _status_value_for(self, text: str) -> str:
+        """下拉文本 → 状态值。
+
+        占位项(枚举外原状态)原值透传; 无法识别时保留原任务状态,
+        绝不静默回落 "pending"(否则打开任务不改动直接保存就会降级写库)。
+        """
+        if self._legacy_status_value is not None and text.endswith(_LEGACY_STATUS_SUFFIX):
+            return self._legacy_status_value
+        value = _STATUS_TEXT_TO_VALUE.get(text)
+        if value is not None:
+            return value
+        if self._task is not None and self._task.status:
+            return self._task.status
+        return "pending"
 
     # ── 依赖选择 ──────────────────────────────────────────────
 
@@ -741,15 +778,9 @@ class TaskEditDialog(_BaseDialog):
             except ValueError:
                 pass
 
-        # 解析状态
-        status_map = {
-            "待开始": "pending",
-            "进行中": "in_progress",
-            "已完成": "completed",
-            "已跳过": "skipped",
-        }
+        # 解析状态(占位项原值透传, 不静默降级)
         status_text = self._status_combo.currentText()
-        task_status = status_map.get(status_text, "pending")
+        task_status = self._status_value_for(status_text)
 
         # 预计日期 → start_day 换算（只当计划有起始日期时才写入）
         start_day: int | None = None
