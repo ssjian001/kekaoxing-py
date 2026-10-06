@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
@@ -74,6 +75,11 @@ class BackupService:
             if dest_path.stat().st_size == 0:
                 dest_path.unlink(missing_ok=True)
                 raise RuntimeError("备份文件为空")
+            # 备份含完整业务数据：收紧权限，仅属主可读写（审计 P2）
+            try:
+                os.chmod(dest_path, 0o600)
+            except OSError:
+                logger.warning("备份文件权限收紧失败: %s", dest_path)
             logger.info("备份已创建: %s (%d bytes)",
                         dest_path, dest_path.stat().st_size)
         except Exception as exc:

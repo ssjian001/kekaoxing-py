@@ -604,7 +604,7 @@ class TestExportCancelCooperative:
             return str(out_file)
 
         worker = ExportWorker(_fn, str(tmp_path / "x.db"), None, "Excel", None, None, None)
-        worker.finished.connect(finished.append)
+        worker.done.connect(finished.append)
         worker.error.connect(errors.append)
         worker.cancelled.connect(lambda: cancelled.append(True))
         worker.request_cancel()
@@ -627,7 +627,7 @@ class TestExportCancelCooperative:
             return str(out_file)
 
         worker = ExportWorker(_fn, str(tmp_path / "x.db"), None, "Excel", None, None, None)
-        worker.finished.connect(finished.append)
+        worker.done.connect(finished.append)
         worker.run()
 
         assert finished == [str(out_file)]
@@ -674,7 +674,7 @@ class _FakeProgressDialog(QObject):
 
 
 class _StubExportWorker(QThread):
-    finished = Signal(str)
+    done = Signal(str)
     error = Signal(str)
     cancelled = Signal()
 

@@ -94,8 +94,12 @@ def _launch_after_exit() -> None:
             | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         )
     try:
+        # frozen 模式下 args[0] 已是 exe 路径，再拼 sys.executable 会
+        # 多出一层 argv（ReliaTrack.exe ReliaTrack.exe）；开发模式才是
+        # [python, script.py]，需要补解释器前缀。
+        cmd = list(args) if getattr(sys, "frozen", False) else [sys.executable, *args]
         subprocess.Popen(  # noqa: S603 - 用的就是本进程的解释器和 argv
-            [sys.executable, *args],
+            cmd,
             close_fds=True,
             creationflags=creationflags,
         )

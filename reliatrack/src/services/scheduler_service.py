@@ -96,7 +96,10 @@ class SchedulerService:
             start_date=start_date,
             skip_weekends=skip_weekends,
             skip_holidays=skip_holidays,
-            lock_existing=lock_existing or bool(user_locked_days),
+            # 不再隐式把 user_locked_days 等同于 lock_existing：
+            # 用户「重新排程」时若取消勾选「锁定已有排期」，就只应锁住手动锁的任务；
+            # 原逻辑会把所有 start_day>0 的任务一并锁住，重排结果≈第一次，行为失真。
+            lock_existing=lock_existing,
             deadline=deadline,
             equipment_capacity=equipment_capacity or {},
             holidays=holidays,
@@ -260,6 +263,10 @@ class SchedulerService:
             "suggestions": ["没有待排程的任务"],
             "task_count": 0,
             "updated_count": 0,
+            # 与正常排程返回的 schema 对齐（scheduler.py 的 report）
+            "skipped_cycle_tasks": [],
+            "unschedulable_tasks": [],
+            "technician_utilization": [],
         }
 
     def _empty_preview(self, start_date: str = "") -> dict:

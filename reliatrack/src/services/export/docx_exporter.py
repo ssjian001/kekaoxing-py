@@ -107,6 +107,7 @@ def export_to_word(
     samples: list[Sample],
     filepath: str | None = None,
     results: list | None = None,
+    technician_names: dict[int, str] | None = None,
 ) -> str:
     from docx import Document
     from docx.shared import Pt, Cm, RGBColor, Inches
@@ -154,7 +155,7 @@ def export_to_word(
     completed = sum(1 for t in tasks if t.status == "completed")
     in_progress = sum(1 for t in tasks if t.status == "in_progress")
     pending = sum(1 for t in tasks if t.status == "pending")
-    total_days = max(((t.start_day or 0) + t.duration for t in tasks), default=0)
+    total_days = max(((t.start_day or 0) + (t.duration or 0) for t in tasks), default=0)
     open_issues = sum(1 for i in issues if i.status in ("open", "analyzing"))
     in_stock = sum(1 for s in samples if s.status == "in_stock")
 
@@ -195,7 +196,11 @@ def export_to_word(
     for idx, task in enumerate(tasks, 1):
         _task_id_display = f"{_prefix}-{idx:03d}" if _prefix else idx
         equipment_name = f"ID:{task.equipment_id}" if task.equipment_id else "—"
-        technician_name = f"ID:{task.technician_id}" if task.technician_id else "—"
+        _tech_map = technician_names or {}
+        technician_name = (
+            _tech_map.get(task.technician_id, f"ID:{task.technician_id}")
+            if task.technician_id else "—"
+        )
         _fill_row_cells(task_table.rows[idx]._tr, [
             _task_id_display, task.name,
             CATEGORY_MAP.get(task.category, task.category),

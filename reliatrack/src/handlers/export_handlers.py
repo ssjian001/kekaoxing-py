@@ -107,7 +107,10 @@ class ExportWorker(QThread):
     线程（强杀会让连接停在写入中途，见审计 P3-16）。
     """
 
-    finished = Signal(str)
+    # 自定义完成信号改名为 done：若叫 finished 会遮蔽 QThread 内建的 finished
+    # （无参），且内建 finished 是 deleteLater 的唯一安全时机——它在 run()
+    # （含 finally 里的 provider.close()）彻底结束后才发。
+    done = Signal(str)
     error = Signal(str)
     cancelled = Signal()
 
@@ -154,7 +157,7 @@ class ExportWorker(QThread):
                 self._discard_output(path)
                 self.cancelled.emit()
                 return
-            self.finished.emit(str(path) if path else "")
+            self.done.emit(str(path) if path else "")
         except ValueError as e:
             self.error.emit(str(e))
         except Exception as e:
@@ -239,7 +242,8 @@ class ExportHandlers:
             return svc.export_tasks_excel(plan, tasks, results=results, technician_names=tech_names)
         elif "Word" in fmt:
             return svc.export_to_word(plan, tasks, ExportHandlers._get_issues(ctrl, plan_pid),
-                                      ExportHandlers._get_samples(ctrl, plan_pid), results=results)
+                                      ExportHandlers._get_samples(ctrl, plan_pid), results=results,
+                                      technician_names=tech_names)
         else:
             # 审计 #11：PDF 综合报告技术员列显示真名（与 Excel 对齐）
             return svc.export_report_pdf(plan, tasks, ExportHandlers._get_issues(ctrl, plan_pid),
@@ -290,12 +294,20 @@ class ExportHandlers:
 
         plan_pid = plan.project_id or project_id
 
+        tech_names = {}
+        if ctrl.technicians:
+            for tech in ctrl.technicians.list_all():
+                if tech.id is not None:
+                    tech_names[tech.id] = tech.name
+
         if "Word" in fmt:
             return svc.export_to_word(plan, tasks, ExportHandlers._get_issues(ctrl, plan_pid),
-                                      ExportHandlers._get_samples(ctrl, plan_pid), results=results)
+                                      ExportHandlers._get_samples(ctrl, plan_pid), results=results,
+                                      technician_names=tech_names)
         else:
             return svc.export_report_pdf(plan, tasks, ExportHandlers._get_issues(ctrl, plan_pid),
-                                         ExportHandlers._get_samples(ctrl, plan_pid), results=results)
+                                         ExportHandlers._get_samples(ctrl, plan_pid), results=results,
+                                         technician_names=tech_names)
 
     @staticmethod
     def _export_dvpr(ctrl, svc, fmt: str, project_id: int | None,
@@ -453,12 +465,12 @@ class ExportHandlers:
             progress.close()
             self._win.toast("已取消导出", "info")
 
-        worker.finished.connect(_on_finished)
+        worker.done.connect(_on_finished)
         worker.error.connect(_on_error)
         worker.cancelled.connect(_on_cancelled)
+        # deleteLater 只挂 QThread 内建 finished（run 完全结束后才发），
+        # 避免 error/cancelled 路径上线程还在跑 provider.close() 就被销毁。
         worker.finished.connect(worker.deleteLater)
-        worker.error.connect(worker.deleteLater)
-        worker.cancelled.connect(worker.deleteLater)
         # 取消走标志位 + 协作式退出：绝不 terminate（强杀会让 DB 连接停在
         # 写入中途，产物与 WAL 状态都可能损坏）
         progress.canceled.connect(worker.request_cancel)

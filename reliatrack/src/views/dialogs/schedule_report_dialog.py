@@ -53,6 +53,8 @@ class _UtilBarChart(QWidget):
 
         label_w = self._LABEL_W
         chart_w = self.width() - label_w - 40  # 右侧留数字空间
+        # 窗口被拖得很窄时 chart_w 会为负，drawRoundedRect 收到负宽度异常（审计 P2）
+        chart_w = max(chart_w, 10)
 
         for i, item in enumerate(self._data):
             y = i * (self._BAR_H + self._SPACING) + 4

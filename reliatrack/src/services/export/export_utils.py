@@ -232,7 +232,9 @@ def _judge_conclusion(
                     accept_n = criteria.get("accept", 0)
                     if fail_count > accept_n:
                         return "不通过"
-                    elif conditional_count > 0 and fail_count == accept_n:
+                    elif conditional_count > 0:
+                        # 与 c0 分支及兜底分支一致：有 conditional 即"条件接受"，
+                        # 不再静默吞掉判成"通过"（审计 P2）
                         return "条件接受"
                     elif pass_count > 0:
                         return "通过"

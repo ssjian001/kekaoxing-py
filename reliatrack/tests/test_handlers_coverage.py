@@ -1307,7 +1307,7 @@ class TestExportWorkerComponents:
             return str(out_file)
 
         worker = ExportWorker(_fn, str(tmp_path / 'x.db'), None, 'Excel', None, None, None)
-        worker.finished.connect(finished.append)
+        worker.done.connect(finished.append)
         worker.error.connect(errors.append)
         worker.run()  # 同步调用，不进入事件循环
 
@@ -1325,7 +1325,7 @@ class TestExportWorkerComponents:
             raise ValueError('没有选中测试计划')
 
         worker = ExportWorker(_fn, str(tmp_path / 'x.db'), None, 'Excel', None, None, None)
-        worker.finished.connect(finished.append)
+        worker.done.connect(finished.append)
         worker.error.connect(errors.append)
         worker.run()
 
@@ -1354,7 +1354,7 @@ class TestExportWorkerComponents:
                 return {'content': '综合', 'format': 'Excel (.xlsx)', 'project_id': None}
 
         class _StubWorker(QThread):
-            finished = Signal(str)
+            done = Signal(str)
             error = Signal(str)
             cancelled = Signal()  # 与真实 ExportWorker 的协作式取消契约一致
 
@@ -1365,7 +1365,7 @@ class TestExportWorkerComponents:
                                 plan_id=plan_id, issue_id=issue_id)
 
             def start(self) -> None:
-                self.finished.emit('')
+                self.done.emit('')
 
             def request_cancel(self) -> None:
                 pass

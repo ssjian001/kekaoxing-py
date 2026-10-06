@@ -79,7 +79,7 @@ def export_tasks_excel(
         row_idx = seq + 4
         if plan_start and task.start_day is not None:
             planned_start = (plan_start + timedelta(days=task.start_day)).isoformat()
-            planned_end = (plan_start + timedelta(days=task.start_day + task.duration - 1)).isoformat()
+            planned_end = (plan_start + timedelta(days=(task.start_day or 0) + (task.duration or 0) - 1)).isoformat()
         else:
             planned_start = str(task.start_day) if task.start_day else "—"
             planned_end = "—"

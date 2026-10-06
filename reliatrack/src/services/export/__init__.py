@@ -84,8 +84,10 @@ class ExportService:
     def export_8d_pdf(self, issue, fa_records=None, capa_records=None, technician_name="", task=None, sample_sn="", filepath=None):
         return export_8d_pdf(self._output_dir, issue, fa_records, capa_records, technician_name, task, sample_sn, filepath)
 
-    def export_to_word(self, plan, tasks, issues, samples, filepath=None, results=None):
-        return export_to_word(self._output_dir, plan, tasks, issues, samples, filepath, results)
+    def export_to_word(self, plan, tasks, issues, samples, filepath=None, results=None,
+                       technician_names=None):
+        return export_to_word(self._output_dir, plan, tasks, issues, samples, filepath, results,
+                              technician_names)
 
     def export_dvpr_docx(self, plan, tasks, results, issues, samples, filepath=None):
         return export_dvpr_docx(self._output_dir, plan, tasks, results, issues, samples, filepath)

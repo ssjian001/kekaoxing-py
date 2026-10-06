@@ -525,6 +525,15 @@ def run_auto_schedule(
             if t.start_day > 0 and t.status != "completed" and t.id is not None:
                 locked_ids.add(t.id)
 
+    # 循环依赖任务无法参与重排：冻结其当前排期——
+    # 1b 不清零、Compress 不左移（下方均以 locked_ids 判定），且通过
+    # Phase 1a 占据 timeline 槽位，设备/技术员不会被重排后的任务重复预定。
+    # 尚未排期（start_day == 0）的保持未排。
+    for t in valid_tasks:
+        if (t.id in cycle_task_ids and t.status != "completed"
+                and isinstance(t.start_day, int) and t.start_day > 0):
+            locked_ids.add(t.id)
+
     # ── Record original schedule length ─────────────────────────
     active = [t for t in valid_tasks if t.start_day >= 0 and t.status != "completed"]
     original_days = max(
@@ -551,7 +560,11 @@ def run_auto_schedule(
     original_start_days = {t.id: t.start_day for t in valid_tasks}
     unschedulable: list[int] = []
     for t in valid_tasks:
-        if t.status != "completed" and t.id not in locked_ids:
+        # cycle 任务不参与重排也不应被清零：它们不在 schedulable 里，
+        # 若在这里把 start_day 清成 0，preview 的 get_changes() 会把
+        # (task_id, 0) 当作合法变更写回 DB，永久抹掉已有排期。
+        if (t.status != "completed" and t.id not in locked_ids
+                and t.id not in cycle_task_ids):
             t.start_day = 0
 
     # 1c. Sort schedulable tasks: topo order → priority → duration
