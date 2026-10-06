@@ -121,7 +121,7 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack/reliatrack   # 代码目录
 ../.venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen ../.venv/bin/python tests/manual/test_e2e_full.py`（53 项断言）。**1130 个 pytest 用例全通过**（2026-10-05）。
+E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen ../.venv/bin/python tests/manual/test_e2e_full.py`（53 项断言）。**1136 个 pytest 用例全通过**（2026-10-06）。
 
 ## CI/CD
 

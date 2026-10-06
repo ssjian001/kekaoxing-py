@@ -25,7 +25,7 @@ cd reliatrack                                          # 代码目录
 ```
 
 - PyInstaller 打包：`cd reliatrack && pyinstaller --noconfirm ReliaTrack.spec`（产物 `dist/ReliaTrack/`；报 command not found 就先 `../.venv/bin/pip install pyinstaller`）
-- 测试：`cd reliatrack && ../.venv/bin/python -m pytest tests/`（**不要加 `-q`**：`pytest.ini` 的 `addopts = -q` 会让它变成 `-qq`、**吞掉 summary 行**；**不要加 `-x`**：首个失败即停会隐藏后续失败。1130 用例，2026-10-05 实测 `1130 passed` / EXIT=0 / **49.6s**）
+- 测试：`cd reliatrack && ../.venv/bin/python -m pytest tests/`（**不要加 `-q`**：`pytest.ini` 的 `addopts = -q` 会让它变成 `-qq`、**吞掉 summary 行**；**不要加 `-x`**：首个失败即停会隐藏后续失败。1136 用例，2026-10-06 实测 `1136 passed` / EXIT=0 / **~49s**）
 - 环境自检：`bash init.sh`（语法 + schema + 测试 + feature_list 四步）
 
 ## 技术栈
@@ -100,7 +100,7 @@ src/
       #         report_bundle_dialog, view_theme_settings_dialog, theme_palette_dialog
       # 拆分组件：kanban_card/column, todo_card/column, dashboard_charts/cards, plan_*
       #         sample_ledger/pool/usage_tab, quadrant_card/cell, bug_table
-tests/                  # pytest 测试套件（69 个文件 / 1130 用例）
+tests/                  # pytest 测试套件（69 个文件 / 1136 用例）
 ```
 
 ## 核心业务规则
@@ -160,7 +160,7 @@ bd dolt push          # 同步
 1. `cd reliatrack` — 进入代码目录
 2. `cat progress/current.md` — 读取上次进度
 3. `cat feature_list.json` — 确认当前功能状态（dict 格式：`_meta` / `features`）
-4. 验证环境：`../.venv/bin/python -m pytest tests/ --collect-only -o addopts= -q | tail -1`（→ `1130 tests collected`；`-o addopts=` 用来覆盖 `pytest.ini` 里的 `-q`，否则叠加成 `-qq` 连汇总行都没有）
+4. 验证环境：`../.venv/bin/python -m pytest tests/ --collect-only -o addopts= -q | tail -1`（→ `1136 tests collected`；`-o addopts=` 用来覆盖 `pytest.ini` 里的 `-q`，否则叠加成 `-qq` 连汇总行都没有）
 5. 如果 progress 中有未完成任务，从断点继续
 
 ## 完成定义（Definition of Done）
