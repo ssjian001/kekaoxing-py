@@ -14,8 +14,9 @@
 ### 待修（中危/低危，2026-10-06 审计记录）
 
 - [ ] 排程：cycle 任务 `start_day` 被清零且预览路径抹回 DB；`start_day=0` 双重语义（未排期 vs 排在起始日）导致 auto_schedule 防线误拒（`start_day` 未排期哨兵化未做）；「重新排程」隐式强制 lock_existing 已修（2026-10-06 第二批）；cycle 任务冻结当前排期（Phase 1a 占位、不清零、不左移）已修
-- [ ] ExportWorker 遮蔽 QThread.finished + deleteLater 竞态已修（`done` 信号改名，deleteLater 只挂内建 finished，2026-10-06 第二批）；Word 导出技术员列已对齐真名；`_judge_conclusion` 吞 conditional 已修；取消不中断导出待定；任务 duration/start_day 为 NULL 时导出崩溃已修
-- [ ] 恢复重启 frozen 模式多一层 argv、撤销确认被 quit() 架空、备份文件权限未收紧、`_empty_report` schema 缺 key、`find_earliest_slot` 硬编码 365 天上限、排程报告 total_days 不含 cycle 占用（`a514931` 起：frozen argv / 权限 / `_empty_report` 已修 2026-10-06 第二批；`find_earliest_slot` 365 上限与 total_days 失真待定；撤销确认框语义需真实 GUI 环境确认）
+- [ ] ExportWorker 遮蔽 QThread.finished + deleteLater 竞态已修（`done` 信号改名，deleteLater 只挂内建 finished，2026-10-06 第二批）；Word 导出技术员列已对齐真名；`_judge_conclusion` 吞 conditional 已修；取消不中断导出已修 2026-10-06 第三批（`5717866`）；任务 duration/start_day 为 NULL 时导出崩溃已修
+- [ ] 恢复重启 frozen 模式多一层 argv、撤销确认被 quit() 架空、备份文件权限未收紧、`_empty_report` schema 缺 key、`find_earliest_slot` 硬编码 365 天上限、排程报告 total_days 不含 cycle 占用（frozen argv / 权限 / `_empty_report` 已修第二批；撤销确认被 quit() 架空、365 上限、total_days 均已修第三批 `5717866`）
+- [ ] `start_day=0` 双重语义：防线已收紧（第三批，auto_schedule 只拦 unschedulable 的 0→清除）；彻底解法是未排期改用 `None`/`-1` 哨兵，改动面大，建议单独一批
 
 ---
 ## 2026-09-29 全量对抗审计修复（P0-1 / P2-x / P3-x，8 commit 已推送 origin/main）
