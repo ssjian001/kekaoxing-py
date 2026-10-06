@@ -12,13 +12,13 @@
 
 - 全量测试：**1136 passed / EXIT=0**（约 46s）。
 - 所有审计项已修清零：`start_day` 哨兵化（schema v29）、排程 cycle 冻结、ExportWorker 线程安全、导出 None 崩溃、undo/redo 状态机穿透、样品台账一致性等均已处理。
-- Git：本地 `main` 已推送到 `origin/main`（HEAD 约 `a1bb053`），工作区干净。
+- Git：本地 `main` 已推送到 `origin/main`，工作区干净（最新提交看 `git log -1`；本文件不再钉 hash，免得自指过期）。
 
 ## 3. 本次会话干了什么
 
 | commit | 内容 |
 |---|---|
-| `a479169` | UI 实测三项脚本 `tests/manual/verify_ui_3items.py`（甘特 Ctrl+滚轮、看板卡片拖拽 isValid 守卫、出库手输操作人）9/9 |
+| `a479169` | UI 实测三项脚本 `reliatrack/tests/manual/verify_ui_3items.py`（甘特 Ctrl+滚轮、看板卡片拖拽 isValid 守卫、出库手输操作人）9/9 |
 | `a514931` | 审计 P0×3：8D 导出参数错位、命令面板 backup 动作、损坏库恢复堵死 + 回滚 WAL 清理 |
 | `f2f1fd5` | P1/P2×15：QThread 遮蔽 finished、Word 技术员列、export None 崩溃、aql conditional 吞结论、图表负宽、frozen 重启双 exe、备份权限 0600 等 |
 | `5717866` | 导出协作式取消、恢复重启先确认关窗、`max_scan_days` 配置化、`auto_schedule` 清零防线、cycle 计入 total_days |
@@ -30,9 +30,9 @@
 ```bash
 cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack        # 仓库根
 .venv/bin/python -m pytest reliatrack/tests/ -o addopts= # 全量
-python3 reliatrack/main.py                             # 启动（有 DISPLAY 时）
+.venv/bin/python reliatrack/main.py                    # 启动（有 DISPLAY 时；系统 python3 未装 PySide6）
 # Qt 无头验证 / 脚本：
-QT_QPA_PLATFORM=offscreen .venv/bin/python tests/manual/verify_ui_3items.py
+QT_QPA_PLATFORM=offscreen .venv/bin/python reliatrack/tests/manual/verify_ui_3items.py
 ```
 
 - pytest 不要加 `-q`（`pytest.ini` 的 addopts 已含 `-q`，叠加会变 `-qq` 吞掉 summary 行）；判全绿看最后一行 `N passed`。
@@ -62,11 +62,11 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python tests/manual/verify_ui_3items.py
 
 ## 8. 日常操作手册
 
-- **新增功能**：先在根目录 `CLAUDE.md` 找架构约定；`src/` 三组件（view/handler/service/repo）模式保持一致；涉及颜色样式的改动，亮/暗双主题各确认一次。
+- **新增功能**：先在根目录 `CLAUDE.md` 找架构约定；`reliatrack/src/` 已分层（`views` / `handlers` / `services` / `models` / `db` / `controllers` / `configs` / `styles`）——改动放对应层，不要跨层塞；涉及颜色样式的改动，亮/暗双主题各确认一次。
 - **改了测试**：必须跑全量 `pytest -o addopts=`，全绿才能提交。
 - **升级数据库**：修改 `src/db/schema.py`（新 `SCHEMA_VERSION` + `_migrate_vNN`），旧库在下次启动自动重放。
 - **新的交接**：在本文件末尾追加一行 commit 和结论，不要覆盖旧行。
 
 ---
 
-*生成于 2026-10-06；如果你只看这一句：品牌是 Python 3.11 + PySide6 的本地工具，1136 个绿色测试,别把 `start_day=0` 再当未排期哨兵（改用 `None`）。*
+*生成于 2026-10-06；如果你只看这一句：品牌是 Python 3.11 + PySide6 的本地工具，1136 个绿色测试，别把 `start_day=0` 再当未排期哨兵（改用 `None`）。*
