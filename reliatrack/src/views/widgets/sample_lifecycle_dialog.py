@@ -137,10 +137,11 @@ class _TimelineWidget(QWidget):
 
         # 真实履历：样品创建（登记）+ 出入库台账记录，按时间升序
         events: list[tuple[str, str, str, str]] = []
-        if sample.created_at:
+        sample_ts = sample.created_at[:16] if sample.created_at and len(sample.created_at) > 16 else (sample.created_at or "")
+        if sample_ts:
             events.append((
                 "📋 样品登记入库",
-                sample.created_at[:16] if len(sample.created_at) > 16 else sample.created_at,
+                sample_ts,
                 f"样品 {sample.sn} 完成登记，分配唯一 S/N 编号。",
                 DASH_SUCCESS,
             ))
@@ -159,6 +160,9 @@ class _TimelineWidget(QWidget):
                 desc_parts.append(f"备注: {txn['notes']}")
             desc = "；".join(desc_parts) if desc_parts else "无附加信息"
             events.append((title, ts, desc, color))
+
+        # transactions 查询是 DESC，登记事件硬塞在首位会产生乱序（审计 #3）
+        events.sort(key=lambda e: e[1])
 
         if not events:
             events.append((

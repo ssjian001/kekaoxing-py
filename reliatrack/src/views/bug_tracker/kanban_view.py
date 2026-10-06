@@ -314,6 +314,7 @@ class BugKanbanView(QWidget):
                 cmd = TransitionIssueStatusCommand(
                     self._service, issue_id, old_status, new_status,
                     operator=self._operator,
+                    old_resolution=getattr(issue, "resolution", "") or "",
                 )
                 self._undo_manager.record(cmd)
             ToastWidget.show_toast(

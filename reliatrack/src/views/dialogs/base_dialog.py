@@ -252,3 +252,21 @@ class _BaseDialog(QDialog):
         spin.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._form.addRow(label, spin)
         return spin
+
+    def _add_double_spin_field(
+        self,
+        label: str,
+        default: float = 0.0,
+        min_val: float = 0.0,
+        max_val: float = 100.0,
+    ):
+        """添加 QDoubleSpinBox 数字字段并返回控件。"""
+        from PySide6.QtWidgets import QDoubleSpinBox
+        spin = QDoubleSpinBox()
+        spin.setRange(min_val, max_val)
+        spin.setValue(default)
+        spin.setDecimals(1)
+        spin.setFixedWidth(100)
+        spin.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self._form.addRow(label, spin)
+        return spin

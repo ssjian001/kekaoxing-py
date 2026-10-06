@@ -175,8 +175,10 @@ def delete_orphan_files(paths: list[str]) -> tuple[int, list[str]]:
             if base not in fp.parents:
                 failures.append(f"{p} (目录外, 拒绝删除)")
                 continue
-            fp.unlink(missing_ok=True)
-            deleted += 1
+            if fp.exists():
+                fp.unlink()
+                deleted += 1
+            # 不存在的路径不计入"已删除"（审计 #5 虚报）
         except Exception as exc:
             failures.append(f"{p} ({exc})")
     return deleted, failures

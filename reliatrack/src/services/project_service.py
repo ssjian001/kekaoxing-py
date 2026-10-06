@@ -56,6 +56,10 @@ class ProjectService:
                 # 1. 批量删除 issues（含 fa_records / attachments / capa_records）
                 self._issue_repo.delete_by_project(project_id)
                 # 2. 批量删除 samples（含 transactions）
+                # 先摘掉其他项目任务里 sample_ids 中的悬空引用（审计 #7）
+                for s in self._sample_repo.list_all(project_id=project_id):
+                    if s.id is not None:
+                        self._sample_repo.remove_from_task_sample_ids(s.id)
                 self._sample_repo.delete_by_project(project_id)
                 # 3. 批量删除 plans 下的 tasks（含 test_results / issues 子表）
                 for plan in self._plan_repo.get_by_project(project_id):

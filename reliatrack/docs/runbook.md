@@ -12,7 +12,7 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack/reliatrack   # 代码目录（ma
 ## 数据库
 
 - **位置**：`data/reliatrack.db`（自动创建）
-- **Schema 版本**：v28（20 张表）
+- **Schema 版本**：v29（20 张表）
 - **备份**：`data/backups/` 目录下自动/手动备份
 - **迁移**：`../.venv/bin/python3 migrate.py`（运行 pending migrations）
 
@@ -28,7 +28,7 @@ cp data/reliatrack.db "data/backups/reliatrack_$(date +%Y%m%d_%H%M%S).db"
 ## 测试
 
 ```bash
-# 单元测试（1111 项；2026-09-29 实测 1111 passed / EXIT=0 / 69s）
+# 单元测试（1130 项；2026-10-05 实测 1130 passed / EXIT=0 / 49.6s）
 ../.venv/bin/python -m pytest tests/
 # ⚠️ 别再加 -q（pytest.ini 的 addopts 已含 -q → 叠加成 -qq 会吞掉 summary 行）
 # ⚠️ 判"全绿"看最后一行 + exit code，不要 `| tail -N`（会挤掉 summary）

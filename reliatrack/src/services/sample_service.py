@@ -99,7 +99,22 @@ class SampleService:
         return self._repo.get_by_project(project_id)
 
     def update(self, sample_id: int, **kwargs: object) -> None:
-        self._repo.update(sample_id, **kwargs)
+        # status 放进来时必须同时写台账流水（审计 P1），否则台账与状态机脱节，
+        # 出现"checked_out 却无出库记录"之类的脏数据。
+        status = kwargs.pop("status", None)
+        if status is None:
+            self._repo.update(sample_id, **kwargs)
+            return
+        with self._atomic():
+            sample = self._repo.get_by_id(sample_id)
+            old = getattr(sample, "status", None) if sample is not None else None
+            self._repo.update(sample_id, **kwargs)
+            self._repo.update_status(sample_id, str(status))
+            if status != old:
+                self._repo.add_transaction(
+                    sample_id, "status_change",
+                    notes=f"状态变更: {old} → {status}",
+                )
 
     def update_status(self, sample_id: int, status: str) -> None:
         self._repo.update_status(sample_id, status)

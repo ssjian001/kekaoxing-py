@@ -113,11 +113,11 @@ class SampleEditDialog(_BaseDialog):
             default=sample.location or "",
             placeholder="如：A区-01柜",
         )
-        self._test_hours_spin = self._add_spin_field(
+        self._test_hours_spin = self._add_double_spin_field(
             "累计测试(h)",
             min_val=0,
             max_val=99999,
-            default=int(sample.test_hours) if sample and sample.test_hours else 0,
+            default=float(sample.test_hours) if sample and sample.test_hours else 0.0,
         )
 
         self._add_separator()

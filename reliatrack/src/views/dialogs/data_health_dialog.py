@@ -123,6 +123,19 @@ class DataHealthDialog(QDialog):
         而单纯依赖父对象回收完全正常。一个对话框最多累积少数几个已结束
         的线程对象，不构成泄漏。
         """
+        if not self._db_path:
+            # 内存库 / 无库文件路径：主线程连接不能跨线程使用，改为主线程同步扫描
+            # （原实现在 QThread 里复用主线程 controller 的连接，违反连接的线程约定）
+            from src.services.health_service import scan_data_health
+            try:
+                report = scan_data_health(self._controller)
+            except Exception:
+                logger.exception("体检扫描失败")
+                report = {"missing_files": [], "orphan_files": [],
+                          "broken_result_refs": [], "error": "扫描过程出错，详见日志"}
+            self._on_report(report)
+            return
+
         worker = _ScanWorker(self._db_path,
                              None if self._db_path else self._controller,
                              self)

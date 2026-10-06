@@ -48,7 +48,7 @@ src/
 ├── controllers/     # 页面控制器（AppController）
 ├── db/
 │   ├── connection.py
-│   └── schema.py        # SQLite schema（v28，20张表含todos）
+│   └── schema.py        # SQLite schema（v29，20张表含todos）
 │   └── repositories/    # 数据访问层（repo 模式）
 │       ├── base.py
 │       ├── project_repo.py
@@ -121,7 +121,7 @@ cd ~/Desktop/AI/xiangmu/kekaoxing-py/reliatrack/reliatrack   # 代码目录
 ../.venv/bin/python -m pytest tests/ -v
 ```
 
-E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen ../.venv/bin/python tests/manual/test_e2e_full.py`（53 项断言）。**1111 个 pytest 用例全通过**（2026-09-29）。
+E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen ../.venv/bin/python tests/manual/test_e2e_full.py`（53 项断言）。**1130 个 pytest 用例全通过**（2026-10-05）。
 
 ## CI/CD
 
@@ -132,7 +132,7 @@ E2E 脚本式测试需 offscreen 模式：`QT_QPA_PLATFORM=offscreen ../.venv/bi
 
 - Python 3.11 + PySide6 + apsw (SQLite)
 - 分层架构：View → Handler → Service → Repo
-- Schema v28：test_tasks.category 旧值统一到 TASK_CATEGORIES；v27：todos 加 archived；v26：todos 加提醒+四象限；v25：新增 todos 表（待办事项模块）；v24：活动日志加 project_id 列 + 索引，仪表盘 weekly_closed 按项目筛选；v23：Issue 管理系统（issue_comments/issue_activity_log/issue_links 3张表 + 看板/列表/FA/CAPA面板 + 状态机 + aging + 与 Issue 追踪合并重构）；v22 归档视图完善；v21 Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
+- Schema v29：test_tasks.start_day 哨兵化（NULL=未排期）；v28：test_tasks.category 旧值统一到 TASK_CATEGORIES；v27：todos 加 archived；v26：todos 加提醒+四象限；v25：新增 todos 表（待办事项模块）；v24：活动日志加 project_id 列 + 索引，仪表盘 weekly_closed 按项目筛选；v23：Issue 管理系统（issue_comments/issue_activity_log/issue_links 3张表 + 看板/列表/FA/CAPA面板 + 状态机 + aging + 与 Issue 追踪合并重构）；v22 归档视图完善；v21 Issue 责任类别(ME/EE/AE/SW/NPI/QE/Other)+状态多选筛选+CheckBox QProxyStyle；v20 任务编号前缀；v17 Issue 软删除；v16 Issue DRI + CAPA 验证人 + fail→自动创建 Issue，显式列名（无 SELECT *），QPainter 自绘图表
 - Issue 跟踪：[bd (beads)](https://github.com/Ironlung968/beads) — Dolt-backed graph tracker
 
 ## 许可

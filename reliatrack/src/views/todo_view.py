@@ -331,14 +331,17 @@ class TodoView(QWidget):
 
         groups: dict[str, list[TodoItem]] = {"pending": [], "in_progress": [], "done": []}
         for t in filtered:
-            groups.setdefault(t.status, groups["pending"]).append(t)
+            # 脏数据（未知状态）折叠到 pending 列；不用 setdefault(...) 的
+            # 共享别名，否则它还会挂在字典里产生多余的同榜列表（审计 #5）
+            key = t.status if t.status in groups else "pending"
+            groups[key].append(t)
 
         for status, col in self._columns.items():
             col.set_cards(groups.get(status, []))
 
         # 空状态：检查全部列（in_view=筛选后可见数，total=全量数区分"真空"vs"被筛选"）
         in_view = sum(len(col._cards) for col in self._columns.values())
-        self._toggle_empty_state(in_view, len(filtered))
+        self._toggle_empty_state(in_view, len(self._todo_list))
 
     def _on_card_selected(self, todo_id: int) -> None:
         """卡片单击选中 — 取消旧选中，标记新选中。"""

@@ -50,6 +50,7 @@ class _SampleLedgerTab(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self._ctrl = None  # 由 SampleHandlers.connect_signals 注入
         layout = QVBoxLayout(self)
 
         # 工具栏
@@ -207,7 +208,7 @@ class _SampleLedgerTab(QWidget):
                 from src.views.widgets.sample_lifecycle_dialog import SampleLifecycleTimelineDialog
                 # 审计 #30：传入真实台账记录，不再渲染硬编码假履历
                 txns: list[dict] = []
-                ctrl = getattr(self._win, "ctrl", None)
+                ctrl = self._ctrl
                 if ctrl and ctrl.sample_service and sample.sn:
                     try:
                         txns = [
@@ -218,6 +219,10 @@ class _SampleLedgerTab(QWidget):
                         txns = []
                 dlg = SampleLifecycleTimelineDialog(sample, self, transactions=txns)
                 dlg.show_centered()
+
+    def set_context(self, ctrl) -> None:
+        """注入 AppController（供「查看履历」取台账记录）。"""
+        self._ctrl = ctrl
 
     @property
     def table(self) -> _SampleTable:

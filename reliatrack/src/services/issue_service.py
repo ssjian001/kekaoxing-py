@@ -367,7 +367,9 @@ class IssueService:
             last_change = status_changes[-1].created_at
         else:
             issue = self._repo.get_by_id(issue_id)
-            last_change = issue.updated_at or issue.created_at if issue else ""
+            # 状态自创建以来未变更：锚点用 created_at（updated_at 会被任意
+            # 字段编辑刷新，导致 aging 被无端归零，审计 #4）
+            last_change = issue.created_at or issue.updated_at if issue else ""
 
         if not last_change:
             return 0
@@ -404,7 +406,7 @@ class IssueService:
         # 无 status 变更的 issue：回退查 issue 记录
         fallback_ids = [i for i in issue_ids if i not in status_changes]
         issues = self._repo.get_by_ids(fallback_ids) if fallback_ids else []
-        fallback_time = {i.id: (i.updated_at or i.created_at or "") for i in issues if i.id is not None}
+        fallback_time = {i.id: (i.created_at or i.updated_at or "") for i in issues if i.id is not None}
 
         fmt = "%Y-%m-%d %H:%M:%S"
         now = datetime.now()

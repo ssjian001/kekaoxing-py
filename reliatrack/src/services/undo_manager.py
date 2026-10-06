@@ -69,10 +69,21 @@ class UpdateFieldCommand(Command):
         self._new_value = new_value
         self.description = f"更新{entity_name} {field}"
 
+    def _ensure_alive(self) -> None:
+        """目标行已被删时 update() 静默 no-op，撤销/重做需按失败处理（审计 P2）。"""
+        getter = getattr(self._repo, "get_by_id", None)
+        if callable(getter) and getter(self._entity_id) is None:
+            raise UndoConflictError(
+                f"无法{self.description}：目标实体 #{self._entity_id} 已被删除，"
+                "命令已保留可重试"
+            )
+
     def do(self) -> None:
+        self._ensure_alive()
         self._repo.update(self._entity_id, **{self._field: self._new_value})
 
     def undo(self) -> None:
+        self._ensure_alive()
         self._repo.update(self._entity_id, **{self._field: self._old_value})
 
 
@@ -121,6 +132,17 @@ class AddEntityCommand(Command):
         if self._created_id is not None:
             self._repo.delete(self._created_id)
 
+    def redo(self) -> None:
+        """重做必须恢复同一 id，否则指向该实体的外键引用会断裂（审计 P2）。"""
+        if self._created_id is not None:
+            try:
+                self._repo.insert(id=self._created_id, **self._data)
+                return
+            except Exception:
+                logger.debug("AddEntityCommand.redo: re-instate id=%s failed, fall back to auto id",
+                             self._created_id)
+        self._created_id = self._repo.insert(**self._data)
+
 
 class BatchScheduleCommand(Command):
     """批量更新任务排程（支持撤销/重做整个排程操作）。"""
@@ -167,6 +189,8 @@ class DeleteEntityCommand(Command):
         self._entity_id = entity_id
         self._entity_name = entity_name
         self._cascade_children = _cascade_children
+        # undo 实际恢复行的 id（冲突分支会是新 id），redo 必须删它而不是旧 id
+        self._restored_id: int | None = None
         # 先读取当前数据用于撤销恢复
         entity = repo.get_by_id(entity_id)
         self._saved_data: dict[str, Any] = {}
@@ -194,7 +218,7 @@ class DeleteEntityCommand(Command):
             if existing is not None:
                 # ID 冲突：不传 id，让 autoincrement 分配新 ID
                 safe_data = {k: v for k, v in self._saved_data.items() if k != "id"}
-                self._repo.insert(**safe_data)
+                self._restored_id = self._repo.insert(**safe_data)
                 logger.warning(
                     "DeleteEntityCommand.undo: original id=%d already occupied, "
                     "re-inserted with auto-generated id",
@@ -202,7 +226,12 @@ class DeleteEntityCommand(Command):
                 )
             else:
                 # 显式插入原始 ID，保持外键引用完整性
-                self._repo.insert(**self._saved_data)
+                self._restored_id = self._repo.insert(**self._saved_data)
+
+    def redo(self) -> None:
+        # 按 undo 实际恢复的 id 删除，避免误删复用该 rowid 的无关记录（审计 P2）
+        target = self._restored_id if self._restored_id is not None else self._entity_id
+        self._repo.delete(target)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -339,23 +368,32 @@ class TransitionIssueStatusCommand(Command):
     """
 
     def __init__(self, service: Any, issue_id: int,
-                 old_status: str, new_status: str, operator: str = "") -> None:
+                 old_status: str, new_status: str, operator: str = "",
+                 old_resolution: str = "") -> None:
         self._service = service
         self._issue_id = issue_id
         self._old_status = old_status
         self._new_status = new_status
         self._operator = operator
+        # 转出 closed 时 transition_status 会清空 resolution，undo 必须带旧值回写
+        self._old_resolution = old_resolution
         self.description = f"Issue #{issue_id}: {old_status} → {new_status}"
 
     def do(self) -> None:
-        self._service.transition_status(self._issue_id, self._new_status,
-                                         operator=self._operator)
+        ok, reason = self._service.transition_status(
+            self._issue_id, self._new_status, operator=self._operator,
+        )
+        if not ok:
+            # 前置条件已不再满足（如缺 FA 记录）不能算成功，否则 redo 会静默
+            # 无效，却仍提示"重做成功"（审计 P1）
+            raise UndoConflictError(f"无法重做状态变更: {reason}")
 
     def undo(self) -> None:
-        # 直接回写旧状态 + 标记撤销来源
+        # 直接回写旧状态 + 恢复被 transition_status 清空的 resolution（审计 P1）
         self._service.update(self._issue_id,
                              operator=f"{self._operator}(undo)",
-                             status=self._old_status)
+                             status=self._old_status,
+                             resolution=self._old_resolution)
 
     def redo(self) -> None:
         self.do()

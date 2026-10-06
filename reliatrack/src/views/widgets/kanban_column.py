@@ -153,6 +153,7 @@ class _KanbanColumn(QFrame):
             history = history_cards or []
             visible = recent if self._folded else recent + history
             self._cards = recent + history
+            self._visible_count = len(visible)
 
             total_current = len(recent)
             total_history = len(history)
@@ -171,6 +172,7 @@ class _KanbanColumn(QFrame):
                 self._fold_info.setVisible(False)
         else:
             self._cards = cards
+            self._visible_count = len(cards)
 
         for card in visible if self._is_closed_col else cards:
             self._card_layout.insertWidget(
@@ -187,7 +189,9 @@ class _KanbanColumn(QFrame):
                 item.widget().deleteLater()
 
     def _update_count(self) -> None:
-        self._count_label.setText(str(len(self._cards)))
+        # 折叠时只显示最近一个月的卡片：计数标签与标题口径对齐（审计 #8）
+        n = getattr(self, "_visible_count", len(self._cards))
+        self._count_label.setText(str(n))
 
     def _toggle_fold(self) -> None:
         if not self._is_closed_col:

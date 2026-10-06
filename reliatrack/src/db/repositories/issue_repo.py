@@ -782,15 +782,17 @@ class IssueActivityLogRepository(BaseRepository):
         """
         if project_id is not None:
             row = self._conn.execute(
-                "SELECT COUNT(*) FROM [issue_activity_log] "
+                "SELECT COUNT(DISTINCT issue_id) FROM [issue_activity_log] "
                 "WHERE field = 'status' AND new_value = 'closed' "
-                "AND project_id = ? "
+                # 与 issues_list 的口径一致：筛选某项目时并入 project_id IS NULL
+                # 的未分配 Issue（否则同屏三个指标口径不一致，审计 #6）
+                "AND (project_id = ? OR project_id IS NULL) "
                 "AND created_at >= date('now', '-7 days', 'localtime')",
                 (project_id,),
             ).fetchone()
         else:
             row = self._conn.execute(
-                "SELECT COUNT(*) FROM [issue_activity_log] "
+                "SELECT COUNT(DISTINCT issue_id) FROM [issue_activity_log] "
                 "WHERE field = 'status' AND new_value = 'closed' "
                 "AND created_at >= date('now', '-7 days', 'localtime')"
             ).fetchone()

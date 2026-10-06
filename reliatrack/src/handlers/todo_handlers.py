@@ -180,6 +180,9 @@ class TodoHandlers:
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.todo_service:
             return
+        todo = ctrl.todo_service.get(todo_id)
+        if todo is None or getattr(todo, "quadrant", None) == new_quadrant:
+            return
         ctrl.todo_service.update(todo_id, quadrant=new_quadrant)
         labels = {0: "未分类", 1: "重要紧急", 2: "重要不紧急", 3: "不重要紧急", 4: "不重要不紧急"}
         self._win.toast(f"象限已更新为 {labels.get(new_quadrant, '')}", "success")

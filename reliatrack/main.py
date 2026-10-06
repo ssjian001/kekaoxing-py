@@ -303,9 +303,19 @@ class MainWindow(QMainWindow):
                     status = jump_data["issue_status"]
                     bug_list = getattr(self._bug_tracker_view, '_list_view', None)
                     if bug_list and hasattr(bug_list, '_filter_status'):
-                        idx = bug_list._filter_status.findData(status)
-                        if idx >= 0:
-                            bug_list._filter_status.setCurrentIndex(idx)
+                        if isinstance(status, (list, tuple)):
+                            # 多状态口径（如待处理=open+analyzing）：全部状态 + 成员过滤
+                            idx = bug_list._filter_status.findData("")
+                            if idx >= 0:
+                                bug_list._filter_status.setCurrentIndex(idx)
+                            # setCurrentIndex 会清 _multi_status，须在其后挂过滤
+                            bug_list._multi_status = set(status)
+                            bug_list._apply_filters()
+                        else:
+                            bug_list._multi_status = None
+                            idx = bug_list._filter_status.findData(status)
+                            if idx >= 0:
+                                bug_list._filter_status.setCurrentIndex(idx)
 
 
     def _create_filter_bar_content(self, parent: QWidget) -> None:

@@ -261,10 +261,10 @@ class DashboardView(QWidget):
         # Bug Tracker 4 指标
         gb2 = QHBoxLayout()
         gb2.setSpacing(10)
-        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4, jump_data={"issue_status": "open"})
+        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4, jump_data={"issue_status": ["open", "analyzing"]})
         self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4, jump_data={"issue_status": "closed"})
-        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4, jump_data={"issue_status": "open"})
-        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4, jump_data={"issue_status": "open"})
+        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4, jump_data={"issue_status": ["open", "analyzing"]})
+        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4, jump_data={"issue_status": ["open", "analyzing"]})
         gb2.addWidget(self._card_pending)
         gb2.addWidget(self._card_week_close)
         gb2.addWidget(self._card_avg_age)

@@ -82,7 +82,8 @@ class QuadrantView(QWidget):
         }
         for t in todos:
             q = t.quadrant if hasattr(t, 'quadrant') else 0
-            groups.setdefault(q, groups[0]).append(t)
+            key = q if q in groups else 0
+            groups[key].append(t)
 
         for qid, cell in self._cells.items():
             cell.set_cards(groups.get(qid, []))

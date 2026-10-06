@@ -40,6 +40,7 @@ class SampleHandlers:
         v.pool_tab.btn_batch_edit.triggered.connect(self._on_pool_batch_edit)
         v.pool_tab.btn_delete.clicked.connect(self._on_sample_delete)
         v.ledger_tab.btn_edit.clicked.connect(self._on_ledger_edit)
+        v.ledger_tab.set_context(win.ctrl)  # 供 _open_lifecycle 取台账记录
         v.ledger_tab.btn_return.clicked.connect(self._on_sample_return)
         v.ledger_tab.btn_batch_edit.clicked.connect(self._on_ledger_batch_edit)
         v.usage_tab.set_refresh_callback(self._refresh_sample_usage)
@@ -380,6 +381,14 @@ class SampleHandlers:
                 cmd = BatchEditSamplesCommand(sample_repo, command_changes)
                 with ctrl.sample_service.transaction():
                     ctrl.undo_manager.execute(cmd)
+                    # 状态变更也写台账流水（审计 P1）
+                    if "status" in changes:
+                        for sample in samples:
+                            if sample.id and sample.status != changes["status"]:
+                                sample_repo.add_transaction(
+                                    sample.id, "status_change",
+                                    notes=f"批量状态变更: {sample.status} → {changes['status']}",
+                                )
                 self._win.toast(
                     f"已批量修改 {len(command_changes)} 个样品", "success"
                 )

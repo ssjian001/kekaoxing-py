@@ -49,6 +49,7 @@ class _SampleUsageTab(QWidget):
         "check_out": "出库",
         "return": "归还",
         "transfer": "转出",
+        "status_change": "状态变更",
     }
 
     # 操作类型颜色映射（来自 constants.py）
@@ -79,7 +80,7 @@ class _SampleUsageTab(QWidget):
         self._type_combo.addItem("入库", "check_in")
         self._type_combo.addItem("出库", "check_out")
         self._type_combo.addItem("归还", "return")
-        self._type_combo.addItem("转出", "transfer")
+        # 「转出」写入路径不存在，无此数据——删筛选项避免“永远为空的筛选”
         self._type_combo.currentIndexChanged.connect(self._apply_filter)
         toolbar.addWidget(self._type_combo)
 

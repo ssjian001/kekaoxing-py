@@ -229,7 +229,7 @@ class BugListView(QWidget):
         self._filter_status.addItem("全部状态", "")
         for k, v in ISSUE_STATUS_LABELS.items():
             self._filter_status.addItem(v, k)
-        self._filter_status.currentIndexChanged.connect(self._apply_filters)
+        self._filter_status.currentIndexChanged.connect(self._on_status_combo_changed)
         toolbar.addWidget(self._filter_status)
 
         self._filter_severity = QComboBox()
@@ -392,6 +392,14 @@ class BugListView(QWidget):
             self._search_input.setText(str(filters.get("keyword", "")))
         self._apply_filters()
 
+    def _clear_multi_status(self) -> None:
+        self._multi_status = None
+
+    def _on_status_combo_changed(self) -> None:
+        # 用户手动切换状态筛选时，丢弃仪表盘跳转注入的多值过滤
+        self._multi_status = None
+        self._apply_filters()
+
     def _apply_filters(self) -> None:
         """根据筛选条件过滤并刷新表格。"""
         keyword = self._search_input.text().strip().lower()
@@ -410,7 +418,11 @@ class BugListView(QWidget):
                 if keyword not in search_text:
                     continue
             # 状态
-            if status_val and issue.status != status_val:
+            multi = getattr(self, "_multi_status", None)
+            if multi:
+                if issue.status not in multi:
+                    continue
+            elif status_val and issue.status != status_val:
                 continue
             # 严重度
             if severity_val and issue.severity != severity_val:

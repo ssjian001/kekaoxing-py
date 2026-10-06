@@ -437,3 +437,152 @@ class TestMigrationV29StartDaySentinel:
         row = conn.execute("SELECT start_day FROM test_tasks").fetchone()
         assert row[0] is None
         conn.close()
+
+
+class TestSampleUpdateWritesTxn:
+    def test_status_change_in_update(self, tmp_path):
+        import apsw
+        from src.db.schema import init_schema
+        from src.db.repositories.sample_repo import SampleRepository
+        from src.services.sample_service import SampleService
+
+        conn = apsw.Connection(str(tmp_path / "t.db"))
+        init_schema(conn)
+        conn.execute("INSERT INTO projects (name) VALUES ('p')")
+        conn.execute("INSERT INTO test_plans (project_id, name) VALUES (1, 'p')")
+        repo = SampleRepository(conn)
+        svc = SampleService.__new__(SampleService)
+        svc._repo = repo
+        sid = repo.insert(sn="SN1", spec="s", status="in_stock", project_id=1)
+        svc.update(sid, status="checked_out")
+        rows = list(conn.execute("SELECT type FROM sample_transactions WHERE sample_id=?", (sid,)))
+        assert [r[0] for r in rows] == ["status_change"]
+        s = repo.get_by_id(sid)
+        assert s.status == "checked_out"
+        conn.close()
+
+
+class TestTransitionIssueStatusConflict:
+    def test_redo_checks_state_machine(self):
+        from src.services.undo_manager import (
+            TransitionIssueStatusCommand, UndoConflictError,
+        )
+
+        class _Svc:
+            def transition_status(self, issue_id, status, operator=""):
+                return False, "缺少 verified 的 FA 记录"
+
+            def update(self, *a, **kw):
+                pass
+
+        import pytest as _p
+        cmd = TransitionIssueStatusCommand(_Svc(), 1, "open", "closed")
+        with _p.raises(UndoConflictError):
+            cmd.do()
+
+
+class TestWeeklyClosedDistinct:
+    def test_same_issue_counted_once(self, tmp_path):
+        import apsw
+        from src.db.schema import init_schema
+        from src.db.repositories.issue_repo import IssueRepository
+
+        conn = apsw.Connection(str(tmp_path / "t.db"))
+        init_schema(conn)
+        conn.execute("INSERT INTO projects (name) VALUES ('p')")
+        conn.execute("INSERT INTO issues (project_id, title, status) VALUES (1, 'a', 'closed')")
+        iid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        now = "datetime('now','localtime')"
+        conn.execute(
+            f"INSERT INTO issue_activity_log (issue_id, project_id, field, old_value, new_value, created_at) "
+            f"VALUES (?, 1, 'status', 'open', 'closed', {now})", (iid,))
+        conn.execute(
+            f"INSERT INTO issue_activity_log (issue_id, project_id, field, old_value, new_value, created_at) "
+            f"VALUES (?, 1, 'status', 'open', 'closed', {now})", (iid,))
+        from src.db.repositories.issue_repo import IssueActivityLogRepository
+        repo = IssueActivityLogRepository(conn)
+        assert repo.count_weekly_closed(project_id=1) == 1
+        assert repo.count_weekly_closed() == 1
+        conn.close()
+
+
+class TestProjectDeleteCleansTaskSampleIds:
+    def test_dangling_ref_removed(self, tmp_path):
+        import apsw
+        from src.db.schema import init_schema
+        from src.services.project_service import ProjectService
+
+        conn = apsw.Connection(str(tmp_path / "t.db"))
+        init_schema(conn)
+        from src.services.project_service import ProjectService
+        # projects A,B；样品1属A；任务1属项目B 且 sample_ids 关联了样品1
+        conn.execute("INSERT INTO projects (name) VALUES ('A'), ('B')")
+        conn.execute("INSERT INTO samples (sn, project_id) VALUES ('S1', 1)")
+        conn.execute("INSERT INTO test_plans (project_id, name) VALUES (2, 'p2')")
+        conn.execute("INSERT INTO test_tasks (plan_id, name, sample_ids) VALUES (1, 't', '[1]')")
+        svc = ProjectService.__new__(ProjectService)
+        from src.db.repositories.project_repo import ProjectRepository
+        from src.db.repositories.issue_repo import IssueRepository
+        from src.db.repositories.sample_repo import SampleRepository
+        from src.db.repositories.test_plan_repo import TestPlanRepository
+        svc._repo = ProjectRepository(conn)
+        svc._issue_repo = IssueRepository(conn)
+        svc._sample_repo = SampleRepository(conn)
+        svc._plan_repo = TestPlanRepository(conn)
+        from src.db.repositories.test_task_repo import TestTaskRepository
+        svc._task_repo = TestTaskRepository(conn)
+        svc.delete(1)
+        # 任务 sample_ids 不应再含样品1
+        row = conn.execute("SELECT sample_ids FROM test_tasks WHERE id=1").fetchone()
+        assert row[0] == "[]", row[0]
+        conn.close()
+
+
+class TestUpdateFieldCommandDeadTarget:
+    def test_raises_on_missing(self):
+        from src.services.undo_manager import (
+            UpdateFieldCommand, UndoConflictError,
+        )
+
+        class _Repo:
+            def get_by_id(self, i):
+                return None
+
+            def update(self, *a, **kw):
+                raise AssertionError("不应执行")
+
+        cmd = UpdateFieldCommand(_Repo(), 1, "progress", 0, 50)
+        with __import__("pytest").raises(UndoConflictError):
+            cmd.do()
+
+
+class TestDeleteCommandRedoTargetsRestoredRow:
+    def test_redo_deletes_restored_id(self):
+        from src.services.undo_manager import DeleteEntityCommand
+
+        class _Ent:
+            def __init__(self, **kw): self.__dict__.update(kw)
+        store: dict[int, _Ent] = {5: _Ent(id=5, name="A")}
+        calls: list[tuple] = []
+
+        class _Repo:
+            def get_by_id(self, i):
+                return store.get(i)
+
+            def insert(self, **kw):
+                new_id = kw.get("id") if "id" in kw else max(store) + 1
+                store[new_id] = _Ent(**kw)
+                return new_id
+
+            def delete(self, i):
+                calls.append(("delete", i))
+                store.pop(i, None)
+
+        cmd = DeleteEntityCommand(_Repo(), 5)
+        cmd.do()
+        # 模拟 id=5 被占用：先插入一个新的 id=5
+        store[5] = _Ent(id=5, name="新B")
+        cmd.undo()  # 取 conflict 分支，恢复到新 id=6
+        calls.clear()
+        cmd.redo()
+        assert calls == [("delete", 6)], calls
