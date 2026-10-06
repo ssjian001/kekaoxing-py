@@ -270,3 +270,102 @@ class TestFrozenRestartArgv:
 
         bh._launch_after_exit()
         assert captured and captured[0] == ["/opt/ReliaTrack.exe", "--foo"], captured
+
+
+class TestCycleTasksCountInTotalDays:
+    def test_cycle_occupancy_included(self):
+        import copy, json
+        from src.models.test_plan import TestTask
+        from src.services.scheduler import ScheduleConfig, run_auto_schedule
+
+        tasks = [
+            TestTask(id=1, name="A", duration=5, start_day=10,
+                     status="pending", dependencies=json.dumps([2])),
+            TestTask(id=2, name="B", duration=5, start_day=20,
+                     status="pending", dependencies=json.dumps([1])),
+        ]
+        cfg = ScheduleConfig(start_date="2026-01-01", skip_weekends=False,
+                             skip_holidays=False)
+        tasks2 = copy.deepcopy(tasks)
+        res = run_auto_schedule(tasks2, [], cfg)
+        assert tasks2[0].start_day == 10 and tasks2[1].start_day == 20
+        assert res["report"]["total_days"] >= 25, res["report"]["total_days"]
+
+
+class TestMaxScanDaysConfigurable:
+    def test_config_propagates(self):
+        from src.services.scheduler import ScheduleConfig
+        cfg = ScheduleConfig()
+        assert cfg.max_scan_days == 365
+        cfg.max_scan_days = 730
+        assert cfg.max_scan_days == 730
+
+
+class TestExportCooperativeCancel:
+    def test_export_cancelled_raises(self, tmp_path):
+        from src.services.export import export_utils as eu
+        from src.models.test_plan import TestPlan, TestTask
+        from src.services.export.excel_exporter import export_tasks_excel
+
+        plan = TestPlan(id=1, name="p", start_date="2026-01-01", end_date="2026-12-31")
+        tasks = [TestTask(id=i, name=f"t{i}", duration=1, start_day=0)
+                 for i in range(1, 50)]
+        eu.set_cancel_check(lambda: True)
+        try:
+            with pytest.raises(eu.ExportCancelled):
+                export_tasks_excel(tmp_path, plan, tasks, None, None)
+        finally:
+            eu.set_cancel_check(None)
+
+    def test_worker_maps_cancelled_to_cancelled_signal(self, tmp_path):
+        from src.handlers.export_handlers import ExportWorker
+        from src.services.export.export_utils import ExportCancelled
+
+        def _fn(provider, svc, fmt, *a):
+            raise ExportCancelled()
+
+        worker = ExportWorker(_fn, str(tmp_path / "x.db"), None, "Excel", None, None, None)
+        cancelled: list = []
+        errors: list = []
+        worker.cancelled.connect(lambda: cancelled.append(True))
+        worker.error.connect(errors.append)
+        worker.run()
+        assert cancelled == [True]
+        assert errors == []
+
+
+class TestRestartAppConfirmsFirst:
+    def test_cancelled_close_keeps_db_open(self, monkeypatch):
+        import src.handlers.backup_handlers as bh
+        from PySide6.QtWidgets import QApplication
+
+        class _Win:
+            def isVisible(self):
+                return True
+
+        class _FakeApp:
+            def __init__(self):
+                self.closed = False
+
+            def closeAllWindows(self):
+                self.closed = True
+
+            def topLevelWidgets(self):
+                return [_Win()]
+
+            def processEvents(self, *a, **k):
+                pass
+
+            def quit(self):
+                raise AssertionError("用户取消关闭后不应 quit")
+
+        fake = _FakeApp()
+        monkeypatch.setattr(QApplication, "instance", staticmethod(lambda: fake))
+        monkeypatch.setattr(bh, "_restart_pending", False)
+
+        shutdown = Mock()
+        main = SimpleNamespace(ctrl=SimpleNamespace(shutdown=shutdown))
+        handlers = bh.BackupHandlers(main)
+        handlers._restart_app()
+        assert fake.closed, "应先触发关窗确认"
+        shutdown.assert_not_called(), "用户取消后不应关 DB"

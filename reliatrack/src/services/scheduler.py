@@ -52,6 +52,9 @@ class ScheduleConfig:
     # 不能只靠 ``start_day > 0`` 判断 —— 用户可以把任务锁在 0（= 计划起始日），
     # 而 0 同时是"未排期"的默认值，两者必须由显式集合区分。
     locked_task_ids: set[int] = field(default_factory=set)
+    # 单任务找槽的扫描上限（天）。设备容量紧张/大量任务时合法槽位可能超过
+    # 一年，硬编码 365 会误判 unschedulable；按工期规模调大。
+    max_scan_days: int = 365
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -434,7 +437,7 @@ def compress_schedule(
                 earliest = max(earliest, dep_end)
 
         # Find & place at earliest valid slot
-        new_start = find_earliest_slot(task, earliest, timeline, config, starts=starts, tech_timeline=tech_timeline)
+        new_start = find_earliest_slot(task, earliest, timeline, config, max_scan=config.max_scan_days, starts=starts, tech_timeline=tech_timeline)
         if new_start is None:
             # 找不到合法槽位：把任务放回原位（资源占用已在上面的 remove 中释放，
             # 不放回会让后续任务看不到它的占用，导致同设备超容冲突）
@@ -589,7 +592,7 @@ def run_auto_schedule(
             config.skip_weekends, config.start_date,
             config.skip_holidays, config.holidays,
         )
-        slot = find_earliest_slot(task, earliest, timeline, config, starts=starts, tech_timeline=tech_timeline)
+        slot = find_earliest_slot(task, earliest, timeline, config, max_scan=config.max_scan_days, starts=starts, tech_timeline=tech_timeline)
         if slot is None:
             # 找不到合法槽位：不静默违反约束, 更不能把已有排期清成"未排期"。
             # 回滚为原 start_day 并锁定(不被后续 Compress 改写), 同时记账到

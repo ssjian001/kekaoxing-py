@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from src.models.test_plan import TestPlan, TestTask, TestResult
 
 from src.services.export.export_utils import (
+    check_cancel,
     CATEGORY_MAP, STATUS_MAP, excel_styles, excel_write_title_block,
     excel_write_headers, excel_write_row, excel_save,
 )
@@ -75,6 +76,7 @@ def export_tasks_excel(
 
     prefix = getattr(plan, 'task_prefix', '') or ''
     for seq, task in enumerate(tasks, 1):
+        check_cancel()  # 协作式取消：长循环点检查
         task_id_display = f"{prefix}-{seq:03d}" if prefix else (task.id or seq)
         row_idx = seq + 4
         if plan_start and task.start_day is not None:
@@ -139,6 +141,7 @@ def export_issues_excel(
     excel_write_headers(ws, 4, headers, s)
 
     for row_idx, issue in enumerate(issues, 5):
+        check_cancel()  # 协作式取消：长循环点检查
         capas = capa_map.get(issue.id, []) if capa_map and issue.id is not None else []
         capa_actions = "; ".join(c.action for c in capas if c.action) or ""
         capa_statuses = "; ".join(c.status for c in capas) or ""
@@ -190,6 +193,7 @@ def export_samples_excel(
     excel_write_headers(ws, 4, headers, s)
 
     for row_idx, sample in enumerate(samples, 5):
+        check_cancel()  # 协作式取消：长循环点检查
         values = [
             sample.id,
             sample.sn,

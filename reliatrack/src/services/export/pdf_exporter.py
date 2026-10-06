@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from src.models.test_plan import TestPlan, TestTask, TestResult
 
 from src.services.export.export_utils import (
+    check_cancel,
     CATEGORY_MAP, STATUS_MAP, get_cjk_font, _judge_conclusion,
     _validate_output_path, _sanitize_filename, logger,
 )
@@ -294,6 +295,7 @@ def export_report_pdf(
     tech_map = technician_names or {}
     task_data_rows: list[list[object]] = []
     for idx, task in enumerate(tasks, 1):
+        check_cancel()  # 协作式取消：长循环点检查
         task_id_display = f"{prefix}-{idx:03d}" if prefix else str(idx)
         cat = CATEGORY_MAP.get(task.category, task.category)
         status = STATUS_MAP.get(task.status, task.status)
@@ -625,6 +627,7 @@ def export_dvpr_pdf(
 
     prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
+        check_cancel()  # 协作式取消：长循环点检查
         row = [
             Paragraph(f"{prefix}-{idx:03d}" if prefix else str(idx), cell_style),
             Paragraph((task.name or "")[:20], cell_left),
@@ -690,6 +693,7 @@ def export_dvpr_pdf(
     ]
     # 着色 pass/fail 单元格
     for row_idx, task in enumerate(tasks, 1):
+        check_cancel()  # 协作式取消：长循环点检查
         for col_idx, sid in enumerate(sample_ids):
             res = lookup.get((task.id, sid), "")
             if res == "fail":

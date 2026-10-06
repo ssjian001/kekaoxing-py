@@ -10,9 +10,35 @@ import logging
 import os
 import platform
 import subprocess
+import threading
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
+
+# ── 协作式取消 ─────────────────────────────────────────────────
+# ExportWorker 在独立线程里跑导出，UI 线程点"取消"只置标志位。
+# 单个导出函数调用内部很长的渲染循环（几千行任务行）时，只在
+# 函数返回后丢弃产物等于"取消无效"。这里用 thread-local 挂上
+# cancel 回调，导出循环点 check_cancel() 提前抛 ExportCancelled。
+_cancel_tls = threading.local()
+
+
+class ExportCancelled(Exception):
+    """导出被用户协作式取消（区别于真正的失败）。"""
+
+
+def set_cancel_check(fn: Callable[[], bool] | None) -> None:
+    _cancel_tls.fn = fn
+
+
+def cancel_requested() -> bool:
+    fn = getattr(_cancel_tls, "fn", None)
+    return bool(fn and fn())
+
+
+def check_cancel() -> None:
+    if cancel_requested():
+        raise ExportCancelled()
 
 from src.constants import (
     TASK_STATUS_LABELS,

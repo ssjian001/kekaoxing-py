@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.services.export.export_utils import (
+    check_cancel,
     CATEGORY_MAP, STATUS_MAP, _validate_output_path, _sanitize_filename,
     _sanitize_path, logger,
     excel_styles, excel_save, excel_write_headers, excel_write_row,
@@ -194,6 +195,7 @@ def export_to_word(
 
     _prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
+        check_cancel()  # 协作式取消：长循环点检查
         _task_id_display = f"{_prefix}-{idx:03d}" if _prefix else idx
         equipment_name = f"ID:{task.equipment_id}" if task.equipment_id else "—"
         _tech_map = technician_names or {}
@@ -223,6 +225,7 @@ def export_to_word(
                         color="FFFFFF", shade="C0504D", center_cols=set(range(len(issue_headers))))
 
         for idx, issue in enumerate(issues, 1):
+            check_cancel()  # 协作式取消：长循环点检查
             resolution_text = RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or ""
             _fill_row_cells(issue_table.rows[idx]._tr, [
                 issue.id, issue.title, issue.severity,
@@ -304,6 +307,7 @@ def export_to_word(
         _fill_row_cells(sample_table.rows[0]._tr, sample_headers, bold=True,
                         color="FFFFFF", shade="4F81BD", center_cols=set(range(len(sample_headers))))
         for idx, s in enumerate(samples, 1):
+            check_cancel()  # 协作式取消：长循环点检查
             _fill_row_cells(sample_table.rows[idx]._tr, [
                 idx, s.sn, s.batch_no, s.spec or "",
                 STATUS_MAP.get(s.status, s.status),
@@ -393,6 +397,7 @@ def export_dvpr_excel(
 
     _prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 2):
+        check_cancel()  # 协作式取消：长循环点检查
         seq = idx - 1
         _task_id_display = f"{_prefix}-{seq:03d}" if _prefix else seq
         row_data = [
@@ -569,6 +574,7 @@ def export_dvpr_docx(
 
     _prefix = getattr(plan, 'task_prefix', '') or ''
     for idx, task in enumerate(tasks, 1):
+        check_cancel()  # 协作式取消：长循环点检查
         _task_id_display = f"{_prefix}-{idx:03d}" if _prefix else str(idx)
         task_sample_ids = sorted({r.sample_id for r in results if r.task_id == task.id and r.sample_id})
         task_sns = ", ".join(sample_map.get(sid, f"#{sid}") for sid in task_sample_ids)

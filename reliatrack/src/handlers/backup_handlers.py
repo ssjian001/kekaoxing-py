@@ -46,16 +46,22 @@ class BackupHandlers:
         """
         global _restart_pending
 
-        # 先 shutdown — 确保 WAL checkpoint 和连接关闭
-        ctrl = getattr(self._main, "ctrl", None)
-        if ctrl:
-            ctrl.shutdown()
-
+        # 先关窗口让用户确认（如"未保存的撤销历史"）；用户取消时不能
+        # 关 DB / quit。原实现先 shutdown 再关窗，确认框就被架空了，
+        # 且 DB 连接在用户确认之前已被关闭。
         from PySide6.QtWidgets import QApplication
 
         app = QApplication.instance()
         if app:
             app.closeAllWindows()
+            if any(w.isVisible() for w in app.topLevelWidgets()):
+                logger.info("恢复后重启被用户取消（窗口未关闭）")
+                return
+
+        # 先 shutdown — 确保 WAL checkpoint 和连接关闭
+        ctrl = getattr(self._main, "ctrl", None)
+        if ctrl:
+            ctrl.shutdown()
 
         if not _restart_pending:
             _restart_pending = True

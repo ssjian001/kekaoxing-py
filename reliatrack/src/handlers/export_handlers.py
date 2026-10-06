@@ -148,6 +148,10 @@ class ExportWorker(QThread):
 
     def run(self) -> None:
         provider: WorkerDataProvider | None = None
+        from src.services.export.export_utils import (
+            ExportCancelled, set_cancel_check,
+        )
+        set_cancel_check(self._cancel_requested.is_set)
         try:
             provider = WorkerDataProvider(self._db_path)
             path = self._handler_fn(provider, self._svc, self._fmt,
@@ -158,12 +162,18 @@ class ExportWorker(QThread):
                 self.cancelled.emit()
                 return
             self.done.emit(str(path) if path else "")
+        except ExportCancelled:
+            # 协作式取消在导出循环内部提前中断：不算失败，走 cancelled
+            # 清理路径（半成品在 finally 之后由调用方丢弃：handler 抛出时
+            # 没有 path 返回，残留文件靠 _discard_output 的调用方兜底）
+            self.cancelled.emit()
         except ValueError as e:
             self.error.emit(str(e))
         except Exception as e:
             logger.exception("Export worker failed")
             self.error.emit(f"导出失败: {e}")
         finally:
+            set_cancel_check(None)
             if provider:
                 provider.close()
 

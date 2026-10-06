@@ -219,13 +219,18 @@ class SchedulerService:
         # 侧回滚逻辑失效, 也绝不让数据库里已有的排期被静默抹掉。
         updates: list[tuple[int, int]] = []
         cleared: list[int] = []
+        unsched_ids = set(report.get("unschedulable_tasks") or [])
         for t in tasks_copy:
             if t.id is None:
                 continue
             prev = original_start_days.get(t.id)
             if t.start_day == prev:
                 continue
-            if t.start_day == 0 and isinstance(prev, int) and prev > 0:
+            # 只有引擎明确记为 unschedulable 的任务，0 才是"清除"；
+            # 引擎把任务合法放到 day 0（起始日空闲时）时也是 0，若一律按
+            # "被清除"拒写，报告说排在第 0 天、DB 却保留旧值，数据失真。
+            if (t.start_day == 0 and isinstance(prev, int) and prev > 0
+                    and t.id in unsched_ids):
                 cleared.append(t.id)
                 continue
             updates.append((t.id, t.start_day))
