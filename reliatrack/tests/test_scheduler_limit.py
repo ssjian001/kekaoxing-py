@@ -281,7 +281,7 @@ class TestLockedTasks:
         tasks = [
             _task(1, dur=2, start_day=0, status="pending"),   # locked
             _task(2, dur=2, start_day=0, status="pending"),   # locked
-            _task(3, dur=2, start_day=0, status="pending"),   # new
+            _task(3, dur=2, start_day=None, status="pending"),   # new
         ]
         cfg = ScheduleConfig(
             start_date=_START, skip_weekends=False,

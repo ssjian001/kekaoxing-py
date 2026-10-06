@@ -369,3 +369,71 @@ class TestRestartAppConfirmsFirst:
         handlers._restart_app()
         assert fake.closed, "应先触发关窗确认"
         shutdown.assert_not_called(), "用户取消后不应关 DB"
+
+
+class TestMigrationV29StartDaySentinel:
+    def test_v28_to_v29_converts_unscheduled_zeros(self, tmp_path):
+        import apsw
+        from src.db import schema
+
+        db = str(tmp_path / "v28.db")
+        conn = apsw.Connection(db)
+        init_schema(conn)  # 直接建到 v29
+
+        # 还原成 v28 形态：老 DDL（NOT NULL DEFAULT 0）+ 三类行，并把版本号退回 28
+        conn.execute("PRAGMA foreign_keys=OFF")
+        conn.execute("DROP TABLE test_tasks")
+        conn.execute("""CREATE TABLE test_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, plan_id INTEGER NOT NULL,
+            name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '',
+            test_standard TEXT NOT NULL DEFAULT '',
+            technician_id INTEGER, equipment_id INTEGER,
+            sample_ids TEXT NOT NULL DEFAULT '[]',
+            duration INTEGER NOT NULL DEFAULT 1,
+            start_day INTEGER NOT NULL DEFAULT 0,
+            progress REAL NOT NULL DEFAULT 0.0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            priority INTEGER NOT NULL DEFAULT 3,
+            environment TEXT NOT NULL DEFAULT '{}',
+            log_file TEXT NOT NULL DEFAULT '',
+            dependencies TEXT NOT NULL DEFAULT '[]',
+            notes TEXT NOT NULL DEFAULT '', temperature TEXT NOT NULL DEFAULT '',
+            humidity TEXT NOT NULL DEFAULT '', accept_criteria TEXT NOT NULL DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            actual_start_date TEXT NOT NULL DEFAULT '',
+            actual_end_date TEXT NOT NULL DEFAULT '',
+            manual_scheduled INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')))""")
+        conn.execute("INSERT INTO projects (name) VALUES ('p')")
+        conn.execute("INSERT INTO test_plans (project_id, name) VALUES (1, 'p')")
+        conn.execute("INSERT INTO test_tasks (plan_id, name, start_day, manual_scheduled) VALUES (1, 'unsched', 0, 0)")
+        conn.execute("INSERT INTO test_tasks (plan_id, name, start_day, manual_scheduled) VALUES (1, 'manual0', 0, 1)")
+        conn.execute("INSERT INTO test_tasks (plan_id, name, start_day, manual_scheduled) VALUES (1, 'sched', 5, 0)")
+        conn.execute("DELETE FROM schema_version WHERE version >= 29")
+        conn.execute("PRAGMA foreign_keys=ON")
+
+        assert schema.init_schema(conn) == schema.SCHEMA_VERSION
+        rows = dict(conn.execute("SELECT name, start_day FROM test_tasks"))
+        assert rows["unsched"] is None, rows
+        assert rows["manual0"] == 0, rows  # 手动排在计划起始日，保留
+        assert rows["sched"] == 5, rows
+        # 索引在表重建后仍然存在
+        idx = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_tasks_plan'")}
+        assert idx == {"idx_tasks_plan"}
+        # 新列允许 NULL（哨兵化）
+        conn.execute("INSERT INTO test_tasks (plan_id, name, start_day) VALUES (1, 'nullable', NULL)")
+        conn.close()
+
+    def test_fresh_db_start_day_nullable(self, tmp_path):
+        import apsw
+        conn = apsw.Connection(str(tmp_path / "fresh.db"))
+        from src.db.schema import init_schema
+        init_schema(conn)
+        conn.execute("INSERT INTO projects (name) VALUES ('p')")
+        conn.execute("INSERT INTO test_plans (project_id, name) VALUES (1, 'p')")
+        conn.execute("INSERT INTO test_tasks (plan_id, name, start_day) VALUES (1, 't', NULL)")
+        row = conn.execute("SELECT start_day FROM test_tasks").fetchone()
+        assert row[0] is None
+        conn.close()

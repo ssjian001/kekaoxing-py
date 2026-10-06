@@ -687,7 +687,7 @@ class TaskEditDialog(_BaseDialog):
 
         # 编辑模式：从 task.start_day 反算预计日期
         if task:
-            start_day = task.start_day if task.start_day else 0
+            start_day = task.start_day if task.start_day is not None else 0
             duration = task.duration if task.duration else 1
         else:
             start_day = 0

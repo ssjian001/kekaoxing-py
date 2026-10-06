@@ -229,7 +229,7 @@ class SchedulerService:
             # 只有引擎明确记为 unschedulable 的任务，0 才是"清除"；
             # 引擎把任务合法放到 day 0（起始日空闲时）时也是 0，若一律按
             # "被清除"拒写，报告说排在第 0 天、DB 却保留旧值，数据失真。
-            if (t.start_day == 0 and isinstance(prev, int) and prev > 0
+            if (t.start_day is None and isinstance(prev, int)
                     and t.id in unsched_ids):
                 cleared.append(t.id)
                 continue

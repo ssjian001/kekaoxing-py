@@ -14,7 +14,7 @@ from src.db.sql_ident import is_safe_ident, quote_ident
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 28
+SCHEMA_VERSION = 29
 
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
@@ -126,7 +126,7 @@ _DDL_TABLES: list[str] = [
         equipment_id    INTEGER REFERENCES equipment(id) ON DELETE SET NULL,
         sample_ids      TEXT    NOT NULL DEFAULT '[]',
         duration        INTEGER NOT NULL DEFAULT 1,
-        start_day       INTEGER NOT NULL DEFAULT 0,
+        start_day       INTEGER,
         progress        REAL    NOT NULL DEFAULT 0.0,
         status          TEXT    NOT NULL DEFAULT 'pending',
         priority        INTEGER NOT NULL DEFAULT 3,
@@ -869,7 +869,7 @@ def _migrate_v11(conn: apsw.Connection) -> None:
             equipment_id    INTEGER REFERENCES equipment(id) ON DELETE SET NULL,
             sample_ids      TEXT    NOT NULL DEFAULT '[]',
             duration        INTEGER NOT NULL DEFAULT 1,
-            start_day       INTEGER NOT NULL DEFAULT 0,
+            start_day       INTEGER,
             progress        REAL    NOT NULL DEFAULT 0.0,
             status          TEXT    NOT NULL DEFAULT 'pending',
             priority        INTEGER NOT NULL DEFAULT 3,
@@ -1266,6 +1266,66 @@ def _migrate_v28(conn: apsw.Connection) -> None:
     conn.execute("INSERT INTO schema_version (version) VALUES (28)")
 
 
+def _migrate_v29(conn: apsw.Connection) -> None:
+    """v28→v29: test_tasks.start_day 哨兵化 —— NULL = 未排期。
+
+    历史上 start_day NOT NULL DEFAULT 0，0 既是"未排期"哨兵，又可能是
+    "排在计划起始日"的合法值，两处判零逻辑产生假阳性（审计 P1）。
+    SQLite 不能 ALTER COLUMN 放宽 NOT NULL，需表重建。
+
+    存量数据约定迁移：manual_scheduled=0 且 start_day=0 → NULL（未排期）；
+    manual_scheduled=1 且 start_day=0 → 保留 0（手动排在计划起始日）。
+    与 v11 相同：整个重建包在单事务内，失败可重试。
+    """
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.execute("BEGIN")
+        _rebuild_table(conn, "test_tasks", """CREATE TABLE test_tasks_new (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id         INTEGER NOT NULL REFERENCES test_plans(id) ON DELETE CASCADE,
+            name            TEXT    NOT NULL,
+            category        TEXT    NOT NULL DEFAULT '',
+            test_standard   TEXT    NOT NULL DEFAULT '',
+            technician_id   INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+            equipment_id    INTEGER REFERENCES equipment(id) ON DELETE SET NULL,
+            sample_ids      TEXT    NOT NULL DEFAULT '[]',
+            duration        INTEGER NOT NULL DEFAULT 1,
+            start_day       INTEGER,
+            progress        REAL    NOT NULL DEFAULT 0.0,
+            status          TEXT    NOT NULL DEFAULT 'pending',
+            priority        INTEGER NOT NULL DEFAULT 3,
+            environment     TEXT    NOT NULL DEFAULT '{}',
+            log_file        TEXT    NOT NULL DEFAULT '',
+            dependencies    TEXT    NOT NULL DEFAULT '[]',
+            notes           TEXT    NOT NULL DEFAULT '',
+            temperature     TEXT    NOT NULL DEFAULT '',
+            humidity        TEXT    NOT NULL DEFAULT '',
+            accept_criteria TEXT    NOT NULL DEFAULT '',
+            sort_order      INTEGER NOT NULL DEFAULT 0,
+            actual_start_date TEXT  NOT NULL DEFAULT '',
+            actual_end_date   TEXT  NOT NULL DEFAULT '',
+            manual_scheduled INTEGER NOT NULL DEFAULT 0,
+            created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute(
+            "UPDATE test_tasks SET start_day = NULL\n"
+            " WHERE start_day = 0 AND manual_scheduled = 0"
+        )
+        # 表重建会丢掉原有索引（CREATE INDEX 依附于旧表），需重建
+        for _ddl in _DDL_INDEXES:
+            if "ON test_tasks" in _ddl:
+                conn.execute(_ddl)
+        conn.execute("INSERT INTO schema_version (version) VALUES (29)")
+        conn.execute("COMMIT")
+    except BaseException:
+        _safe_rollback(conn)
+        logger.exception("Schema migration v29 failed during table rebuild")
+        raise
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
 # 按版本号排列的迁移函数列表（用于完整性修复时回放）
 _MIGRATORS: list[tuple[int, object]] = [
     (2, _migrate_v2),
@@ -1295,6 +1355,7 @@ _MIGRATORS: list[tuple[int, object]] = [
     (26, _migrate_v26),
     (27, _migrate_v27),
     (28, _migrate_v28),
+    (29, _migrate_v29),
 ]
 
 
@@ -1564,6 +1625,15 @@ def init_schema(conn: apsw.Connection) -> int:
         except Exception:
             conn.execute("ROLLBACK")
             logger.exception("Schema migration v28 failed")
+            raise
+
+    # v29: test_tasks.start_day 哨兵化（表重建，自管事务与 FK）
+    if current < 29:
+        logger.info("Starting migration v29 (start_day sentinel rebuild)...")
+        try:
+            _migrate_v29(conn)
+        except Exception:
+            logger.critical("Migration v29 failed")
             raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）

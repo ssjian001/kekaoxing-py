@@ -144,9 +144,9 @@ class _GanttWidget(QWidget):
     def _task_day_range(self, task: TestTask) -> tuple[int, int]:
         """获取任务在甘特图中的 (start_day, duration)。"""
         if not self._show_actual:
-            return task.start_day + self._plan_day_offset(task), task.duration
+            return (task.start_day or 0) + self._plan_day_offset(task), task.duration
         if not task.actual_start_date or not self._start_date:
-            return task.start_day + self._plan_day_offset(task), task.duration
+            return (task.start_day or 0) + self._plan_day_offset(task), task.duration
         try:
             # 实际日期是绝对日期, 但需相对"该任务所属计划"的起算日换算
             _raw_base = self._plan_start_dates.get(task.plan_id) if task.plan_id else None
@@ -160,7 +160,7 @@ class _GanttWidget(QWidget):
                 duration = task.duration
             return start_day, duration
         except ValueError:
-            return task.start_day + self._plan_day_offset(task), task.duration
+            return (task.start_day or 0) + self._plan_day_offset(task), task.duration
 
     def set_tasks(
         self,

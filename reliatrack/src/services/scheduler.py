@@ -416,7 +416,7 @@ def compress_schedule(
             continue
         if task.status == "completed" or task.id in locked_ids:
             continue
-        if task.start_day <= 0:
+        if task.start_day is None or task.start_day <= 0:
             continue
 
         # Remove from current position
@@ -428,7 +428,7 @@ def compress_schedule(
         earliest = 0
         for dep_id in dep_map.get(task.id, []):
             dep_task = id_to_task.get(dep_id)
-            if dep_task and dep_task.start_day >= 0:
+            if dep_task and isinstance(dep_task.start_day, int):
                 dep_end = _work_day_end(
                     dep_task.start_day, dep_task.duration,
                     config.skip_weekends, config.start_date,
@@ -466,7 +466,8 @@ def _compute_earliest_from_deps(
     earliest = 0
     for dep_id in dep_map.get(task.id or 0, []):
         dep_task = id_to_task.get(dep_id)
-        if dep_task and dep_task.status != "completed":
+        if (dep_task and dep_task.status != "completed"
+                and isinstance(dep_task.start_day, int)):
             dep_end = _work_day_end(
                 dep_task.start_day, dep_task.duration,
                 skip_weekends, start_date_str,
@@ -525,7 +526,7 @@ def run_auto_schedule(
     if config.lock_existing:
         for t in valid_tasks:
             # start_day > 0 表示已排期（默认值 0 表示未排）
-            if t.start_day > 0 and t.status != "completed" and t.id is not None:
+            if t.start_day is not None and t.status != "completed" and t.id is not None:
                 locked_ids.add(t.id)
 
     # 循环依赖任务无法参与重排：冻结其当前排期——
@@ -534,11 +535,11 @@ def run_auto_schedule(
     # 尚未排期（start_day == 0）的保持未排。
     for t in valid_tasks:
         if (t.id in cycle_task_ids and t.status != "completed"
-                and isinstance(t.start_day, int) and t.start_day > 0):
+                and t.start_day is not None):
             locked_ids.add(t.id)
 
     # ── Record original schedule length ─────────────────────────
-    active = [t for t in valid_tasks if t.start_day >= 0 and t.status != "completed"]
+    active = [t for t in valid_tasks if t.start_day is not None and t.status != "completed"]
     original_days = max(
         (_work_day_end(t.start_day, t.duration, config.skip_weekends,
                        config.start_date, config.skip_holidays, config.holidays)
@@ -568,7 +569,7 @@ def run_auto_schedule(
         # (task_id, 0) 当作合法变更写回 DB，永久抹掉已有排期。
         if (t.status != "completed" and t.id not in locked_ids
                 and t.id not in cycle_task_ids):
-            t.start_day = 0
+            t.start_day = None
 
     # 1c. Sort schedulable tasks: topo order → priority → duration
     topo_index = {t.id: idx for idx, t in enumerate(topo) if t.id is not None}
@@ -600,13 +601,13 @@ def run_auto_schedule(
             tid = task.id
             if tid is not None:
                 unschedulable.append(tid)
-                prev = original_start_days.get(tid, 0)
-                if isinstance(prev, int) and prev > 0:
+                prev = original_start_days.get(tid)
+                if isinstance(prev, int):
                     task.start_day = prev
                     place_task(task, prev, timeline, config, starts, tech_timeline)
                     locked_ids.add(tid)
                 else:
-                    task.start_day = 0
+                    task.start_day = None
             continue
         task.start_day = slot
         place_task(task, slot, timeline, config, starts, tech_timeline)
@@ -616,7 +617,7 @@ def run_auto_schedule(
     # ════════════════════════════════════════════════════════════
     compress_order = sorted(
         [t for t in valid_tasks
-         if t.status != "completed" and t.id not in locked_ids and t.start_day >= 0],
+         if t.status != "completed" and t.id not in locked_ids and t.start_day is not None],
         key=lambda t: (t.start_day, topo_index.get(t.id or 0, 999), t.priority),
     )
     compress_schedule(
@@ -627,7 +628,7 @@ def run_auto_schedule(
     # ════════════════════════════════════════════════════════════
     # Phase 3 – Report generation
     # ════════════════════════════════════════════════════════════
-    active_after = [t for t in valid_tasks if t.status != "completed" and t.start_day >= 0]
+    active_after = [t for t in valid_tasks if t.status != "completed" and t.start_day is not None]
     new_days = max(
         (_work_day_end(t.start_day, t.duration, config.skip_weekends,
                        config.start_date, config.skip_holidays, config.holidays)

@@ -681,14 +681,16 @@ class TestScheduleHelpers:
         from src.views.dialogs.schedule_preview_dialog import (
             _day_to_date,
         )
-        assert _day_to_date("2026-01-05", 0) == "—"
+        assert _day_to_date("2026-01-05", 0) == "2026-01-05"
         assert _day_to_date("2026-01-05", 2) == "2026-01-07"
+        assert _day_to_date("2026-01-05", None) == "—"
         assert _day_to_date("", 3) == "—"
         assert _day_to_date("bad", 3) == "—"
 
     def test_day_label(self):
         from src.views.dialogs.schedule_preview_dialog import _day_label
-        assert _day_label("2026-01-05", 0) == "未排"
+        assert _day_label("2026-01-05", 0) == "Day 0 (2026-01-05)"
+        assert _day_label("2026-01-05", None) == "未排"
         assert _day_label("2026-01-05", 1) == "Day 1 (2026-01-06)"
 
 

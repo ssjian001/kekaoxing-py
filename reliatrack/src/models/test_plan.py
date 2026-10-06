@@ -91,7 +91,9 @@ class TestTask:
     equipment_id: Optional[int] = None
     sample_ids: str = "[]"    # JSON: [sample_id, ...]
     duration: int = 1         # 工期（工作日）
-    start_day: int = 0
+    # None = 未排期。0 是合法且常见的"排在计划起始日"的值，不能再当哨兵用
+    # （审计 P1：0 值双重语义 → 全链路哨兵化，DB 列在 v29 放开 NOT NULL）。
+    start_day: int | None = None
     progress: float = 0.0
     status: str = TestTaskStatus.PENDING.value
     priority: int = 3

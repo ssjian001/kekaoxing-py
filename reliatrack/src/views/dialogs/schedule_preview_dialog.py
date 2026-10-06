@@ -51,7 +51,7 @@ from src.services.scheduler import (
 
 def _day_to_date(start_date: str, day_index: int) -> str:
     """将 day_index 转换为真实日期字符串。day_index 0 = start_date 当天。"""
-    if not start_date or day_index <= 0:
+    if not start_date or day_index is None or day_index < 0:
         return "—"
     try:
         base = datetime.strptime(start_date, "%Y-%m-%d")
@@ -62,7 +62,7 @@ def _day_to_date(start_date: str, day_index: int) -> str:
 
 def _day_label(start_date: str, day_index: int) -> str:
     """返回 'Day N (YYYY-MM-DD)' 格式的标签。"""
-    if day_index <= 0:
+    if day_index is None or day_index < 0:
         return "未排"
     date_str = _day_to_date(start_date, day_index)
     return f"Day {day_index} ({date_str})"
@@ -346,7 +346,7 @@ class SchedulePreviewDialog(QDialog):
         # 构建 starts 计数（用于 daily_start_limit 检查）
         starts: dict[int, int] = {}
         for task in self._tasks:
-            if task.status == "completed" or task.start_day <= 0:
+            if task.status == "completed" or task.start_day is None:
                 continue
             starts[task.start_day] = starts.get(task.start_day, 0) + 1
             days = _iterate_work_days(
@@ -369,7 +369,7 @@ class SchedulePreviewDialog(QDialog):
                     tech_timeline[d][tech_id] = tech_timeline[d].get(tech_id, 0) + 1
 
         for row, task in enumerate(self._tasks):
-            if task.status == "completed" or task.start_day <= 0:
+            if task.status == "completed" or task.start_day is None:
                 continue
 
             has_dep_conflict = False
@@ -379,7 +379,7 @@ class SchedulePreviewDialog(QDialog):
             has_tech_conflict = False
 
             # 检查非工作日
-            if _is_non_working(task.start_day, self._start_date,
+            if task.start_day is not None and _is_non_working(task.start_day, self._start_date,
                                _skip_weekends, _skip_holidays, _holidays):
                 has_non_working = True
 
@@ -408,7 +408,8 @@ class SchedulePreviewDialog(QDialog):
             # 检查依赖冲突
             for dep_id in dep_map.get(task.id or 0, []):
                 dep_task = id_to_task.get(dep_id)
-                if dep_task and dep_task.status != "completed" and dep_task.start_day > 0:
+                if (dep_task and dep_task.status != "completed"
+                        and isinstance(dep_task.start_day, int)):
                     dep_end = _work_day_end(
                         dep_task.start_day, dep_task.duration,
                         _skip_weekends,
@@ -494,8 +495,9 @@ class SchedulePreviewDialog(QDialog):
             new_item.setText(_day_label(self._start_date, task.start_day))
 
         # 变化
-        old_day = self._original_start_days.get(task_id, 0)
-        delta = task.start_day - old_day if old_day > 0 and task.start_day > 0 else 0
+        old_day = self._original_start_days.get(task_id)
+        delta = (task.start_day - old_day
+                 if isinstance(old_day, int) and isinstance(task.start_day, int) else 0)
         delta_item = self._table.item(row, self._COL_DELTA)
         if delta_item:
             delta_text = f"{delta:+d}天" if delta != 0 else "—"
@@ -520,7 +522,7 @@ class SchedulePreviewDialog(QDialog):
         for task in self._tasks:
             if task.id is None or task.status == "completed":
                 continue
-            old_day = self._original_start_days.get(task.id, 0)
+            old_day = self._original_start_days.get(task.id)
             if task.start_day != old_day:
                 changes.append((task.id, task.start_day))
         return changes
