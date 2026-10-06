@@ -9,6 +9,13 @@
 - [x] **审计报告与代码归属不符**（已核实 2026-10-03）：批量改状态确走 `transition_status`，代码在 `src/views/bug_tracker/batch_dialog.py:149-152`，**代码侧无需修改**；`docs/audit-2026-05-*.md` 中未见该错配，仅本文件曾记过 —— 已消项
 - [x] **UI 实测三项**（已验证 2026-10-06）：甘特 Ctrl+滚轮缩放、看板卡片拖拽期间触发刷新、出库弹窗手输操作人 —— 全部通过，取证脚本 `tests/manual/verify_ui_3items.py`（9/9，offscreen 平台 + QTest 语义注入事件）
 - [x] `bd`（beads）本机未安装（已核实 2026-10-03）：`AGENTS.md` 第 74-77 行已明确 Linux 侧全跳过 `bd *`，本项已文档化，无需再动
+- [x] **2026-10-06 P0 审计修复 3 条**（`a514931`）：①8D 导出参数错位（`_export_8d` 签名补 `plan_id` 占位）②命令面板 backup 动作指向不存在的方法 → 改调 `_backup_handlers._on_data_manage()` ③损坏库恢复被恢复前 apsw 安全备份堵死 → 回退裸文件拷贝；顺手修回滚路径未清 `-wal/-shm`。回归测试 +4（`tests/test_audit_p0_20261006.py`），全量 1115 绿
+
+### 待修（中危/低危，2026-10-06 审计记录）
+
+- [ ] 排程：cycle 任务 `start_day` 被清零且预览路径抹回 DB；`start_day=0` 双重语义（未排期 vs 排在起始日）导致 auto_schedule 防线误拒；`scheduler_service.py:99` 「重新排程」隐式强制 lock_existing（scheduler.py:553-564, 595, scheduler_service.py:99/225）
+- [ ] ExportWorker 遮蔽 QThread.finished + deleteLater 竞态；Word 导出技术员列未对齐真名；`_judge_conclusion` 吞 conditional；取消不中断导出；任务 duration/start_day 为 NULL 时导出崩溃
+- [ ] 恢复重启 frozen 模式多一层 argv、撤销确认被 quit() 架空、备份文件权限未收紧、`_empty_report` schema 缺 key、`find_earliest_slot` 硬编码 365 天上限、排程报告 total_days 不含 cycle 占用
 
 ---
 ## 2026-09-29 全量对抗审计修复（P0-1 / P2-x / P3-x，8 commit 已推送 origin/main）
