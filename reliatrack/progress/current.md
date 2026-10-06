@@ -16,7 +16,7 @@
 - [ ] 排程：cycle 任务 `start_day` 被清零且预览路径抹回 DB；`start_day=0` 双重语义（未排期 vs 排在起始日）导致 auto_schedule 防线误拒（`start_day` 未排期哨兵化未做）；「重新排程」隐式强制 lock_existing 已修（2026-10-06 第二批）；cycle 任务冻结当前排期（Phase 1a 占位、不清零、不左移）已修
 - [ ] ExportWorker 遮蔽 QThread.finished + deleteLater 竞态已修（`done` 信号改名，deleteLater 只挂内建 finished，2026-10-06 第二批）；Word 导出技术员列已对齐真名；`_judge_conclusion` 吞 conditional 已修；取消不中断导出已修 2026-10-06 第三批（`5717866`）；任务 duration/start_day 为 NULL 时导出崩溃已修
 - [ ] 恢复重启 frozen 模式多一层 argv、撤销确认被 quit() 架空、备份文件权限未收紧、`_empty_report` schema 缺 key、`find_earliest_slot` 硬编码 365 天上限、排程报告 total_days 不含 cycle 占用（frozen argv / 权限 / `_empty_report` 已修第二批；撤销确认被 quit() 架空、365 上限、total_days 均已修第三批 `5717866`）
-- [ ] `start_day=0` 双重语义：防线已收紧（第三批，auto_schedule 只拦 unschedulable 的 0→清除）；彻底解法是未排期改用 `None`/`-1` 哨兵，改动面大，建议单独一批
+- [x] `start_day=0` 双重语义：已彻底重构（2026-10-06 第四批 `ea501a3`）——`TestTask.start_day` 默认 None=未排期，DB schema v29 重建放开 NOT NULL，存量 `start_day=0 & manual_scheduled=0` 行迁为 NULL，引擎/服务/甘特/预览/任务对话框全部 None 感知；lock_existing 收编合法 day-0 排期；迁移回归测试 2 条；全量 1130 绿
 
 ---
 ## 2026-09-29 全量对抗审计修复（P0-1 / P2-x / P3-x，8 commit 已推送 origin/main）
