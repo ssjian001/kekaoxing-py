@@ -415,7 +415,7 @@ class MainWindow(QMainWindow):
             if value == "8d_report":
                 self._on_8d_report()
             elif value == "backup":
-                self._on_backup_db()
+                self._backup_handlers._on_data_manage()
             elif value == "theme":
                 # 切换式而非硬编码切暗色：否则处在暗色主题时命令面板
                 # 只会重复设为 dark，用户切不回亮色（Ctrl+K → 暗色死锁）。

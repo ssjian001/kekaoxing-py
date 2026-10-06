@@ -207,13 +207,23 @@ class BackupService:
                 self.create_backup(safety_backup)
                 logger.info("恢复前安全备份: %s", safety_backup)
             except Exception:
-                # 安全备份失败 = 无回滚源。继续恢复若中途失败会把生产库写坏且无法回滚。
-                # 宁可中止恢复，让用户先解决备份目录问题。
-                logger.exception("恢复前安全备份失败，中止恢复")
-                raise RuntimeError(
-                    "恢复前自动备份失败，已中止恢复以保护当前数据库。"
-                    f"请检查备份目录 {DEFAULT_BACKUPS_DIR} 是否可写后重试。"
-                ) from None
+                # apsw backup API 会读全页，当前库损坏时必然失败。
+                # 此时回退为裸文件拷贝作为安全网（损坏的原件保留为证据+回滚源），
+                # 否则"最需要恢复"的损坏场景会被安全备份自己堵死（审计 P0）。
+                logger.warning("恢复前安全备份（apsw）失败，回退为裸文件拷贝", exc_info=True)
+                try:
+                    shutil.copy2(str(current_db), str(safety_backup))
+                    for ext in ("-wal", "-shm"):
+                        sidecar = Path(str(current_db) + ext)
+                        if sidecar.exists():
+                            shutil.copy2(str(sidecar), str(safety_backup) + ext)
+                    logger.info("恢复前安全备份（裸拷贝）: %s", safety_backup)
+                except OSError:
+                    logger.exception("恢复前安全备份失败（含裸拷贝），中止恢复")
+                    raise RuntimeError(
+                        "恢复前自动备份失败，已中止恢复以保护当前数据库。"
+                        f"请检查备份目录 {DEFAULT_BACKUPS_DIR} 是否可写后重试。"
+                    ) from None
 
         # 3. 关闭当前连接（先 checkpoint 确保 WAL 写回主库）
         try:
@@ -236,10 +246,15 @@ class BackupService:
                 backup_path, current_db, info.schema_version,
             )
         except Exception as exc:
-            # 回滚: 恢复安全备份
+            # 回滚: 恢复安全备份（同成功路径，必须清 -wal/-shm，
+            # 否则 checkpoint 失败时残留的陈旧 WAL 帧会污染回滚后的库）
             if safety_backup and safety_backup.exists():
                 try:
                     shutil.copy2(str(safety_backup), str(current_db))
+                    for ext in ("-wal", "-shm"):
+                        p = Path(str(current_db) + ext)
+                        if p.exists():
+                            p.unlink()
                     logger.info("回滚成功，已恢复安全备份")
                 except Exception:
                     logger.exception("回滚失败！请手动恢复: %s", safety_backup)

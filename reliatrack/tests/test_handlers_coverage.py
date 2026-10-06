@@ -1247,7 +1247,7 @@ class TestExportDispatchMethods:
         ctrl.issue_service.update(base_data['issue_id'], assignee_id=tech_id)
 
         for fmt, suffix in [('Word (.docx)', '.docx'), ('PDF (.pdf)', '.pdf')]:
-            path = export_handlers._export_8d(ctrl, svc, fmt, None,
+            path = export_handlers._export_8d(ctrl, svc, fmt, None, None,
                                               base_data['issue_id'])
             self._assert_file(path)
             assert path.endswith(suffix)
@@ -1256,9 +1256,9 @@ class TestExportDispatchMethods:
     def test_export_8d_requires_issue_and_rejects_excel(self, export_handlers, ctrl, svc):
         """8D：未选 Issue / Excel 格式均拒绝。"""
         with pytest.raises(ValueError, match='Issue'):
-            export_handlers._export_8d(ctrl, svc, 'PDF (.pdf)', None, None)
+            export_handlers._export_8d(ctrl, svc, 'PDF (.pdf)', None, None, None)
         with pytest.raises(ValueError, match='Excel'):
-            export_handlers._export_8d(ctrl, svc, 'Excel (.xlsx)', None,
+            export_handlers._export_8d(ctrl, svc, 'Excel (.xlsx)', None, None,
                                        ctrl.issue_service.list_all()[0].id)
 
     def test_dispatch_table_covers_all_content_types(self, export_handlers):

@@ -328,8 +328,10 @@ class ExportHandlers:
 
     @staticmethod
     def _export_8d(ctrl, svc, fmt: str, project_id: int | None,
-                    issue_id: int | None, *args) -> str:
-        """导出 8D 报告。"""
+                    plan_id: int | None, issue_id: int | None,
+                    *args) -> str:
+        """导出 8D 报告。签名与其他 handler 对齐：plan_id 不用但必须占位，
+        否则 ExportWorker 传入的 plan_id 会落在 issue_id 上（审计 P0）。"""
         if issue_id is None:
             raise ValueError("请先选中一个 Issue")
         issue = ctrl.issue_service.get(issue_id)
