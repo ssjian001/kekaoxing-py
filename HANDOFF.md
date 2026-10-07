@@ -10,7 +10,7 @@
 
 ## 2. 当前状态（2026-10-06）
 
-- 全量测试：**1136 passed / EXIT=0**（约 46s）。
+- 全量测试：**1139 passed / EXIT=0**（约 46s）。
 - 所有审计项已修清零：`start_day` 哨兵化（schema v29）、排程 cycle 冻结、ExportWorker 线程安全、导出 None 崩溃、undo/redo 状态机穿透、样品台账一致性等均已处理。
 - Git：本地 `main` 已推送到 `origin/main`，工作区干净（最新提交看 `git log -1`；本文件不再钉 hash，免得自指过期）。
 
@@ -23,6 +23,7 @@
 | `f2f1fd5` | P1/P2×15：QThread 遮蔽 finished、Word 技术员列、export None 崩溃、aql conditional 吞结论、图表负宽、frozen 重启双 exe、备份权限 0600 等 |
 | `5717866` | 导出协作式取消、恢复重启先确认关窗、`max_scan_days` 配置化、`auto_schedule` 清零防线、cycle 计入 total_days |
 | `ea501a3` | **`TestTask.start_day` 哨兵重构**：`None=未排期`、v29 表重建 + 存量 0→NULL（manual_scheduled=0） |
+| `4873f3a` | 8 项审计修复：issue 状态机强制、样品台账统一、SAMPLE_STATUS_TRANSITIONS、backup tmp+integrity_check、threaded_connection、facades、迁移 round-trip 测试、调度槽耗尽报错 + 1136→1139 |
 | `a1bb053` | 多模块审计：履历入口崩溃、样品编辑写流水、aging 锚点、weekly_closed DISTINCT、undo 系列表全部 + 1130→1136 |
 
 ## 4. 运行方式
@@ -69,4 +70,4 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python reliatrack/tests/manual/verify_ui_3it
 
 ---
 
-*生成于 2026-10-06；如果你只看这一句：品牌是 Python 3.11 + PySide6 的本地工具，1136 个绿色测试，别把 `start_day=0` 再当未排期哨兵（改用 `None`）。*
+*生成于 2026-10-06；如果你只看这一句：品牌是 Python 3.11 + PySide6 的本地工具，1139 个绿色测试，别把 `start_day=0` 再当未排期哨兵（改用 `None`）。*
