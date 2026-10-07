@@ -1326,37 +1326,39 @@ def _migrate_v29(conn: apsw.Connection) -> None:
         conn.execute("PRAGMA foreign_keys = ON")
 
 
-# 按版本号排列的迁移函数列表（用于完整性修复时回放）
-_MIGRATORS: list[tuple[int, object]] = [
-    (2, _migrate_v2),
-    (3, _migrate_v3),
-    (4, _migrate_v4),
-    (5, _migrate_v5),
-    (6, _migrate_v6),
-    (7, _migrate_v7),
-    (8, _migrate_v8),
-    (9, _migrate_v9),
-    (10, _migrate_v10),
-    (11, _migrate_v11),
-    (12, _migrate_v12),
-    (13, _migrate_v13),
-    (14, _migrate_v14),
-    (15, _migrate_v15),
-    (16, _migrate_v16),
-    (17, _migrate_v17),
-    (18, _migrate_v18),
-    (19, _migrate_v19),
-    (20, _migrate_v20),
-    (21, _migrate_v21),
-    (22, _migrate_v22),
-    (23, _migrate_v23),
-    (24, _migrate_v24),
-    (25, _migrate_v25),
-    (26, _migrate_v26),
-    (27, _migrate_v27),
-    (28, _migrate_v28),
-    (29, _migrate_v29),
-]
+# 迁移声明表（dict 驱动）：版本 → (迁移函数, 是否自管事务)。
+# self_tx=True 的迁移函数内部自行 BEGIN/COMMIT（表重建类，需先关 FK），
+# 调用方不再包外层事务；其余由调用方以 BEGIN/COMMIT 包裹。
+_MIGRATIONS: dict[int, tuple[object, bool]] = {
+    2: (_migrate_v2, False),
+    3: (_migrate_v3, False),
+    4: (_migrate_v4, False),
+    5: (_migrate_v5, False),
+    6: (_migrate_v6, False),
+    7: (_migrate_v7, False),
+    8: (_migrate_v8, False),
+    9: (_migrate_v9, False),
+    10: (_migrate_v10, False),
+    11: (_migrate_v11, True),
+    12: (_migrate_v12, False),
+    13: (_migrate_v13, True),
+    14: (_migrate_v14, False),
+    15: (_migrate_v15, False),
+    16: (_migrate_v16, False),
+    17: (_migrate_v17, False),
+    18: (_migrate_v18, False),
+    19: (_migrate_v19, False),
+    20: (_migrate_v20, False),
+    21: (_migrate_v21, False),
+    22: (_migrate_v22, False),
+    23: (_migrate_v23, False),
+    24: (_migrate_v24, False),
+    25: (_migrate_v25, False),
+    26: (_migrate_v26, False),
+    27: (_migrate_v27, False),
+    28: (_migrate_v28, False),
+    29: (_migrate_v29, True),
+}
 
 
 def init_schema(conn: apsw.Connection) -> int:
@@ -1440,201 +1442,28 @@ def init_schema(conn: apsw.Connection) -> int:
             )
             raise
 
-    # v12 修补 samples.notes 列（CREATE TABLE 有但历史迁移链漏掉）
-    if current < 12:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v12(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v12 failed")
-            raise
-
-    # v13 修复 v11 丢失的索引 + schema_version 加 UNIQUE 约束（同样自管事务）
-    if current < 13:
-        logger.info("Starting migration v13 (rebuild in one transaction)...")
-        try:
-            _migrate_v13(conn)
-        except Exception:
-            logger.critical(
-                "Migration v13 failed — database may be in inconsistent state"
-            )
-            raise
-
-    # v14: capa_records 加 assignee_name 列；test_tasks 安全补列
-    if current < 14:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v14(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v14 failed")
-            raise
-
-    # v15: CAPA PDCA 扩展 — root_cause + effectiveness + follow_up
-    if current < 15:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v15(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v15 failed")
-            raise
-
-    # v16: CAPA verifier_name + Issue dri_name
-    if current < 16:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v16(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v16 failed")
-            raise
-
-    # v17: issues 软删除字段 — is_deleted + deleted_at
-    if current < 17:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v17(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v17 failed")
-            raise
-
-    # v18: issues 加 resolution + reporter_name 列
-    if current < 18:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v18(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v18 failed")
-            raise
-
-    # v19: issues 加 improvement_measures 列 + 迁移旧 resolution 文本
-    if current < 19:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v19(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v19 failed")
-            raise
-
-    # v20: test_plans 加 task_prefix 列
-    if current < 20:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v20(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v20 failed")
-            raise
-
-    # v21: issues 加 category 列
-    if current < 21:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v21(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v21 failed")
-            raise
-
-    # v22: test_tasks 加 manual_scheduled 列 + 迁移已有手动调整任务
-    if current < 22:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v22(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v22 failed")
-            raise
-
-    # v23: 新增 issue_comments / issue_activity_log / issue_links
-    if current < 23:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v23(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v23 failed")
-            raise
-
-    # v24: issue_activity_log 加 project_id 列 + 索引
-    if current < 24:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v24(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v24 failed")
-            raise
-
-    # v25: 新增 todos 表
-    if current < 25:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v25(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v25 failed")
-            raise
-
-    # v26: todos 表加提醒 + 四象限字段
-    if current < 26:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v26(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v26 failed")
-            raise
-
-    # v27: todos 表加 archived 字段
-    if current < 27:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v27(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v27 failed")
-            raise
-
-    # v28: test_tasks.category 旧值统一到 TASK_CATEGORIES 新值域
-    if current < 28:
-        conn.execute("BEGIN")
-        try:
-            _migrate_v28(conn)
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            logger.exception("Schema migration v28 failed")
-            raise
-
-    # v29: test_tasks.start_day 哨兵化（表重建，自管事务与 FK）
-    if current < 29:
-        logger.info("Starting migration v29 (start_day sentinel rebuild)...")
-        try:
-            _migrate_v29(conn)
-        except Exception:
-            logger.critical("Migration v29 failed")
-            raise
+    # v12+ 迁移：声明表 _MIGRATIONS 驱动（顺序迭代，自管事务的放行）
+    for version in sorted(_MIGRATIONS):
+        if version < 12 or current >= version or version > SCHEMA_VERSION:
+            continue
+        fn, self_tx = _MIGRATIONS[version]
+        if self_tx:
+            # 表重建类迁移函数自管事务与 FK 约束
+            logger.info("Starting migration v%d...", version)
+            try:
+                fn(conn)
+            except Exception:
+                logger.critical("Migration v%d failed", version)
+                raise
+        else:
+            conn.execute("BEGIN")
+            try:
+                fn(conn)
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                logger.exception("Schema migration v%d failed", version)
+                raise
 
     # 初始化后验证：schema_version 匹配但核心表可能不存在（损坏的 DB）
     _validate_schema_integrity(conn)

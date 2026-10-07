@@ -109,6 +109,22 @@ def get_connection(db_path: str = "") -> apsw.Connection:
         return _connections[db_path]
 
 
+def threaded_connection(db_path: str = "") -> apsw.Connection:
+    """为子线程创建独立连接的工厂入口（连接工厂 API）。
+
+    子线程**禁止**共享 get_connection() 单例返回的连接 —— 该连接只属于
+    主线程。子线程（QThread / 后台任务）必须经由本函数自建连接，
+    并在该线程内自行 close。返回的连接不进入单例缓存。
+    """
+    if not db_path:
+        db_path = str(_DEFAULT_DB_DIR / _DEFAULT_DB_NAME)
+    if db_path != ":memory:":
+        _ensure_dir(db_path)
+    conn = apsw.Connection(db_path)
+    _apply_pragmas(conn, db_path)
+    return conn
+
+
 def close_connection(db_path: str = "") -> None:
     """关闭指定路径的数据库连接。
 

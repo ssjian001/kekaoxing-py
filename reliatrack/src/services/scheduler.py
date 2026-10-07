@@ -293,6 +293,10 @@ def can_place_at(
     return True
 
 
+class SlotSearchExhaustedError(RuntimeError):
+    """槽位扫描耗尽：在自适应上限内找不到合法槽位（不再静默失败）。"""
+
+
 def find_earliest_slot(
     task: TestTask,
     from_day: int,
@@ -307,23 +311,21 @@ def find_earliest_slot(
     Skips non-working days (weekends/holidays when configured) so that
     ``task.start_day`` always falls on a working day.
 
-    Returns ``None`` when no valid slot is found within ``max_scan`` days —
-    callers must treat this as "cannot schedule" instead of placing the task
-    on an invalid day (weekend/holiday/over-capacity), which would silently
-    violate resource constraints.
+    扫描上限按任务工期自适应放大：``max(max_scan, duration * 30)``。
+    耗尽时抛出 SlotSearchExhaustedError 而非静默返回 None。
     """
-    for day in range(from_day, from_day + max_scan):
+    effective_max = max(max_scan, max(getattr(task, "duration", 1) or 1, 1) * 30)
+    for day in range(from_day, from_day + effective_max):
         if _is_non_working(day, config.start_date,
                            config.skip_weekends, config.skip_holidays,
                            config.holidays):
             continue
         if can_place_at(task, day, timeline, config, starts, tech_timeline):
             return day
-    logger.warning(
-        "find_earliest_slot: task=%s no valid slot within max_scan=%d days (from day %d)",
-        getattr(task, 'name', task.id), max_scan, from_day,
+    raise SlotSearchExhaustedError(
+        f"slot 搜索耗尽: task={getattr(task, 'name', task.id)} 在 "
+        f"{effective_max} 天（from day {from_day}）内无合法槽位"
     )
-    return None
 
 
 def place_task(
@@ -437,7 +439,10 @@ def compress_schedule(
                 earliest = max(earliest, dep_end)
 
         # Find & place at earliest valid slot
-        new_start = find_earliest_slot(task, earliest, timeline, config, max_scan=config.max_scan_days, starts=starts, tech_timeline=tech_timeline)
+        try:
+            new_start = find_earliest_slot(task, earliest, timeline, config, max_scan=config.max_scan_days, starts=starts, tech_timeline=tech_timeline)
+        except SlotSearchExhaustedError:
+            new_start = None
         if new_start is None:
             # 找不到合法槽位：把任务放回原位（资源占用已在上面的 remove 中释放，
             # 不放回会让后续任务看不到它的占用，导致同设备超容冲突）
@@ -593,7 +598,10 @@ def run_auto_schedule(
             config.skip_weekends, config.start_date,
             config.skip_holidays, config.holidays,
         )
-        slot = find_earliest_slot(task, earliest, timeline, config, max_scan=config.max_scan_days, starts=starts, tech_timeline=tech_timeline)
+        try:
+            slot = find_earliest_slot(task, earliest, timeline, config, max_scan=config.max_scan_days, starts=starts, tech_timeline=tech_timeline)
+        except SlotSearchExhaustedError:
+            slot = None
         if slot is None:
             # 找不到合法槽位：不静默违反约束, 更不能把已有排期清成"未排期"。
             # 回滚为原 start_day 并锁定(不被后续 Compress 改写), 同时记账到

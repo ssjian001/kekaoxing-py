@@ -66,22 +66,20 @@ class TestStatusTransitions:
         svc.update(iid, status="verified")
         assert svc.get(iid).status == "verified"
 
-        # verified → closed
-        svc.update(iid, status="closed")
+        # verified → closed（带 resolution）
+        svc.update(iid, status="closed", resolution="fixed")
         assert svc.get(iid).status == "closed"
 
-    def test_illegal_transition_logs_warning(self, db_conn, caplog):
-        """非法转换 open→verified 不抛异常，但 logger.warning。"""
+    def test_illegal_transition_raises(self, db_conn):
+        """非法转换 open→verified 必须抛 ValueError 且状态不变（审计加固）。"""
         svc = _make_service(db_conn)
         iid = _create_issue(svc, status="open")
 
-        with caplog.at_level(logging.WARNING, logger="src.services.issue_service"):
+        with pytest.raises(ValueError, match="非法状态转换"):
             svc.update(iid, status="verified")
 
-        # 状态仍然被更新（不阻断）
-        assert svc.get(iid).status == "verified"
-        # 有 warning 日志
-        assert any("not in allowed set" in r.message for r in caplog.records)
+        # 状态未被更新
+        assert svc.get(iid).status == "open"
 
     def test_reopen_clears_resolution(self, db_conn):
         """closed → open 时 resolution 自动清空。"""
@@ -211,17 +209,23 @@ class TestAllTransitionPaths:
         # 先推到 from_status
         path_to = _path_to_status(from_status)
         for s in path_to:
-            svc.update(iid, status=s)
+            if s == "closed":
+                svc.update(iid, status=s, resolution="fixed")
+            else:
+                svc.update(iid, status=s)
         assert svc.get(iid).status == from_status
 
-        svc.update(iid, status=to_status)
+        if to_status == "closed":
+            svc.update(iid, status=to_status, resolution="fixed")
+        else:
+            svc.update(iid, status=to_status)
         assert svc.get(iid).status == to_status
 
     def test_open_to_closed_direct(self, db_conn):
         """open→closed 直接关闭（跳过 analyzing/verified）。"""
         svc = _make_service(db_conn)
         iid = _create_issue(svc, status="open")
-        svc.update(iid, status="closed")
+        svc.update(iid, status="closed", resolution="fixed")
         assert svc.get(iid).status == "closed"
 
     def test_analyzing_to_open_rollback(self, db_conn):
@@ -237,7 +241,7 @@ class TestAllTransitionPaths:
         svc = _make_service(db_conn)
         iid = _create_issue(svc, status="open")
         svc.update(iid, status="analyzing")
-        svc.update(iid, status="closed")
+        svc.update(iid, status="closed", resolution="fixed")
         assert svc.get(iid).status == "closed"
 
 

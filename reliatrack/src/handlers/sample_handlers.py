@@ -146,7 +146,8 @@ class SampleHandlers:
                         operator_id=data.get("operator_id"),
                         notes=data.get("notes"),
                     )
-                    ctrl.sample_service.update_status(sample.id, "checked_out")
+                    # add_transaction 已按 _TXN_STATUS_MAP 联动状态为 checked_out
+                    # 并写出库台账，无需再单独 update_status（会重复写台账）
                 self._win.toast(f"样品 {sample.sn} 出库成功", "success")
                 self._win.ctrl.notify_data_changed("sample")
             except Exception as e:
@@ -433,7 +434,8 @@ class SampleHandlers:
                         operator_id=data.get("operator_id"),
                         notes=data.get("notes"),
                     )
-                    ctrl.sample_service.update_status(sample.id, "in_stock")
+                    # add_transaction("return") 已将状态联动为 in_stock 并写归还台账
+                    # （原有 update_status 行删除：它只改状态不写台账，口径脱节，审计 #2）
                 self._win.toast(f"样品 {sample.sn} 归还成功", "success")
                 self._win.ctrl.notify_data_changed("sample")
             except Exception as e:

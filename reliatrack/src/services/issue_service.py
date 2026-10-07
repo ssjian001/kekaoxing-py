@@ -129,8 +129,8 @@ class IssueService:
     def update(self, issue_id: int, operator: str = "", **kwargs: object) -> None:
         """更新 Issue，自动记录活动日志（6 个追踪字段）。
 
-        状态转换不在此方法做校验（用 transition_status）。
-        FA/CAPA 联动调用 update 不受状态机限制，仅记录日志。
+        状态转换在此方法强制校验（ISSUE_TRANSITIONS + closed 必须有 resolution），
+        与 transition_status() 的约束一致；FA/CAPA 联动调用不受 FA 前置限制，仅记录日志。
         """
         # 获取旧值用于活动日志
         old_issue = self._repo.get_by_id(issue_id) if _TRACKED_FIELDS & set(kwargs.keys()) else None
@@ -140,16 +140,20 @@ class IssueService:
         if new_status == "open" and old_issue and old_issue.status in ("closed", "verified"):
             kwargs.setdefault("resolution", "")
 
-        # 非阻断状态转换 warning（兼容旧逻辑，正式校验用 transition_status）
+        # 状态转换强校验：非法转换 / 无 resolution 的 closed 一律拒绝，
+        # 不再走 logger.warning 放行（绕过 transition_status 校验的封堵）。
         if new_status is not None and old_issue and old_issue.status != new_status:
             from src.constants import ISSUE_TRANSITIONS
             allowed = ISSUE_TRANSITIONS.get(old_issue.status, set())
             if new_status not in allowed:
-                logger.warning(
-                    "Status transition %s → %s not in allowed set %s "
-                    "(use transition_status() for validated changes)",
-                    old_issue.status, new_status, allowed,
+                raise ValueError(
+                    f"非法状态转换: 「{old_issue.status}」→「{new_status}」，"
+                    f"允许的转换: {sorted(allowed)}"
                 )
+            if new_status == "closed":
+                resolution = kwargs.get("resolution", old_issue.resolution)
+                if not resolution:
+                    raise ValueError("关闭前必须选择处理结果（Resolution）")
 
         # 事务包裹：update + activity log 原子化，避免状态已变但日志缺失
         with self._repo.transaction():

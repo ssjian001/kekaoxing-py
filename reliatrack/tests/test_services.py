@@ -138,8 +138,8 @@ class TestSampleService:
 
     def test_update_status(self, sample_svc, sample_project):
         sid = sample_svc.create("SN-001", project_id=sample_project["id"], status="in_stock")
-        sample_svc.update_status(sid, "in_use")
-        assert sample_svc.get(sid).status == "in_use"
+        sample_svc.update_status(sid, "in_test")
+        assert sample_svc.get(sid).status == "in_test"
 
     def test_delete_with_transactions(self, sample_svc, sample_project, sample_technician):
         sid = sample_svc.create("SN-001", project_id=sample_project["id"])

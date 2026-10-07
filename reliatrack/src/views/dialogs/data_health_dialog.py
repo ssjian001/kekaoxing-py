@@ -32,7 +32,9 @@ class _ScanWorker(QThread):
 
     线程内**自建独立 DB 连接**：主线程的 apsw 连接禁止跨线程使用
     （见 src/db/connection.py 的线程约定），共享连接在 serialized 模式下
-    虽不立刻崩溃，但线程约定是硬约束。
+    虽不立刻崩溃，但线程约定是硬约束。独立连接由
+    src.db.connection.threaded_connection() 工厂统一创建
+    （经 open_health_scan_provider 调用）。
     """
 
     finished_report = Signal(dict)

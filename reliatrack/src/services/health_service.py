@@ -92,12 +92,12 @@ class HealthScanProvider:
     def __init__(self, db_path: str) -> None:
         import apsw
 
+        from src.db.connection import threaded_connection
         from src.db.repositories import IssueRepository
         from src.services.issue_service import IssueService
 
-        conn = apsw.Connection(db_path)
-        conn.execute("PRAGMA busy_timeout=5000")
-        conn.execute("PRAGMA foreign_keys=ON")
+        # 子线程独立连接统一走连接工厂 API（不再裸建 apsw.Connection）
+        conn = threaded_connection(db_path)
         self._conn: apsw.Connection | None = conn
         self.issue_service = IssueService(IssueRepository(conn), conn=conn)
 

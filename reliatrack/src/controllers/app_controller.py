@@ -48,6 +48,11 @@ from src.services import (
     TechnicianService,
     ExportService,
 )
+from src.controllers.facades import (
+    ProjectFacade, EquipmentFacade, SampleFacade, PlanFacade, IssueFacade,
+    SettingsFacade, SchedulerFacade, KnowledgeFacade, TodoFacade,
+    TechnicianFacade, ExportFacade,
+)
 from src.services.holiday_service import HolidayService
 from src.services.health_service import DbCheckResult, DbCorruptError, check_db
 from src.services.undo_manager import UndoManager
@@ -75,24 +80,120 @@ class AppController:
         self.knowledge: KnowledgeRepository | None = None
         self.todos: TodoRepository | None = None
 
-        # Services
-        self.project_service: ProjectService | None = None
-        self.equipment_service: EquipmentService | None = None
-        self.sample_service: SampleService | None = None
-        self.test_plan_service: TestPlanService | None = None
-        self.issue_service: IssueService | None = None
-        self.settings_service: SettingsService | None = None
-        self.scheduler_service: SchedulerService | None = None
-        self.knowledge_service: KnowledgeService | None = None
-        self.todo_service: TodoService | None = None
-        self.technician_service: TechnicianService | None = None
-        self.export_service: ExportService | None = None
+        # Services（经 facade 委托：见 src/controllers/facades.py）
+        self._project_facade = ProjectFacade()
+        self._equipment_facade = EquipmentFacade()
+        self._sample_facade = SampleFacade()
+        self._plan_facade = PlanFacade()
+        self._issue_facade = IssueFacade()
+        self._settings_facade = SettingsFacade()
+        self._scheduler_facade = SchedulerFacade()
+        self._knowledge_facade = KnowledgeFacade()
+        self._todo_facade = TodoFacade()
+        self._technician_facade = TechnicianFacade()
+        self._export_facade = ExportFacade()
 
         # Undo/Redo
         self.undo_manager = UndoManager(max_history=50)
 
         # 数据变更回调
         self._on_data_changed: list[Callable[[str], None]] = []
+
+    # ── Service 委托属性（域 facade 持有 repo+service，本类只透出）──
+
+    def _svc(self, facade):
+        return facade.service
+
+    def _set_svc(self, facade, value) -> None:
+        facade.service = value
+
+    @property
+    def project_service(self):
+        return self._project_facade.service
+
+    @project_service.setter
+    def project_service(self, v) -> None:
+        self._project_facade.service = v
+
+    @property
+    def equipment_service(self):
+        return self._equipment_facade.service
+
+    @equipment_service.setter
+    def equipment_service(self, v) -> None:
+        self._equipment_facade.service = v
+
+    @property
+    def sample_service(self):
+        return self._sample_facade.service
+
+    @sample_service.setter
+    def sample_service(self, v) -> None:
+        self._sample_facade.service = v
+
+    @property
+    def test_plan_service(self):
+        return self._plan_facade.service
+
+    @test_plan_service.setter
+    def test_plan_service(self, v) -> None:
+        self._plan_facade.service = v
+
+    @property
+    def issue_service(self):
+        return self._issue_facade.service
+
+    @issue_service.setter
+    def issue_service(self, v) -> None:
+        self._issue_facade.service = v
+
+    @property
+    def settings_service(self):
+        return self._settings_facade.service
+
+    @settings_service.setter
+    def settings_service(self, v) -> None:
+        self._settings_facade.service = v
+
+    @property
+    def scheduler_service(self):
+        return self._scheduler_facade.service
+
+    @scheduler_service.setter
+    def scheduler_service(self, v) -> None:
+        self._scheduler_facade.service = v
+
+    @property
+    def knowledge_service(self):
+        return self._knowledge_facade.service
+
+    @knowledge_service.setter
+    def knowledge_service(self, v) -> None:
+        self._knowledge_facade.service = v
+
+    @property
+    def todo_service(self):
+        return self._todo_facade.service
+
+    @todo_service.setter
+    def todo_service(self, v) -> None:
+        self._todo_facade.service = v
+
+    @property
+    def technician_service(self):
+        return self._technician_facade.service
+
+    @technician_service.setter
+    def technician_service(self, v) -> None:
+        self._technician_facade.service = v
+
+    @property
+    def export_service(self):
+        return self._export_facade.service
+
+    @export_service.setter
+    def export_service(self, v) -> None:
+        self._export_facade.service = v
 
     # ── 初始化 ──
 
@@ -126,6 +227,18 @@ class AppController:
         self.settings = SettingsRepository(self._conn)
         self.knowledge = KnowledgeRepository(self._conn)
         self.todos = TodoRepository(self._conn)
+
+        # facade 绑定 repo（service 在下方装配）
+        self._project_facade.repo = self.projects
+        self._equipment_facade.repo = self.equipment
+        self._technician_facade.repo = self.technicians
+        self._sample_facade.repo = self.samples
+        self._plan_facade.repo = self.test_plans
+        self._issue_facade.repo = self.issues
+        self._settings_facade.repo = self.settings
+        self._knowledge_facade.repo = self.knowledge
+        self._todo_facade.repo = self.todos
+        self._scheduler_facade.repo = self.test_tasks
 
         # Services
         self.project_service = ProjectService(

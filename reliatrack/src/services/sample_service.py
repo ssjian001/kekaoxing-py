@@ -109,15 +109,31 @@ class SampleService:
             sample = self._repo.get_by_id(sample_id)
             old = getattr(sample, "status", None) if sample is not None else None
             self._repo.update(sample_id, **kwargs)
-            self._repo.update_status(sample_id, str(status))
+            # 状态变更统一走 update_status（带状态机校验 + 台账流水），
+            # 不再裸写 repo.update_status 后单独补流水
+            self.update_status(sample_id, str(status))
+
+    def update_status(self, sample_id: int, status: str) -> None:
+        """更新样品状态：状态机校验 + 同步写台账流水（审计 P1 收编）。"""
+        from src.constants import SAMPLE_STATUS_TRANSITIONS
+        sample = self._repo.get_by_id(sample_id)
+        old = getattr(sample, "status", None) if sample is not None else None
+        if old is not None and old != status:
+            allowed = SAMPLE_STATUS_TRANSITIONS.get(old)
+            if allowed is None:
+                raise ValueError(f"未知当前状态: {old!r}")
+            if status not in allowed:
+                raise ValueError(
+                    f"非法状态转换: 「{old}」→「{status}」，"
+                    f"允许的转换: {sorted(allowed) if allowed else '（终态，无）'}"
+                )
+        with self._atomic():
+            self._repo.update_status(sample_id, status)
             if status != old:
                 self._repo.add_transaction(
                     sample_id, "status_change",
                     notes=f"状态变更: {old} → {status}",
                 )
-
-    def update_status(self, sample_id: int, status: str) -> None:
-        self._repo.update_status(sample_id, status)
 
     def check_references(self, sample_id: int) -> None:
         """检查样品是否被其他实体引用，有引用则抛 ValueError。

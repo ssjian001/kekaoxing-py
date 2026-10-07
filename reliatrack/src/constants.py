@@ -196,6 +196,16 @@ ISSUE_TRANSITIONS: dict[str, set[str]] = {
     "closed": {"open"},
 }
 
+# 样品状态转换规则（与 SAMPLE_STATUS_LABELS 的键域一致，service 层强制校验）
+SAMPLE_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "in_stock": {"in_test", "checked_out", "returned", "scrapped", "suspended"},
+    "in_test": {"in_stock", "checked_out", "scrapped", "suspended"},
+    "checked_out": {"in_stock", "returned", "scrapped", "suspended"},
+    "returned": {"in_stock", "in_test", "scrapped", "suspended"},
+    "suspended": {"in_stock", "in_test", "checked_out", "scrapped"},
+    "scrapped": set(),  # 终态，不可再转换
+}
+
 # ═══════════════════════════════════════════════════════════════════
 #  测试任务类别（全局唯一来源）
 # ═══════════════════════════════════════════════════════════════════

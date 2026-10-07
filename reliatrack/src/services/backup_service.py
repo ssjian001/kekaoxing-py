@@ -65,16 +65,26 @@ class BackupService:
             raise FileExistsError(f"备份文件已存在: {dest_path}")
         dest_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # 先写到 .tmp 临时文件：完整性校验通过后才 rename 为正式文件，
+        # 异常时清理 .tmp，不留下半成品备份（审计修复 #4）
+        tmp_path = dest_path.with_name(dest_path.name + ".tmp")
+        tmp_path.unlink(missing_ok=True)
+
         src_conn = get_connection(self._db_path)
-        dest_conn = apsw.Connection(str(dest_path))
+        dest_conn = apsw.Connection(str(tmp_path))
         try:
             # 方向：在 dest_conn 上调用 backup()，从 src_conn 复制到 dest_conn
             with dest_conn.backup("main", src_conn, "main") as backup:
                 backup.step()
-            # 验证备份非空
-            if dest_path.stat().st_size == 0:
-                dest_path.unlink(missing_ok=True)
+            # 完整性校验：非空 + PRAGMA integrity_check
+            if tmp_path.stat().st_size == 0:
                 raise RuntimeError("备份文件为空")
+            integrity = dest_conn.execute("PRAGMA integrity_check").fetchone()
+            if integrity is None or integrity[0] != "ok":
+                raise RuntimeError(f"备份文件完整性校验失败: {integrity}")
+            dest_conn.close()
+            dest_conn = None  # 已关闭，finally 不再重复 close
+            tmp_path.rename(dest_path)
             # 备份含完整业务数据：收紧权限，仅属主可读写（审计 P2）
             try:
                 os.chmod(dest_path, 0o600)
@@ -84,11 +94,11 @@ class BackupService:
                         dest_path, dest_path.stat().st_size)
         except Exception as exc:
             logger.exception("Error in backup_service")
-            if dest_path.exists():
-                dest_path.unlink(missing_ok=True)
             raise RuntimeError("备份失败") from exc
         finally:
-            dest_conn.close()
+            if dest_conn is not None:
+                dest_conn.close()
+            tmp_path.unlink(missing_ok=True)
 
         return dest_path
 
