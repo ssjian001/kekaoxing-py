@@ -195,8 +195,8 @@ def _migrate_core(
         new.execute(
             "INSERT INTO [issues] (project_id, plan_id, task_id, title, description, "
             "failure_mode, failure_stage, severity, status, priority, assignee_id, "
-            "root_cause, resolution, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "root_cause, improvement_measures, resolution, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (project_id, plan_id, new_task_id, row[1], row[2],
              row[3] or "", row[7] or "",  # failure_mode, failure_stage
              row[4] or "minor",  # severity
@@ -204,8 +204,9 @@ def _migrate_core(
              row[6] or 3,  # priority
              None,  # assignee_id
              row[12] or "",  # root_cause (旧 cause)
+             row[13] or "",  # improvement_measures (旧 countermeasure)
              row[11] or "",  # resolution
-             row[14], row[15]),  # created_at, updated_at
+             row[15], row[16]),  # created_at, updated_at
         )
         migrated += 1
     if migrated > 0:
