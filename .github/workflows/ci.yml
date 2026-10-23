@@ -37,7 +37,8 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip pytest pytest-cov pytest-qt
-          pip install -r reliatrack/requirements.txt
+          # 审计 A2：CI 与本地开发统一走锁文件，避免范围版本漂移
+          pip install -r reliatrack/requirements.lock.txt
 
       - name: Compile check
         run: |

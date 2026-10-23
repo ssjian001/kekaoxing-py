@@ -40,15 +40,9 @@ class TestTaskRepository(BaseRepository):
             "DELETE FROM [test_results] WHERE task_id = ?", (task_id,)
         )
 
-    def delete_issues_by_task(self, task_id: int) -> None:
-        """删除关联到任务的 Issue。
-
-        schema 中 fa_records / issue_attachments 的外键已添加
-        ON DELETE CASCADE，删除 issues 后子表自动级联。
-        """
-        self._conn.execute(
-            "DELETE FROM [issues] WHERE task_id = ?", (task_id,)
-        )
+    # 注：delete_issues_by_task（硬删任务下全部 Issue，含软删/已验证）已于
+    # 2026-10 审计后移除——与「删除任务只解除 Issue 关联」的保护策略矛盾，
+    # 且无生产调用方。Issue 保留路径见 detach_issues_by_task。
 
     def detach_issues_by_task(self, task_id: int) -> int:
         """将任务关联的 Issue 解除关联（task_id → NULL），保留 Issue 及其子表。
