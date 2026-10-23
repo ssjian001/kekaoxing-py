@@ -428,9 +428,12 @@ def compress_schedule(
 
         # Earliest allowed day from dependencies
         earliest = 0
+        # 与 Phase 1 _compute_earliest_from_deps 同口径：completed 的依赖
+        # 不构成约束，否则左移会把任务推到已完成任务之后并写回 DB
         for dep_id in dep_map.get(task.id, []):
             dep_task = id_to_task.get(dep_id)
-            if dep_task and isinstance(dep_task.start_day, int):
+            if (dep_task and dep_task.status != "completed"
+                    and isinstance(dep_task.start_day, int)):
                 dep_end = _work_day_end(
                     dep_task.start_day, dep_task.duration,
                     config.skip_weekends, config.start_date,
@@ -719,9 +722,12 @@ def run_auto_schedule(
 
     if config.deadline and config.start_date and new_days > 0:
         try:
+            # _work_day_end 返回「最后工作日的下一个索引」（见其 docstring），
+            # 实际完工日索引是 new_days - 1；按 new_days 算会把压线达标的
+            # 排期误报成超出截止日期。
             end_date = (
                 datetime.strptime(config.start_date, "%Y-%m-%d")
-                + timedelta(days=new_days)
+                + timedelta(days=new_days - 1)
             ).strftime("%Y-%m-%d")
             deadline_dt = datetime.strptime(config.deadline, "%Y-%m-%d")
             end_dt = datetime.strptime(end_date, "%Y-%m-%d")
