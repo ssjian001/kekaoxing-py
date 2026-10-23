@@ -358,6 +358,33 @@ class SampleHandlers:
                 dlg.deleteLater()
                 return
 
+            # 审计 P1 收编：状态字段必须过状态机（与单条编辑 update_status 同规则）。
+            # 批量路径原先直写 repo 绕过校验，可把终态 scrapped 改回在库。
+            if "status" in changes:
+                from src.constants import SAMPLE_STATUS_TRANSITIONS
+
+                violations: list[str] = []
+                for sample in samples:
+                    if sample.id is None:
+                        continue
+                    old = getattr(sample, "status", None)
+                    new_status = changes["status"]
+                    if old is not None and old != new_status:
+                        allowed = SAMPLE_STATUS_TRANSITIONS.get(old)
+                        if not allowed or new_status not in allowed:
+                            violations.append(
+                                f"样品 #{sample.id}: {old} → {new_status}"
+                            )
+                if violations:
+                    dlg.deleteLater()
+                    QMessageBox.critical(
+                        self._win,
+                        "批量编辑失败",
+                        "以下样品的状态转换不合法，已整批取消：\n"
+                        + "\n".join(violations[:10]),
+                    )
+                    return
+
             # 构建 Command 的 changes 列表：[(sample_id, {field: old}, {field: new})]
             command_changes: list[tuple[int, dict, dict]] = []
             for sample in samples:
