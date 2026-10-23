@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 from src.services.export.export_utils import (
     check_cancel,
     CATEGORY_MAP, STATUS_MAP, excel_styles, excel_write_title_block,
-    excel_write_headers, excel_write_row, excel_save,
+    excel_write_headers, excel_write_row, excel_save, planned_task_window,
 )
 from src.constants import RESOLUTION_LABELS
 
@@ -43,7 +43,7 @@ def export_tasks_excel(
     ws = wb.active
     ws.title = "测试任务"
 
-    from datetime import date, timedelta
+    from datetime import date
     plan_start = None
     if plan.start_date:
         try:
@@ -79,12 +79,9 @@ def export_tasks_excel(
         check_cancel()  # 协作式取消：长循环点检查
         task_id_display = f"{prefix}-{seq:03d}" if prefix else (task.id or seq)
         row_idx = seq + 4
-        if plan_start and task.start_day is not None:
-            planned_start = (plan_start + timedelta(days=task.start_day)).isoformat()
-            planned_end = (plan_start + timedelta(days=(task.start_day or 0) + (task.duration or 0) - 1)).isoformat()
-        else:
-            planned_start = str(task.start_day) if task.start_day else "—"
-            planned_end = "—"
+        # 审计 P1 收编：按排程引擎的工作日语义换算预计开始/结束
+        # （旧实现用纯日历天数，跨周末的任务结束日系统性写早）
+        planned_start, planned_end = planned_task_window(plan_start, task)
         pass_count, fail_count, cond_count = res_map.get(task.id, (0, 0, 0)) if task.id else (0, 0, 0)
         total = pass_count + fail_count + cond_count
         rate_text = f"{pass_count}/{total}" if total > 0 else "—"

@@ -73,6 +73,68 @@ STATUS_MAP: dict[str, str] = {
 }
 
 
+# ── 工作日感知的预计日期换算 ─────────────────────────────────
+# 唯一实现：excel/docx/pdf 导出器共用。与 scheduler._iterate_work_days
+# 同一套口径（跳过的周末/节假日不计入工期），替代旧版
+# 「plan_start + timedelta(days=start_day+duration-1)」的纯日历换算
+# ——跨周末的任务结束日会被系统性写早。
+
+def planned_task_window(
+    plan_start: object,
+    task: object,
+    skip_weekends: bool = True,
+    skip_holidays: bool = True,
+    holidays: set[str] | None = None,
+) -> tuple[str, str]:
+    """按排程引擎语义计算任务预计开始/结束的日历日期。
+
+    Parameters
+    ----------
+    plan_start : date | str | None
+        计划开始日（date 或 ISO 字符串）。
+    task : TestTask 形状的对象
+        需要 ``start_day``（工作日索引）与 ``duration``（工作日数）。
+    skip_weekends / skip_holidays / holidays :
+        排程选项。选项未持久化到 plan（schema v29 止），默认取排程
+        对话框的出厂默认值（跳过周末 + 跳过节假日）；将来选项落库后
+        由调用方传入真值。
+
+    Returns
+    -------
+    tuple[str, str]
+        ISO 日期对 ``(预计开始, 预计结束)``；输入不完整或找不到
+        工作日时对应位置返回 ``"—"``。
+    """
+    from datetime import date as _date, timedelta as _timedelta
+
+    start_day = getattr(task, "start_day", None)
+    duration = getattr(task, "duration", None)
+    if plan_start is None or not start_day or not duration:
+        return (str(start_day) if start_day else "—"), "—"
+
+    if isinstance(plan_start, str):
+        try:
+            base = _date.fromisoformat(plan_start)
+        except ValueError:
+            return "—", "—"
+    else:
+        base = plan_start
+
+    # 延迟导入：scheduler 不依赖 export，反向引用无环
+    from src.services.scheduler import _iterate_work_days
+
+    days = _iterate_work_days(
+        start_day, duration,
+        skip_weekends, base.isoformat(),
+        skip_holidays, holidays,
+    )
+    if not days:
+        return "—", "—"
+    start_iso = (base + _timedelta(days=days[0])).isoformat()
+    end_iso = (base + _timedelta(days=days[-1])).isoformat()
+    return start_iso, end_iso
+
+
 # ── CJK 字体 ─────────────────────────────────────────────────
 
 _CJK_FONT: str | None = None
