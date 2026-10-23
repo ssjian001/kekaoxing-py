@@ -191,19 +191,22 @@ class BugKanbanView(QWidget):
 
         self._all_issues = issues
 
+        # 审计 P2 收编：逐卡 get_aging_days 是 N+1 主线程查询（对照
+        # bug_table 已用批量接口），改为一次批量取回
+        _issue_ids = [i.id for i in issues if i.id is not None]
+        try:
+            _aging_map = self._service.get_aging_days_map(_issue_ids) if _issue_ids else {}
+        except Exception:
+            logger.exception("Error in kanban_view (batch aging)")
+            _aging_map = {}
+
         for status in self._COLUMN_STATUSES:
             column_issues = [i for i in issues if i.status == status]
             cards: list[_KanbanCard] = []
             history_cards: list[_KanbanCard] = []
 
             for issue in column_issues:
-                try:
-                    aging = self._service.get_aging_days(
-                        issue.id if issue.id is not None else 0
-                    )
-                except Exception:
-                    logger.exception("Error in kanban_view")
-                    aging = 0
+                aging = _aging_map.get(issue.id if issue.id is not None else 0, 0)
 
                 card = _KanbanCard(
                     issue, aging,

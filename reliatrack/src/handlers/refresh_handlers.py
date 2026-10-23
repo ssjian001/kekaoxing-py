@@ -247,12 +247,15 @@ class RefreshHandlers:
             except Exception:
                 logger.exception("统计本周关闭 Issue 失败")
 
-        # 平均停留天数
-        aging_days_list = [
-            ctrl.issue_service.get_aging_days(i.id)
-            for i in pending_issues
+        # 平均停留天数（审计 P2 收编：批量接口替代 N+1 逐条查询）
+        _aging_ids = [
+            i.id for i in pending_issues
             if i.id and ctrl.issue_service is not None
         ]
+        _aging_map = (
+            ctrl.issue_service.get_aging_days_map(_aging_ids) if _aging_ids else {}
+        )
+        aging_days_list = [_aging_map[i] for i in _aging_ids]
         avg_age_days = sum(aging_days_list) / len(aging_days_list) if aging_days_list else 0
 
         # Aging 超期警告

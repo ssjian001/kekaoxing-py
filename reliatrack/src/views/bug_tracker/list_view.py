@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import logging
 logger = logging.getLogger("views.bug_tracker.list_view")
-from PySide6.QtCore import QDate, QPoint, QRect, Qt, Signal
+from PySide6.QtCore import QDate, QPoint, QRect, Qt, Signal, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -273,7 +273,13 @@ class BugListView(QWidget):
         self._search_input.setPlaceholderText("搜索标题/描述/根因…")
         self._search_input.setMinimumWidth(160)
         self._search_input.setMaximumWidth(260)
-        self._search_input.textChanged.connect(self._apply_filters)
+        # 搜索防抖（对照 test_plan_view 同款 300ms）：每击键全量过滤+
+        # 全表重建在 Issue 多时卡顿，停顿后才过滤
+        self._search_debounce = QTimer(self)
+        self._search_debounce.setSingleShot(True)
+        self._search_debounce.setInterval(300)
+        self._search_debounce.timeout.connect(self._apply_filters)
+        self._search_input.textChanged.connect(self._search_debounce.start)
         toolbar.addWidget(self._search_input)
 
         # ── 右侧：操作按钮（CommandBar 自動溢出）──
