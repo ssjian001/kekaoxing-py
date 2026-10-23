@@ -231,6 +231,20 @@ if __name__ == "__main__":
     db_path = _local_db if os.path.exists(_local_db) else ""
     conn = get_connection(db_path)
     init_schema(conn)
+    # ── 守卫：非空库需确认，防止把演示数据追加进真实库 ──
+    _existing = conn.execute(
+        "SELECT (SELECT COUNT(*) FROM projects) + (SELECT COUNT(*) FROM issues)"
+    ).fetchone()[0]
+    if _existing > 0:
+        print(f"⚠️  目标库 {db_path or '(默认库)'} 已有 {_existing} 行项目/Issue 数据。")
+        print("    本脚本将以追加模式写入演示数据（不覆盖既有行）。")
+        try:
+            _ans = input("继续请输入 y，其他中止：")
+        except EOFError:
+            _ans = ""
+        if _ans.strip().lower() != "y":
+            print("已中止，未写入任何数据。")
+            sys.exit(1)
     ctrl = AppController(db_path)
     ctrl.initialize()
     seed_v2(ctrl)

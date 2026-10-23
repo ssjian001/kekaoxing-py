@@ -16,6 +16,19 @@ conn = get_connection(DB)
 init_schema(conn)
 conn.execute("PRAGMA foreign_keys = OFF")  # 批量导入时关闭 FK 检查
 
+# ── 守卫：目标库非空时必须显式确认，防止误写真实数据 ──
+_existing = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+if _existing > 0:
+    print(f"⚠️  目标库 {DB} 已有 {_existing} 个项目。")
+    print("    本脚本用 INSERT OR REPLACE 固定 id 写入演示数据，将覆盖 id 1-4 的同名实体。")
+    try:
+        _ans = input("确认覆盖请输入大写 YES，其他任意输入中止：")
+    except EOFError:
+        _ans = ""
+    if _ans != "YES":
+        print("已中止，未写入任何数据。")
+        sys.exit(1)
+
 def d(offset_days, h=8, m=0):
     """生成相对日期的 ISO 字符串。"""
     return (NOW + timedelta(days=offset_days)).strftime("%Y-%m-%d %H:%M:%S")
