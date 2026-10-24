@@ -248,6 +248,32 @@ def _sanitize_path(path: str) -> str:
     return str(p.with_name(safe_name))
 
 
+def atomic_export_save(save_fn, target: Path) -> None:
+    """导出原子保存：先写同目录临时文件，成功才 os.replace 到目标。
+
+    审计 2026-10-25：旧模式「直接写目标 + 失败 unlink 目标」在目标为
+    只读文件时（保存失败、目标根本没被写入），unlink 会把用户既有的
+    原文件删掉。原子替换后失败路径不触碰原文件，也不再产生半成品。
+    """
+    import tempfile as _tf
+
+    target = Path(target)
+    fd, tmp_name = _tf.mkstemp(
+        dir=str(target.parent), prefix=target.name + ".", suffix=".tmp"
+    )
+    os.close(fd)
+    tmp = Path(tmp_name)
+    try:
+        save_fn(str(tmp))
+        os.replace(str(tmp), str(target))
+    except Exception:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
 def excel_save(wb, filepath: str | None, filename: str, output_dir: Path) -> str:
     """保存 Excel 工作簿，返回绝对路径。"""
     from openpyxl.utils import get_column_letter
@@ -257,16 +283,7 @@ def excel_save(wb, filepath: str | None, filename: str, output_dir: Path) -> str
     raw_out = filepath or str(output_dir / safe_name)
     safe_out = _sanitize_path(raw_out)
     resolved = _validate_output_path(safe_out, output_dir)
-    try:
-        wb.save(str(resolved))
-    except (OSError, PermissionError) as e:
-        logger.error("Excel save failed: %s → %s", resolved, e)
-        if resolved.exists():
-            try:
-                resolved.unlink()
-            except OSError:
-                pass
-        raise
+    atomic_export_save(wb.save, resolved)
     return str(resolved)
 
 

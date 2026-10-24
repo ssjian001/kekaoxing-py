@@ -458,13 +458,17 @@ def export_report_pdf(
     _validate_output_path(out, output_dir)
     # 闭包捕获实际字体名，避免 fallback 路径下字体名不一致
     _hf = lambda c, d: _build_header_footer(c, d, font_name=_FN)
+    # 审计 2026-10-25：记录目标是否已存在（失败清理的守卫依据）
+    _out_pre_existing = os.path.exists(out)
     try:
         doc_obj.build(story, onFirstPage=_hf, onLaterPages=_hf)
     except Exception as e:
         # 统一捕 Exception（与 DVP&R / 8D 两处一致）：reportlab 的布局错误是
         # ValueError，只捕 OSError/PermissionError 会把半成品 PDF 留在磁盘上。
         logger.error("PDF build failed: %s → %s", out, e)
-        if os.path.exists(out):
+        # 审计 2026-10-25：仅当 out 为本次导出新建时才清半成品；
+        # 用户既有的原文件（如只读目标导致保存失败）不得删除
+        if os.path.exists(out) and not _out_pre_existing:
             try:
                 os.unlink(out)
             except OSError:
@@ -766,15 +770,19 @@ def export_dvpr_pdf(
     story.append(sig_table)
 
     _validate_output_path(out, output_dir)
+    # 审计 2026-10-25：记录目标是否已存在（失败清理的守卫依据）
+    _out_pre_existing = os.path.exists(out)
     try:
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
     except Exception as e:
         logger.error("PDF build failed: %s → %s", out, e)
         # 审计 #13：失败时清理半成品文件（实测 ValueError 也会残留 16KB 坏文件）
-        try:
-            os.unlink(out)
-        except OSError:
-            pass
+        # 审计 2026-10-25：仅当 out 为本次导出新建时才清；用户既有原文件不得删除
+        if not _out_pre_existing:
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
         raise
     return os.path.abspath(out)
 
@@ -1118,14 +1126,18 @@ def export_8d_pdf(
     story.append(sig_table)
 
     _validate_output_path(out, output_dir)
+    # 审计 2026-10-25：记录目标是否已存在（失败清理的守卫依据）
+    _out_pre_existing = os.path.exists(out)
     try:
         doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
     except Exception as e:
         logger.error("PDF build failed: %s → %s", out, e)
         # 审计 #13：失败时清理半成品文件（实测 ValueError 也会残留 16KB 坏文件）
-        try:
-            os.unlink(out)
-        except OSError:
-            pass
+        # 审计 2026-10-25：仅当 out 为本次导出新建时才清；用户既有原文件不得删除
+        if not _out_pre_existing:
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
         raise
     return os.path.abspath(out)

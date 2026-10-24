@@ -16,7 +16,7 @@ from src.services.export.export_utils import (
     CATEGORY_MAP, STATUS_MAP, _validate_output_path, _sanitize_filename,
     _sanitize_path, logger,
     excel_styles, excel_save, excel_write_headers, excel_write_row,
-    _judge_conclusion, get_cjk_font,
+    _judge_conclusion, get_cjk_font, atomic_export_save,
 )
 from src.constants import RESOLUTION_LABELS
 
@@ -318,16 +318,9 @@ def export_to_word(
     out = _sanitize_path(filepath or str(
         output_dir / _sanitize_filename(f"测试报告_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx")))
     _validate_output_path(out, output_dir)
-    try:
-        doc.save(out)
-    except (OSError, PermissionError) as e:
-        logger.error("Word save failed: %s → %s", out, e)
-        # 审计 #13：失败时清理半成品文件
-        try:
-            os.unlink(out)
-        except OSError:
-            pass
-        raise
+    # 审计 2026-10-25：原子保存——失败不触碰用户既有文件（原 unlink 模式
+    # 在只读目标场景会删掉用户原文件），也不再产生半成品
+    atomic_export_save(doc.save, Path(out))
     return os.path.abspath(out)
 
 
@@ -650,16 +643,9 @@ def export_dvpr_docx(
     out = _sanitize_path(filepath or str(
         output_dir / _sanitize_filename(f"DVP&R_{plan.name}_{datetime.now():%Y%m%d_%H%M}.docx")))
     _validate_output_path(out, output_dir)
-    try:
-        doc.save(out)
-    except (OSError, PermissionError) as e:
-        logger.error("Word save failed: %s → %s", out, e)
-        # 审计 #13：失败时清理半成品文件
-        try:
-            os.unlink(out)
-        except OSError:
-            pass
-        raise
+    # 审计 2026-10-25：原子保存——失败不触碰用户既有文件（原 unlink 模式
+    # 在只读目标场景会删掉用户原文件），也不再产生半成品
+    atomic_export_save(doc.save, Path(out))
     return os.path.abspath(out)
 
 
@@ -973,14 +959,7 @@ def export_8d_docx(
     run.font.color.rgb = _GRAY
 
     _validate_output_path(out, output_dir)
-    try:
-        doc.save(out)
-    except (OSError, PermissionError) as e:
-        logger.error("Word save failed: %s → %s", out, e)
-        # 审计 #13：失败时清理半成品文件
-        try:
-            os.unlink(out)
-        except OSError:
-            pass
-        raise
+    # 审计 2026-10-25：原子保存——失败不触碰用户既有文件（原 unlink 模式
+    # 在只读目标场景会删掉用户原文件），也不再产生半成品
+    atomic_export_save(doc.save, Path(out))
     return os.path.abspath(out)
