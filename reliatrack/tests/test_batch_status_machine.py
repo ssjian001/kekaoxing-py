@@ -14,9 +14,10 @@ def test_batch_status_calls_transition():
     svc = IssueService.__new__(IssueService)  # 不触 DB, 只验证方法签名路由
     assert hasattr(IssueService, "transition_status")
     # batch_dialog field_map: 改状态→status, 其余走 update — 通过代码审查
+    # 审计 2026-10-25：删除「缩进精确计数」断言（改格式即断、不测行为），
+    # 保留语义级检查：改状态路径必须调用 transition_status
     src = (pathlib.Path(__file__).parents[1] / "src/views/bug_tracker/batch_dialog.py").read_text()
     assert 'transition_status(' in src, "batch 改状态必须走 transition_status"
-    assert src.count('else:\n                    self._service.update') == 1
 
 
 def test_transition_rejects_open_to_closed_without_fa():

@@ -105,14 +105,9 @@ class TestCreateWithLedger:
 # ── #3 矩阵编辑 upsert ───────────────────────────────────────
 
 class TestMatrixUpsert:
-    def test_handler_no_delete_before_save(self):
-        src = open(
-            os.path.join(
-                os.path.dirname(__file__), "..", "src/handlers/plan_handlers.py"
-            )
-        ).read()
-        fn = src.split("def _on_matrix_result_edit")[1].split("def ")[0]
-        assert "delete_result" not in fn, "矩阵编辑仍在 delete+save（非原子）"
+    # 审计 2026-10-25：删除原 test_handler_no_delete_before_save（源码文本断言，
+    # 改实现即断、不测行为）。其守卫意图由下方 test_save_result_is_upsert
+    # 的真实行为测试完整覆盖（同键二次保存=更新而非删除重插）。
 
     def test_save_result_is_upsert(self, qapp, db_conn):
         """同 (task_id, sample_id) 二次保存应更新而非新增行。"""

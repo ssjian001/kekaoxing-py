@@ -62,10 +62,20 @@ def test_palette_backup_action_dispatches_to_backup_handlers():
 
 
 def test_main_has_no_dead_backup_ref():
-    """防止再引入对不存在的 _on_backup_db 的调用。"""
+    """防止再引入对不存在的 _on_backup_db 的调用。
+
+    审计 2026-10-25：由文本匹配升级为 AST 检查——注释/字符串里提到
+    该名不再误伤，只查真实的属性访问与调用。
+    """
+    import ast as _ast
+
     src = Path(__file__).resolve().parent.parent / "main.py"
-    text = src.read_text(encoding="utf-8")
-    assert "_on_backup_db()" not in text
+    tree = _ast.parse(src.read_text(encoding="utf-8"))
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Attribute) and node.attr == "_on_backup_db":
+            pytest.fail("main.py 引用了不存在的 _on_backup_db（死引用回归）")
+        if isinstance(node, _ast.Name) and node.id == "_on_backup_db":
+            pytest.fail("main.py 引用了不存在的 _on_backup_db（死引用回归）")
 
 
 # ── 3. 损坏库恢复不被安全备份堵死 ──────────────────────────────────
