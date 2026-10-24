@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -17,7 +18,9 @@ import apsw
 
 from src.db.connection import (
     DEFAULT_BACKUPS_DIR,
+    close_all_connections,
     close_connection,
+    close_threaded_connections,
     get_connection,
 )
 from src.db.schema import SCHEMA_VERSION, _get_current_version
@@ -41,6 +44,10 @@ class BackupInfo:
 
 class BackupService:
     """数据库备份与恢复。"""
+
+    # 恢复互斥锁（审计 2026-10-25）：防止并发恢复交错替换文件；
+    # 与 close_all/close_threaded 配合保证替换瞬间无任何打开的连接。
+    _restore_lock = threading.Lock()
 
     def __init__(self, db_path: str = "") -> None:
         self._db_path = db_path
@@ -198,15 +205,20 @@ class BackupService:
         )
 
     def restore_backup(self, backup_path: str | Path) -> None:
-        """从备份文件恢复数据库。
+        """从备份文件恢复数据库（全程持恢复锁）。
 
-        流程: 验证 → 自动备份当前库 → 关闭连接 → 替换文件 → 重新初始化。
+        流程: 验证 → 自动备份当前库 → 关闭全部连接（含后台线程连接）
+        → 替换文件 → 重新初始化。
 
         Raises:
             FileNotFoundError: 备份文件不存在。
             ValueError: 备份不合法。
             RuntimeError: 恢复失败（自动回滚）。
         """
+        with BackupService._restore_lock:
+            self._restore_backup_locked(backup_path)
+
+    def _restore_backup_locked(self, backup_path: str | Path) -> None:
         backup_path = Path(backup_path)
 
         # 1. 验证
@@ -241,13 +253,17 @@ class BackupService:
                         f"请检查备份目录 {DEFAULT_BACKUPS_DIR} 是否可写后重试。"
                     ) from None
 
-        # 3. 关闭当前连接（先 checkpoint 确保 WAL 写回主库）
+        # 3. 关闭全部连接（审计 2026-10-25：原实现只关单例，后台线程经
+        # threaded_connection 自建的连接不受影响——文件替换后其陈旧 WAL
+        # checkpoint 会写穿恢复后的库。现双关：单例 + 线程登记簿）
         try:
             conn = get_connection(self._db_path)
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         except Exception:
             logger.warning("WAL checkpoint before restore failed")
         close_connection(self._db_path)
+        close_all_connections()
+        close_threaded_connections()
 
         # 4. 替换文件（同时清理 WAL/SHM 避免旧日志污染恢复的数据库）
         try:

@@ -30,6 +30,10 @@ DEFAULT_BACKUPS_DIR = _DEFAULT_DB_DIR / "backups"
 DEFAULT_LOGS_DIR = _DEFAULT_DB_DIR / "logs"
 
 _connections: dict[str, apsw.Connection] = {}
+# 子线程自建连接的登记簿（审计 2026-10-25）：threaded_connection 的连接
+# 不进单例缓存，恢复备份前必须能关掉它们，否则后台连接的陈旧 WAL
+# checkpoint 会写穿刚恢复的库文件。
+_thread_connections: list[apsw.Connection] = []
 _lock = threading.Lock()
 
 # 库文件本身损坏时 aPSW 抛出的异常（PRAGMA 阶段实测为 NotADBError，
@@ -122,6 +126,8 @@ def threaded_connection(db_path: str = "") -> apsw.Connection:
         _ensure_dir(db_path)
     conn = apsw.Connection(db_path)
     _apply_pragmas(conn, db_path)
+    with _lock:
+        _thread_connections.append(conn)
     return conn
 
 
@@ -150,3 +156,20 @@ def close_all_connections() -> None:
                 logger.exception("WAL checkpoint failed")
             conn.close()
         _connections.clear()
+
+
+def close_threaded_connections() -> None:
+    """关闭所有经 threaded_connection() 创建的后台连接。
+
+    备份恢复前调用（配合 close_all_connections）：apsw 的 close 可重复
+    调用，子线程已自行关闭的条目在此为无害 no-op。持有者线程在关闭后
+    继续使用旧句柄会得到明确的「已关闭」异常，优于静默写穿恢复文件。
+    """
+    with _lock:
+        conns = list(_thread_connections)
+        _thread_connections.clear()
+    for conn in conns:
+        try:
+            conn.close()
+        except Exception:
+            logger.debug("threaded connection close 失败（忽略）", exc_info=True)
