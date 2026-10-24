@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 import src.styles.theme as _theme
+import src.styles.constants as _style_consts
 from src.styles.constants import (
     DASH_SUCCESS,
     DASH_DANGER,
@@ -24,6 +25,20 @@ from src.styles.constants import (
 )
 from src.styles.animation import DropShadowAnimation, BackgroundAnimation
 from src.views.widgets.dashboard_charts import _StackedBar
+
+
+def resolve_dash_color(token: str | None, fallback: str) -> str:
+    """按当前主题解析仪表盘语义色令牌。
+
+    DASH_* 令牌由 theme.set_theme 动态写到 constants 模块上，SUBTEXT0 等
+    基础色在 theme 模块上；import 时取值会冻结快照（暗色切换后残留亮色，
+    违反 CLAUDE.md 设计规则），必须在调用时解析。
+    """
+    if not token:
+        return fallback
+    if hasattr(_style_consts, token):
+        return getattr(_style_consts, token)
+    return getattr(_theme, token, fallback)
 
 
 class _AuxCard(QFrame):
@@ -50,10 +65,14 @@ class _StatCard(QFrame):
 
     def __init__(self, title: str, value: str = "0", color: str = DASH_PRIMARY,
                  tab_index: int = -1, parent: QWidget | None = None,
-                 jump_data: dict | None = None):
+                 jump_data: dict | None = None,
+                 color_token: str | None = None):
         super().__init__(parent)
         self._tab_index = tab_index
         self._color = color
+        # 语义色令牌名（优先于 color）；refresh_theme 时经 resolve_dash_color
+        # 按当前主题重解析，防 import 冻结快照
+        self._color_token = color_token
         self._jump_data = jump_data or {}
         self.setObjectName("stat-card")
         self.setProperty("class", "card-bg")
@@ -78,7 +97,7 @@ class _StatCard(QFrame):
         row.setSpacing(6)
         self._val = QLabel(value)
         self._val.setStyleSheet(
-            f"color: {color}; font-size: 22px; font-weight: bold;"
+            f"color: {self.current_color()}; font-size: 22px; font-weight: bold;"
             f"border: none; background: transparent;"
         )
         row.addWidget(self._val)
@@ -91,6 +110,10 @@ class _StatCard(QFrame):
         row.addStretch()
         lay.addLayout(row)
 
+    def current_color(self) -> str:
+        """按当前主题解析大数字颜色（令牌优先，无令牌回退构造色）。"""
+        return resolve_dash_color(self._color_token, self._color)
+
     def set_value(self, text: str) -> None:
         self._val.setText(text)
 
@@ -99,7 +122,11 @@ class _StatCard(QFrame):
             self._trend_label.hide()
             return
         symbols = {"up": "↑", "down": "↓", "flat": "→"}
-        colors = {"up": DASH_SUCCESS, "down": DASH_DANGER, "flat": _theme.SUBTEXT0}
+        colors = {
+            "up": resolve_dash_color("DASH_SUCCESS", DASH_SUCCESS),
+            "down": resolve_dash_color("DASH_DANGER", DASH_DANGER),
+            "flat": _theme.SUBTEXT0,  # 模块属性调用时取值，非冻结
+        }
         sym = symbols.get(direction, "→")
         c = colors.get(direction, _theme.SUBTEXT0)
         display = f"{sym} {text}" if text else sym

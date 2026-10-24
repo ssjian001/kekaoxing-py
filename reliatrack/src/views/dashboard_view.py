@@ -121,7 +121,7 @@ class DashboardView(QWidget):
 
         # Stat cards — class-based
         for card in (
-            self._card_done, self._card_active,
+            self._card_done, self._card_pass, self._card_active,
             self._card_wait, self._card_fail,
             self._card_issues, self._card_issue_close,
             self._card_capa,
@@ -129,12 +129,9 @@ class DashboardView(QWidget):
             self._card_avg_age, self._card_aging,
         ):
             card.setProperty("class", "card-bg")
-            # 大数字颜色是语义色（DASH_SUCCESS/SUBTEXT0 等），需重新读取
-            if card is self._card_wait:
-                # 待开始卡片的颜色随主题切换变化
-                color = _theme.SUBTEXT0
-            else:
-                color = card._color
+            # 大数字颜色是语义色（DASH_SUCCESS/SUBTEXT0 等），
+            # 经 current_color() 按当前主题重解析，不再用冻结快照
+            color = card.current_color()
             card._val.setStyleSheet(
                 f"color: {color}; font-size: 22px; font-weight: bold;"
                 f"border: none; background: transparent;"
@@ -211,13 +208,14 @@ class DashboardView(QWidget):
         left.addLayout(tr1)
 
         # KPI 卡（已完成=做完的测试[completed+failed] / Pass / 进行中 / 待开始 / Fail）
+        # 语义色以 color_token 传入，refresh_theme 时按当前主题重解析（防冻结快照）
         ga = QHBoxLayout()
         ga.setSpacing(10)
-        self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3, jump_data={"task_status": None})
-        self._card_pass   = _StatCard("通过", "0", DASH_PRIMARY, 3, jump_data={"task_status": None})
-        self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3, jump_data={"task_status": "in_progress"})
-        self._card_wait   = _StatCard("待开始", "0", _theme.SUBTEXT0, 3, jump_data={"task_status": "pending"})
-        self._card_fail   = _StatCard("不通过", "0", DASH_DANGER, 3, jump_data={"task_status": "failed"})
+        self._card_done   = _StatCard("已完成", "0", DASH_SUCCESS, 3, jump_data={"task_status": None}, color_token="DASH_SUCCESS")
+        self._card_pass   = _StatCard("通过", "0", DASH_PRIMARY, 3, jump_data={"task_status": None}, color_token="DASH_PRIMARY")
+        self._card_active = _StatCard("进行中", "0", DASH_WARNING, 3, jump_data={"task_status": "in_progress"}, color_token="DASH_WARNING")
+        self._card_wait   = _StatCard("待开始", "0", _theme.SUBTEXT0, 3, jump_data={"task_status": "pending"}, color_token="SUBTEXT0")
+        self._card_fail   = _StatCard("不通过", "0", DASH_DANGER, 3, jump_data={"task_status": "failed"}, color_token="DASH_DANGER")
         ga.addWidget(self._card_done)
         ga.addWidget(self._card_pass)
         ga.addWidget(self._card_active)
@@ -250,9 +248,9 @@ class DashboardView(QWidget):
         # KPI 3 卡
         gb = QHBoxLayout()
         gb.setSpacing(10)
-        self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4, jump_data={"issue_status": None})
-        self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4, jump_data={"issue_status": "closed"})
-        self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4, jump_data={"issue_status": "closed"})
+        self._card_issues      = _StatCard("Issue 数", "0", DASH_WARNING, 4, jump_data={"issue_status": None}, color_token="DASH_WARNING")
+        self._card_issue_close = _StatCard("Issue 闭环", "0", DASH_PRIMARY, 4, jump_data={"issue_status": "closed"}, color_token="DASH_PRIMARY")
+        self._card_capa        = _StatCard("CAPA 率", "—%", DASH_PRIMARY, 4, jump_data={"issue_status": "closed"}, color_token="DASH_PRIMARY")
         gb.addWidget(self._card_issues)
         gb.addWidget(self._card_issue_close)
         gb.addWidget(self._card_capa)
@@ -261,10 +259,10 @@ class DashboardView(QWidget):
         # Bug Tracker 4 指标
         gb2 = QHBoxLayout()
         gb2.setSpacing(10)
-        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4, jump_data={"issue_status": ["open", "analyzing"]})
-        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4, jump_data={"issue_status": "closed"})
-        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4, jump_data={"issue_status": ["open", "analyzing"]})
-        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4, jump_data={"issue_status": ["open", "analyzing"]})
+        self._card_pending    = _StatCard("待处理", "0", DASH_WARNING, 4, jump_data={"issue_status": ["open", "analyzing"]}, color_token="DASH_WARNING")
+        self._card_week_close = _StatCard("本周关闭", "0", DASH_SUCCESS, 4, jump_data={"issue_status": "closed"}, color_token="DASH_SUCCESS")
+        self._card_avg_age    = _StatCard("平均停留", "0天", DASH_PRIMARY, 4, jump_data={"issue_status": ["open", "analyzing"]}, color_token="DASH_PRIMARY")
+        self._card_aging      = _StatCard("超期警告", "0", DASH_DANGER, 4, jump_data={"issue_status": ["open", "analyzing"]}, color_token="DASH_DANGER")
         gb2.addWidget(self._card_pending)
         gb2.addWidget(self._card_week_close)
         gb2.addWidget(self._card_avg_age)

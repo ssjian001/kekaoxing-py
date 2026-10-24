@@ -30,15 +30,23 @@ from src.models.test_plan import TestTask
 class _GanttWidget(QWidget):
     """自绘可视化甘特图组件。"""
 
-    # 类别 → 颜色
-    CATEGORY_COLORS = {
-        "环境试验": _theme.BLUE,
-        "机械试验": _theme.GREEN,
-        "表面处理": _theme.PEACH,
-        "包装": _theme.MAUVE,
-        "其他": _theme.LAVENDER,
-        "": _theme.LAVENDER,
+    # 类别 → 主题令牌名（取色时经 getattr(_theme, ...) 动态解析。
+    # 旧版在此固化 _theme.BLUE 等 import 时快照，暗色切换后仍显示亮色值，
+    # 违反 CLAUDE.md「禁止冻结快照」设计规则）
+    CATEGORY_COLOR_TOKENS = {
+        "环境试验": "BLUE",
+        "机械试验": "GREEN",
+        "表面处理": "PEACH",
+        "包装": "MAUVE",
+        "其他": "LAVENDER",
+        "": "LAVENDER",
     }
+
+    @classmethod
+    def category_color(cls, category: str) -> str:
+        """按当前主题解析类别颜色（每次调用时取值）。"""
+        token = cls.CATEGORY_COLOR_TOKENS.get(category, "LAVENDER")
+        return getattr(_theme, token)
 
     # 拖拽移动任务后发射 (task_id, new_start_day)
     task_moved = Signal(int, int)
@@ -86,7 +94,8 @@ class _GanttWidget(QWidget):
         self._equip_map: dict[int, str] = {}
         self._tech_map: dict[int, str] = {}
         self._equipment_colors: dict[int, str] = {}
-        self._palette = [_theme.BLUE, _theme.GREEN, _theme.PEACH, _theme.MAUVE, _theme.LAVENDER, _theme.YELLOW, _theme.TEAL]
+        # 主题令牌名，取色时动态解析（同 CATEGORY_COLOR_TOKENS 的理由，防冻结快照）
+        self._palette_tokens = ["BLUE", "GREEN", "PEACH", "MAUVE", "LAVENDER", "YELLOW", "TEAL"]
         self._holidays: set[str] = set()
         self._task_prefix: str = ""
 
@@ -189,8 +198,9 @@ class _GanttWidget(QWidget):
 
         if equipment_map is not None:
             unique_ids = sorted(set(equipment_map.keys()))
+            # 存令牌名，paint 时动态解析（主题切换后无需重设数据）
             self._equipment_colors = {
-                eid: self._palette[i % len(self._palette)]
+                eid: self._palette_tokens[i % len(self._palette_tokens)]
                 for i, eid in enumerate(unique_ids)
             }
 
@@ -551,9 +561,9 @@ class _GanttWidget(QWidget):
 
             # 颜色选择
             if task.equipment_id and task.equipment_id in self._equipment_colors:
-                color = QColor(self._equipment_colors[task.equipment_id])
+                color = QColor(getattr(_theme, self._equipment_colors[task.equipment_id]))
             else:
-                color = QColor(self.CATEGORY_COLORS.get(task.category, _theme.LAVENDER))
+                color = QColor(self.category_color(task.category))
 
             rect = self._bar_rect(i)
             is_milestone = (task.duration == 0 or "里程碑" in task.category)
