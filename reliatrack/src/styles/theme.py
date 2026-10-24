@@ -134,6 +134,14 @@ theme_host = _SignalHost()
 #  QSS 构建块
 # ═══════════════════════════════════════════════════════════════════
 
+# ── 圆角刻度（设计审查 2026-10-24 收敛：全应用仅此四档风格圆角）──
+# 几何例外不进刻度：滚动条手柄 5px、胶囊按钮 14px = 元素半高/半宽的
+# 胶囊几何半径，改刻度会破坏形状。
+RADIUS_SM = 4   # 微件：复选/进度块/小标签
+RADIUS_MD = 8   # 控件：输入框/按钮/表格件
+RADIUS_LG = 12  # 容器：对话框/菜单/小卡
+RADIUS_XL = 16  # 主卡：card-bg（文档钦定的卡片身份圆角）
+
 def _build_qss() -> str:
     """根据当前模块全局常量生成完整 QSS（每次调用都重新求值）。"""
     return f"""
@@ -149,7 +157,7 @@ QDialog, QMainWindow {{
 QGroupBox {{
     background-color: {BG_CARD};
     border: 1px solid {BORDER};
-    border-radius: 12px;
+    border-radius: {RADIUS_LG}px;
     margin-top: 14px;
     padding-top: 18px;
     font-weight: bold;
@@ -167,7 +175,7 @@ QDateEdit, QTimeEdit, QDateTimeEdit {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 8px;
+    border-radius: {RADIUS_MD}px;
     padding: 2px 4px;
     min-height: 24px;
 }}
@@ -225,7 +233,7 @@ QTextEdit, QPlainTextEdit {{
     background-color: {BG_INPUT};
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
-    border-radius: 8px;
+    border-radius: {RADIUS_MD}px;
     padding: 5px 8px;
     font-family: {FONT_FAMILY};
 }}
@@ -236,7 +244,7 @@ QPushButton {{
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     border-bottom: 1px solid {SURFACE1};
-    border-radius: 8px;
+    border-radius: {RADIUS_MD}px;
     padding: 6px 14px;
     min-height: 24px;
 }}
@@ -292,7 +300,7 @@ QToolButton[class="action"] {{
     background-color: {BG_INPUT};
     color: {ACCENT};
     border: 1px solid {ACCENT};
-    border-radius: 6px;
+    border-radius: {RADIUS_MD}px;
     padding: 2px 12px;
     font-weight: bold;
     font-size: 13px;
@@ -309,12 +317,12 @@ QToolButton[class="action"]::menu-indicator {{
 /* ── Tab 切换按钮 ── */
 QToolButton[class="tab-active"] {{
     background-color: {ACCENT}; color: {MANTLE};
-    border-radius: 6px; padding: 4px 14px; font-weight: bold;
+    border-radius: {RADIUS_MD}px; padding: 4px 14px; font-weight: bold;
     border: none;
 }}
 QToolButton[class="tab-inactive"] {{
     background-color: transparent; color: {FG_SECONDARY};
-    border-radius: 6px; padding: 4px 14px; border: none;
+    border-radius: {RADIUS_MD}px; padding: 4px 14px; border: none;
 }}
 QToolButton[class="tab-inactive"]:hover {{
     background-color: {BG_HOVER};
@@ -323,7 +331,7 @@ QToolButton[class="tab-inactive"]:hover {{
 /* ── SegmentedWidget 分段控件 ── */
 QPushButton[class="segmented-button"] {{
     background-color: transparent; color: {FG_SECONDARY};
-    border-radius: 6px; padding: 4px 14px;
+    border-radius: {RADIUS_MD}px; padding: 4px 14px;
     border: 1px solid {BORDER};
     min-width: 60px;
 }}
@@ -332,7 +340,7 @@ QPushButton[class="segmented-button"]:hover {{
 }}
 QPushButton[class="segmented-active"] {{
     background-color: {ACCENT}; color: {MANTLE};
-    border-radius: 6px; padding: 4px 14px;
+    border-radius: {RADIUS_MD}px; padding: 4px 14px;
     border: 1px solid {ACCENT};
     font-weight: bold;
     min-width: 60px;
@@ -395,7 +403,7 @@ QTabWidget::pane {{
     border: 1px solid {BORDER};
     background-color: {BG_DARK};
     padding-top: 4px;
-    border-radius: 8px;
+    border-radius: {RADIUS_MD}px;
     top: -1px;
 }}
 QTabBar::tab {{
@@ -426,7 +434,7 @@ QScrollBar:vertical {{
 }}
 QScrollBar::handle:vertical {{
     background: {BG_HOVER};
-    border-radius: 5px;
+    border-radius: 5px;  /* 胶囊几何：手柄宽10px 之半 */
     min-height: 30px;
 }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
@@ -439,7 +447,7 @@ QScrollBar:horizontal {{
 }}
 QScrollBar::handle:horizontal {{
     background: {BG_HOVER};
-    border-radius: 5px;
+    border-radius: 5px;  /* 胶囊几何：手柄宽10px 之半 */
     min-width: 30px;
 }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
@@ -549,7 +557,7 @@ QToolTip {{
     color: {FG_PRIMARY};
     border: 1px solid {BORDER};
     padding: 4px;
-    border-radius: 3px;
+    border-radius: {RADIUS_SM}px;
 }}
 
 /* ── 进度条 ── */
@@ -563,7 +571,7 @@ QProgressBar {{
 }}
 QProgressBar::chunk {{
     background-color: {ACCENT};
-    border-radius: 3px;
+    border-radius: {RADIUS_SM}px;
 }}
 
 /* ── 下拉列表弹出 ── */
@@ -591,14 +599,14 @@ QLabel[class="filter-label"] {{
 }}
 /* ── 全局筛选栏 ── */
 QWidget[class="filter-bar"] {{
-    background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
+    background-color: {BG_CARD}; padding: 6px 20px; border-radius: {RADIUS_MD}px;
 }}
 QLabel[class="filter-group-label"] {{
     color: {FG_SECONDARY}; font-size: 12px; font-weight: bold; padding-right: 4px;
 }}
 QComboBox[class="filter-combo"] {{
     background-color: {BG_INPUT}; color: {FG_PRIMARY};
-    border: 1px solid {BORDER}; border-radius: 6px;
+    border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px;
     padding: 4px 8px; font-size: 12px; min-height: 26px;
 }}
 
@@ -676,20 +684,20 @@ QWidget[class="container-base"] {{
 
 /* ── 统计卡片容器 ── 可点击卡片: 圆角加大 + hover 描边强调 */
 QFrame[class="stat-card"], QWidget[class="stat-card"] {{
-    background-color: {MANTLE}; border: 1px solid {SURFACE1}; border-radius: 10px; padding: 8px;
+    background-color: {MANTLE}; border: 1px solid {SURFACE1}; border-radius: {RADIUS_LG}px; padding: 8px;
 }}
 QFrame[class="stat-card"]:hover, QWidget[class="stat-card"]:hover {{
     border: 1px solid {ACCENT};
 }}
 
-/* ── 卡片背景(圆角16px) / (圆角10px) — 替代 card_qss() ── */
+/* ── 卡片背景 XL / 小卡 LG — 替代 card_qss() ── */
 QFrame[class="card-bg"], QWidget[class="card-bg"] {{
     background-color: {MANTLE}; border: 1px solid {SURFACE1};
-    border-radius: 16px;
+    border-radius: {RADIUS_XL}px;
 }}
 QWidget[class="card-bg-sm"] {{
     background-color: {MANTLE}; border: 1px solid {SURFACE1};
-    border-radius: 10px;
+    border-radius: {RADIUS_LG}px;
 }}
 
 /* ── 统计数值(大号) ── */
@@ -699,7 +707,7 @@ QLabel[class="stat-value-lg"] {{
 
 /* ── 附件列表 ── */
 QListWidget[class="attachment-list"] {{
-    border-radius: 6px; min-height: 280px; font-size: 13px;
+    border-radius: {RADIUS_MD}px; min-height: 280px; font-size: 13px;
 }}
 QListWidget[class="attachment-list"]::item {{
     padding: 8px 10px; border-bottom: 1px solid {SURFACE0};
@@ -707,7 +715,7 @@ QListWidget[class="attachment-list"]::item {{
 
 /* ── 结果指示器（色块） ── */
 QLabel[class="result-indicator"] {{
-    border-radius: 6px; min-width: 12px; min-height: 12px; max-width: 12px; max-height: 12px;
+    border-radius: {RADIUS_MD}px; min-width: 12px; min-height: 12px; max-width: 12px; max-height: 12px;
 }}
 
 /* ── 警告注释 ── */
@@ -737,7 +745,7 @@ QPushButton[class="pill"] {{
     border: 1px solid {BORDER};
     padding: 2px 14px;
     font-size: 12px;
-    border-radius: 14px;
+    border-radius: 14px;  /* 胶囊几何：按钮半高 */
 }}
 QPushButton[class="pill"]:checked {{
     background-color: {ACCENT};
@@ -757,7 +765,7 @@ QPushButton[class="pill-outline"] {{
     background-color: {BG_INPUT};
     padding: 2px 14px;
     font-size: 12px;
-    border-radius: 14px;
+    border-radius: 14px;  /* 胶囊几何：按钮半高 */
 }}
 QPushButton[class="pill-outline"]:hover {{
     background-color: {SURFACE1};
@@ -768,7 +776,7 @@ QPushButton[class="pill-danger"] {{
     background-color: transparent;
     padding: 2px 14px;
     font-size: 12px;
-    border-radius: 14px;
+    border-radius: 14px;  /* 胶囊几何：按钮半高 */
 }}
 QPushButton[class="pill-danger"]:hover {{
     background-color: rgba(210, 15, 57, 0.1);
@@ -780,7 +788,7 @@ QPushButton[class="pill-primary"] {{
     border: none;
     padding: 2px 14px;
     font-size: 12px;
-    border-radius: 14px;
+    border-radius: 14px;  /* 胶囊几何：按钮半高 */
 }}
 QPushButton[class="pill-primary"]:hover {{
     opacity: 0.85;
@@ -791,7 +799,7 @@ QLineEdit[class="quick-add-input"] {{
     background-color: {BG_INPUT};
     color: {TEXT};
     border: 1px solid {BORDER};
-    border-radius: 14px;
+    border-radius: 14px;  /* 胶囊几何：按钮半高 */
     padding: 2px 12px;
     font-size: 13px;
 }}
@@ -801,7 +809,7 @@ QLineEdit[class="quick-add-input"]:focus {{
 
 /* ── 标签页卡片容器 ── */
 QWidget[class="card-container"] {{
-    background-color: {BG_CARD}; border-radius: 8px;
+    background-color: {BG_CARD}; border-radius: {RADIUS_MD}px;
 }}
 QWidget[class="card-container"]:hover {{
     background-color: {BG_HOVER};
@@ -854,7 +862,7 @@ QLabel[class="body-text"] {{
 
 /* ── 看板列 ── */
 QFrame[class="kanban-column"] {{
-    background-color: {SURFACE0}; border-radius: 10px; border: none;
+    background-color: {SURFACE0}; border-radius: {RADIUS_LG}px; border: none;
 }}
 QFrame[class="kanban-column"]:hover {{
     background-color: {SURFACE1};
@@ -871,7 +879,7 @@ QLabel[class="column-header-label"] {{
 /* ── 看板计数标签 ── */
 QLabel[class="column-count"] {{
     color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
-    background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+    background: {SURFACE1}; border-radius: {RADIUS_MD}px; padding: 1px 8px; border: none;
 }}
 /* ── 折叠按钮 ── */
 QPushButton[class="fold-btn"] {{
@@ -908,20 +916,20 @@ QLabel[class="kanban-col-header"] {{
 /* ── 看板计数标签（旧名兼容：todo_view, quadrant_view） ── */
 QLabel[class="kanban-count"] {{
     color: {FG_SECONDARY}; font-size: 11px; font-weight: 600;
-    background: {SURFACE1}; border-radius: 8px; padding: 1px 8px; border: none;
+    background: {SURFACE1}; border-radius: {RADIUS_MD}px; padding: 1px 8px; border: none;
 }}
 /* ── 搜索输入框 ── */
 QLineEdit[class="search-input"] {{
-    background: {BG_INPUT}; border: 1px solid {SURFACE1}; border-radius: 6px;
+    background: {BG_INPUT}; border: 1px solid {SURFACE1}; border-radius: {RADIUS_MD}px;
     padding: 2px 8px; color: {TEXT};
 }}
 /* ── 筛选面板 ── */
 QFrame[class="filter-panel"] {{
-    background: {SURFACE0}; border-radius: 8px; border: none;
+    background: {SURFACE0}; border-radius: {RADIUS_MD}px; border: none;
 }}
 /* ── 全局筛选栏 ── */
 QWidget[class="filter-bar"] {{
-    background-color: {BG_CARD}; padding: 6px 20px; border-radius: 8px;
+    background-color: {BG_CARD}; padding: 6px 20px; border-radius: {RADIUS_MD}px;
 }}
 /* ── 卡片元信息 ── */
 QLabel[class="card-meta"] {{
@@ -929,7 +937,7 @@ QLabel[class="card-meta"] {{
 }}
 /* ── 看板卡片背景 ── */
 QFrame[class="kanban-card"] {{
-    background-color: {BG_CARD}; border: 1px solid {SURFACE1}; border-radius: 8px;
+    background-color: {BG_CARD}; border: 1px solid {SURFACE1}; border-radius: {RADIUS_MD}px;
 }}
 /* ── 看板卡片标题 ── */
 QLabel[class="card-title"] {{
@@ -941,11 +949,11 @@ QFrame[class="sep-vline"] {{
 }}
 
 /* ── 四象限单元格 ── */
-QFrame[class="quadrant-cell-q1"]  {{ background: rgba(210,15,57,0.12); border-radius: 8px; }}
-QFrame[class="quadrant-cell-q2"]  {{ background: rgba(30,102,245,0.12); border-radius: 8px; }}
-QFrame[class="quadrant-cell-q3"]  {{ background: rgba(254,100,11,0.12); border-radius: 8px; }}
-QFrame[class="quadrant-cell-q4"]  {{ background: {SURFACE0}; border-radius: 8px; }}
-QFrame[class="quadrant-cell-unset"] {{ background: {BG_INPUT}; border-radius: 8px; border: 1px dashed {BORDER}; }}
+QFrame[class="quadrant-cell-q1"]  {{ background: rgba(210,15,57,0.12); border-radius: {RADIUS_MD}px; }}
+QFrame[class="quadrant-cell-q2"]  {{ background: rgba(30,102,245,0.12); border-radius: {RADIUS_MD}px; }}
+QFrame[class="quadrant-cell-q3"]  {{ background: rgba(254,100,11,0.12); border-radius: {RADIUS_MD}px; }}
+QFrame[class="quadrant-cell-q4"]  {{ background: {SURFACE0}; border-radius: {RADIUS_MD}px; }}
+QFrame[class="quadrant-cell-unset"] {{ background: {BG_INPUT}; border-radius: {RADIUS_MD}px; border: 1px dashed {BORDER}; }}
 
 /* ── 四象限标题 ── */
 QLabel[class="quadrant-title"] {{
@@ -955,12 +963,12 @@ QLabel[class="quadrant-title"] {{
 /* ── Issue 面板滚动区 ── */
 QScrollArea[class="issue-scroll"] {{
     background-color: {BASE}; border: 1px solid {SURFACE1};
-    border-radius: 8px;
+    border-radius: {RADIUS_MD}px;
 }}
 
 /* ── Issue 卡片 ── */
 QFrame[class="issue-card"] {{
-    background-color: {SURFACE0}; border-radius: 8px;
+    background-color: {SURFACE0}; border-radius: {RADIUS_MD}px;
     border: 1px solid {SURFACE1};
 }}
 
@@ -1014,13 +1022,13 @@ QLabel[rate-class="bad"]   {{
 
 /* ── 结果行状态(动态 row-state 属性) ── */
 QFrame[row-state="normal"]   {{
-    background-color: {SURFACE0}; border: 1px solid {SURFACE1}; border-radius: 6px; padding: 4px;
+    background-color: {SURFACE0}; border: 1px solid {SURFACE1}; border-radius: {RADIUS_MD}px; padding: 4px;
 }}
 QFrame[row-state="attention"] {{
-    background-color: {SELECTION_BG}; border: 1px solid {BLUE}; border-radius: 6px; padding: 4px;
+    background-color: {SELECTION_BG}; border: 1px solid {BLUE}; border-radius: {RADIUS_MD}px; padding: 4px;
 }}
 QFrame[row-state="deleted"]   {{
-    background-color: {SURFACE2}; border: 1px solid {RED}; border-radius: 6px; padding: 4px;
+    background-color: {SURFACE2}; border: 1px solid {RED}; border-radius: {RADIUS_MD}px; padding: 4px;
 }}
 
 /* ── 全部通过按钮 ── */
@@ -1032,11 +1040,11 @@ QPushButton[class="btn-pass-all"] {{
 /* ── 导入结果标签 ── */
 QLabel[class="import-result-ok"] {{
     color: {SUBTEXT0}; font-size: 12px; padding: 8px;
-    background-color: {SURFACE0}; border-radius: 6px;
+    background-color: {SURFACE0}; border-radius: {RADIUS_MD}px;
 }}
 QLabel[class="import-result-warn"] {{
     color: {YELLOW}; font-size: 12px; padding: 8px;
-    background-color: {SURFACE0}; border-radius: 6px;
+    background-color: {SURFACE0}; border-radius: {RADIUS_MD}px;
 }}
 
 /* ── 必填标签 ── */
@@ -1053,18 +1061,18 @@ QLabel[class="badge"] {{
     font-size: 12px;
 }}
 QFrame[class="attach-section"] {{
-    background: {SURFACE0}; border-radius: 6px; padding: 8px;
+    background: {SURFACE0}; border-radius: {RADIUS_MD}px; padding: 8px;
 }}
 QFrame[class="comment-card"] {{
     background: {BASE}; border: 1px solid {SURFACE1};
-    border-radius: 6px; padding: 8px; margin: 4px 0px;
+    border-radius: {RADIUS_MD}px; padding: 8px; margin: 4px 0px;
 }}
 QLabel[class="comment-author"] {{
     color: {ACCENT}; font-weight: bold; font-size: 12px;
 }}
 QLabel[class="avatar-placeholder"] {{
     background: {SURFACE2}; color: {SUBTEXT0};
-    border-radius: 12px; padding: 4px 8px;
+    border-radius: {RADIUS_LG}px; padding: 4px 8px;
     font-size: 11px; font-weight: bold;
 }}
 QFrame[class="activity-card"] {{
@@ -1075,7 +1083,7 @@ QLabel[class="activity-change"] {{
     color: {SUBTEXT0}; font-size: 12px;
 }}
 QSplitter::handle[class="list-splitter"] {{
-    background: {SURFACE1}; width: 4px; border-radius: 2px;
+    background: {SURFACE1}; width: 4px; border-radius: {RADIUS_SM}px;
 }}
 /* ── QCalendarWidget 日历弹窗 ──
    全局 QTableWidget::item padding 会命中日历内部 QTableView（行高 21→22px，
