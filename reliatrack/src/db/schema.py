@@ -16,6 +16,19 @@ logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = 29
 
+# test_tasks 显式列清单 —— 单一权威来源（审计 2026-10-25 收编）。
+# 此前 test_task_repo 与 test_plan_repo 各手工维护一份，加列漏改任一
+# 份即静默串位/丢列（v8/v12 迁移曾踩过）。加列时同步下方 CREATE TABLE
+# 与对应迁移，两个 repo 从这里 import。
+TASK_COLUMNS = [
+    "id", "plan_id", "name", "category", "test_standard", "technician_id",
+    "equipment_id", "sample_ids", "duration", "start_day", "progress", "status",
+    "priority", "environment", "log_file", "dependencies", "notes", "temperature",
+    "humidity", "accept_criteria", "actual_start_date", "actual_end_date",
+    "sort_order", "manual_scheduled",
+    "created_at", "updated_at",
+]
+
 # ═══════════════════════════════════════════════════════════════════
 #  表 DDL
 # ═══════════════════════════════════════════════════════════════════

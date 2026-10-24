@@ -9,6 +9,7 @@ from pathlib import Path
 import apsw
 
 from src.models.test_plan import TestTask
+from src.db.schema import TASK_COLUMNS
 from src.db.repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -19,17 +20,10 @@ class TestTaskRepository(BaseRepository):
 
     __test__ = False
 
-    # 显式列名列表（与 schema 顺序一致，用于 SELECT 和映射）。
+    # 显式列名清单（审计 2026-10-25 起单一来源：schema.TASK_COLUMNS）。
     # 始终传入 _rows_to_models(rows, cols=_TASK_COLS) 以保证列序一致；
     # 不能依赖 PRAGMA table_info 序——ALTER TABLE ADD COLUMN 会将新列加到物理末尾。
-    _TASK_COLS = [
-        "id", "plan_id", "name", "category", "test_standard", "technician_id",
-        "equipment_id", "sample_ids", "duration", "start_day", "progress", "status",
-        "priority", "environment", "log_file", "dependencies", "notes", "temperature",
-        "humidity", "accept_criteria", "actual_start_date", "actual_end_date",
-        "sort_order", "manual_scheduled",
-        "created_at", "updated_at",
-    ]
+    _TASK_COLS = TASK_COLUMNS
 
     def __init__(self, conn: apsw.Connection) -> None:
         super().__init__(conn, "test_tasks", TestTask)

@@ -7,6 +7,7 @@ import apsw
 from typing import Any, cast
 
 from src.models.test_plan import TestPlan, TestTask
+from src.db.schema import TASK_COLUMNS
 from src.db.repositories.base import BaseRepository
 
 
@@ -45,15 +46,8 @@ class TestPlanRepository(BaseRepository):
 
     def get_tasks(self, plan_id: int) -> list[TestTask]:
         """获取计划下所有测试任务。"""
-        col_names = (
-            "id", "plan_id", "name", "category", "test_standard", "technician_id",
-            "equipment_id", "sample_ids", "duration", "start_day", "progress",
-            "status", "priority", "environment", "log_file", "dependencies",
-            "notes", "temperature", "humidity", "accept_criteria",
-            "actual_start_date", "actual_end_date", "sort_order",
-            "manual_scheduled",
-            "created_at", "updated_at",
-        )
+        # 审计 2026-10-25：列清单收编为 schema.TASK_COLUMNS 单一来源
+        col_names = TASK_COLUMNS
         cols_sql = ", ".join(col_names)
         rows = self._conn.execute(
             f"SELECT {cols_sql} FROM [test_tasks] WHERE plan_id = ? ORDER BY sort_order, id",
@@ -75,10 +69,31 @@ class TestPlanRepository(BaseRepository):
           - issues → fa_records / issue_attachments / capa_records
           - 直接引用 plan_id 但无 task_id 的孤立 issues
 
+        审计 2026-10-25：级联删除的 issue_attachments 磁盘文件原先无人
+        收集（对照 delete_by_plan 有 JOIN 收集 + 延后清理），孤儿附件会
+        永久残留。现删除前先收集，事务成功后统一清理。
+
         返回删除的测试计划数量。
         """
-        cursor = self._conn.execute(
-            "DELETE FROM [test_plans] WHERE project_id = ?", (project_id,)
+        # 收集范围：挂在该项目 plans 上（经 tasks 或直接 plan_id）的
+        # 全部 Issue 附件，含 CASCADE 即将删掉的孤立 Issue
+        attachment_paths = self._conn.execute(
+            "SELECT DISTINCT ia.file_path FROM [issue_attachments] ia "
+            "JOIN [issues] i ON ia.issue_id = i.id "
+            "LEFT JOIN [test_tasks] tt ON i.task_id = tt.id "
+            "LEFT JOIN [test_plans] tp ON i.plan_id = tp.id "
+            "WHERE tp.project_id = ? OR tt.plan_id IN "
+            "  (SELECT id FROM [test_plans] WHERE project_id = ?)",
+            (project_id, project_id),
+        ).fetchall()
+        from src.db.repositories.issue_repo import defer_disk_deletions
+        # 先执行 DB 删除（事务内），成功后再清理磁盘文件
+        with self.transaction():
+            cursor = self._conn.execute(
+                "DELETE FROM [test_plans] WHERE project_id = ?", (project_id,)
+            )
+            row = self._conn.execute("SELECT changes()").fetchone()
+        defer_disk_deletions(
+            self._conn, [fp for (fp,) in attachment_paths]
         )
-        row = self._conn.execute("SELECT changes()").fetchone()
         return row[0] if row else 0
