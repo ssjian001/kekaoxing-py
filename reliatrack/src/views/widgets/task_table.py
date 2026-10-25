@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QDateEdit,
 )
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt, QPoint, Signal
 from PySide6.QtGui import QAction, QColor, QKeySequence
 
 import src.styles.theme as _t
@@ -24,7 +24,7 @@ from src.views.widgets.table_delegate import RowHighlightDelegate
 from src.constants import TASK_STATUS_LABELS, PRIORITY_LABELS, TASK_CATEGORIES
 from src.styles.column_persistence import (
     save_column_widths_debounced, restore_column_widths,
-    save_sort_state, restore_sort_state,
+    save_sort_state, restore_sort_state, restore_sort_indicator,
 )
 from src.models.test_plan import TestTask
 from src.models.common import Equipment, Technician
@@ -90,7 +90,12 @@ _TASK_SPECS = [
 ]
 
 class _TaskTable(QTableWidget):
-    """测试任务列表表格。"""
+    """测试任务列表表格（分页渲染：全量排序后按页物化单元格）。"""
+
+    # 翻页通知：(当前页[1基], 总页数, 总行数)
+    page_changed = Signal(int, int, int)
+
+    PAGE_SIZE = 200
 
     _STATUS_LABELS: dict[str, str] = TASK_STATUS_LABELS  # type: ignore[assignment]
     _STATUS_COLORS: dict[str, str] = TASK_STATUS_COLORS
@@ -111,7 +116,16 @@ class _TaskTable(QTableWidget):
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setAlternatingRowColors(False)
         self.verticalHeader().setVisible(False)
-        self.setSortingEnabled(True)
+        # 分页（UI 审查 P1-3）：排序由本类接管（全量排序后按页渲染），
+        # 不再开 Qt 动态排序——它只会重排当前页的可见行
+        self.setSortingEnabled(False)
+
+        # 分页状态
+        self._page = 0
+        self._rows_records: list[dict] = []
+        self._displayed: list[TestTask] = []
+
+        self.horizontalHeader().sortIndicatorChanged.connect(self._on_sort_changed)
 
         # RowHighlightDelegate — 行 hover/选中高亮（与设备/项目/Issue 表格一致）
         self.setMouseTracking(True)
@@ -432,14 +446,17 @@ class _TaskTable(QTableWidget):
         task_prefix: str = "",
         plan_start_dates: dict[int, str] | None = None,
     ) -> None:
+        """设置任务数据（分页渲染，UI 审查 P1-3）。
+
+        先为全部任务预计算显示值与排序键（O(n)），再按表头指示器对
+        全量排序，最后只物化当前页的单元格——替代旧版「每次全量重建
+        全部行」的模式（千行级数据时每次刷新为秒级卡顿）。
+        """
         from datetime import date, timedelta
         self._tasks = tasks
         tech_map = technician_map or {}
         res_map = result_map or {}
         plan_starts = plan_start_dates or {}
-        # 解析计划开始日期。合并"全部计划"视图时必须按每个任务所属计划
-        # 各自起算: 用 all_plans[0].start_date 统一推算会让各计划起算日
-        # 不同时日期全错、超期误判（含红底标红）。
         plan_start: date | None = None
         if start_date:
             try:
@@ -456,19 +473,16 @@ class _TaskTable(QTableWidget):
                 except ValueError:
                     pass
             return plan_start
+
         today = date.today()
-        self.setSortingEnabled(False)
-        self.setRowCount(len(tasks))
-        for row, task in enumerate(tasks):
-            # 列: #, 名称, 类别, 天数, 预计开始, 预计结束, 进度, 优先级, 状态, 技术员, 通过率, 实际开始, 实际完成
-            # 兼容历史数据 "fail" → 统一为 "failed"
+        records: list[dict] = []
+        for seq, task in enumerate(tasks, 1):
             _status_key = "failed" if task.status == "fail" else task.status
             status_text = self._STATUS_LABELS.get(_status_key, task.status)
             priority_text = PRIORITY_LABELS.get(task.priority, str(task.priority))
             tech_name = tech_map.get(task.technician_id, "") if task.technician_id else ""
             pass_count, total = res_map.get(task.id, (0, 0)) if task.id else (0, 0)
             rate_text = f"{pass_count}/{total}" if total > 0 else "—"
-            # 计算预计日期
             planned_start_str: str = ""
             planned_end_str: str = ""
             planned_end_date: date | None = None
@@ -481,14 +495,13 @@ class _TaskTable(QTableWidget):
             else:
                 planned_start_str = str(task.start_day) if task.start_day else "—"
                 planned_end_str = "—"
-            # 判断是否超期：未完成且预计结束日期 < 今天
             is_overdue = (
                 task.status not in ("completed", "done")
                 and planned_end_date is not None
                 and planned_end_date < today
             )
             values = [
-                f"{task_prefix}-{row + 1:03d}" if task_prefix else (task.id or (row + 1)),
+                f"{task_prefix}-{seq:03d}" if task_prefix else (task.id or seq),
                 task.name,
                 task.category,
                 task.duration,
@@ -502,38 +515,6 @@ class _TaskTable(QTableWidget):
                 task.actual_start_date or "—",
                 task.actual_end_date or "—",
             ]
-            for col, val in enumerate(values):
-                item = QTableWidgetItem(str(val))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # 序号列存储 task.id 到 UserRole，排序后可通过 ID 定位
-                if col == 0 and task.id is not None:
-                    item.setData(Qt.ItemDataRole.UserRole, task.id)
-                # 名称列 tooltip (col 1)
-                if col == 1 and task.name:
-                    item.setToolTip(task.name)
-                # 超期标记：预计开始(col4) 和 预计结束(col5) 文字标红 + 天数
-                if is_overdue and planned_end_date is not None:
-                    overdue_days = (today - planned_end_date).days
-                    if col in (4, 5):
-                        item.setForeground(QColor(_t.RED))
-                        if col == 5:
-                            item.setToolTip(f"已超期 {overdue_days} 天（预计结束: {planned_end_str}）")
-                            if planned_end_str != "—":
-                                item.setText(f"{planned_end_str}  超期{overdue_days}d")
-                # 状态颜色 (col 8) — 兼容历史 "fail"
-                if col == 8:
-                    _color_key = "failed" if task.status == "fail" else task.status
-                    item.setForeground(QColor(self._STATUS_COLORS.get(_color_key, _t.TEXT)))
-                # 优先级颜色 (col 7)
-                elif col == 7:
-                    item.setForeground(QColor(self._PRIORITY_COLORS.get(task.priority, _t.TEXT)))
-                # 通过率着色 (col 10)
-                elif col == 10 and total > 0:
-                    if pass_count == total:
-                        item.setForeground(QColor(_t.GREEN))
-                    elif pass_count == 0:
-                        item.setForeground(QColor(_t.RED))
-                self.setItem(row, col, item)
             # 行背景：超期红 / 未指派技术员橘黄
             row_bg = None
             if task.status not in ("completed", "done"):
@@ -545,20 +526,136 @@ class _TaskTable(QTableWidget):
                     bg_c = QColor(_t.YELLOW)
                     bg_c.setAlpha(35)
                     row_bg = bg_c
-            if row_bg:
+
+            def _flag(v: object) -> tuple:
+                # 排序键统一形如 (有值标志, 值)：空值恒排底部（升序时）
+                return (0, v) if v not in (None, "", "—") else (1, v)
+
+            sort_keys = [
+                task.id if task.id is not None else 10 ** 9,
+                task.name or "",
+                task.category or "",
+                task.duration or 0,
+                _flag(planned_start_str if planned_start_str != "—" else ""),
+                _flag(planned_end_date.isoformat() if planned_end_date else ""),
+                task.progress,
+                task.priority,
+                status_text,
+                tech_name,
+                (pass_count / total) if total > 0 else -1.0,
+                _flag(task.actual_start_date or ""),
+                _flag(task.actual_end_date or ""),
+            ]
+            records.append({
+                "task": task,
+                "values": values,
+                "sort": sort_keys,
+                "overdue": is_overdue and planned_end_date is not None,
+                "overdue_days": (today - planned_end_date).days if (is_overdue and planned_end_date) else 0,
+                "planned_end_str": planned_end_str,
+                "status_key": _status_key,
+                "priority": task.priority,
+                "pass_count": pass_count,
+                "total": total,
+                "row_bg": row_bg,
+            })
+        self._rows_records = records
+        self._page = 0
+        # 恢复列宽；排序经指示器恢复（触发 _on_sort_changed → 全量排序渲染）
+        restore_column_widths(self, self._persistence_key)
+        restore_sort_indicator(self, self._persistence_key)
+        self._apply_sort_and_render()
+
+    # ── 排序与分页 ──────────────────────────────────────────────
+
+    def _on_sort_changed(self, col: int, order) -> None:
+        """表头排序变化 → 全量重排 → 回到第 1 页渲染。
+
+        停在原页号会让用户点完表头看不到新序的头部（行为测试抓出）。
+        """
+        self._page = 0
+        self._apply_sort_and_render()
+
+    def _apply_sort_and_render(self) -> None:
+        header = self.horizontalHeader()
+        col = header.sortIndicatorSection()
+        if 0 <= col < 13:
+            reverse = header.sortIndicatorOrder() == Qt.SortOrder.DescendingOrder
+            try:
+                self._rows_records.sort(
+                    key=lambda r: r["sort"][col], reverse=reverse
+                )
+            except (TypeError, IndexError):
+                pass  # 键类型不可比（理论不可达：每列键型一致）时保序
+        self._displayed = [r["task"] for r in self._rows_records]
+        max_page = max(0, (len(self._rows_records) - 1) // self.PAGE_SIZE)
+        self._page = min(self._page, max_page)
+        self._render_page()
+
+    def _render_page(self) -> None:
+        start = self._page * self.PAGE_SIZE
+        page_records = self._rows_records[start:start + self.PAGE_SIZE]
+        total = len(self._rows_records)
+        page_count = max(0, (total - 1) // self.PAGE_SIZE) + (1 if total else 0)
+        self.setRowCount(len(page_records))
+        for row, rec in enumerate(page_records):
+            task = rec["task"]
+            values = rec["values"]
+            for col, val in enumerate(values):
+                item = QTableWidgetItem(str(val))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                if col == 0 and task.id is not None:
+                    item.setData(Qt.ItemDataRole.UserRole, task.id)
+                if col == 1 and task.name:
+                    item.setToolTip(task.name)
+                if rec["overdue"] and col in (4, 5):
+                    item.setForeground(QColor(_t.RED))
+                    if col == 5:
+                        item.setToolTip(
+                            f"已超期 {rec['overdue_days']} 天（预计结束: {rec['planned_end_str']}）"
+                        )
+                        if rec["planned_end_str"] != "—":
+                            item.setText(f"{rec['planned_end_str']}  超期{rec['overdue_days']}d")
+                if col == 8:
+                    item.setForeground(QColor(self._STATUS_COLORS.get(rec["status_key"], _t.TEXT)))
+                elif col == 7:
+                    item.setForeground(QColor(self._PRIORITY_COLORS.get(rec["priority"], _t.TEXT)))
+                elif col == 10 and rec["total"] > 0:
+                    if rec["pass_count"] == rec["total"]:
+                        item.setForeground(QColor(_t.GREEN))
+                    elif rec["pass_count"] == 0:
+                        item.setForeground(QColor(_t.RED))
+                self.setItem(row, col, item)
+            if rec["row_bg"] is not None:
                 for c in range(self.columnCount()):
                     cell = self.item(row, c)
                     if cell:
-                        cell.setBackground(row_bg)
-                        # 记下「应有底色」：闪烁(flash_row)结束后按它恢复，
-                        # 不能一律清成透明（审计 P2-13：透明会永久抹掉超期红/
-                        # 未指派黄行底色，直到下次全量刷新）
-                        cell.setData(_ROW_BG_ROLE, row_bg)
-        self.setSortingEnabled(True)
+                        cell.setBackground(rec["row_bg"])
+                        # 「应有底色」记录：flash_row 结束后按它恢复（审计 P2-13）
+                        cell.setData(_ROW_BG_ROLE, rec["row_bg"])
         self._update_empty_state()
-        # 恢复列宽 & 排序状态（仅在首次数据加载后）
-        restore_column_widths(self, self._persistence_key)
-        restore_sort_state(self, self._persistence_key)
+        self.page_changed.emit(self._page + 1, page_count, total)
+
+    # ── 分页对外 API ────────────────────────────────────────────
+
+    def page_info(self) -> tuple[int, int, int]:
+        """(当前页[1基], 总页数, 总行数)。"""
+        total = len(self._rows_records)
+        page_count = ((total - 1) // self.PAGE_SIZE + 1) if total else 0
+        return self._page + 1, page_count, total
+
+    def set_page(self, page_1based: int) -> None:
+        total = len(self._rows_records)
+        max_page = max(0, ((total - 1) // self.PAGE_SIZE)) if total else 0
+        self._page = max(0, min(page_1based - 1, max_page))
+        self._render_page()
+
+    def next_page(self) -> None:
+        self.set_page(self._page + 2)
+
+    def prev_page(self) -> None:
+        self.set_page(self._page)
+
 
     def _update_empty_state(self) -> None:
         """控制空状态提示的显示/隐藏。"""
@@ -609,9 +706,10 @@ class _TaskTable(QTableWidget):
             for t in self._tasks:
                 if t.id == task_id:
                     return t
-        # 回退：ID 未存储时用索引（如未排序的新数据）
-        if 0 <= row < len(self._tasks):
-            return self._tasks[row]
+        # 回退：ID 未存储时按「当前页行号 → 排序后全量列表」换算
+        idx = self._page * self.PAGE_SIZE + row
+        if 0 <= idx < len(self._displayed):
+            return self._displayed[idx]
         return None
 
     def get_selected_task_ids(self) -> list[int]:

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStackedWidget,
     QMessageBox,
+    QLabel,
 )
 from PySide6.QtCore import Qt, Signal, QTimer
 
@@ -124,6 +125,30 @@ class TestPlanView(QWidget):
         tab_table_layout.setContentsMargins(0, 0, 0, 0)
         self._task_table = _TaskTable()
         tab_table_layout.addWidget(self._task_table)
+
+        # 分页条（UI 审查 P1-3）：超出一页（200 行）时翻页；单页时隐藏
+        from PySide6.QtWidgets import QHBoxLayout as _QHL, QPushButton as _QPB
+        pager = QWidget()
+        pager.setProperty("class", "filter-bar")
+        pl = _QHL(pager)
+        pl.setContentsMargins(8, 2, 8, 2)
+        self._pager_label = QLabel("")
+        self._pager_label.setProperty("class", "subtext")
+        self._btn_prev_page = _QPB("‹ 上一页")
+        self._btn_next_page = _QPB("下一页 ›")
+        for b in (self._btn_prev_page, self._btn_next_page):
+            b.setProperty("class", "action")
+            b.setVisible(False)
+        pl.addStretch()
+        pl.addWidget(self._btn_prev_page)
+        pl.addWidget(self._pager_label)
+        pl.addWidget(self._btn_next_page)
+        self._pager_label.setVisible(False)
+        pager.setVisible(False)
+        tab_table_layout.addWidget(pager)
+        self._task_table.page_changed.connect(self._on_task_page_changed)
+        self._btn_prev_page.clicked.connect(self._task_table.prev_page)
+        self._btn_next_page.clicked.connect(self._task_table.next_page)
 
         # 挂载列显示控制按钮
         self._filter_bar.attach_column_visibility_button(self._task_table, "task_table")
@@ -478,6 +503,19 @@ class TestPlanView(QWidget):
         self._plan_combo.blockSignals(False)
         if self.get_selected_plan_id() != prev_selected:
             self._plan_combo.currentIndexChanged.emit(self._plan_combo.currentIndex())
+
+    def _on_task_page_changed(self, page: int, page_count: int, total: int) -> None:
+        """任务表翻页回调：更新分页条文案与按钮可用态。"""
+        multi = page_count > 1
+        self._pager_label.setVisible(multi)
+        self._btn_prev_page.setVisible(multi)
+        self._btn_next_page.setVisible(multi)
+        # pager 容器无独立引用——经 label 的 parent() 控制容器可见性
+        self._pager_label.parent().setVisible(multi)
+        if multi:
+            self._pager_label.setText(f"第 {page}/{page_count} 页 · 共 {total} 条")
+            self._btn_prev_page.setEnabled(page > 1)
+            self._btn_next_page.setEnabled(page < page_count)
 
     def get_selected_plan_id(self) -> int | None:
         """获取当前选中计划的 ID（None = 全部计划）。"""

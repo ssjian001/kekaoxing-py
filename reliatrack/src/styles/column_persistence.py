@@ -135,3 +135,23 @@ def restore_sort_state(table: QTableWidget, key: str) -> None:
         return
     if 0 <= col < table.columnCount():
         table.sortItems(col, Qt.SortOrder(int(order)))
+
+
+def restore_sort_indicator(table: QTableWidget, key: str) -> None:
+    """把持久化排序恢复为表头指示器（不直接 sortItems）。
+
+    供接管了排序逻辑的表格（如分页版任务表）使用：设置指示器会触发
+    表格自己的 sortIndicatorChanged 处理器，完成全量排序。
+    """
+    settings = QSettings()
+    raw = settings.value(f"{_SORT_KEY_PREFIX}{key}")
+    if not raw or not isinstance(raw, list) or len(raw) < 2:
+        return
+    try:
+        col, order = int(raw[0]), int(raw[1])
+    except (ValueError, TypeError):
+        return
+    if 0 <= col < table.columnCount():
+        table.horizontalHeader().setSortIndicator(
+            col, Qt.SortOrder(int(order))
+        )
