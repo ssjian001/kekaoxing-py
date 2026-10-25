@@ -1221,10 +1221,9 @@ def main() -> int:
     from src.styles.proxy_style import CheckboxProxyStyle
     app.setStyle(CheckboxProxyStyle(_base_style))
 
-    apply_palette()
-    app.setStyleSheet(get_stylesheet())
-
-    # 恢复主题偏好与强调色配置（QSettings，controller 初始化前即可用）
+    # 恢复主题偏好与强调色配置（QSettings，controller 初始化前即可用）。
+    # 审计 2026-10-25：恢复必须先于样式应用——旧顺序先按默认主题全量
+    # polish 一遍 QSS、恢复后再来一遍，暗色用户启动白费一次全量样式解析
     _settings = QSettings()
     _saved_accent = _settings.value("ReliaTrack/accent_color", None)
     if _saved_accent and isinstance(_saved_accent, str):

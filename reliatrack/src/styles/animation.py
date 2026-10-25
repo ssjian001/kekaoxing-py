@@ -255,8 +255,9 @@ class TranslateYAnimation(AnimationBase):
                          int(self._original_pos.y() + y))
 
     def _on_press(self, e: QMouseEvent) -> None:
-        if self._original_pos is None:
-            self._original_pos = self._target.pos()
+        # 审计 2026-10-25：每次按下重取基准位——旧版只在首次捕获，
+        # 窗口 resize/布局重算挪动按钮后，动效会把按钮搬回旧坐标
+        self._original_pos = self._target.pos()
         self._ani_release.stop()
         self._ani_press.stop()
         self._ani_press.setStartValue(self._y_obj._get_y())
@@ -270,9 +271,11 @@ class TranslateYAnimation(AnimationBase):
         self._ani_release.start()
 
     def _on_leave(self, e: QEvent) -> None:
-        # 離開按鈕時立即歸位
+        # 離開按鈕時立即歸位——仅在本轮确有位移时才 move：
+        # 无位移还 move 会用过期基准位覆盖布局新排的位置（审计 2026-10-25）
         self._ani_press.stop()
         self._ani_release.stop()
+        displaced = self._y_obj._get_y() != 0.0
         self._y_obj._set_y(0.0)
-        if self._original_pos is not None:
+        if self._original_pos is not None and displaced:
             self._target.move(self._original_pos)

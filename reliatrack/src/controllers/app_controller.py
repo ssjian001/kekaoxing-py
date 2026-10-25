@@ -140,6 +140,12 @@ class AppController:
         self._plan_facade.service = v
 
     @property
+    def db_connection(self):
+        """主线程连接的公共访问器（审计 2026-10-25：health_service 原
+        越层读 _conn 私有属性，收编为显式接口）。"""
+        return self._conn
+
+    @property
     def issue_service(self):
         return self._issue_facade.service
 
@@ -328,22 +334,13 @@ class AppController:
     # ── 生命周期 ──
 
     def shutdown(self) -> None:
-        """关闭数据库连接（附件扫描 + WAL checkpoint + close）。"""
-        # 附件完整性扫描（仅记录日志，不阻塞关闭）
-        if self.issue_service:
-            try:
-                scan = self.issue_service.scan_attachment_integrity()
-                missing = scan.get("missing_files", [])
-                orphan = scan.get("orphan_files", [])
-                if missing:
-                    logger.warning("附件引用扫描: %d 个文件缺失: %s", len(missing), missing[:5])
-                if orphan:
-                    logger.info("附件引用扫描: %d 个孤立文件: %s", len(orphan), orphan[:5])
-                if not missing and not orphan:
-                    logger.info("附件引用扫描: 全部正常")
-            except Exception:
-                logger.debug("附件扫描跳过（无数据或异常）")
+        """关闭数据库连接（WAL checkpoint + close）。
 
+        审计 2026-10-25：移除关闭时的同步附件完整性扫描——全目录文件 IO
+        在主线程，附件多时点关闭窗口冻结数秒；且该扫描仅写日志，价值
+        与数据体检对话框（后台 QThread 版同一扫描）完全重复。需要体检
+        走对话框即可。
+        """
         if self._conn:
             try:
                 self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
