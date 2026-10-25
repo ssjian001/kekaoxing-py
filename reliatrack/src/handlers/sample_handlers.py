@@ -407,16 +407,23 @@ class SampleHandlers:
                 # 事务中执行批量更新
                 sample_repo = ctrl.sample_service.repo()
                 cmd = BatchEditSamplesCommand(sample_repo, command_changes)
-                with ctrl.sample_service.transaction():
-                    ctrl.undo_manager.execute(cmd)
-                    # 状态变更也写台账流水（审计 P1）
-                    if "status" in changes:
-                        for sample in samples:
-                            if sample.id and sample.status != changes["status"]:
-                                sample_repo.add_transaction(
-                                    sample.id, "status_change",
-                                    notes=f"批量状态变更: {sample.status} → {changes['status']}",
-                                )
+                try:
+                    with ctrl.sample_service.transaction():
+                        ctrl.undo_manager.execute(cmd)
+                        # 状态变更也写台账流水（审计 P1）
+                        if "status" in changes:
+                            for sample in samples:
+                                if sample.id and sample.status != changes["status"]:
+                                    sample_repo.add_transaction(
+                                        sample.id, "status_change",
+                                        notes=f"批量状态变更: {sample.status} → {changes['status']}",
+                                    )
+                except Exception:
+                    # 审计 2026-10-25：事务已回滚——命令效果随回滚消失，
+                    # 栈上残留会让 Ctrl+Z 执行无效撤销并挤掉真实历史，
+                    # 按身份校验丢弃（do() 阶段抛异常时命令本就未入栈）
+                    ctrl.undo_manager.discard_last(cmd)
+                    raise
                 self._win.toast(
                     f"已批量修改 {len(command_changes)} 个样品", "success"
                 )

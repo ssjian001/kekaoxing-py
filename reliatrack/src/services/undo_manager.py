@@ -428,6 +428,24 @@ class UndoManager:
         if len(self._undo_stack) > self._max_history:
             self._undo_stack.pop(0)
 
+    def discard_last(self, command: "Command | None" = None) -> bool:
+        """从撤销栈顶丢弃命令（不执行 undo()）。
+
+        审计 2026-10-25：批量编辑在事务内 execute，事务回滚后命令效果
+        已消失，栈上残留条目会让 Ctrl+Z 执行一次无效撤销、挤掉真实历史。
+        传入 command 时做身份校验——仅当栈顶正是该命令才丢弃，防止
+        do() 阶段抛异常（execute 未入栈）误伤更早的无关命令。
+
+        Returns:
+            是否实际丢弃。
+        """
+        if not self._undo_stack:
+            return False
+        if command is not None and self._undo_stack[-1] is not command:
+            return False
+        self._undo_stack.pop()
+        return True
+
     def record(self, command: Command) -> None:
         """记录已执行的命令（不重复执行 do()），清空 redo_stack。
 
