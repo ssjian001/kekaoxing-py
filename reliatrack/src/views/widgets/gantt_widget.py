@@ -98,6 +98,9 @@ class _GanttWidget(QWidget):
         self._palette_tokens = ["BLUE", "GREEN", "PEACH", "MAUVE", "LAVENDER", "YELLOW", "TEAL"]
         self._holidays: set[str] = set()
         self._task_prefix: str = ""
+        # 冲突检测缓存（签名一致时复用，见 _detect_conflicts_and_critical_path）
+        self._conflict_cache_sig: tuple | None = None
+        self._conflict_cache: tuple[set[int], set[tuple[int, int]], set[int]] | None = None
 
         # 滚动条绑定
         self._scroll_v_offset: int = 0
@@ -224,14 +227,38 @@ class _GanttWidget(QWidget):
         except Exception:
             return []
 
+    def _conflict_cache_signature(self) -> tuple:
+        """冲突检测的输入签名：任务排布相关字段的快照（O(n)）。
+
+        paintEvent/hover 每帧调用检测（O(n²)），滚动与悬停引发的大量
+        闲置重绘实际上输入未变——签名一致时直接复用缓存结果。
+        """
+        return tuple(
+            (t.id, t.start_day, t.duration, t.equipment_id, t.dependencies)
+            for t in self._tasks
+        )
+
     def _detect_conflicts_and_critical_path(self) -> tuple[set[int], set[tuple[int, int]], set[int]]:
-        """计算冲突任务集合、冲突依赖对以及关键路径任务集合。"""
+        """计算冲突任务集合、冲突依赖对以及关键路径任务集合。
+
+        结果按输入签名缓存（审计 2026-10-25）：拖拽中签名逐帧变化、
+        照常重算；闲置重绘（滚动/hover/曝光）命中缓存。
+        调用方拿到的是集合本体，不得原地修改。
+        """
+        sig = self._conflict_cache_signature()
+        if self._conflict_cache is not None and sig == self._conflict_cache_sig:
+            return self._conflict_cache
+
         conflicting_task_ids: set[int] = set()
         conflicting_dep_pairs: set[tuple[int, int]] = set()
         critical_task_ids: set[int] = set()
 
         if not self._tasks:
-            return conflicting_task_ids, conflicting_dep_pairs, critical_task_ids
+            self._conflict_cache_sig = sig
+            self._conflict_cache = (
+                conflicting_task_ids, conflicting_dep_pairs, critical_task_ids,
+            )
+            return self._conflict_cache
 
         id_to_task = {t.id: t for t in self._tasks if t.id is not None}
         task_id_to_idx = {t.id: i for i, t in enumerate(self._tasks) if t.id is not None}
@@ -289,7 +316,11 @@ class _GanttWidget(QWidget):
                     if f_time == max_finish:
                         critical_task_ids.add(t_id)
 
-        return conflicting_task_ids, conflicting_dep_pairs, critical_task_ids
+        self._conflict_cache_sig = sig
+        self._conflict_cache = (
+            conflicting_task_ids, conflicting_dep_pairs, critical_task_ids,
+        )
+        return self._conflict_cache
 
     # ── 布局计算辅助 ──
 
