@@ -592,7 +592,15 @@ class PlanHandlers:
         return False
 
     def _on_plan_changed(self, index: int) -> None:
-        """切换测试计划时刷新任务列表。"""
+        """切换测试计划时刷新任务列表。
+
+        审计 2026-10-25：与 refresh_handlers._refresh_plans 的双实现合并。
+        原本函数自带一套「取任务+建映射+refresh」，Issue 口径与
+        _refresh_plans 不同（本处按 plan_id 过滤、彼处按项目），
+        同一页面两条数据路径结果漂移；且本处缺 equipment_map/
+        holidays/plan_start_dates，甘特在计划切换后是降级渲染。
+        现统一委托 _refresh_plans（其 Issue 口径已对齐 plan 级+排除软删）。
+        """
         ctrl = self._win.ctrl
         if not ctrl or not ctrl.test_plan_service:
             return
@@ -610,54 +618,11 @@ class PlanHandlers:
                         break
                 cb.blockSignals(False)
 
-        plan = ctrl.test_plan_service.get_plan(plan_id)
-        tasks = ctrl.test_plan_service.get_tasks(plan_id)
-        max_day = max(((t.start_day or 0) + t.duration for t in tasks), default=30)
-
-
-        # 构建技术员映射
-        technician_map: dict[int, str] = {}
-        if ctrl.technician_service:
-            for t in ctrl.technician_service.list_all():
-                if t.id is not None:
-                    technician_map[t.id] = t.name
-
-        # 批量获取通过率映射
-        result_map: dict[int, tuple[int, int]] = {}
-        task_ids = [t.id for t in tasks if t.id is not None]
-        if task_ids:
-            result_map = ctrl.test_plan_service.get_pass_counts_by_tasks(task_ids)
-
-        # 获取结果矩阵数据
-        matrix_results = []
-        sample_map: dict[int, str] = {}
-        if task_ids and ctrl.sample_service:
-            matrix_results = ctrl.test_plan_service.get_all_results_by_tasks(task_ids)
-            # 从结果和任务中收集 sample_id → sn
-            seen_sids: set[int] = set()
-            for r in matrix_results:
-                if r.sample_id and r.sample_id not in seen_sids:
-                    s = ctrl.sample_service.get(r.sample_id)
-                    if s:
-                        sample_map[r.sample_id] = s.sn
-                    seen_sids.add(r.sample_id)
-
-        # 获取 Issue 数据（用于失效模式分析）
-        issues = []
-        if ctrl.issue_service and plan.project_id:
-            issues = [
-                iss for iss in ctrl.issue_service.get_by_project(plan.project_id)
-                if not iss.is_deleted and iss.plan_id == plan_id
-            ]
-
-        self._win.test_plan_view.refresh(
-            tasks, max_day, technician_map, result_map,
-            start_date=plan.start_date if plan else "",
-            matrix_results=matrix_results,
-            sample_map=sample_map,
-            issues=issues,
-            task_prefix=plan.task_prefix if plan else "",
-        )
+        rh = getattr(self._win, "_refresh_handlers", None)
+        if rh is not None:
+            # 只刷新内容、不重建下拉——重建会把归档态选中计划过滤掉
+            rh._refresh_plan_content(rh._visible_plans())
+        # RefreshHandlers 未挂载（极早期）时直接返回，首轮全量刷新会补上
 
     def _get_project_samples(self, ctrl: object) -> list:
         """获取当前项目下的样品列表。"""

@@ -413,14 +413,11 @@ class RefreshHandlers:
         if self._sample_handlers is not None:
             self._sample_handlers._refresh_sample_usage()
 
-    def _refresh_plans(self) -> None:
-        """刷新测试计划 + 甘特图。"""
+    def _visible_plans(self) -> list:
+        """当前视图应显示的计划集合（项目筛选 + 归档模式过滤）。"""
         ctrl = self._win.ctrl
-        if not ctrl or not ctrl.test_plan_service or not ctrl.test_tasks:
-            return
         filter_project_id = self._get_filter_project_id()
         show_archived = getattr(self._win.test_plan_view, 'show_archived', False)
-        # 按项目筛选计划（根据归档视图模式过滤）
         if filter_project_id:
             all_plans = ctrl.test_plan_service.get_plans_by_project(
                 filter_project_id
@@ -433,6 +430,14 @@ class RefreshHandlers:
         else:
             # 正常视图：排除归档的计划
             all_plans = [p for p in all_plans if p.status != "archived"]
+        return all_plans
+
+    def _refresh_plans(self) -> None:
+        """刷新测试计划 + 甘特图（重建下拉 + 刷新内容）。"""
+        ctrl = self._win.ctrl
+        if not ctrl or not ctrl.test_plan_service or not ctrl.test_tasks:
+            return
+        all_plans = self._visible_plans()
         # 保存当前选中索引 — 通过公共方法设置 combo 并恢复选中
         current_plan_id = self._win.test_plan_view.get_selected_plan_id()
         plan_names = [p.name for p in all_plans]
@@ -450,6 +455,16 @@ class RefreshHandlers:
 
         self._win.test_plan_view.set_plans_and_restore(plan_names, plan_ids, target_id)
 
+        self._refresh_plan_content(all_plans)
+
+    def _refresh_plan_content(self, all_plans: list) -> None:
+        """按当前选中计划刷新任务内容（不重建下拉，不动选中）。
+
+        审计 2026-10-25 拆分：计划切换路径（plan_handlers._on_plan_changed）
+        只调本函数——重建下拉会把归档态下的选中计划过滤掉（unarchive
+        流程实测被毁）。取数逻辑与此处单一来源。
+        """
+        ctrl = self._win.ctrl
         selected_plan_id = self._win.test_plan_view.get_selected_plan_id()
 
         # plan_id → 计划起算日。合并"全部计划"视图时各计划起算日不同, 必须
@@ -529,10 +544,17 @@ class RefreshHandlers:
             holidays = ctrl.holiday_service.get_holidays_set()
 
         # 关联 Issue（用于失效模式分析）
+        # 审计 2026-10-25：口径与 plan_handlers._on_plan_changed 统一——
+        # 单计划视图只取该计划的 Issue，且排除软删；原实现取整个项目的
+        # Issue 且不过滤软删，与计划切换路径的结果不一致
         plan_issues: list = []
         if ctrl.issue_service:
             if plan_obj is not None and plan_obj.project_id:
-                plan_issues = ctrl.issue_service.get_by_project(plan_obj.project_id)
+                plan_issues = [
+                    iss for iss in ctrl.issue_service.get_by_project(plan_obj.project_id)
+                    if not getattr(iss, "is_deleted", False)
+                    and iss.plan_id == selected_plan_id
+                ]
             elif selected_plan_id is None and all_plans:
                 # 合并"全部计划"视图: 取所有计划所属项目 Issue 的并集
                 # (原先只取 all_plans[0].project_id, 失效模式分析只看得到第一个计划)
@@ -540,6 +562,8 @@ class RefreshHandlers:
                 merged: list = []
                 for pid in sorted({p.project_id for p in all_plans if p.project_id}):
                     for iss in ctrl.issue_service.get_by_project(pid):
+                        if getattr(iss, "is_deleted", False):
+                            continue
                         _iid = getattr(iss, "id", None)
                         if _iid is not None:
                             if _iid in seen:
@@ -548,7 +572,10 @@ class RefreshHandlers:
                         merged.append(iss)
                 plan_issues = merged
             else:
-                plan_issues = ctrl.issue_service.list_all()
+                plan_issues = [
+                    iss for iss in ctrl.issue_service.list_all()
+                    if not getattr(iss, "is_deleted", False)
+                ]
 
         self._win.test_plan_view.refresh(
             tasks, max_day, technician_map, result_map,
