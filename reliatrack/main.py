@@ -211,11 +211,11 @@ class MainWindow(QMainWindow):
 
         # Tab 1: 项目管理
         self._project_view = ProjectView()
-        self._tab_widget.addTab(self._project_view, "项目管理")
+        self._tab_widget.addTab(self._project_view, "项目")
 
         # Tab 2: 样品管理
         self._sample_view = SampleView()
-        self._tab_widget.addTab(self._sample_view, "样品管理")
+        self._tab_widget.addTab(self._sample_view, "样品")
 
         # Tab 3: 测试计划
         self._test_plan_view = TestPlanView()
@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
         # Tab 4: Issue 管理（看板/列表）
         assert self._ctrl.issue_service is not None, "IssueService must be initialized"
         self._bug_tracker_view = BugTrackerView(self._ctrl.issue_service, undo_manager=self._ctrl.undo_manager)
-        self._tab_widget.addTab(self._bug_tracker_view, "Issue 管理")
+        self._tab_widget.addTab(self._bug_tracker_view, "Issue")
 
         # Tab 5: 待办事项
         self._todo_view = TodoView()
@@ -236,7 +236,7 @@ class MainWindow(QMainWindow):
         self._equip_tech_tabs.addTab(self._equipment_view, "设备")
         self._technician_view = TechnicianView()
         self._equip_tech_tabs.addTab(self._technician_view, "技术员")
-        self._tab_widget.addTab(self._equip_tech_tabs, "设备管理")
+        self._tab_widget.addTab(self._equip_tech_tabs, "设备")
 
         # Tab 7: 知识库
         self._knowledge_view = KnowledgeView()
@@ -368,10 +368,27 @@ class MainWindow(QMainWindow):
         self._shortcut_help = QShortcut(QKeySequence("?"), self)
         self._shortcut_help.activated.connect(self._open_keyboard_shortcuts)
 
+        # Ctrl+1..8 切换主导航页（UI 审查 2026-10-24：此前切页只能点侧栏）
+        self._tab_shortcuts: list[QShortcut] = []
+        for idx in range(8):
+            sc = QShortcut(QKeySequence(f"Ctrl+{idx + 1}"), self)
+            sc.activated.connect(
+                lambda i=idx: self._switch_tab_safely(i)
+            )
+            self._tab_shortcuts.append(sc)
+
+    def _switch_tab_safely(self, index: int) -> None:
+        """切换主导航 tab；越界（tab 数变动）静默忽略。"""
+        if 0 <= index < self._tab_widget.count():
+            self._tab_widget.setCurrentIndex(index)
+
     def _open_view_theme_settings(self) -> None:
         """打开视图偏好与主题融合设置中心。"""
         from src.views.widgets.view_theme_settings_dialog import ViewThemeSettingsDialog
         dlg = ViewThemeSettingsDialog(self)
+        # UI 审查 2026-10-24：四个常开对话框每次新建不销毁会累积内存，
+        # 关闭即回收（关闭后无人再访问 dlg，安全）
+        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         dlg.show_centered()
 
     def _open_report_bundle(self) -> None:
@@ -396,12 +413,14 @@ class MainWindow(QMainWindow):
             get_plan_id=_get_plan_id,
             get_project_id=_get_project_id,
         )
+        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         dlg.show_centered()
 
     def _open_keyboard_shortcuts(self) -> None:
         """打开键盘快捷键地图弹窗。"""
         from src.views.widgets.keyboard_shortcuts_dialog import KeyboardShortcutsDialog
         dlg = KeyboardShortcutsDialog(self)
+        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         dlg.show_centered()
 
 
@@ -410,6 +429,7 @@ class MainWindow(QMainWindow):
         """打开 Spotlight 命令面板。"""
         from src.views.widgets.command_palette_dialog import CommandPaletteDialog
         dlg = CommandPaletteDialog(self, self._ctrl)
+        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         dlg.action_triggered.connect(self._on_command_palette_action)
         dlg.show_centered()
 

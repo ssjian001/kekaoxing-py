@@ -479,7 +479,7 @@ def test_9_main_window(tr: TestResult):
         tr.record("PASS", "MainWindow Tab 数量", f"{tab_count} 个 Tab")
 
         # 验证各 Tab 名称
-        expected_tabs = ["仪表盘", "项目管理", "样品管理", "测试计划", "Issue 管理", "待办事项", "设备管理", "知识库"]
+        expected_tabs = ["仪表盘", "项目", "样品", "测试计划", "Issue", "待办事项", "设备", "知识库"]
         for i, expected in enumerate(expected_tabs):
             tab_text = window._tab_widget.tabText(i)
             if expected in tab_text:
