@@ -259,6 +259,12 @@ class BaseRepository:
         """按关键词模糊搜索。"""
         if columns is None:
             columns = self._columns()
+        # 审计 2026-10-25：调用方传入的列名进入 SQL 结构，必须过白名单
+        # （与 _safe_kwargs 的自身防护标准一致；此前无生产调用方，
+        # 防未来误接线注入结构）
+        _bad = [c for c in columns if not is_safe_ident(c)]
+        if _bad:
+            raise ValueError(f"search: 非法列名 {_bad!r}")
         # 审计 #10：ESCAPE 子句只绑定紧邻的 LIKE 表达式。原实现把 ESCAPE
         # 拼在 OR 链尾部，仅最后一个子句生效——含 %/_ 关键词时其余列
         # 漏匹配/误匹配。改为每个 LIKE 子句独立携带 ESCAPE。

@@ -1410,6 +1410,10 @@ def init_schema(conn: apsw.Connection) -> int:
     needs_migration = current < SCHEMA_VERSION
 
     if not needs_migration:
+        # 审计 2026-10-25：原实现在此提前 return，_validate_schema_integrity
+        # 只在恰逢迁移时才执行——「版本号正确但核心表被删」的损坏库
+        # 在常规启动下永远检不出。常规启动同样验证。
+        _validate_schema_integrity(conn)
         return current
 
     # v1→v10 迁移包裹在事务内

@@ -37,6 +37,21 @@ def migrate(old_db_path: str, new_db_path: str) -> None:
         sys.exit(1)
 
     old = apsw.Connection(old_db_path)
+
+    # 审计 2026-10-25：旧表结构裸假定预检——缺表原先在 SELECT 处直接崩
+    # （不可读的 traceback），现在给出可操作的报错
+    _required_old = ["project_settings", "resources", "tasks", "test_issues"]
+    _have = {
+        r[0] for r in old.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    _missing = [t for t in _required_old if t not in _have]
+    if _missing:
+        print(f"❌ 旧库缺少必需表: {', '.join(_missing)}")
+        print("   请确认选择的是旧版 kekaoxing 数据库（而非 ReliaTrack 库或其他文件）。")
+        old.close()
+        sys.exit(1)
     old.execute("PRAGMA busy_timeout=5000")
 
     # 统计旧数据

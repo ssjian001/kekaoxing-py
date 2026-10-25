@@ -144,7 +144,8 @@ def scan_data_health(controller) -> dict[str, list[str]]:
             logger.exception("附件扫描失败")
 
     # 2. test_results 断链(排除软删除)
-    conn = controller._conn
+    # 审计 2026-10-25：走公共访问器，不再越层读私有 _conn
+    conn = controller.db_connection if hasattr(controller, "db_connection") else getattr(controller, "_conn", None)
     if conn is not None:
         try:
             rows = conn.execute(

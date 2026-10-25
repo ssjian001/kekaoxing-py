@@ -137,8 +137,13 @@ class BackupService:
     # ── 恢复 ──
 
     @staticmethod
-    def validate_backup(backup_path: str | Path) -> BackupInfo:
+    def validate_backup(backup_path: str | Path, full: bool = True) -> BackupInfo:
         """验证备份文件是否为合法的 ReliaTrack 数据库。
+
+        Args:
+            full: True 时跑完整 PRAGMA integrity_check（恢复前用）；
+                  False 时只验版本+核心表（列表展示用——审计 2026-10-25：
+                  原先列表对每个备份跑全库扫描，备份多/大时卡主线程）。
 
         Returns:
             BackupInfo 元信息。
@@ -155,10 +160,11 @@ class BackupService:
             conn = apsw.Connection(str(backup_path))
             try:
                 version = _get_current_version(conn)
-                # 完整性校验：损坏/截断的 SQLite 会在 integrity_check 返回非 'ok'
-                integrity = conn.execute("PRAGMA integrity_check").fetchone()
-                if integrity is None or integrity[0] != "ok":
-                    raise ValueError(f"备份文件完整性检查失败: {integrity}")
+                if full:
+                    # 完整性校验：损坏/截断的 SQLite 会在 integrity_check 返回非 'ok'
+                    integrity = conn.execute("PRAGMA integrity_check").fetchone()
+                    if integrity is None or integrity[0] != "ok":
+                        raise ValueError(f"备份文件完整性检查失败: {integrity}")
                 # 核心表存在性校验：防止异源/部分 SQLite 带版本表但缺业务表
                 core_tables = [
                     "projects", "equipment", "technicians", "samples",
@@ -306,7 +312,7 @@ class BackupService:
         backups: list[BackupInfo] = []
         for f in sorted(DEFAULT_BACKUPS_DIR.glob("reliatrack_*.db"), reverse=True):
             try:
-                info = BackupService.validate_backup(f)
+                info = BackupService.validate_backup(f, full=False)
                 backups.append(info)
             except (ValueError, FileNotFoundError):
                 # 跳过损坏的备份文件
