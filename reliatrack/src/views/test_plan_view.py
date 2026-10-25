@@ -377,7 +377,6 @@ class TestPlanView(QWidget):
         self._last_result_map = result_map or {}
         self._last_start_date = start_date
         self._last_equipment_map = equipment_map or {}
-        self._last_technician_map = technician_map or {}
         self._last_task_prefix = task_prefix
         self._last_holidays = holidays or set()
         # plan_id → 该计划起算日; 合并"全部计划"视图时按任务所属计划各自推算日期

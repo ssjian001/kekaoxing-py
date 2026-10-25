@@ -78,8 +78,12 @@ def audit_dashboard_data(d) -> list[str]:
     # 8. severity 汇总 = pending+closed(原生 severity 计数独立于 status)
     sev = g(d, "issue_severity_data", None)
     if isinstance(sev, dict) and it is not None and sev and             (n := sum(v for v in sev.values() if isinstance(v, int))) not in (0, it) and             n > 0 and hasattr(d, "issue_count"):
-        # 不硬失败 — severity 按 filter 会有偏差, 只记录
-        pass
+        # 不硬失败 — severity 按 filter 会有偏差, 只记录（审计 2026-10-25：
+        # 原实现只有 pass 的死代码，承诺的「记录」从未发生）
+        logger.warning(
+            "KPI 自检: issue_severity_data 汇总 %d 与 issue_count %d 不一致"
+            "（severity 计数受筛选口径影响，仅记录）", n, it,
+        )
 
     if problems:
         for p in problems:

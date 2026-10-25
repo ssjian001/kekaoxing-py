@@ -54,7 +54,6 @@ from src.styles.constants import (
 )
 from src.views.widgets.table_delegate import RowHighlightDelegate
 from src.views.widgets.search_box import SearchBox
-from src.styles.column_persistence import save_column_widths_debounced, restore_column_widths
 from src.styles.constants import apply_column_specs, install_copy_handler
 from src.styles.toast import ToastWidget
 from src.styles.icon import set_icon, RI_REFRESH

@@ -652,6 +652,9 @@ class IssueRepository(BaseRepository):
             "AND (project_id IS NULL OR project_id != ?)",
             (project_id, project_id),
         )
+        # 审计 2026-10-25：原先硬编码 return 0，docstring 承诺的行数从未兑现。
+        # apsw Cursor 无 rowcount（sqlite3 才有），逐条紧跟 SELECT changes() 读
+        row1 = self._conn.execute("SELECT changes()").fetchone()[0]
         cursor2 = self._conn.execute(
             "UPDATE [issues] SET task_id = NULL "
             "WHERE task_id IN (SELECT t.id FROM [test_tasks] t "
@@ -659,7 +662,8 @@ class IssueRepository(BaseRepository):
             "AND (project_id IS NULL OR project_id != ?)",
             (project_id, project_id),
         )
-        return 0
+        row2 = self._conn.execute("SELECT changes()").fetchone()[0]
+        return (row1 or 0) + (row2 or 0)
 
     def delete_by_project(self, project_id: int) -> int:
         """删除项目关联的所有 issue（含附件磁盘清理），返回删除行数。

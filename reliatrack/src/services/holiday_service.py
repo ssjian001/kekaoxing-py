@@ -173,16 +173,19 @@ class HolidayService:
             _validate_iso_date(date_str)
         # 事务前后 count 差值 = 实际插入行数
         before = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
-        self._conn.execute("BEGIN")
+        # 审计 2026-10-25：调用方已在外层事务内时裸 BEGIN 必炸（apsw 事务
+        # 嵌套不允许），改 SAVEPOINT 兼容两种场景
+        self._conn.execute("SAVEPOINT sp_import_holidays")
         try:
             self._conn.executemany(
                 "INSERT OR IGNORE INTO holidays (date, name, source) VALUES (?, ?, ?)",
                 records,
             )
-            self._conn.execute("COMMIT")
+            self._conn.execute("RELEASE sp_import_holidays")
         except Exception:
             logger.exception("Holiday service error")
-            self._conn.execute("ROLLBACK")
+            self._conn.execute("ROLLBACK TO sp_import_holidays")
+            self._conn.execute("RELEASE sp_import_holidays")
             raise
         after = self._conn.execute("SELECT COUNT(*) FROM [holidays]").fetchone()[0]
         return after - before
