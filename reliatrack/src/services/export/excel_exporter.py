@@ -129,12 +129,12 @@ def export_issues_excel(
     ws.title = "Issue 追踪"
 
     excel_write_title_block(
-        ws, "Issue 追踪报告", "A1:K1",
+        ws, "Issue 追踪报告", "A1:L1",
         f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  共 {len(issues)} 个 Issue",
-        "A2:K2", "C0504D", s,
+        "A2:L2", "C0504D", s,
     )
 
-    headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "根因分析", "改善对策", "CAPA 状态"]
+    headers = ["ID", "Issue描述", "严重度", "状态", "优先级", "DRI", "报告人", "解决结果", "根因分析", "改善对策", "FA 分析(已确认)", "CAPA 状态"]
     excel_write_headers(ws, 4, headers, s)
 
     for row_idx, issue in enumerate(issues, 5):
@@ -142,6 +142,13 @@ def export_issues_excel(
         capas = capa_map.get(issue.id, []) if capa_map and issue.id is not None else []
         capa_actions = "; ".join(c.action for c in capas if c.action) or ""
         capa_statuses = "; ".join(c.status for c in capas) or ""
+        # 审计 2026-10-25：fa_map 原先收下参数却从不导出（调用方以为导了）。
+        # 现导出已确认步骤的「步骤: 发现」串；截断防单格爆炸
+        fas = fa_map.get(issue.id, []) if fa_map and issue.id is not None else []
+        fa_summary = "; ".join(
+            f"{(f.step_title or f.method or f'Step{f.step_no}').strip()}: {(f.findings or '').strip()[:40]}"
+            for f in fas if f.confirmed == 1
+        )[:200]
         values = [
             issue.id,
             issue.title,
@@ -153,15 +160,16 @@ def export_issues_excel(
             RESOLUTION_LABELS.get(issue.resolution, issue.resolution) or "",
             (issue.root_cause or "")[:100],
             issue.improvement_measures or "",
+            fa_summary,
             capa_statuses,
         ]
         for col, val in enumerate(values, 1):
             cell = ws.cell(row=row_idx, column=col, value=val)
             cell.font = s["cell_font"]
-            cell.alignment = wrap if col in (2, 8, 9, 10, 11) else s["center"]
+            cell.alignment = wrap if col in (2, 8, 9, 10, 11, 12) else s["center"]
             cell.border = s["thin_border"]
 
-    widths = [5, 25, 10, 10, 8, 12, 12, 12, 35, 35, 15]
+    widths = [5, 25, 10, 10, 8, 12, 12, 12, 35, 35, 30, 15]
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 

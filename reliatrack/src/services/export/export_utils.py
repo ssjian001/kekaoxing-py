@@ -334,8 +334,15 @@ def _judge_conclusion(
                         return "通过"
                     return "—"
                 elif ctype in ("aql", "custom"):
-                    accept_n = criteria.get("accept", 0)
+                    accept_n = int(criteria.get("accept", 0) or 0)
+                    # 审计 2026-10-25：custom 准则兑现 docstring 承诺的 reject
+                    # 阈值——fail 落在 (accept, reject) 区间为「条件接受」，
+                    # 达到 reject 及以上才「不通过」（与准则文档语义一致）
+                    _rej = criteria.get("reject")
+                    reject_n = int(_rej) if _rej is not None else None
                     if fail_count > accept_n:
+                        if reject_n is not None and fail_count < reject_n:
+                            return "条件接受"
                         return "不通过"
                     elif conditional_count > 0:
                         # 与 c0 分支及兜底分支一致：有 conditional 即"条件接受"，
