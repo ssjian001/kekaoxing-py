@@ -50,17 +50,23 @@ def _ensure_dir(db_path: str) -> None:
 
 
 def _apply_pragmas(conn: apsw.Connection, db_path: str) -> None:
-    """应用连接级 PRAGMA（WAL / 外键 / 超时 / 缓存）。
+    """应用连接级 PRAGMA（超时 / WAL / 外键 / 缓存）。
 
     损坏库在 PRAGMA 阶段就可能失败（实测损坏文件在此抛 NotADBError）。
     这类错误只记日志并保留连接：上层 AppController.initialize 的 check_db
     会据此抛 DbCorruptError 并引导从备份恢复。其余错误（锁 / 权限 /
     打不开）原样抛出——那是必须立即失败的配置或环境问题，不该被静默降级。
+
+    审计 2026-10-25 两处收编：
+    1) busy_timeout 提到最前——journal_mode=WAL 本身要抢锁，无超时兜底时
+       多进程/残留连接场景直接抛 BUSY；
+    2) 损坏库吞异常后尽力补 foreign_keys=ON——若仅个别 PRAGMA 失败而
+       check_db 放行，连接不得以 FK OFF 状态留在缓存继续写入。
     """
     try:
+        conn.execute("PRAGMA busy_timeout=5000")
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
-        conn.execute("PRAGMA busy_timeout=5000")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
     except _CORRUPTION_ERRORS:
@@ -68,6 +74,11 @@ def _apply_pragmas(conn: apsw.Connection, db_path: str) -> None:
             "数据库文件损坏，连接 PRAGMA 初始化失败（交由启动自检判定）: %s",
             db_path, exc_info=True,
         )
+        try:
+            conn.execute("PRAGMA busy_timeout=5000")
+            conn.execute("PRAGMA foreign_keys=ON")
+        except Exception:
+            logger.debug("损坏库补 PRAGMA 失败（忽略，等待 check_db 判定）")
 
 
 def get_connection(db_path: str = "") -> apsw.Connection:

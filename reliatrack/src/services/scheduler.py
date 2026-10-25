@@ -652,7 +652,18 @@ def run_auto_schedule(
         improvement = round((1.0 - new_days / original_days) * 100, 1)
 
     # ── Equipment utilisation ───────────────────────────────────
-    all_days = sorted(timeline.keys()) if timeline else []
+    # 审计 2026-10-25：分母用排程窗口内的工作日数（0..new_days-1），
+    # 不再用 timeline.keys()——那只含「有占用的天」，排期开始前的
+    # 空闲工作日被漏计，利用率系统性虚高、瓶颈误报。注意分母单位
+    # 必须与占用同为工作日：跳周末配置下日历窗口会把周末也计入，
+    # 利用率被反向低估
+    window_days = max(1, sum(
+        1 for d in range(new_days)
+        if not _is_non_working(
+            d, config.start_date, config.skip_weekends,
+            config.skip_holidays, config.holidays,
+        )
+    ))
     eq_map: dict[int, Equipment] = {
         e.id: e for e in equipment if e.id is not None
     }
@@ -664,7 +675,7 @@ def run_auto_schedule(
         if eq_id == _NO_EQUIPMENT:
             continue  # skip "no equipment" placeholder
         cap = config.equipment_capacity.get(eq_id, 1)
-        total_avail = cap * len(all_days) if all_days else 1
+        total_avail = cap * window_days
         total_used = sum(
             day_usage.get(eq_id, 0) for day_usage in timeline.values()
         )
@@ -682,7 +693,7 @@ def run_auto_schedule(
         tid for day_usage in tech_timeline.values() for tid in day_usage
     ):
         tech_cap = config.technician_capacity.get(tech_id, 1)
-        total_avail = tech_cap * len(all_days) if all_days else 1
+        total_avail = tech_cap * window_days
         total_used = sum(
             day_usage.get(tech_id, 0) for day_usage in tech_timeline.values()
         )

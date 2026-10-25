@@ -231,10 +231,16 @@ class PlanHandlers:
         old_day = task.start_day
         if old_day == new_start_day:
             return
-        # 用 UndoManager 包装
-        ctrl.undo_manager.execute(
-            MoveTaskCommand(ctrl.test_tasks, task_id, old_day, new_start_day)
-        )
+        # 用 UndoManager 包装（审计 2026-10-25：拖拽落库失败须提示——
+        # 甘特图上任务已挪走，DB 写失败时用户看不到任何反馈）
+        try:
+            ctrl.undo_manager.execute(
+                MoveTaskCommand(ctrl.test_tasks, task_id, old_day, new_start_day)
+            )
+        except Exception:
+            logger.exception("甘特拖拽保存失败")
+            self._win.toast("拖拽保存失败，位置已还原", "error")
+            return
         self._win.ctrl.notify_data_changed("task")
 
     def _on_import_from_plan(self) -> None:
@@ -975,12 +981,19 @@ class PlanHandlers:
             return
         # save_result 内部是 upsert（单事务），无需先 delete 再 save——
         # 旧写法在 save 抛异常时会永久丢失原结果（2026-08-21 审计 #3）
-        ctrl.test_plan_service.save_result(
-            task_id=task_id,
-            sample_id=sample_id,
-            result=new_result,
-            test_date=date.today().isoformat(),
-        )
+        # 审计 2026-10-25：Qt 槽内裸异常只留 traceback、用户零感知，
+        # 保存失败须弹提示（矩阵里已手填的结果白填了却无任何反馈）
+        try:
+            ctrl.test_plan_service.save_result(
+                task_id=task_id,
+                sample_id=sample_id,
+                result=new_result,
+                test_date=date.today().isoformat(),
+            )
+        except Exception:
+            logger.exception("矩阵结果保存失败")
+            self._win.toast("结果保存失败，请查看日志", "error")
+            return
         # 注意: 此处不再 notify("result") — _do_refresh_all_inner 无 "result"
         # 分支, 属无效通知(不刷新任何视图)。结果变化已由下方 task 通知 +
         # _on_plan_changed() 的表格/甘特/矩阵重载覆盖。
@@ -1338,6 +1351,11 @@ class PlanHandlers:
                 from datetime import date as _date
                 extra_updates["actual_end_date"] = _date.today().isoformat()
                 extra_updates["progress"] = 100.0
+            # 审计 2026-10-25：批量置 in_progress 同样补实际开始日期
+            # （单条编辑与状态推进路径均补，批量路径原先漏——口径不一致）
+            elif value == "in_progress":
+                from datetime import date as _date
+                extra_updates["actual_start_date"] = _date.today().isoformat()
         elif col == 11:  # 实际开始
             field = "actual_start_date"
         elif col == 12:  # 实际完成
