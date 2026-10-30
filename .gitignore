@@ -14,3 +14,4 @@ reliatrack/exports/
 
 # Mimosa tool cache (local only)
 .mimosa/
+graphify-out/
